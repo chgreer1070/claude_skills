@@ -197,6 +197,49 @@ When `/dh:start-task` runs, it creates a context file at `.claude/context/active
 | `**Completed**`    | Hook (SubagentStop)       | When sub-agent finishes           |
 | `**LastActivity**` | Hook (PostToolUse)        | On each Write, Edit, or Bash call |
 
+## Hook Runtime Profile Controls
+
+The `task_status_hook.py` script supports environment-variable-based profile controls that adjust hook behavior without editing SKILL.md files.
+
+### CLAUDE_SKILLS_HOOK_PROFILE
+
+Controls which hook handlers run. Case-sensitive lowercase. Default when unset or empty: `standard`.
+
+- **`minimal`** — PostToolUse (LastActivity updates) is skipped entirely. SubagentStop (task completion) runs normally. Use this to reduce I/O during task execution when activity timestamps are not needed.
+- **`standard`** — All handlers run. This is the current default behavior and is backward compatible with sessions that do not set the variable.
+- **`strict`** — All handlers run. SubagentStop additionally performs pre-completion validation checks and emits warnings to stderr. Warnings are observational only — they do not prevent task completion. Strict checks verify that the task was claimed (status was `in-progress` before completion) and that acceptance criteria were defined (non-empty).
+
+Invalid values produce a warning to stderr and fall back to `standard`.
+
+### CLAUDE_SKILLS_DISABLED_HOOKS
+
+Comma-separated list of hook IDs to disable. Each ID is stripped of whitespace. Empty segments are excluded. Unknown IDs are silently ignored for forward compatibility. Default when unset or empty: no hooks disabled.
+
+Hook IDs for this script:
+
+- `task-status:post-tool-use` — the PostToolUse handler (LastActivity timestamp updates)
+- `task-status:subagent-stop` — the SubagentStop handler (task completion marking)
+
+Disabled hooks take precedence over profile. If both `CLAUDE_SKILLS_HOOK_PROFILE=strict` and `CLAUDE_SKILLS_DISABLED_HOOKS=task-status:subagent-stop` are set, SubagentStop is skipped entirely (no strict checks run).
+
+Disabled hooks exit 0 (Claude Code treats non-zero hook exit as an error that kills the hook chain).
+
+### Examples
+
+```bash
+# Skip PostToolUse activity tracking (reduces I/O during task execution)
+export CLAUDE_SKILLS_HOOK_PROFILE=minimal
+
+# Enable strict pre-completion validation warnings
+export CLAUDE_SKILLS_HOOK_PROFILE=strict
+
+# Disable a specific hook by ID
+export CLAUDE_SKILLS_DISABLED_HOOKS=task-status:post-tool-use
+
+# Disable multiple hooks
+export CLAUDE_SKILLS_DISABLED_HOOKS="task-status:post-tool-use,task-status:subagent-stop"
+```
+
 ## Integration with /execution
 
 The `/dh:execution` orchestrator uses this skill to:

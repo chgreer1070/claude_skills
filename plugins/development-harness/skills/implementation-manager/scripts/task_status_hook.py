@@ -24,7 +24,9 @@ Exit Codes:
 
 from __future__ import annotations
 
+import enum
 import json
+import os
 import re
 import sys
 from datetime import UTC, datetime
@@ -59,6 +61,122 @@ if _BACKLOG_CORE_HOOK.exists():
 
 # Alphanumeric task ID pattern: "1", "1.1", "T1", "P0-T01", etc.
 _TASK_ID_RE = r"[A-Za-z0-9]+(?:[-.][\dA-Za-z]+)*"
+
+
+class HookProfile(enum.StrEnum):
+    """Runtime profile controlling which hook handlers are active.
+
+    Profiles are selected via the CLAUDE_SKILLS_HOOK_PROFILE environment variable.
+    Default when unset or empty: STANDARD.
+    """
+
+    MINIMAL = "minimal"
+    STANDARD = "standard"
+    STRICT = "strict"
+
+
+# Hook ID constants — used in CLAUDE_SKILLS_DISABLED_HOOKS.
+HOOK_ID_POST_TOOL_USE = "task-status:post-tool-use"
+HOOK_ID_SUBAGENT_STOP = "task-status:subagent-stop"
+
+# Map hook_event_name values to hook IDs for disabled-hooks lookup.
+_EVENT_TO_HOOK_ID: dict[str, str] = {"PostToolUse": HOOK_ID_POST_TOOL_USE, "SubagentStop": HOOK_ID_SUBAGENT_STOP}
+
+
+def resolve_profile() -> HookProfile:
+    """Read CLAUDE_SKILLS_HOOK_PROFILE and return the corresponding HookProfile.
+
+    Returns HookProfile.STANDARD when the variable is unset or empty.
+    Prints a warning to stderr and returns STANDARD for any unrecognised value.
+
+    Returns:
+        The active HookProfile.
+    """
+    raw = os.environ.get("CLAUDE_SKILLS_HOOK_PROFILE", "").strip()
+    if not raw:
+        return HookProfile.STANDARD
+    try:
+        return HookProfile(raw)
+    except ValueError:
+        print(f'[hook] Unknown profile "{raw}", using "standard"', file=sys.stderr)
+        return HookProfile.STANDARD
+
+
+def parse_disabled_hooks() -> set[str]:
+    """Read CLAUDE_SKILLS_DISABLED_HOOKS and return the set of disabled hook IDs.
+
+    Splits on commas, strips whitespace per segment, excludes empty segments.
+    Unknown IDs are silently included — callers check presence against known IDs.
+
+    Returns:
+        Set of disabled hook ID strings. Empty when unset or empty.
+    """
+    raw = os.environ.get("CLAUDE_SKILLS_DISABLED_HOOKS", "")
+    if not raw.strip():
+        return set()
+    return {segment.strip() for segment in raw.split(",") if segment.strip()}
+
+
+def should_skip_hook(event_name: str, profile: HookProfile, disabled_hooks: set[str]) -> bool:
+    """Return True if the hook for this event should be skipped.
+
+    Disabled hooks take precedence over profile rules.
+
+    Args:
+        event_name: Value of hook_event_name from the hook input (e.g. "PostToolUse").
+        profile: The active HookProfile.
+        disabled_hooks: Set of hook IDs to skip unconditionally.
+
+    Returns:
+        True if the hook should exit 0 without running its handler.
+    """
+    hook_id = _EVENT_TO_HOOK_ID.get(event_name)
+
+    # Disabled hooks take precedence — check first.
+    if hook_id and hook_id in disabled_hooks:
+        return True
+
+    # Profile rules: minimal skips PostToolUse only.
+    return bool(profile == HookProfile.MINIMAL and event_name == "PostToolUse")
+
+
+def run_strict_pre_completion_checks(
+    task_file_path: Path,
+    task_id: str,
+    hook_input: dict[str, Any],
+) -> list[str]:
+    """Run pre-completion validation checks for strict mode.
+
+    Called when CLAUDE_SKILLS_HOOK_PROFILE=strict and a SubagentStop event fires.
+    Warnings are observational — they do not prevent task completion.
+
+    Args:
+        task_file_path: Path to the plan file.
+        task_id: Task ID being completed.
+        hook_input: Parsed hook input (reserved for future checks).
+
+    Returns:
+        List of warning strings. Empty list means all checks passed.
+    """
+    warnings: list[str] = []
+    try:
+        task = sam_get_task(task_file_path, task_id)
+    except (KeyError, FileNotFoundError, ValueError, OSError) as e:
+        warnings.append(f"[hook] strict: could not load task {task_id} for pre-completion checks: {e}")
+        return warnings
+
+    # Check 1: task must have been claimed (status should be IN_PROGRESS, not NOT_STARTED).
+    if task.status == SamTaskStatus.NOT_STARTED:
+        warnings.append(
+            f"[hook] strict: task {task_id} status is not-started — task may not have been claimed before completion"
+        )
+
+    # Check 2: acceptance criteria must be non-empty.
+    acceptance_criteria = getattr(task, "acceptance_criteria", "") or ""
+    if not acceptance_criteria.strip():
+        warnings.append(f"[hook] strict: task {task_id} has no acceptance criteria defined")
+
+    return warnings
 
 
 def parse_hook_input() -> dict[str, Any]:
@@ -325,15 +443,19 @@ def sync_completion_to_github(task_file_path: Path, task_id: str, parent_issue_n
         print(f"[hook] GitHub sync failed: {e}", file=sys.stderr)
 
 
-def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
+def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = HookProfile.STANDARD) -> None:
     """Handle SubagentStop event - mark task COMPLETE with timestamp.
 
     Parses the sub-agent's prompt to find the /start-task invocation
     and extracts task file path and task ID. Delegates all file writes
     to sam_schema.core.query.update_status (handles both .yaml and .md formats).
 
+    When profile is STRICT, runs pre-completion validation checks and prints
+    any warnings to stderr before completing (warnings do not prevent completion).
+
     Args:
         hook_input: Parsed hook input from stdin.
+        profile: Active hook profile. Defaults to STANDARD.
     """
     # Get the sub-agent's prompt which contains /start-task invocation
     prompt = hook_input.get("prompt", "")
@@ -359,6 +481,11 @@ def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
     if not full_path.exists():
         print(f"Task file not found: {full_path}", file=sys.stderr)
         sys.exit(2)
+
+    # Strict mode: run pre-completion checks and emit warnings. Never blocks completion.
+    if profile == HookProfile.STRICT:
+        for warning in run_strict_pre_completion_checks(full_path, task_id, hook_input):
+            print(warning, file=sys.stderr)
 
     try:
         # Single code path for all formats: sam_schema handles .yaml and .md uniformly.
@@ -435,8 +562,20 @@ def main() -> None:
 
     event_name = hook_input.get("hook_event_name", "")
 
+    # Profile and disabled-hook controls. stdin is already consumed above.
+    # Disabled hooks take precedence over profile (checked inside should_skip_hook).
+    profile = resolve_profile()
+    disabled_hooks = parse_disabled_hooks()
+    if should_skip_hook(event_name, profile, disabled_hooks):
+        hook_id = _EVENT_TO_HOOK_ID.get(event_name, event_name)
+        if hook_id in disabled_hooks:
+            print(f"[hook] Skipped: {hook_id} (disabled)", file=sys.stderr)
+        else:
+            print(f"[hook] Skipped: {hook_id} (profile={profile})", file=sys.stderr)
+        sys.exit(0)
+
     if event_name == "SubagentStop":
-        handle_subagent_stop(hook_input)
+        handle_subagent_stop(hook_input, profile=profile)
     elif event_name == "PostToolUse":
         # Update LastActivity for Write/Edit/Bash operations
         tool_name = hook_input.get("tool_name", "")

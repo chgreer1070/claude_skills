@@ -375,6 +375,29 @@ uv run python scripts/rename_plan_files.py plan/
 # 3. Update backlog plan references (handled by rename script with --update-backlog)
 ```
 
+### Hook Runtime Environment Variables
+
+The `task_status_hook.py` script reads two environment variables at runtime to control which handlers execute. These variables allow adjusting hook behavior without editing SKILL.md files.
+
+**`CLAUDE_SKILLS_HOOK_PROFILE`** — selects a named profile. Case-sensitive lowercase. Valid values: `minimal`, `standard`, `strict`. Default when unset or empty: `standard`.
+
+- `minimal` — PostToolUse handler is skipped (no LastActivity updates). SubagentStop runs normally.
+- `standard` — all handlers run. Backward compatible with sessions that do not set the variable.
+- `strict` — all handlers run. SubagentStop additionally performs pre-completion validation (warns to stderr if task was not claimed or acceptance criteria are empty). Warnings are observational — they do not block completion.
+
+Invalid values produce a warning to stderr and fall back to `standard`.
+
+**`CLAUDE_SKILLS_DISABLED_HOOKS`** — comma-separated hook IDs to disable entirely. Each ID is stripped of whitespace. Empty segments are excluded. Unknown IDs are silently ignored for forward compatibility. Default when unset or empty: no hooks disabled.
+
+Hook IDs for `task_status_hook.py`:
+
+- `task-status:post-tool-use` — the PostToolUse handler (LastActivity timestamp updates)
+- `task-status:subagent-stop` — the SubagentStop handler (task completion marking)
+
+Disabled hooks take precedence over profile and exit 0 after consuming stdin (Claude Code treats non-zero hook exit as error).
+
+---
+
 ### Deprecation Timeline
 
 - **2026-Q1**: `tasks-{N}-{slug}` naming deprecated. New plans use `P{NNN}-{slug}.yaml`.

@@ -1,0 +1,380 @@
+feature: hook-profile-controls
+version: '1.0'
+description: ''
+goal: |-
+  Add environment-variable-based profile controls (CLAUDE_SKILLS_HOOK_PROFILE, CLAUDE_SKILLS_DISABLED_HOOKS) to task_status_hook.py enabling minimal/standard/strict profiles and per-hook disablement without SKILL.md edits
+issue: '577'
+tasks:
+- id: T01
+  title: Add profile parsing, skip logic, and strict checks to
+    task_status_hook.py
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  context-notes: |
+    ## Objective
+
+    Add HookProfile enum (minimal/standard/strict), environment variable parsing for CLAUDE_SKILLS_HOOK_PROFILE and CLAUDE_SKILLS_DISABLED_HOOKS, skip logic in main(), and strict validation checks to task_status_hook.py. All changes are confined to the single script at plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py. No new files, no new dependencies, no SKILL.md modifications. When no environment variables are set, behavior is identical to the current codebase.
+
+    ## Requirements
+
+    Primary implementation file: plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py
+
+    Architecture spec: plan/architect-hook-profile-controls.md
+
+    Environment variables to implement:
+    - CLAUDE_SKILLS_HOOK_PROFILE: valid values are 'minimal', 'standard', 'strict' (case-sensitive, lowercase). Default when unset or empty: 'standard'. Invalid value behavior: print warning to stderr ('[hook] Unknown profile "{value}", using "standard"') and use standard.
+    - CLAUDE_SKILLS_DISABLED_HOOKS: comma-separated list of hook IDs. Whitespace-stripped per ID. Empty segments excluded. Unknown IDs silently ignored. Default when unset or empty: empty set.
+
+    Hook ID format (from arch spec section 5): {script-name}:{handler-name}
+    - HOOK_ID_POST_TOOL_USE = 'task-status:post-tool-use'
+    - HOOK_ID_SUBAGENT_STOP = 'task-status:subagent-stop'
+
+    New components to add (from arch spec section 4):
+    - HookProfile(enum.StrEnum) with MINIMAL, STANDARD, STRICT members
+    - resolve_profile() -> HookProfile
+    - parse_disabled_hooks() -> set[str]
+    - should_skip_hook(event_name, profile, disabled_hooks) -> bool
+    - run_strict_pre_completion_checks(task_file_path, task_id, hook_input) -> list[str]
+    - Modified main(): profile/disable checks after parse_hook_input() and before dispatch
+    - Modified handle_subagent_stop(): gains optional profile parameter (default STANDARD), calls run_strict_pre_completion_checks when strict
+
+    Constraints (from feature context section environment-constraints):
+    - Skipped hooks must exit 0, not error
+    - stdin must be consumed even when skipping (parse_hook_input runs before skip check)
+    - DISABLED_HOOKS takes precedence over HOOK_PROFILE
+    - Strict mode warns only, does not prevent completion
+
+    ## Acceptance Criteria
+
+    - [ ] Profile parsing: resolve_profile() returns HookProfile.STANDARD when CLAUDE_SKILLS_HOOK_PROFILE is unset, returns the correct HookProfile member for each valid value ('minimal', 'standard', 'strict'), and prints a stderr warning and returns STANDARD for any unrecognized value
+    - [ ] Minimal profile skips PostToolUse: when CLAUDE_SKILLS_HOOK_PROFILE=minimal, handle_activity_update is NOT called for PostToolUse events; the hook exits 0
+    - [ ] Minimal profile does not skip SubagentStop: when CLAUDE_SKILLS_HOOK_PROFILE=minimal, handle_subagent_stop IS called normally for SubagentStop events
+    - [ ] Disabled hooks: when CLAUDE_SKILLS_DISABLED_HOOKS=task-status:post-tool-use, PostToolUse handler is skipped and exits 0; when value is task-status:subagent-stop, SubagentStop handler is skipped and exits 0
+    - [ ] Disabled hooks take precedence over profile: HOOK_PROFILE=strict with DISABLED_HOOKS=task-status:subagent-stop causes SubagentStop to exit 0 without running strict checks
+    - [ ] Strict mode validation: when HOOK_PROFILE=strict and SubagentStop fires, run_strict_pre_completion_checks is called; warnings for unclaimed task (NOT_STARTED) or empty acceptance criteria are printed to stderr; completion proceeds regardless
+    - [ ] Backward compatibility: when neither CLAUDE_SKILLS_HOOK_PROFILE nor CLAUDE_SKILLS_DISABLED_HOOKS is set, behavior is identical to the current codebase for both SubagentStop and PostToolUse events
+    - [ ] stdin is always consumed: parse_hook_input() is called before any skip/profile check, so stdin is drained even on early exit
+
+    ## Verification Steps
+
+    1. Run with HOOK_PROFILE=minimal and a synthetic PostToolUse stdin payload: verify handle_activity_update is NOT invoked and the process exits 0 (use monkeypatch in the test suite or manually mock the handler to assert it was not called)
+    2. Run with HOOK_PROFILE=minimal and a synthetic SubagentStop stdin payload: verify handle_subagent_stop IS invoked normally and the process exits 0
+    3. Run with no environment variables set and both SubagentStop and PostToolUse payloads: verify behavior is identical to the pre-patch codebase (same exit code, same file mutations, same stderr output) — backward compatibility check
+    4. Run with an invalid HOOK_PROFILE value (e.g., 'MINIMAL' or 'fast'): verify the script prints the warning format '[hook] Unknown profile "{value}", using "standard"' to stderr and continues with standard behavior
+    5. Run with DISABLED_HOOKS=task-status:subagent-stop and a SubagentStop payload: verify the handler is skipped and exits 0; run with DISABLED_HOOKS=task-status:post-tool-use and a PostToolUse payload: verify the handler is skipped and exits 0
+    6. Run with HOOK_PROFILE=strict and a SubagentStop payload for a task in NOT_STARTED status: verify a warning about unclaimed task appears on stderr and completion still proceeds (task status marked COMPLETE)
+    7. Confirm no SKILL.md files were modified: run git diff --name-only and verify no start-task/SKILL.md or implement-feature/SKILL.md appears in the diff
+  started: '2026-03-21T21:58:50.543011+00:00'
+- id: T02
+  title: Add test coverage for hook profile controls
+  status: complete
+  agent: python-pytest-architect
+  dependencies:
+  - T01
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  context-notes: |
+    ## Objective
+
+    Add pytest test coverage for all profile control functions added in T01. Tests live in a dedicated file separate from any existing task_status_hook tests. Coverage target: 95%+ line and branch coverage on the new code (resolve_profile, parse_disabled_hooks, should_skip_hook, run_strict_pre_completion_checks, and the modified main() profile/disable path). The existing test suite must continue to pass with zero regressions.
+
+    ## Requirements
+
+    Test file path: tests/test_task_status_hook_profiles.py
+
+    Functions to test (all added in T01):
+    - resolve_profile() — env var parsing, valid/invalid/unset/empty cases, case sensitivity
+    - parse_disabled_hooks() — comma splitting, whitespace stripping, empty segments, unknown IDs, unset/empty cases
+    - should_skip_hook(event_name, profile, disabled_hooks) — all combinations of PostToolUse/SubagentStop × minimal/standard/strict × disabled/not-disabled
+    - run_strict_pre_completion_checks(task_file_path, task_id, hook_input) — IN_PROGRESS vs NOT_STARTED, empty vs non-empty acceptance criteria, sam_get_task error handling
+    - main() integration paths — profile=minimal + PostToolUse skips handler, profile=minimal + SubagentStop runs handler, disabled hooks exit 0, strict + SubagentStop runs checks, no env vars = current behavior
+
+    Architecture spec test strategy reference: plan/architect-hook-profile-controls.md section 7 (Testing Architecture)
+
+    Test stack: pytest + pytest-mock + monkeypatch (built-in fixture for env vars)
+    - monkeypatch.setenv('CLAUDE_SKILLS_HOOK_PROFILE', 'minimal') for env var control
+    - mocker.patch('task_status_hook.handle_subagent_stop') to assert handler called/not called
+    - mocker.patch('task_status_hook.handle_activity_update') to assert handler called/not called
+
+    Fixtures required (from arch spec section 7):
+    - hook_input_subagent_stop() -> dict: minimal valid stdin JSON for SubagentStop event
+    - hook_input_post_tool_use() -> dict: minimal valid stdin JSON for PostToolUse event
+
+    ## Acceptance Criteria
+
+    - [ ] Tests for each profile: test cases cover all three profile values (minimal, standard, strict) for both resolve_profile() and integration paths through main()
+    - [ ] Tests for disabled hooks: test cases cover CLAUDE_SKILLS_DISABLED_HOOKS with task-status:post-tool-use, task-status:subagent-stop, both combined, and whitespace/trailing-comma variants
+    - [ ] Tests for edge cases: empty string env var returns STANDARD (not an error), invalid profile value returns STANDARD and emits warning, unknown hook IDs in DISABLED_HOOKS are silently ignored, consecutive commas produce no empty-string entries in the disabled set
+    - [ ] Backward compatibility tests: with no env vars set, PostToolUse and SubagentStop paths exercise the same handler call paths as the current codebase (mocked handlers called with correct arguments)
+    - [ ] run_strict_pre_completion_checks coverage: test for NOT_STARTED status (warning returned), IN_PROGRESS status (no warning), empty acceptance criteria (warning), non-empty acceptance criteria (no warning), and sam_get_task raising KeyError (warning returned, no exception propagated)
+    - [ ] All existing tests pass: running the full test suite produces zero regressions
+
+    ## Verification Steps
+
+    1. Run the new test file in isolation: uv run pytest tests/test_task_status_hook_profiles.py -v — all tests must pass with no errors or warnings about collection
+    2. Run with coverage: uv run pytest tests/test_task_status_hook_profiles.py --cov=task_status_hook --cov-report=term-missing — verify new functions (resolve_profile, parse_disabled_hooks, should_skip_hook, run_strict_pre_completion_checks) show 95%+ line coverage
+    3. Run the full test suite: uv run pytest — verify zero regressions (same pass count as before T01/T02 work, excluding the newly added tests)
+    4. Verify fixture correctness: confirm hook_input_subagent_stop and hook_input_post_tool_use fixtures produce dicts that parse successfully through parse_hook_input() (the real function, not mocked)
+    5. Verify integration test isolation: confirm integration tests that mock handle_subagent_stop or handle_activity_update do NOT call through to sam_schema file operations — tests should be fast (no disk I/O on task plan files)
+  started: '2026-03-21T22:01:31.944027+00:00'
+- id: T03
+  title: Update documentation with hook profile behavior notes
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - T01
+  priority: 3
+  complexity: low
+  context-notes: |
+    ## Objective
+
+    Update documentation files to describe the hook runtime profile controls introduced in T01. Three files in the impact radius require updates: the implementation-manager SKILL.md (user-facing hook behavior documentation), local-workflow.md (workflow reference for the hook script), and TASK_FILE_FORMAT.md (environment variable reference). No SKILL.md hook declarations change — only prose documentation of the new env vars and profile behavior.
+
+    ## Requirements
+
+    Documentation files to update (impact radius from arch spec section 8 and feature context):
+
+    1. plugins/development-harness/skills/implementation-manager/SKILL.md
+       - Add section describing CLAUDE_SKILLS_HOOK_PROFILE (values: minimal/standard/strict, default: standard) and CLAUDE_SKILLS_DISABLED_HOOKS (comma-separated hook IDs)
+       - Describe profile behavior matrix: minimal skips PostToolUse LastActivity updates; standard is current behavior; strict adds pre-completion validation warnings
+
+    2. .claude/rules/local-workflow.md
+       - Add environment variable controls to the Hook Script section (task_status_hook.py description)
+       - Document the hook ID format: task-status:post-tool-use and task-status:subagent-stop
+       - Note that disabled hooks exit 0 (Claude Code treats non-zero hook exit as error)
+
+    3. .claude/docs/TASK_FILE_FORMAT.md (if this file contains hook or environment variable documentation)
+       - Add or update the environment variable reference to include both CLAUDE_SKILLS_HOOK_PROFILE and CLAUDE_SKILLS_DISABLED_HOOKS
+
+    Content constraints:
+    - Env var names must appear exactly: CLAUDE_SKILLS_HOOK_PROFILE and CLAUDE_SKILLS_DISABLED_HOOKS
+    - Hook IDs must appear exactly: task-status:post-tool-use and task-status:subagent-stop
+    - Profile values must be documented as case-sensitive lowercase: minimal, standard, strict
+    - No tables in AI-facing docs (CLAUDE.md user preference) — use mermaid or prose with bullet lists
+
+    ## Acceptance Criteria
+
+    - [ ] implementation-manager SKILL.md updated: contains a prose description of CLAUDE_SKILLS_HOOK_PROFILE with all three profile values (minimal, standard, strict) and their effects, and CLAUDE_SKILLS_DISABLED_HOOKS with the hook ID format and example IDs
+    - [ ] local-workflow.md updated: the task_status_hook.py section documents the environment variable controls and the hook ID format (task-status:post-tool-use, task-status:subagent-stop)
+    - [ ] TASK_FILE_FORMAT.md updated (if applicable): environment variable section includes both new vars with valid values and default behavior
+    - [ ] Env var names present verbatim: grep for CLAUDE_SKILLS_HOOK_PROFILE and CLAUDE_SKILLS_DISABLED_HOOKS finds matches in each updated doc file
+    - [ ] Profile behavior described accurately: minimal profile is described as skipping PostToolUse (not SubagentStop); backward compatibility (no env vars = standard behavior) is stated explicitly
+    - [ ] No stale references: no documentation refers to manual SKILL.md editing as the method for controlling hook behavior (the feature replaces that workflow)
+
+    ## Verification Steps
+
+    1. Grep for env var names in updated docs: run grep -r 'CLAUDE_SKILLS_HOOK_PROFILE' .claude/rules/local-workflow.md .claude/docs/TASK_FILE_FORMAT.md plugins/development-harness/skills/implementation-manager/SKILL.md — each file must return at least one match; run the same check for CLAUDE_SKILLS_DISABLED_HOOKS
+    2. Grep for hook IDs: run grep -r 'task-status:post-tool-use' across all updated doc files — at least one match per file that documents the disabled hooks feature
+    3. Run markdownlint on all modified doc files: uv run prek run --files .claude/rules/local-workflow.md plugins/development-harness/skills/implementation-manager/SKILL.md — no lint errors
+    4. Verify no stale references: grep for 'SKILL.md' combined with 'edit' or 'modify' in proximity within the updated sections — confirm docs no longer describe manual SKILL.md editing as the hook control mechanism
+    5. Read each updated file and confirm the profile behavior matrix is accurate: minimal skips PostToolUse (not SubagentStop), standard is unchanged from current, strict adds stderr warnings only
+  started: '2026-03-21T22:01:37.714582+00:00'
+context: |-
+  ## Context Manifest
+
+  ### How This Currently Works: task_status_hook.py
+
+  When a Claude Code hook event fires (PostToolUse or SubagentStop), the Claude Code runtime invokes `task_status_hook.py` as a subprocess, passing a JSON payload on stdin. The script lives at `plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py` and is the sole hook script shared by two different SKILL.md declarations.
+
+  The script's `main()` function calls `parse_hook_input()` to consume stdin JSON, then reads `hook_event_name` from the parsed dict and dispatches to one of two handlers:
+
+  1. **SubagentStop** -> `handle_subagent_stop(hook_input)`: Extracts the task file path and task ID from the sub-agent's prompt text (via regex patterns matching `/start-task` or `Skill(skill="start-task", ...)` invocations). Falls back to reading `.claude/context/active-task-{session_id}.json` if prompt parsing fails. Then calls `sam_update_status(full_path, task_id, SamTaskStatus.COMPLETE, timestamp_field="completed")` to mark the task complete. Cleans up the context file and calls `sync_completion_to_github()` for best-effort GitHub sync.
+
+  2. **PostToolUse** (when `tool_name` is Write, Edit, or Bash) -> `handle_activity_update(hook_input)`: Reads the active task context file to get the task file path and task ID. Guards against updating already-complete tasks by calling `sam_get_task()` and checking status. Then calls `sam_update_plan_fields(full_path, task_id, set_fields={"last-activity": timestamp})` to update the LastActivity timestamp.
+
+  There is currently NO environment variable check, NO profile branching, and NO early-exit path based on configuration. Every invocation runs the full handler for its event type. The PostToolUse hook fires on every Write/Edit/Bash call during task execution (30-50 times per typical task), each performing stdin JSON parse, context file read, sam_get_task lookup, and sam_update_plan_fields file write.
+
+  ### Hook Declarations in SKILL.md Files
+
+  Two SKILL.md files declare hooks that invoke this script. Neither file needs modification for this feature — all changes are confined to the Python script itself.
+
+  **`plugins/development-harness/skills/start-task/SKILL.md`** declares a PostToolUse hook:
+
+  ```yaml
+  hooks:
+    PostToolUse:
+    - matcher: Write|Edit|Bash
+      hooks:
+      - type: command
+        command: python3 "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
+  ```
+
+  **`plugins/development-harness/skills/implement-feature/SKILL.md`** declares a SubagentStop hook:
+
+  ```yaml
+  hooks:
+    SubagentStop:
+    - hooks:
+      - type: command
+        command: python3 "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
+  ```
+
+  ### Import Structure and sys.path Manipulation
+
+  The script uses `from __future__ import annotations` and imports from `sam_schema` which is located at `plugins/development-harness/sam_schema/`. The script resolves the repo root as `Path(__file__).resolve().parents[5]` and adds a packages directory to `sys.path`. The actual sam_schema package is a workspace dependency installed in the project venv, with a fallback sys.path insertion for direct-script execution.
+
+  Key imports from sam_schema used by the script:
+
+  - `sam_schema.core.models.TaskStatus` (StrEnum): values are `"not-started"`, `"in-progress"`, `"complete"`, `"blocked"`, `"deferred"`, `"skipped"`
+  - `sam_schema.core.query.get_task(plan_path, task_id) -> Task`: loads plan, finds task by ID. Raises `KeyError` if not found, `FileNotFoundError` if plan missing.
+  - `sam_schema.core.query.update_plan_fields(plan_path, task_id, *, set_fields, ...)`: updates task-level fields via YAML read-modify-write.
+  - `sam_schema.core.query.update_status(plan_path, task_id, new_status, timestamp_field)`: updates status and optional timestamp atomically.
+
+  The `backlog_core` module is conditionally imported for GitHub sync only, guarded by path existence check.
+
+  ### Task Model Fields Relevant to Strict Mode
+
+  The `Task` Pydantic model (at `plugins/development-harness/sam_schema/core/models.py`) has these fields relevant to the strict-mode validation checks specified in the architect spec:
+
+  - `status: TaskStatus` — strict check #1 verifies this is `IN_PROGRESS` (not `NOT_STARTED`) to confirm the task was claimed before completion
+  - `acceptance_criteria: str` — strict check #2 verifies this is non-empty, confirming acceptance criteria were defined
+
+  The `sam_get_task()` function returns a full `Task` model instance, so strict checks can inspect `task.status` and `task.acceptance_criteria` directly without additional file I/O.
+
+  ### For New Feature Implementation: What Needs to Change
+
+  Since all changes are confined to `task_status_hook.py`, this is a single-file modification. The architect spec calls for:
+
+  1. A `HookProfile` StrEnum with three values: `minimal`, `standard`, `strict`
+  2. Constants `HOOK_ID_POST_TOOL_USE = "task-status:post-tool-use"` and `HOOK_ID_SUBAGENT_STOP = "task-status:subagent-stop"`
+  3. A mapping `_EVENT_TO_HOOK_ID: dict[str, str]` from event names to hook IDs
+  4. Three new functions: `resolve_profile()`, `parse_disabled_hooks()`, `should_skip_hook()`
+  5. One new function: `run_strict_pre_completion_checks()`
+  6. Three new lines in `main()` between stdin parsing and event dispatch
+  7. A modified signature for `handle_subagent_stop()` adding `profile: HookProfile = HookProfile.STANDARD`
+
+  The critical insertion point in `main()` is between line 436 (`event_name = hook_input.get("hook_event_name", "")`) and line 438 (`if event_name == "SubagentStop":`). The new profile/disable logic goes there, calling `sys.exit(0)` if the hook should be skipped.
+
+  The new code must use only stdlib + existing sam_schema imports. `enum.StrEnum` requires Python 3.11+ which matches the project minimum. `os.environ.get()` is used for env var reads. No new dependencies.
+
+  ### Environment Variable Contracts
+
+  `CLAUDE_SKILLS_HOOK_PROFILE`: case-sensitive lowercase string, valid values `"minimal"`, `"standard"`, `"strict"`. Default when unset/empty: `"standard"`. Invalid values: warn to stderr, use `"standard"`.
+
+  `CLAUDE_SKILLS_DISABLED_HOOKS`: comma-separated hook IDs. Each ID stripped of whitespace. Empty segments excluded. Unknown IDs silently ignored for forward compatibility. Default when unset/empty: empty set.
+
+  Disabled hooks take precedence over profile. If both `HOOK_PROFILE=strict` and `DISABLED_HOOKS=task-status:subagent-stop` are set, SubagentStop is skipped entirely (no strict checks run).
+
+  ### Profile Behavior Matrix
+
+  - `minimal`: PostToolUse SKIPPED (exit 0), SubagentStop RUNS normally, no strict checks
+  - `standard`: PostToolUse RUNS, SubagentStop RUNS, no strict checks (current behavior exactly)
+  - `strict`: PostToolUse RUNS, SubagentStop RUNS with pre-completion validation warnings to stderr
+
+  Strict mode warnings are observational only — they print to stderr but do NOT prevent completion. ADR-001 in the architect spec explains why: hook scripts that exit non-zero kill the hook chain, and blocking completion after the sub-agent has finished its work cannot undo the work.
+
+  ### Exit Code and stdin Constraints
+
+  - Disabled/skipped hooks MUST exit 0 (non-zero is treated as error by Claude Code)
+  - stdin MUST be consumed even when skipping (profile/disable checks run AFTER `parse_hook_input()`)
+  - This means the skip check placement is: after `parse_hook_input()` (consumes stdin), after extracting `event_name`, before any sam_schema operations
+
+  ### Technical Reference Details
+
+  #### Current main() Structure (Lines 428-450)
+
+  ```python
+  def main() -> None:
+      try:
+          hook_input = parse_hook_input()
+      except (ValueError, json.JSONDecodeError) as e:
+          print(f"Failed to parse hook input: {e}", file=sys.stderr)
+          sys.exit(2)
+
+      event_name = hook_input.get("hook_event_name", "")
+
+      # NEW CODE GOES HERE: resolve_profile, parse_disabled_hooks, should_skip_hook
+
+      if event_name == "SubagentStop":
+          handle_subagent_stop(hook_input)  # MODIFY: pass profile parameter
+      elif event_name == "PostToolUse":
+          tool_name = hook_input.get("tool_name", "")
+          if tool_name in {"Write", "Edit", "Bash"}:
+              handle_activity_update(hook_input)
+      sys.exit(0)
+  ```
+
+  #### New Function Signatures
+
+  ```python
+  class HookProfile(enum.StrEnum):
+      MINIMAL = "minimal"
+      STANDARD = "standard"
+      STRICT = "strict"
+
+  def resolve_profile() -> HookProfile:
+      """Returns HookProfile.STANDARD when unset/empty. Warns to stderr for unknown values."""
+
+  def parse_disabled_hooks() -> set[str]:
+      """Returns empty set when unset/empty. Splits on comma, strips whitespace."""
+
+  def should_skip_hook(event_name: str, profile: HookProfile, disabled_hooks: set[str]) -> bool:
+      """True if hook should be skipped. Checks disabled set first, then profile rules."""
+
+  def run_strict_pre_completion_checks(task_file_path: Path, task_id: str, hook_input: dict[str, Any]) -> list[str]:
+      """Returns list of warning strings. Empty list = all checks pass."""
+
+  def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = HookProfile.STANDARD) -> None:
+      """Modified: gains optional profile parameter. Calls strict checks when profile is STRICT."""
+  ```
+
+  #### sam_schema API Used by Strict Checks
+
+  ```python
+  # Get task to check status and acceptance_criteria
+  from sam_schema.core.query import get_task as sam_get_task
+  task = sam_get_task(task_file_path, task_id)  # raises KeyError, FileNotFoundError
+  task.status  # TaskStatus enum, compare against TaskStatus.IN_PROGRESS
+  task.acceptance_criteria  # str, check for non-empty
+  ```
+
+  #### Constants
+
+  ```python
+  HOOK_ID_POST_TOOL_USE = "task-status:post-tool-use"
+  HOOK_ID_SUBAGENT_STOP = "task-status:subagent-stop"
+
+  _EVENT_TO_HOOK_ID: dict[str, str] = {
+      "PostToolUse": HOOK_ID_POST_TOOL_USE,
+      "SubagentStop": HOOK_ID_SUBAGENT_STOP,
+  }
+  ```
+
+  #### Skip Log Format
+
+  ```text
+  [hook] Skipped: {handler_name} (profile={profile})
+  [hook] Skipped: {handler_name} (disabled)
+  ```
+
+  #### File Locations
+
+  - Implementation target: `plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py`
+  - sam_schema models: `plugins/development-harness/sam_schema/core/models.py`
+  - sam_schema query API: `plugins/development-harness/sam_schema/core/query.py`
+  - Test file: `tests/test_task_status_hook_profiles.py`
+  - Feature context: `plan/feature-context-hook-profile-controls.md`
+  - Architecture spec: `plan/architect-hook-profile-controls.md`
+  - No SKILL.md files modified
+  - No pyproject.toml changes
+  - No new files created (except test file)
+
+  #### Existing Imports in task_status_hook.py (Do Not Duplicate)
+
+  ```python
+  from __future__ import annotations
+  import json, re, sys, contextlib
+  from datetime import UTC, datetime
+  from pathlib import Path
+  from typing import Any
+  from sam_schema.core.models import TaskStatus as SamTaskStatus
+  from sam_schema.core.query import get_task as sam_get_task, update_plan_fields as sam_update_plan_fields, update_status as sam_update_status
+  ```
+
+  New imports needed: `import enum`, `import os` (both stdlib, already available).

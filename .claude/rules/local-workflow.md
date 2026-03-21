@@ -244,6 +244,27 @@ Shared utilities: `sam_schema` package (internal — not a standalone script fil
 | `**Completed**` | Hook (`SubagentStop` in `task_status_hook.py`) | When sub-agent finishes |
 | `**LastActivity**` | Hook (`PostToolUse` in `task_status_hook.py`) | On each Write, Edit, or Bash call during task execution |
 
+### Environment Variable Controls
+
+The hook script supports runtime profile controls via two environment variables. No SKILL.md edits are required to change hook behavior.
+
+**`CLAUDE_SKILLS_HOOK_PROFILE`** — selects a named profile that determines which handlers run. Case-sensitive lowercase. Default when unset or empty: `standard`.
+
+- `minimal` — PostToolUse handler is skipped (no LastActivity updates). SubagentStop runs normally.
+- `standard` — all handlers run (current default, backward compatible).
+- `strict` — all handlers run. SubagentStop additionally emits pre-completion validation warnings to stderr (observational only, does not block completion).
+
+Invalid values warn to stderr and fall back to `standard`.
+
+**`CLAUDE_SKILLS_DISABLED_HOOKS`** — comma-separated hook IDs to disable. Disabled hooks exit 0 immediately after consuming stdin (Claude Code treats non-zero hook exit as error).
+
+Hook IDs:
+
+- `task-status:post-tool-use` — the PostToolUse handler
+- `task-status:subagent-stop` — the SubagentStop handler
+
+Disabled hooks take precedence over profile. Unknown IDs are silently ignored for forward compatibility.
+
 ---
 
 ## Phase 3: Quality Gates (`/complete-implementation`)
