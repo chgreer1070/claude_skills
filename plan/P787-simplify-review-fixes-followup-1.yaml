@@ -1,0 +1,14 @@
+feature: simplify-review-fixes-followup-1
+version: '1.0'
+description: ''
+goal: |-
+  Add subprocess timeout and TimeoutExpired handler to gates.py run_quality_gates (H1 was not applied)
+tasks:
+- id: T1
+  title: Add subprocess timeout=300 and TimeoutExpired→exit_code=124 to gates.py
+  status: not-started
+  agent: python-cli-architect
+  priority: 1
+  complexity: low
+  skills:
+  - python3-development

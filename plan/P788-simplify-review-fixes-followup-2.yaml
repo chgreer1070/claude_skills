@@ -1,0 +1,14 @@
+feature: simplify-review-fixes-followup-2
+version: '1.0'
+description: ''
+goal: |-
+  Remove duplicate _MIN_CONFLICT_GROUP_SIZE definition from validator.py and import from operations.py (H3 incomplete)
+tasks:
+- id: T1
+  title: 'Deduplicate _MIN_CONFLICT_GROUP_SIZE: import from operations.py in validator.py'
+  status: not-started
+  agent: python-cli-architect
+  priority: 2
+  complexity: low
+  skills:
+  - python3-development

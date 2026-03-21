@@ -1,0 +1,14 @@
+feature: simplify-review-fixes-followup-4
+version: '1.0'
+description: ''
+goal: |-
+  Fix test collection failures blocking AC1: missing dispatch_helper module and unregistered e2e marker
+tasks:
+- id: T1
+  title: Fix test collection errors preventing AC1 pytest exit-0 verification
+  status: not-started
+  agent: python-pytest-architect
+  priority: 1
+  complexity: low
+  skills:
+  - python3-development

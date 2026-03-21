@@ -72,7 +72,7 @@ tasks:
 - task: T04
   title: Fix H5 (TypedDict for analyze_impact_radius_conflicts) and M3 (extract
     _dispatch_plan_path)
-  status: in-progress
+  status: complete
   agent: python-cli-architect
   dependencies:
   - T01
