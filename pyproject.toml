@@ -116,6 +116,7 @@ testpaths = [
     "plugins/plugin-creator/tests",
     "plugins/python3-development/skills/implementation-manager/tests",
     "plugins/summarizer/tests",
+    "tests",
 ]
 
 [tool.coverage.report]
@@ -172,6 +173,7 @@ invalid-argument-type = "warn"
 invalid-assignment = "warn"
 possibly-unresolved-reference = "warn"
 too-many-positional-arguments = "warn" # runtime-injected modules (e.g. backlog via sys.path in conftest)
+unresolved-import = "warn"             # test files may import from symlinked scripts excluded from ty analysis
 
 [[tool.ty.overrides]]
 # pytest.skip is decorated with @_with_exception which ty 0.0.17 miscounts as a bound
