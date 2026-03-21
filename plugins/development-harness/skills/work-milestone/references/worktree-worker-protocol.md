@@ -2,17 +2,19 @@
 
 Each worktree worker is spawned by the milestone orchestrator as an isolated `Agent(isolation: "worktree")` subagent branched from the integration branch. This protocol governs the full lifecycle from setup through completion reporting.
 
-**Critical constraint**: Worktree workers have NO Agent tool. All work is executed directly — no delegation to subagents or the SAM pipeline. The orchestrator pre-decomposes task lists and injects them into the agent prompt before spawning.
+**Critical constraint**: Worktree workers have NO Agent tool. All work is executed directly — no delegation to subagents or the SAM pipeline. Workers self-discover task lists, acceptance criteria, and skills via MCP tools after spawning.
 
-## Full Protocol (Steps M1, M4, M8, M9)
+## Full Protocol (Steps M1, M2, M4, M8, M9)
 
 ```mermaid
 flowchart TD
-    Start(["Worktree worker spawned<br>in isolated worktree on integration branch"]) --> M1["M1: Setup<br>Verify worktree is on integration branch.<br>Load required skills via Skill() calls.<br>Enable constant commits."]
+    Start(["Worktree worker spawned<br>in isolated worktree on integration branch"]) --> M1["M1: Setup<br>Verify worktree is on integration branch.<br>Enable constant commits."]
 
-    M1 --> SkillLoad["Skill Loading<br>For each skill in the prompt's skills list:<br>Skill(skill='{skill_name}')<br>Proceed if any skill fails — warn and continue."]
+    M1 --> M2["M2: Self-Discovery<br>backlog_view(selector='#{issue}') — description + AC.<br>sam_list() or sam_status — find SAM plan if exists.<br>If plan found: sam_read — task list, skills, architect spec.<br>Load each skill: Skill(skill='{name}'). Warn and continue on failure."]
 
-    SkillLoad --> M4["M4: Execute Work<br>Read task list from prompt.<br>Execute each task sequentially:<br>1. Read task acceptance criteria<br>2. Implement required changes<br>3. Run task verification commands<br>4. Commit changes<br>Update SAM status via MCP:<br>sam_claim(plan, task) before starting each task.<br>sam_state(plan, task, status='complete') after."]
+    M2 --> SkillLoad["Skill Loading complete.<br>Task list and AC in context."]
+
+    SkillLoad --> M4["M4: Execute Work<br>Execute each task sequentially:<br>1. Read task acceptance criteria<br>2. Implement required changes<br>3. Run task verification commands<br>4. Commit changes<br>Update SAM status via MCP:<br>sam_claim(plan, task) before starting each task.<br>sam_state(plan, task, status='complete') after."]
 
     M4 --> M8{"M8: Item Complete?<br>All tasks in task list done?"}
 
@@ -28,14 +30,16 @@ flowchart TD
 
 ## Skill Loading
 
-At startup (M1), load all skills specified in the prompt's `## Skills to Load` section:
+During M2 self-discovery, read the SAM task metadata to find the skills list, then load each skill:
 
 ```text
-For each skill_name in skills_list:
+For each skill_name found in SAM task metadata:
     Skill(skill="{skill_name}")
 ```
 
 If a skill fails to load, warn and continue with remaining skills. Skill loading failure is non-fatal — the worker proceeds with whatever skills loaded successfully.
+
+If no SAM plan exists, no skill loading is required unless the backlog item explicitly lists skills.
 
 ## Constant Commits Protocol
 
@@ -131,4 +135,4 @@ For each task:
 1. Before starting: `sam_claim(plan="P{N}", task="T{M}")` — marks task IN PROGRESS
 2. After completing: `sam_state(plan="P{N}", task="T{M}", status="complete")` — marks task COMPLETE
 
-If the SAM plan ID is not known (item has no SAM plan), skip these calls. The orchestrator's pre-decomposition prompt will indicate whether a SAM plan exists.
+If no SAM plan is found during M2 self-discovery, skip these calls — the worker executes against acceptance criteria directly.

@@ -1,6 +1,6 @@
 ---
 name: work-milestone
-description: "Execute a groomed milestone with parallel worktree agents. Use when running a milestone after /groom-milestone has produced a dispatch plan. Reads dispatch plan, creates integration branch, pre-decomposes each wave item by reading SAM task plans, spawns one Agent(isolation: worktree) per item in parallel, sequentially merges worktree branches, relays wave discoveries to subsequent waves, then lands integration branch to main. Args: {milestone-number}."
+description: "Execute a groomed milestone with parallel worktree agents. Use when running a milestone after /groom-milestone has produced a dispatch plan. Reads dispatch plan, creates integration branch, dispatches one Agent(isolation: worktree) per wave item with issue number and integration branch — agents self-discover task plans and AC via SAM MCP. Sequentially merges worktree branches, relays wave discoveries to subsequent waves, then lands integration branch to main. Args: {milestone-number}."
 argument-hint: '{milestone-number}'
 user-invocable: true
 ---
@@ -39,15 +39,13 @@ flowchart TD
     WaveLoop --> WaveItems{"Wave has items?"}
     WaveItems -->|"No waves remain"| Land
 
-    WaveItems -->|"Yes"| PreDecompose["Step 5: Pre-Decompose Wave Items<br>For each item in wave:<br>- backlog_view for groomed description + AC<br>- sam_read for task plan (if exists)<br>- Aggregate skills from task metadata<br>- Build agent prompt from template"]
+    WaveItems -->|"Yes"| SpawnAgents["Step 5: Spawn Worktree Agents<br>For each item: Agent(isolation: worktree)<br>with issue number + integration branch.<br>Agent self-discovers task plan and AC via SAM MCP.<br>All items in wave launch in parallel."]
 
-    PreDecompose --> SpawnAgents["Step 6: Spawn Worktree Agents<br>For each item: Agent(isolation: worktree)<br>with assembled prompt.<br>All items in wave launch in parallel."]
+    SpawnAgents --> WaitReturn["Step 6: Wait for All Agents<br>Agent calls are synchronous.<br>Collect structured completion reports<br>from each agent output."]
 
-    SpawnAgents --> WaitReturn["Step 7: Wait for All Agents<br>Agent calls are synchronous.<br>Collect structured completion reports<br>from each agent output."]
+    WaitReturn --> ParseResults["Step 6a: Parse Completion Reports<br>Extract STATUS, BRANCH, FILES_CHANGED,<br>COMMITS, NOTES from each agent."]
 
-    WaitReturn --> ParseResults["Step 7a: Parse Completion Reports<br>Extract STATUS, BRANCH, FILES_CHANGED,<br>COMMITS, NOTES from each agent."]
-
-    ParseResults --> MergeLoop["Step 7b: Merge Worktree Branches<br>Sequential merge into integration branch.<br>One at a time, in return order."]
+    ParseResults --> MergeLoop["Step 6b: Merge Worktree Branches<br>Sequential merge into integration branch.<br>One at a time, in return order."]
 
     MergeLoop --> MergeResult{"Any merge conflicts?"}
     MergeResult -->|"All clean"| WaveComplete
@@ -58,9 +56,9 @@ flowchart TD
 
     MergeResult -->|"Heavy conflict (3+ files)"| EscalateConflict
 
-    WaveComplete["Step 7c: Wave Complete<br>All branches merged.<br>Delete worktree branches."]
+    WaveComplete["Step 6c: Wave Complete<br>All branches merged.<br>Delete worktree branches."]
 
-    WaveComplete --> DiscoveryRelay["Step 7d: Discovery Relay<br>Build relay document from agent outputs.<br>Include FILES_CHANGED, COMMITS, NOTES<br>in next wave agent prompts."]
+    WaveComplete --> DiscoveryRelay["Step 6d: Discovery Relay<br>Build relay document from agent outputs.<br>Include FILES_CHANGED, COMMITS, NOTES<br>in next wave agent prompts."]
 
     DiscoveryRelay --> PartialCheck{"Any agents returned PARTIAL?"}
     PartialCheck -->|"Yes"| HandlePartial["Create backlog items for<br>blocked tasks. Add to milestone."]
@@ -83,20 +81,27 @@ flowchart TD
     Complete --> Done(["Exit: milestone complete"])
 ```
 
-## Pre-Decomposition (Step 5 Detail)
+## Dispatch Step (Step 5 Detail)
 
-Before spawning agents for a wave, prepare context for each item:
+The orchestrator passes only references to the worktree agent. The agent self-discovers everything else.
 
-1. **Read SAM task plan** — `sam_read(plan="P{N}")` if item has a plan. Extract task list with acceptance criteria.
-2. **Read backlog item** — `backlog_view(selector="#{issue}")`. Extract groomed description and acceptance criteria.
-3. **Aggregate skills** — Collect unique skill names from `skills` field across all tasks in the plan.
-4. **Build agent prompt** — Assemble from the worktree agent prompt template below.
+**What the orchestrator passes:**
 
-If no SAM plan exists, include groomed description and acceptance criteria only. The agent works from AC directly without task decomposition.
+- Issue number (from dispatch plan wave item)
+- Integration branch name (from dispatch plan)
+- Discovery relay content from prior waves (orchestrator-accumulated, empty for wave 1)
+- Quality gate commands (from dispatch plan `quality_gates.pre_merge`)
+
+**What the agent discovers autonomously:**
+
+- Groomed description and acceptance criteria — via `backlog_view(selector="#{issue}")`
+- SAM task plan and task list — via `sam_read(plan="P{N}")` if a plan exists
+- Skills to load — from `skills` field in SAM task metadata
+- Architecture spec path — from SAM plan or backlog item
 
 ## Worktree Agent Prompt Template
 
-Each worktree agent receives a prompt assembled by the orchestrator. The agent has no Agent tool — it cannot delegate to subagents. All work is executed directly.
+Each worktree agent receives a minimal reference prompt. The agent reads item data directly via MCP. The agent has no Agent tool — it cannot delegate to subagents. All work is executed directly.
 
 ```text
 ## Your Task
@@ -107,34 +112,18 @@ on the integration branch `{integration_branch}`.
 You have NO Agent tool — you cannot delegate to subagents. Execute all work directly.
 Commit your changes frequently using conventional commits: `type(scope): description`.
 
-## Item Description
+## Self-Discovery Steps
 
-{groomed_description}
+Before starting work:
 
-## Acceptance Criteria
-
-{acceptance_criteria}
-
-## Task Plan
-
-{task_list_from_sam_plan_or_inline}
-
-Execute each task sequentially. For each task:
-1. Read the task's acceptance criteria
-2. Implement the required changes
-3. Run the task's verification commands (if any)
-4. Commit the changes
-
-## Skills to Load
-
-{for each skill_name in skills_list}
-Load the following skill before starting work:
-- Skill(skill="{skill_name}")
-{end for}
-
-## Architecture Reference
-
-{architect_spec_path — agent reads this file directly}
+1. Read the backlog item: `backlog_view(selector="#{issue}")` — extract description and acceptance criteria.
+2. Check for a SAM plan: `sam_status(plan="P{issue}")` or search `sam_list()` by title.
+   - If a plan exists: `sam_read(plan="P{plan_id}")` — extract task list, skills, and architect spec path.
+   - If no plan exists: work from acceptance criteria directly.
+3. Load all skills listed in the SAM task metadata:
+   - For each skill name found: `Skill(skill="{skill_name}")`
+   - If a skill fails to load, warn and continue.
+4. If an architect spec path is referenced in the plan or backlog item, read that file.
 
 ## Quality Gates
 
@@ -181,13 +170,10 @@ If you encounter a blocker you cannot resolve:
 | `issue` | Dispatch plan wave item | `wave.items[i].issue` |
 | `title` | Dispatch plan wave item | `wave.items[i].title` |
 | `integration_branch` | Dispatch plan | `milestone.integration_branch` |
-| `groomed_description` | Backlog MCP | `backlog_view(selector="#{issue}")` description section |
-| `acceptance_criteria` | Backlog MCP | `backlog_view(selector="#{issue}")` AC section |
-| `task_list_from_sam_plan` | SAM MCP | `sam_read(plan="P{N}")` tasks with acceptance criteria |
-| `skills_list` | SAM task metadata | Aggregated from `skills` field across all tasks |
-| `architect_spec_path` | SAM plan or backlog item | Path to `plan/architect-{slug}.md` |
 | `pre_merge_gates` | Dispatch plan | `quality_gates.pre_merge` commands |
 | `discovery_relay_content` | Orchestrator state | Collected from prior wave agent outputs |
+
+All other data (description, AC, task list, skills, architect spec) is discovered by the agent via MCP after spawning.
 
 ## Agent Result Handling
 
