@@ -68,7 +68,7 @@ cat .claude/backlog/{priority}-{slug}.md
 
 ## PyGithub Validation (scripted)
 
-```bash
-uv run .claude/skills/gh/scripts/github_project_setup.py issue list --priority p1
+```text
+MCP: backlog_list_issues(priority="p1")
 # Expected: lists all open P1 issues with labels and milestone
 ```

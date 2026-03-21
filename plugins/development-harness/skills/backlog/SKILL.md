@@ -218,6 +218,6 @@ Available tools mirror the MCP tools: `backlog_add`, `backlog_list`, `backlog_vi
 - `/group-items-to-milestone` — calls `backlog_list` to enumerate items for milestone grouping
 - **GitHub Action** — invokes `fastmcp call backlog_sync` on `.claude/backlog/` changes
 
-Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
+Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic. Use `backlog_update` MCP tool for all item modifications.
 If the MCP tools or CLI lack a needed operation, invoke `/backlog-tools-administrator` to close
 the gap.

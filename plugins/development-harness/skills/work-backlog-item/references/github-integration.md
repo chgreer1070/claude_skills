@@ -40,12 +40,13 @@ The tool creates the issue and writes `issue: '#N'` back to the per-item file fr
 
 Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`. Check the returned dict for an `error` key.
 
-If the item is in a milestone with other issues, also run `milestone start`:
+If the item is in a milestone with other issues, also run `milestone start` to bulk-transition all open milestone issues to in-progress:
 
-```bash
-uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
-  --number {milestone_number} --repo OWNER/REPO
+```text
+MCP: backlog_update(selector="{title}", status="in-progress")
 ```
+
+> **Note**: Bulk milestone start (transitioning all issues in a milestone) is not yet available as a single MCP tool call. Use `backlog_list_issues(milestone="{milestone_title}")` to enumerate milestone issues, then `backlog_update` each one individually.
 
 ## Step 9: Close — backlog tool
 
@@ -61,9 +62,10 @@ The tool updates the per-item file status and closes the GitHub issue. Check the
 
 1. Run label taxonomy setup:
 
-   ```bash
-   uv run .claude/skills/gh/scripts/github_project_setup.py labels \
-     --repo OWNER/REPO
+   ```text
+   MCP: backlog_sync()
+   # backlog_sync creates missing labels as part of its sync operation.
+   # To verify labels exist: MCP: backlog_list_labels()
    ```
 
 2. Check for existing milestones:
@@ -105,7 +107,7 @@ The tool updates the per-item file status and closes the GitHub issue. Check the
    - Project: #1 "{REPO} Backlog" (linked to repo)
 
    Next steps:
-   - Add custom fields: .claude/skills/gh/references/projects-v2.md
+   - Add custom fields to the GitHub Project (manual step — not yet available via MCP tools)
    - Import existing backlog: /work-backlog-item <title> for each P0/P1 item
    ```
 
@@ -197,4 +199,4 @@ GitHub setup complete.
   metadata.status   →  Issue closed
 ```
 
-See [issue-stories.md](../../../../../.claude/skills/gh/references/issue-stories.md) for the full body template and lifecycle.
+The issue body template is built into the `backlog_update(create_issue=true)` MCP tool — it generates the story format automatically from the per-item file fields.

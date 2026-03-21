@@ -43,7 +43,7 @@ these files instead of hitting the API for every lookup.
 ### Layer 3 — `backlog.py` (sole interface)
 
 All reads and writes to both layers go through this script. No direct edits to
-`.claude/backlog/*.md` files. No direct `gh issue edit` calls. The script handles:
+`.claude/backlog/*.md` files. No direct `gh issue edit` calls — use `backlog_update` MCP tool instead. The script handles:
 
 - Creating per-item files with correct frontmatter
 - Creating and closing GitHub Issues
@@ -406,7 +406,7 @@ flowchart TD
 | `closed` | `status:closed` | `/complete-milestone` only |
 
 Labels are exclusive — exactly one `status:*` label per issue at any time. The backlog script
-manages label transitions; no direct `gh label` calls are permitted.
+manages label transitions; no direct `gh label` calls are permitted. Use `backlog_update` MCP tool with `status` parameter instead.
 
 ### Priority Labels (orthogonal to status)
 
@@ -658,7 +658,7 @@ Items to verify in the next session by running the commands and observing actual
 ### Priority and Label Mapping
 
 - [ ] Confirm P2 and Ideas items never get GH issues via `backlog sync` (even if present in backlog dir)
-- [ ] Confirm label transitions are atomic: old label removed and new label added in same API call [VERIFY with `gh issue view N --json labels`]
+- [ ] Confirm label transitions are atomic: old label removed and new label added in same API call [VERIFY with `backlog_view(selector='#N')` MCP tool]
 - [ ] Verify `backlog update --priority` exists or confirm re-prioritization path
 
 ### GitHub Action Integration

@@ -1,0 +1,68 @@
+feature: remove-gh-cli-from-dh
+version: '1.0'
+description: ''
+goal: |-
+  Remove gh CLI references from development-harness markdown files and replace with backlog MCP tool references
+context: |-
+  Feature context: plan/feature-context-remove-gh-cli-from-dh.md
+
+  Scope: 6 markdown files in plugins/development-harness/ need text edits. Two categories: (A) anti-pattern warnings need MCP tool alternative added, (B) gh skill script references need replacing with MCP tool calls.
+
+  Constraints: Do NOT modify Python files (github.py, test files). Anti-pattern warnings should still mention what NOT to do — just also state what TO do (MCP tools).
+issue: '968'
+tasks:
+- id: '1.1'
+  title: Update anti-pattern warnings to include MCP tool alternatives
+  status: complete
+  agent: python3-development:python-cli-architect
+  priority: 1
+  complexity: low
+  description: |
+    Update anti-pattern warnings in 4 markdown files to mention the MCP tool alternative alongside the gh CLI prohibition.
+
+    Files and lines to modify:
+    1. plugins/development-harness/skills/backlog/README.md
+       - Line 120: add MCP alternative to gh label warning
+       - Line 389: add MCP alternative to gh issue edit warning
+       - Line 390: add MCP alternative to gh label warning
+    2. plugins/development-harness/skills/backlog/SKILL.md
+       - Line 221: add MCP alternative to gh issue edit warning
+    3. plugins/development-harness/skills/backlog/references/state-machine.md
+       - Line 162: verify MCP path is clear alongside gh label warning
+    4. plugins/development-harness/docs/backlog-lifecycle.draft.md
+       - Line 46: add MCP alternative to gh issue edit warning
+       - Line 409: add MCP alternative to gh label warning
+       - Line 661: Replace gh issue view verification command with backlog_view MCP tool call
+
+    Pattern: Each warning should say do not use gh X, use backlog MCP tool Y instead.
+  acceptance-criteria: |-
+    All 4 files updated with MCP tool alternatives in anti-pattern warnings. Anti-pattern warnings still mention what NOT to do. Line 661 in backlog-lifecycle.draft.md no longer contains gh issue view command.
+  verification-steps: |-
+    Read each modified file and verify warning text includes both prohibition and MCP alternative. grep confirms all gh references now also mention MCP tools. No Python files modified.
+  started: '2026-03-21T17:15:33.989951+00:00'
+- id: '1.2'
+  title: Replace gh skill script references with MCP tool calls
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - '1.1'
+  priority: 2
+  complexity: low
+  description: |
+    Replace references to uv run .claude/skills/gh/scripts/github_project_setup.py and gh skill cross-references in 2 markdown files with equivalent MCP tool calls.
+
+    Files to modify:
+    1. plugins/development-harness/skills/work-backlog-item/references/github-integration.md
+       - Line 46: milestone start script -> backlog_create_milestone MCP tool
+       - Line 65: labels script -> backlog_list_labels MCP tool
+       - Line 108: gh skill cross-reference -> evaluate if MCP tools handle this
+       - Line 200: issue-stories.md cross-reference -> evaluate if still needed
+    2. plugins/development-harness/skills/work-backlog-item/references/validation-plan.md
+       - Line 72: issue list script -> backlog_list_issues or backlog_list MCP tool
+
+    For each gh skill script reference: identify the equivalent MCP tool and write the replacement. If no MCP equivalent exists, annotate with a comment.
+  acceptance-criteria: |-
+    Both files updated with MCP tool references replacing gh skill script commands. Cross-references to gh skill docs evaluated and updated or annotated. No Python files modified.
+  verification-steps: |-
+    Read each modified file and verify gh skill script references are replaced. grep for github_project_setup and skills/gh/ confirms references removed or annotated. MCP tool names used are real tools from the backlog MCP server.
+  started: '2026-03-21T17:16:49.955751+00:00'

@@ -117,7 +117,7 @@ status:done             status:resolved     status:closed
 `status:verified` is applied by `/complete-implementation` after quality gates pass (not part of
 the lifecycle state machine, but required by `backlog_resolve` for SAM items with a plan).
 
-The backlog tools manage label transitions. Do not set labels with `gh label` directly.
+The backlog tools manage label transitions. Do not set labels with `gh label` directly — use `backlog_update` with the `status` parameter instead.
 
 ## Item Schema
 
@@ -386,8 +386,8 @@ This is intentional: CI has no MCP client, so the CLI is the correct interface t
 ## Do Not
 
 - Edit `.claude/backlog/*.md` files directly — bypasses sync logic
-- Use `gh issue edit` to update issues — bypasses label and status tracking
-- Set GitHub labels with `gh label` directly — the backlog tools own label transitions
+- Use `gh issue edit` to update issues — bypasses label and status tracking. Use `backlog_update` MCP tool instead.
+- Set GitHub labels with `gh label` directly — the backlog tools own label transitions. Use `backlog_update` with `status` parameter instead.
 - Call `backlog_close` for completed work — use `backlog_resolve` instead
 
 If the MCP tools or CLI lack a needed operation, invoke `/backlog-tools-administrator` to extend both simultaneously.
