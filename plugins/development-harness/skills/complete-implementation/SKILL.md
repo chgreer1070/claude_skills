@@ -120,8 +120,8 @@ flowchart TD
 
 Query plan status and pass `TaskAssignment` JSON to the resolved `code-reviewer` agent:
 
-```bash
-uv run sam status P{N} --format json
+```text
+mcp__plugin_dh_sam__sam_status(plan="P{N}")
 ```
 
 Launch the resolved code-reviewer agent with the `TaskAssignment` JSON output (not the raw file path).
@@ -130,10 +130,10 @@ Launch the resolved code-reviewer agent with the `TaskAssignment` JSON output (n
 
 ## Phase 2: Feature Verification (goal-backward)
 
-Read task data via sam CLI:
+Read task data via the SAM MCP tool:
 
-```bash
-uv run sam read P{N}/T{M} --format json
+```text
+mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")
 ```
 
 Launch `@dh:feature-verifier` with the `TaskAssignment` JSON. If the `TaskAssignment` contains `issue-classification` metadata, include it in the agent prompt so the feature verifier can apply proportional verification checks.
@@ -142,25 +142,25 @@ Launch `@dh:feature-verifier` with the `TaskAssignment` JSON. If the `TaskAssign
 
 ## Phase 3: Integration Check
 
-Launch `@dh:integration-checker` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json`.
+Launch `@dh:integration-checker` with the `TaskAssignment` JSON from `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")`.
 
 ---
 
 ## Phase 4: Documentation Drift Audit
 
-Launch `@dh:doc-drift-auditor` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` (audit-only).
+Launch `@dh:doc-drift-auditor` with the `TaskAssignment` JSON from `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")` (audit-only).
 
 ---
 
 ## Phase 5: Documentation Update (if drift found)
 
-If drift exists or docs must be updated for the feature, launch `@dh:service-docs-maintainer` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json`.
+If drift exists or docs must be updated for the feature, launch `@dh:service-docs-maintainer` with the `TaskAssignment` JSON from `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")`.
 
 ---
 
 ## Phase 6: Context Refinement
 
-Launch `@dh:context-refinement` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` to update the Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [plan-artifact-lifecycle.md](../../docs/plan-artifact-lifecycle.md)).
+Launch `@dh:context-refinement` with the `TaskAssignment` JSON from `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")` to update the Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [plan-artifact-lifecycle.md](../../docs/plan-artifact-lifecycle.md)).
 
 ---
 

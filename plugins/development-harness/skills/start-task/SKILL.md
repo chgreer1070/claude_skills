@@ -34,17 +34,17 @@ $ARGUMENTS
 
 ## If `--complete <task-id>` Provided
 
-1. Run `uv run sam state P{N}/T{M} complete` to mark the task complete.
+1. Run `mcp__plugin_dh_sam__sam_state(plan="P{N}", task="T{M}", status="complete")` to mark the task complete.
 2. Output: `Task {ID} marked as complete`
 
 ---
 
 ## Starting a Task
 
-1. Read the task assignment via `sam read`:
+1. Read the task assignment via the SAM MCP tool:
 
-   ```bash
-   uv run sam read P{N}/T{M} --format json
+   ```text
+   mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")
    ```
 
    The response is a `TaskAssignment` JSON object containing:
@@ -69,23 +69,21 @@ $ARGUMENTS
 
 3. Claim the task (prevents duplicate dispatch):
 
-   Run `sam claim`. This is the ONLY permitted way to mark a task in-progress.
+   Use `sam_claim` MCP tool. This is the ONLY permitted way to mark a task in-progress.
    Do NOT edit status or started fields directly with the Edit tool.
 
-   ```bash
-   CLAIM_RESULT=$(uv run sam claim P{N}/T{M})
-   CLAIM_EXIT=$?
-   echo "$CLAIM_RESULT"
+   ```text
+   mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")
    ```
 
-   If exit code is non-zero (`CLAIM_EXIT != 0`):
+   If the response contains `"claimed": false`:
 
    - The task was already claimed by another agent, or is complete, or could not be found.
    - Output the full JSON result for the orchestrator.
    - STOP. Do not proceed with implementation. Do not write the context file.
    - The orchestrator's hook will detect the stop and the task remains in its current state.
 
-   If exit code is 0 (`CLAIM_EXIT == 0`):
+   If the response contains `"claimed": true`:
 
    - The task is claimed. `status: in-progress` and `started:` are written on disk.
    - Proceed to step 4 (write context file) and step 5 (implement).
@@ -136,7 +134,7 @@ regardless.
    (or add `**Divergence Notes**: {count}` in legacy format).
 
    For full artifact classification rules and divergence thresholds, see
-   [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md).
+   [plan-artifact-lifecycle.md](../../docs/plan-artifact-lifecycle.md).
 
 6. **Commit message restriction — Fixes #N trailers are PROHIBITED in task-level commits.**
 

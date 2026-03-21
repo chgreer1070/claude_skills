@@ -131,17 +131,17 @@ hooks:
 
 ```text
 1. Query status:
-   uv run sam status P{N}
+   mcp__plugin_dh_sam__sam_status(plan="P{N}")
 
 2. Query ready tasks:
-   If parent story issue number is known, prefer the MCP tool:
+   If parent story issue number is known, prefer the backlog MCP tool:
      backlog_get_ready_sam_tasks(parent_issue_number=N)
      Output shape: {"feature": "...", "ready_tasks": [...], "count": N}
      Falls back to local cache if GitHub unavailable.
-   If parent issue number is unknown (or MCP unavailable), use CLI fallback:
+   If parent issue number is unknown, use SAM MCP:
+     mcp__plugin_dh_sam__sam_ready(plan="P{N}")
+   CLI fallback (when MCP unavailable):
      uv run sam ready P{N}
-   With GitHub flag (when parent issue is known but MCP unavailable):
-     uv run sam ready P{N} --github --parent-issue N
 
 3. For each ready task:
    Route to the agent named in the task's **Agent** field.
@@ -175,7 +175,7 @@ A task is "ready" when:
 1. Status is `NOT STARTED`
 2. All dependency tasks have status `COMPLETE`
 
-Readiness evaluation is performed by the `sam` CLI via `uv run sam ready P{N}` or the MCP tool `backlog_get_ready_sam_tasks`.
+Readiness evaluation is performed by the SAM MCP tool `mcp__plugin_dh_sam__sam_ready(plan="P{N}")` or the backlog MCP tool `backlog_get_ready_sam_tasks`. CLI fallback: `uv run sam ready P{N}`.
 
 ---
 
@@ -201,7 +201,7 @@ hooks:
 1. Read the task file and linked architecture spec.
 2. Select the target task (by `--task {id}` or first ready task).
 2a. Load skills from task metadata: read the `skills:` field from YAML frontmatter (or `**Skills**:` from legacy format). For each skill name, invoke `Skill(skill="{name}")`. If a skill fails to load, warn and continue with remaining skills. This is intentional redundancy with the orchestrator's skill-loading instructions, ensuring skills load even when the task is started manually or by an older orchestrator.
-3. Claim the task via `claim-task` command (prevents duplicate dispatch). This is the ONLY permitted way to mark a task in-progress — do NOT edit status or started fields directly. Run `uv run sam claim P{N} {task_id}`; stop if exit code is non-zero (task already claimed or not found).
+3. Claim the task via `mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")` (prevents duplicate dispatch). This is the ONLY permitted way to mark a task in-progress — do NOT edit status or started fields directly. If the response contains `"claimed": false`, stop (task already claimed or not found). CLI fallback: `uv run sam claim P{N} {task_id}`.
 4. GitHub in-progress sync: if `parent_issue_number` is known and `github_issue` field is set in the task YAML, sync in-progress status to GitHub sub-issue (non-fatal on failure).
 5. Write active-task context file:
 
@@ -292,20 +292,35 @@ If Phase 1 (code review) creates follow-up task files (naming: `plan/tasks-{N}-{
 
 ---
 
-## CLI Tool: sam
+## SAM Interface
 
-The `sam` CLI is the canonical interface for all SAM task file operations. Use `uv run sam <command>` to query and update plan state.
+The SAM MCP server (`mcp__plugin_dh_sam__*`) is the primary interface for all SAM task file operations. The `uv run sam` CLI is available as fallback when MCP is unavailable.
 
-### Commands
+### MCP Tools (Primary)
 
-| Command | Usage | Output |
-|---------|-------|--------|
-| `list` | `uv run sam list [--search TEXT]` | JSON: `{items: [...], count: N, total: N}` |
-| `status` | `uv run sam status P{N}` | JSON: task counts, ready tasks, all tasks with details |
-| `ready` | `uv run sam ready P{N}` | JSON: `{ready_tasks: [...], count: N}` |
-| `read` | `uv run sam read P{N} --format json` | JSON: full plan with task fields and context |
-| `claim` | `uv run sam claim P{N} {task_id}` | Claims task in-progress; exits non-zero if already claimed |
-| `update` | `uv run sam update P{N} --context "..."` | Updates plan context field |
+| Tool | Usage | Output |
+|------|-------|--------|
+| `sam_list` | `mcp__plugin_dh_sam__sam_list()` | JSON: `{items: [...], count: N, total: N}` |
+| `sam_status` | `mcp__plugin_dh_sam__sam_status(plan="P{N}")` | JSON: task counts, ready tasks, all tasks with details |
+| `sam_ready` | `mcp__plugin_dh_sam__sam_ready(plan="P{N}")` | JSON: `{ready_tasks: [...], count: N}` |
+| `sam_read` | `mcp__plugin_dh_sam__sam_read(plan="P{N}")` | JSON: full plan with task fields and context |
+| `sam_claim` | `mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")` | JSON: `{claimed: true/false}` |
+| `sam_state` | `mcp__plugin_dh_sam__sam_state(plan="P{N}", task="T{M}", status="complete")` | Updates task status |
+| `sam_update` | `mcp__plugin_dh_sam__sam_update(plan="P{N}", context="...")` | Updates plan context field |
+| `sam_create` | `mcp__plugin_dh_sam__sam_create(slug="...", goal="...", tasks_yaml="...")` | Creates a new plan |
+
+### CLI Fallback
+
+When MCP is unavailable, use the `uv run sam` CLI with equivalent commands:
+
+| CLI Command | Equivalent MCP Tool |
+|-------------|-------------------|
+| `uv run sam list` | `sam_list()` |
+| `uv run sam status P{N}` | `sam_status(plan="P{N}")` |
+| `uv run sam ready P{N}` | `sam_ready(plan="P{N}")` |
+| `uv run sam read P{N}` | `sam_read(plan="P{N}")` |
+| `uv run sam claim P{N} {task_id}` | `sam_claim(plan="P{N}", task="T{M}")` |
+| `uv run sam update P{N} --context "..."` | `sam_update(plan="P{N}", context="...")` |
 
 ---
 
@@ -313,7 +328,8 @@ The `sam` CLI is the canonical interface for all SAM task file operations. Use `
 
 | Script | Path | Purpose |
 |--------|------|---------|
-| `sam` CLI | `uv run sam` | Canonical interface for all task file I/O (status, ready, read, claim, update) |
+| SAM MCP server | `mcp__plugin_dh_sam__*` | Primary interface for all task file I/O (status, ready, read, claim, update, create) |
+| `sam` CLI | `uv run sam` | CLI fallback when MCP is unavailable |
 | `task_status_hook.py` | [plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py](./../../plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py) | Hook script for automatic status/timestamp updates |
 | `get_task_context.py` | [plugins/development-harness/skills/implementation-manager/scripts/get_task_context.py](./../../plugins/development-harness/skills/implementation-manager/scripts/get_task_context.py) | Dynamic context injection for implementation-manager skill |
 | `split_task_file.py` | [plugins/python3-development/scripts/split_task_file.py](./../../plugins/python3-development/scripts/split_task_file.py) | Split monolithic task files into individual files |

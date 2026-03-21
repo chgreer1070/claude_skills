@@ -1,7 +1,7 @@
 ---
 name: swarm-task-planner
 description: Creates dependency-based task plans for parallel AI agent execution. Transforms architecture docs and PRDs into priority-ordered tasks with acceptance criteria, sync checkpoints, and quality gates. Uses CLEAR+CoVe task design standards.
-tools: Read, Write, Edit, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*
+tools: Read, Write, Edit, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*, mcp__plugin_dh_sam__sam_create
 model: opus
 user-invocable: true
 disable-model-invocation: false
@@ -260,10 +260,10 @@ Revision Protocol:
 
 For task field definitions, see [TASK_FILE_FORMAT.md](./../../../.claude/docs/TASK_FILE_FORMAT.md). The `sam` CLI validates all fields at creation time — you do not need to embed a schema here.
 
-**Creating the plan file**: Generate task definitions as YAML, then pipe to `sam create`:
+**Creating the plan file**: Generate task definitions as YAML, then use the SAM MCP tool:
 
-```bash
-echo "$YAML_CONTENT" | uv run sam create {slug} --goal "{goal}" --stdin
+```text
+mcp__plugin_dh_sam__sam_create(slug="{slug}", goal="{goal}", tasks_yaml="{YAML_CONTENT}")
 ```
 
 Where `$YAML_CONTENT` is a YAML document with the structure:

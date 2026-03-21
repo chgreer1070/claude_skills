@@ -1,6 +1,7 @@
 ---
 name: context-gathering
 description: Use when creating a new task OR when starting/switching to a task that lacks a context manifest. ALWAYS provide the task file path so the agent can read it and update it directly with the context manifest. Skip if task file already contains "Context Manifest" section.
+tools: mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_update
 model: haiku
 color: cyan
 skills: subagent-contract
@@ -18,10 +19,10 @@ You are part of the feature development workflow for Python projects. A task fil
 
 ### Step 1: Understand the Task
 
-1. READ the task file data via sam CLI:
+1. READ the task file data via the SAM MCP tool:
 
-   ```bash
-   uv run sam read P{N} --format json
+   ```text
+   mcp__plugin_dh_sam__sam_read(plan="P{N}")
    ```
 
    Replace `P{N}` with the plan address (e.g., `P1`, `P719`, or slug `integrate-sam-schema`). This returns a JSON object containing the plan goal, context, and all task fields.
@@ -107,13 +108,13 @@ Include actual:
 
 ### Output Format
 
-Write the Context Manifest to the task file using the sam CLI:
+Write the Context Manifest to the task file using the SAM MCP tool:
 
-```bash
-uv run sam update P{N} --context "Context Manifest content here"
+```text
+mcp__plugin_dh_sam__sam_update(plan="P{N}", context="Context Manifest content here")
 ```
 
-The content passed to `--context` is the full text of the Context Manifest section (everything inside the markdown block below). Do NOT use the Edit tool on the task file.
+The content passed to `context` is the full text of the Context Manifest section (everything inside the markdown block below). Do NOT use the Edit tool on the task file.
 
 The Context Manifest is added as the plan-level `context` field. It should contain:
 

@@ -1,6 +1,7 @@
 ---
 name: code-reviewer
 description: Performs holistic code review and validation after feature implementation. Checks that code follows project development standards, utilizes shared utilities instead of reinventing, takes advantage of installed dependencies, and identifies gaps requiring additional tasks. Creates follow-up task files when issues are found. Use after implementation is complete.
+tools: mcp__plugin_dh_sam__sam_create
 model: sonnet
 color: yellow
 skills: dh:subagent-contract, python3-development, dh:validation-protocol, holistic-linting:holistic-linting
@@ -204,24 +205,14 @@ tasks:
 
 **Command:**
 
-```bash
-cat <<'EOF' | uv run sam create "{feature-slug}-followup-{issue-number}" \
-    --goal "{one-sentence goal describing the fix}" \
-    --stdin \
-    --format json
-tasks:
-  - task: T1
-    title: "{Brief Title}"
-    status: not-started
-    agent: python-cli-architect
-    dependencies: []
-    priority: 2
-    complexity: low
-    skills: []
-    body: |
-      ## Objective
-      {describe the fix needed}
-EOF
+Use the SAM MCP tool `mcp__plugin_dh_sam__sam_create` to create follow-up plans:
+
+```text
+mcp__plugin_dh_sam__sam_create(
+  slug="{feature-slug}-followup-{issue-number}",
+  goal="{one-sentence goal describing the fix}",
+  tasks_yaml="tasks:\n  - task: T1\n    title: \"{Brief Title}\"\n    status: not-started\n    agent: python-cli-architect\n    dependencies: []\n    priority: 2\n    complexity: low\n    skills: []\n    body: |\n      ## Objective\n      {describe the fix needed}\n"
+)
 ```
 
 **Output:** JSON with the created file path:
@@ -234,49 +225,24 @@ EOF
 
 1. READ the original task file path (e.g., `plan/tasks-4-data-validation.md` or `plan/P004-data-validation.yaml`)
 2. EXTRACT the feature slug (e.g., `data-validation`)
-3. PASS `{feature-slug}-followup-{issue-number}` as the slug argument to `sam create`
+3. PASS `{feature-slug}-followup-{issue-number}` as the slug argument
 
 **Example:** If reviewing a `data-validation` plan and finding 2 issues:
 
-```bash
-# Issue 1 — note: task: T1, NOT id: T1
-cat <<'EOF' | uv run sam create "data-validation-followup-1" \
-    --goal "Add missing unit tests for the data validation module" \
-    --stdin --format json
-tasks:
-  - task: T1
-    title: "Add missing unit tests for validator"
-    status: not-started
-    agent: python-pytest-architect
-    dependencies: []
-    priority: 2
-    complexity: low
-    skills: []
-    body: |
-      ## Objective
-      Add unit tests for all public functions in the data validation module.
+```text
+# Issue 1
+mcp__plugin_dh_sam__sam_create(
+  slug="data-validation-followup-1",
+  goal="Add missing unit tests for the data validation module",
+  tasks_yaml="tasks:\n  - task: T1\n    title: \"Add missing unit tests for validator\"\n    status: not-started\n    agent: python-pytest-architect\n    dependencies: []\n    priority: 2\n    complexity: low\n    skills: []\n    body: |\n      ## Objective\n      Add unit tests for all public functions in the data validation module.\n\n      ## Acceptance Criteria\n      - All validator functions have at least one test\n      - Edge cases are covered\n"
+)
 
-      ## Acceptance Criteria
-      - All validator functions have at least one test
-      - Edge cases are covered
-EOF
-
-# Issue 2 — note: task: T1, NOT id: T1
-cat <<'EOF' | uv run sam create "data-validation-followup-2" \
-    --goal "Fix error handling in data validation edge cases" \
-    --stdin --format json
-tasks:
-  - task: T1
-    title: "Fix error handling in edge cases"
-    status: not-started
-    agent: python-cli-architect
-    dependencies: []
-    priority: 2
-    complexity: medium
-    skills: []
-    body: |
-      ## Objective
-      Fix error handling for malformed input in the data validation module.
+# Issue 2
+mcp__plugin_dh_sam__sam_create(
+  slug="data-validation-followup-2",
+  goal="Fix error handling in data validation edge cases",
+  tasks_yaml="tasks:\n  - task: T1\n    title: \"Fix error handling in edge cases\"\n    status: not-started\n    agent: python-cli-architect\n    dependencies: []\n    priority: 2\n    complexity: medium\n    skills: []\n    body: |\n      ## Objective\n      Fix error handling for malformed input in the data validation module.\n"
+)
 
       ## Acceptance Criteria
       - Malformed input raises a specific, informative exception

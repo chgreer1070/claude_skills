@@ -28,10 +28,10 @@ This workflow continues from `add-new-feature`. It executes tasks from a SAM tas
 Rules:
 
 - If `<feature_input/>` ends with `.md`, treat it as the task file path and extract the plan address `P{N}` from the filename (e.g., `plan/tasks-3-integrate-sam-schema.md` → `P3`).
-- Otherwise, treat it as a feature slug (or partial slug) and resolve plan address via `sam status`:
+- Otherwise, treat it as a feature slug (or partial slug) and resolve plan address via `sam_status`:
 
-```bash
-uv run sam status "<feature_input/>"
+```text
+mcp__plugin_dh_sam__sam_status(plan="<feature_input/>")
 ```
 
 ---
@@ -40,8 +40,8 @@ uv run sam status "<feature_input/>"
 
 1. Query status:
 
-```bash
-uv run sam status P{N}
+```text
+mcp__plugin_dh_sam__sam_status(plan="P{N}")
 ```
 
 2. If tasks remain, query ready tasks:
@@ -54,10 +54,10 @@ Output shape: {"feature": "...", "ready_tasks": [...], "count": N}
 Falls back to local cache if GitHub unavailable.
 ```
 
-If parent issue number is unknown (or MCP unavailable), use CLI fallback:
+If parent issue number is unknown, use the SAM MCP tool:
 
-```bash
-uv run sam ready P{N} --format json
+```text
+mcp__plugin_dh_sam__sam_ready(plan="P{N}")
 ```
 
 3. For each ready task:

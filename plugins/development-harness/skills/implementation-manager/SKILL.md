@@ -17,9 +17,9 @@ disable-model-invocation: false
 
 A skill for querying and managing feature implementation task files. Provides programmatic access to task status for orchestrators coordinating multi-step feature implementations.
 
-## CLI Tool Usage
+## SAM MCP Tool Usage
 
-The `sam` CLI is the canonical interface for all SAM task file operations. Use `uv run sam <command>` for all task file queries and updates.
+The SAM MCP server (`mcp__plugin_dh_sam__*`) is the primary interface for all SAM task file operations. The `uv run sam` CLI is available as fallback when MCP is unavailable.
 
 ### Commands
 
@@ -27,8 +27,8 @@ The `sam` CLI is the canonical interface for all SAM task file operations. Use `
 
 List all features with task files in the project's `plan/` directory:
 
-```bash
-uv run sam list
+```text
+mcp__plugin_dh_sam__sam_list()
 ```
 
 **Output:**
@@ -50,8 +50,8 @@ uv run sam list
 
 Get detailed status for a specific feature:
 
-```bash
-uv run sam status P1
+```text
+mcp__plugin_dh_sam__sam_status(plan="P1")
 ```
 
 **Output:**
@@ -83,8 +83,8 @@ uv run sam status P1
 
 List tasks ready for execution (dependencies satisfied):
 
-```bash
-uv run sam ready-tasks P1
+```text
+mcp__plugin_dh_sam__sam_ready(plan="P1")
 ```
 
 **Output:**
@@ -107,31 +107,31 @@ uv run sam ready-tasks P1
 
 Read full plan data including task fields and context:
 
-```bash
-uv run sam read P1 --format json
+```text
+mcp__plugin_dh_sam__sam_read(plan="P1")
 ```
 
 #### claim
 
 Claim a task in-progress (prevents duplicate dispatch):
 
-```bash
-uv run sam claim P1 T01
+```text
+mcp__plugin_dh_sam__sam_claim(plan="P1", task="T01")
 ```
 
-Exits non-zero if task is already claimed or not found.
+Returns `{"claimed": false, "error": "..."}` if task is already claimed or not found.
 
 #### update
 
 Update plan-level fields (e.g., context manifest):
 
-```bash
-uv run sam update P1 --context "Context Manifest content"
+```text
+mcp__plugin_dh_sam__sam_update(plan="P1", context="Context Manifest content")
 ```
 
 ## Task File Format
 
-Task files use YAML frontmatter format. The `sam` CLI validates all fields — do not parse task files directly.
+Task files use YAML frontmatter format. The SAM MCP tools validate all fields — do not parse task files directly.
 
 ```yaml
 ---
@@ -201,7 +201,7 @@ When `/dh:start-task` runs, it creates a context file at `.claude/context/active
 
 The `/dh:execution` orchestrator uses this skill to:
 
-1. Query task file status via `uv run sam status P{N}`
-2. Find ready tasks via `uv run sam ready-tasks P{N}`
+1. Query task file status via `mcp__plugin_dh_sam__sam_status(plan="P{N}")`
+2. Find ready tasks via `mcp__plugin_dh_sam__sam_ready(plan="P{N}")`
 3. Launch appropriate agents based on task's `agent` field
 4. Update timestamps via hook scripts when tasks start/complete

@@ -97,7 +97,7 @@ flowchart TD
 
 ### 2.1 sam_ready output (ReadyTasksResult)
 
-Output of `uv run sam ready P{N} --format json` and `backlog_get_ready_sam_tasks(parent_issue_number)`.
+Output of `mcp__plugin_dh_sam__sam_ready(plan="P{N}")` and `backlog_get_ready_sam_tasks(parent_issue_number)`. CLI fallback: `uv run sam ready P{N} --format json`.
 
 ```json
 {
@@ -119,7 +119,7 @@ Output of `uv run sam ready P{N} --format json` and `backlog_get_ready_sam_tasks
 
 ### 2.2 TaskAssignment (sam_read P{N}/T{M})
 
-Output of `uv run sam read P{N}/T{M} --format json` and `sam_read(address)`.
+Output of `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")`. CLI fallback: `uv run sam read P{N}/T{M} --format json`.
 
 ```json
 {
@@ -207,7 +207,7 @@ Written by `/start-task` skill. Read by `task_status_hook.py` PostToolUse handle
 
 ### 2.7 sam_claim output
 
-Output of `uv run sam claim P{N}/T{M} --format json` and `sam_claim(address)`.
+Output of `mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")`. CLI fallback: `uv run sam claim P{N}/T{M} --format json`.
 
 ```json
 {

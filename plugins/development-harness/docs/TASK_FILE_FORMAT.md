@@ -1,65 +1,46 @@
 # SAM Task File Format
 
 **Status**: Current specification (updated 2026-03-21)
-**Purpose**: Canonical reference for SAM task file structure and the `sam` CLI as the sole interface
+**Purpose**: Canonical reference for SAM task file structure and the SAM MCP server as the primary interface
 
-All task file I/O routes through the `sam` CLI or `sam_schema` Python API. No component reads or writes task files directly via Read/Edit/Write tools.
+All task file I/O routes through the SAM MCP server (`mcp__plugin_dh_sam__*`) or the `uv run sam` CLI fallback. No component reads or writes task files directly via Read/Edit/Write tools.
 
 ---
 
 ## Quick Reference
 
-### sam CLI Commands
-
-```bash
-# Create a new plan from YAML piped via stdin
-echo "$YAML_CONTENT" | uv run sam create {slug} --goal "Goal description" --stdin
-
-# Read a task (returns TaskAssignment with plan context)
-uv run sam read P{N}/T{M} --format json
-
-# Read a plan summary
-uv run sam read P{N} --format json
-
-# Update plan or task fields
-uv run sam update P{N} --context "Shared context for all tasks"
-uv run sam update P{N}/T{M} --append-section "Divergence Notes" --section-content "..."
-uv run sam update P{N} --set acceptance-criteria-structured=true
-
-# Transition task status
-uv run sam state P{N}/T{M} {status}
-
-# Claim a task (mark in-progress, set started timestamp)
-uv run sam claim P{N}/T{M}
-
-# List all plans (with optional search filter)
-uv run sam list
-uv run sam list --search "my-feature"
-
-# List ready tasks (status=not-started with all dependencies complete)
-uv run sam ready P{N} --format json
-
-# Show plan progress summary
-uv run sam status P{N}
-
-# Validate a plan against schema
-uv run sam validate P{N} --format json
-
-# Migrate legacy markdown format to pure YAML
-uv run sam migrate plan/tasks-{N}-{slug}.md
-```
-
-### MCP Tools
+### SAM MCP Tools (Primary)
 
 ```text
-sam_list(plan_dir, search, offset, limit)  -- mirrors sam list
-sam_create(slug, goal, tasks_yaml, ...)   -- mirrors sam create
-sam_read(address, format)                 -- mirrors sam read; returns TaskAssignment for task addresses
-sam_update(address, fields, ...)          -- mirrors sam update
-sam_claim(address)                        -- mirrors sam claim
-sam_state(address, status)                -- mirrors sam state
-sam_ready(address, format)                -- mirrors sam ready
-sam_status(address)                       -- mirrors sam status
+mcp__plugin_dh_sam__sam_list()                                    -- List all plans
+mcp__plugin_dh_sam__sam_list(search="text")                       -- List with search filter
+mcp__plugin_dh_sam__sam_create(slug="...", goal="...", tasks_yaml="...")  -- Create a new plan
+mcp__plugin_dh_sam__sam_read(plan="P{N}")                         -- Read plan summary
+mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")            -- Read task (returns TaskAssignment)
+mcp__plugin_dh_sam__sam_update(plan="P{N}", context="...")         -- Update plan context
+mcp__plugin_dh_sam__sam_state(plan="P{N}", task="T{M}", status="complete")  -- Transition task status
+mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")           -- Claim a task (mark in-progress)
+mcp__plugin_dh_sam__sam_ready(plan="P{N}")                        -- List ready tasks
+mcp__plugin_dh_sam__sam_status(plan="P{N}")                       -- Plan progress summary
+```
+
+### CLI Fallback
+
+When MCP is unavailable, use the `uv run sam` CLI:
+
+```bash
+uv run sam list                                    # List all plans
+uv run sam list --search "my-feature"              # List with search filter
+echo "$YAML" | uv run sam create {slug} --goal "..." --stdin  # Create plan
+uv run sam read P{N} --format json                 # Read plan summary
+uv run sam read P{N}/T{M} --format json            # Read task (TaskAssignment)
+uv run sam update P{N} --context "..."             # Update plan context
+uv run sam state P{N}/T{M} {status}                # Transition task status
+uv run sam claim P{N}/T{M}                         # Claim a task
+uv run sam ready P{N} --format json                # List ready tasks
+uv run sam status P{N}                             # Plan progress summary
+uv run sam validate P{N} --format json             # Validate plan (CLI only)
+uv run sam migrate plan/tasks-{N}-{slug}.md        # Migrate legacy format (CLI only)
 ```
 
 ---
@@ -181,7 +162,7 @@ For the complete field specification:
 
 ## Authorized Writers
 
-Task metadata fields are owned by specific components. The `sam` CLI and `sam_schema` API are the sole write interfaces. No component writes task fields directly via Edit/Write tools.
+Task metadata fields are owned by specific components. The SAM MCP server and `sam_schema` API are the primary write interfaces, with the `uv run sam` CLI as fallback. No component writes task fields directly via Edit/Write tools.
 
 | Field | Written By | Via |
 |-------|-----------|-----|
@@ -208,7 +189,7 @@ Task metadata fields are owned by specific components. The `sam` CLI and `sam_sc
 
 ---
 
-## sam CLI Usage Guide
+## sam CLI Usage Guide (Fallback Reference)
 
 ### sam list — List all plans
 
