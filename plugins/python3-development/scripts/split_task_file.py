@@ -55,7 +55,7 @@ if _SPLIT_SAM_PACKAGES_DIR not in sys.path:
 
 from sam_schema.core.query import load_plan as sam_load_plan
 
-from task_format import has_yaml_frontmatter
+from task_format import has_yaml_frontmatter  # ty: ignore[unresolved-import]
 
 if TYPE_CHECKING:
     from sam_schema.core.models import Task as SamTask

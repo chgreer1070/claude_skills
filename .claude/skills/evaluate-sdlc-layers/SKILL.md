@@ -23,7 +23,7 @@ Run each check and record PASS / FAIL / SKIP with evidence.
 
 ### 1. Cross-Reference Validation
 
-For each linked path in `.claude/docs/sdlc-layers/` and related docs:
+For each linked path in `plugins/development-harness/docs/sdlc-layers/` and related docs:
 
 - [ ] `sam-definition.md` — exists at `.claude/skills/work-backlog-item/references/sam-definition.md`
 - [ ] `plugins/development-harness/CLAUDE.md` — exists
@@ -135,6 +135,6 @@ Flow experiments and learnings live in [sam-flow-experiments](https://github.com
 
 ## References
 
-- [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/)
+- [plugins/development-harness/docs/sdlc-layers/](../../../plugins/development-harness/docs/sdlc-layers/)
 - [verify skill](../verify/SKILL.md) — evidence discipline
 - [groom-backlog-item](../../../plugins/development-harness/skills/groom-backlog-item/SKILL.md) — orchestration pattern

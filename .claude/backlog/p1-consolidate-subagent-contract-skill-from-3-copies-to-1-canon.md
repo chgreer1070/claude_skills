@@ -5,9 +5,9 @@ metadata:
   topic: consolidate-subagent-contract-skill-from-3-copies-to-1-canon
   source: 'Session 2026-03-21: skill-migration-comparison report (.claude/reports/skill-migration-comparison-2026-03-21.md)'
   added: '2026-03-21'
-  priority: P1
+  priority: completed
   type: Refactor
-  status: needs-grooming
+  status: done
   issue: '#960'
   last_synced: '2026-03-21T15:59:56Z'
 ---

@@ -205,7 +205,7 @@ def test_analyze_impact_radius_conflicts_items_without_radius_do_not_form_groups
     ]
 
     # Act
-    result = analyze_impact_radius_conflicts(items)
+    result = analyze_impact_radius_conflicts(items)  # ty: ignore[invalid-argument-type]
 
     # Assert — only A and B conflict
     assert len(result) == 1
@@ -258,7 +258,7 @@ def test_analyze_impact_radius_conflicts_none_impact_radius_value_excluded() -> 
     item_b = _item("B", 2, "plugins/shared.py")
 
     # Act
-    result = analyze_impact_radius_conflicts([item_a, item_b])
+    result = analyze_impact_radius_conflicts([item_a, item_b])  # ty: ignore[invalid-argument-type]
 
     # Assert — no conflict: A is excluded, B has nothing to conflict with
     assert result == []

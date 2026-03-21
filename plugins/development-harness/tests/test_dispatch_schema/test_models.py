@@ -52,7 +52,7 @@ class TestItemPriorityEnum:
         Why: YAML parser returns strings; Pydantic must coerce them correctly.
         """
         # Arrange
-        item = WaveItem(title="Fix bug", issue=1, priority="P2")
+        item = WaveItem(title="Fix bug", issue=1, priority="P2")  # ty: ignore[invalid-argument-type]
 
         # Act / Assert — use_enum_values=True means .priority is a str
         assert item.priority == "P2"
@@ -67,7 +67,7 @@ class TestItemPriorityEnum:
         """
         # Arrange / Act / Assert
         with pytest.raises(ValidationError):
-            WaveItem(title="Task", issue=1, priority=bad_value)
+            WaveItem(title="Task", issue=1, priority=bad_value)  # ty: ignore[invalid-argument-type]
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ class TestItemStatusEnum:
         Why: YAML reader supplies strings; they must round-trip through coercion.
         """
         # Arrange
-        item = WaveItem(title="Task", issue=1, priority=ItemPriority.P1, status=status_str)
+        item = WaveItem(title="Task", issue=1, priority=ItemPriority.P1, status=status_str)  # ty: ignore[invalid-argument-type]
 
         # Act / Assert
         assert item.status == status_str
@@ -115,7 +115,7 @@ class TestItemStatusEnum:
         """
         # Arrange / Act / Assert
         with pytest.raises(ValidationError):
-            WaveItem(title="Task", issue=1, priority=ItemPriority.P1, status="unknown")
+            WaveItem(title="Task", issue=1, priority=ItemPriority.P1, status="unknown")  # ty: ignore[invalid-argument-type]
 
 
 # ---------------------------------------------------------------------------

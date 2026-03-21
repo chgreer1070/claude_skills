@@ -474,7 +474,7 @@ Conditions:
 Decision: {APPROVED|BLOCKED}
 ```
 
-**ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, optionally include `invisible_knowledge_prompts` — questions to ask the human before planning. See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../../../../.claude/docs/sdlc-layers/arl-human-probing-design.md).
+**ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, optionally include `invisible_knowledge_prompts` — questions to ask the human before planning. See [arl-human-probing-design.md](../../docs/sdlc-layers/arl-human-probing-design.md).
 
 #### Issue Classification
 

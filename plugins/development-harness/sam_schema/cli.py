@@ -16,6 +16,9 @@ Usage::
     sam status P1
     sam status --all
     sam migrate P1
+    sam migrate --all
+    sam migrate --all --dry-run
+    sam migrate --all --skip-sync
 """
 
 from __future__ import annotations
@@ -23,6 +26,8 @@ from __future__ import annotations
 import io
 import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Annotated, NoReturn
@@ -47,6 +52,13 @@ from sam_schema.core.query import (
 )
 from sam_schema.readers.detect import FormatDetectionError
 from sam_schema.writers.yaml_writer import write_plan
+
+try:
+    from backlog_core.operations import sync_items as _sync_backlog
+
+    _BACKLOG_CORE_AVAILABLE = True
+except ImportError:
+    _BACKLOG_CORE_AVAILABLE = False
 
 app = typer.Typer(name="sam", help="SAM task/plan file interface.", no_args_is_help=True)
 
@@ -751,37 +763,29 @@ def validate(
         raise typer.Exit(1)
 
 
-@app.command()
-def migrate(
-    plan_address: Annotated[str, typer.Argument(help="Plan address: P{plan}")],
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
-    dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview changes without writing")] = False,
-) -> None:
-    """Migrate a legacy or YAML-frontmatter plan to canonical pure-YAML format.
+def _migrate_one(plan_path: Path, dry_run: bool) -> tuple[Path | None, str]:
+    """Migrate a single plan file to canonical pure-YAML format.
+
+    Reuses the same load/write logic as the single-address ``migrate`` command.
 
     Args:
-        plan_address: Plan address in ``P{N}`` format.
-        plan_dir: Directory to search for plan files.
+        plan_path: Resolved path to the plan file or directory.
         dry_run: If ``True``, print what would change without writing to disk.
+
+    Returns:
+        Tuple of ``(output_path, source_format)``.  ``output_path`` is ``None``
+        when ``dry_run`` is ``True`` (nothing was written).
+
+    Raises:
+        FileNotFoundError: If ``plan_path`` does not exist.
+        FormatDetectionError: If the plan format cannot be determined.
+        ValueError: If the plan cannot be serialised.
+        OSError: If the output file cannot be written.
     """
-    try:
-        plan_ref, _ = parse_address(plan_address)
-    except ValueError as exc:
-        _err(str(exc))
-
-    plan_path = _resolve_plan(plan_ref, plan_dir)
-
-    try:
-        result = load_plan(plan_path)
-    except FileNotFoundError as exc:
-        _err(str(exc))
-    except FormatDetectionError as exc:
-        _err(str(exc), exit_code=2)
-
+    result = load_plan(plan_path)
     source_format = result.source_format
     plan = result.plan
 
-    # Determine output path: always write to .yaml extension alongside source
     output_path = plan_path if plan_path.is_dir() else plan_path.with_suffix(".yaml")
 
     if dry_run:
@@ -793,16 +797,232 @@ def migrate(
         if result.gaps:
             for gap in result.gaps:
                 typer.echo(f"    [{gap.task_id}] {gap.field_name}: {gap.gap_type}")
-        return
+        return None, source_format
 
-    try:
-        written = write_plan(plan, output_path)
-    except (ValueError, OSError) as exc:
-        _err(str(exc), exit_code=2)
-
+    written = write_plan(plan, output_path)
     typer.echo(f"Migrated {plan_path} -> {written}")
     typer.echo(f"  Source format: {source_format}")
     typer.echo(f"  Tasks written: {len(plan.tasks)}")
+    return written, source_format
+
+
+def _update_backlog_refs(old_path: Path, new_path: Path, backlog_dir: Path) -> int:
+    """Update ``plan:`` frontmatter fields in backlog files that reference ``old_path``.
+
+    Scans ``backlog_dir`` for ``*.md`` files whose YAML frontmatter ``plan``
+    field matches ``old_path`` (as a string) and rewrites it to ``new_path``.
+    Uses ``ruamel.yaml`` directly for comment-preserving round-trip edits of
+    the frontmatter block, without requiring ``backlog_core``.
+
+    Args:
+        old_path: The legacy plan path being replaced.
+        new_path: The canonical ``.yaml`` path to substitute.
+        backlog_dir: Directory containing backlog ``*.md`` files.
+
+    Returns:
+        Number of backlog files updated.
+    """
+    if not backlog_dir.exists():
+        return 0
+
+    old_str = str(old_path)
+    new_str = str(new_path)
+    updated = 0
+    y = YAML()
+    y.preserve_quotes = True
+    y.width = 2147483647
+
+    for md_file in sorted(backlog_dir.glob("*.md")):
+        try:
+            raw = md_file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if not raw.startswith("---"):
+            continue
+        parts = raw.split("---", 2)
+        if len(parts) < 3:  # noqa: PLR2004
+            continue
+        _, fm_text, body = parts
+        try:
+            fm_data = y.load(fm_text)
+        except Exception:  # noqa: BLE001, S112
+            continue
+        if not isinstance(fm_data, dict):
+            continue
+        plan_val = fm_data.get("plan")
+        if plan_val is None or str(plan_val) != old_str:
+            continue
+        fm_data["plan"] = new_str
+        try:
+            buf = io.StringIO()
+            y.dump(fm_data, buf)
+            new_raw = f"---\n{buf.getvalue()}---{body}"
+            md_file.write_text(new_raw, encoding="utf-8")
+            updated += 1
+        except Exception:  # noqa: BLE001, S112
+            continue
+
+    return updated
+
+
+@app.command()
+def migrate(
+    plan_address: Annotated[str | None, typer.Argument(help="Plan address: P{plan}. Omit when using --all.")] = None,
+    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview changes without writing")] = False,
+    all_plans: Annotated[bool, typer.Option("--all", help="Migrate every legacy plan file in plan_dir")] = False,
+    skip_sync: Annotated[
+        bool, typer.Option("--skip-sync", help="Skip backlog sync to GitHub before migrating")
+    ] = False,
+    backlog_dir: Annotated[
+        Path, typer.Option("--backlog-dir", help="Backlog directory for plan reference updates")
+    ] = Path(".claude") / "backlog",
+) -> None:
+    """Migrate a legacy or YAML-frontmatter plan to canonical pure-YAML format.
+
+    With ``--all``, scans ``plan_dir`` for every legacy ``tasks-{N}-{slug}.md``
+    file, migrates each one to a ``.yaml`` counterpart, and updates any backlog
+    ``plan:`` references that pointed at the old path.
+
+    Without ``--all``, migrates the single plan identified by ``plan_address``.
+
+    Args:
+        plan_address: Plan address in ``P{N}`` format. Required unless ``--all`` is set.
+        plan_dir: Directory to search for plan files.
+        dry_run: If ``True``, print what would change without writing to disk.
+        all_plans: If ``True``, migrate every eligible legacy file in ``plan_dir``.
+        skip_sync: If ``True``, skip the pre-migration backlog sync step.
+        backlog_dir: Directory containing backlog ``*.md`` files for reference updates.
+    """
+    if all_plans:
+        _migrate_all(plan_dir=plan_dir, dry_run=dry_run, skip_sync=skip_sync, backlog_dir=backlog_dir)
+        return
+
+    if plan_address is None:
+        _err("Provide a plan address or use --all to migrate every plan")
+
+    try:
+        plan_ref, _ = parse_address(plan_address)
+    except ValueError as exc:
+        _err(str(exc))
+
+    plan_path = _resolve_plan(plan_ref, plan_dir)
+
+    try:
+        _migrate_one(plan_path, dry_run)
+    except FileNotFoundError as exc:
+        _err(str(exc))
+    except FormatDetectionError as exc:
+        _err(str(exc), exit_code=2)
+    except (ValueError, OSError) as exc:
+        _err(str(exc), exit_code=2)
+
+
+def _migrate_all(
+    plan_dir: Path, dry_run: bool, skip_sync: bool, backlog_dir: Path = Path(".claude") / "backlog"
+) -> None:
+    """Bulk-migrate all legacy plan files in ``plan_dir``.
+
+    Steps:
+      1. Inventory ``.md`` files matching ``tasks-{N}-{slug}`` pattern.
+      2. Sync backlog to GitHub (unless ``skip_sync`` is set).
+      3. Migrate each file; collect old→new path mappings.
+      4. Update backlog references for each migrated file.
+      5. Print summary.
+
+    Args:
+        plan_dir: Directory to scan for legacy plan files.
+        dry_run: If ``True``, print what would change without writing to disk.
+        skip_sync: If ``True``, skip the backlog sync step.
+        backlog_dir: Directory containing backlog ``*.md`` files for reference updates.
+    """
+    if not plan_dir.exists():
+        _err(f"Plan directory does not exist: {plan_dir}")
+
+    # Step 1: Inventory — find .md files matching tasks-{N}-{slug} pattern
+    legacy_pattern = re.compile(r"^tasks-\d+-")
+    candidates: list[Path] = sorted(p for p in plan_dir.iterdir() if p.suffix == ".md" and legacy_pattern.match(p.name))
+
+    if not candidates:
+        typer.echo("No legacy plan files found to migrate.")
+        return
+
+    typer.echo(f"Found {len(candidates)} legacy plan file(s) to migrate.")
+
+    # Step 2: Backlog sync
+    if not skip_sync and not dry_run:
+        _attempt_backlog_sync()
+
+    # Step 3: Migrate each file
+    migrated: list[tuple[Path, Path]] = []  # (old_path, new_path)
+    errors: list[str] = []
+
+    for plan_path in candidates:
+        # Check for collision: target .yaml already exists
+        target = plan_path.with_suffix(".yaml")
+        if not dry_run and target.exists():
+            typer.echo(f"  Skipping {plan_path.name}: {target.name} already exists", err=True)
+            continue
+
+        try:
+            written, _ = _migrate_one(plan_path, dry_run)
+        except Exception as exc:  # noqa: BLE001
+            msg = f"  Error migrating {plan_path.name}: {exc}"
+            typer.echo(msg, err=True)
+            errors.append(msg)
+            continue
+
+        if written is not None:
+            migrated.append((plan_path, written))
+
+    # Step 4: Update backlog references
+    ref_updates = 0
+    if not dry_run:
+        for old_path, new_path in migrated:
+            ref_updates += _update_backlog_refs(old_path, new_path, backlog_dir)
+
+    # Step 5: Report
+    typer.echo("")
+    if dry_run:
+        typer.echo(f"Dry run complete. Would migrate {len(candidates)} file(s).")
+    else:
+        typer.echo("Migration complete.")
+        typer.echo(f"  Migrated:          {len(migrated)}/{len(candidates)} file(s)")
+        typer.echo(f"  Backlog refs updated: {ref_updates}")
+        if errors:
+            typer.echo(f"  Errors:            {len(errors)}", err=True)
+
+
+def _attempt_backlog_sync() -> None:
+    """Attempt to sync the local backlog to GitHub.
+
+    Tries ``backlog_core`` first, then falls back to shelling out to
+    ``uv run backlog sync``.  Prints a warning on failure but does not abort.
+    """
+    if _BACKLOG_CORE_AVAILABLE:
+        try:
+            _sync_backlog()
+        except Exception:  # noqa: BLE001
+            typer.echo("Warning: backlog_core sync failed; falling back to CLI.", err=True)
+        else:
+            typer.echo("Backlog synced to GitHub.")
+            return
+
+    uv_exe = shutil.which("uv")
+    if uv_exe is None:
+        typer.echo("Warning: backlog sync unavailable (uv not found).", err=True)
+        return
+
+    try:
+        proc = subprocess.run(
+            [uv_exe, "run", "backlog", "sync"], capture_output=True, text=True, timeout=30, check=False
+        )
+        if proc.returncode == 0:
+            typer.echo("Backlog synced to GitHub.")
+        else:
+            typer.echo(f"Warning: backlog sync failed (exit {proc.returncode}): {proc.stderr.strip()}", err=True)
+    except Exception as exc:  # noqa: BLE001
+        typer.echo(f"Warning: backlog sync unavailable: {exc}", err=True)
 
 
 if __name__ == "__main__":  # pragma: no cover

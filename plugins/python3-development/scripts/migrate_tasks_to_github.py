@@ -41,7 +41,7 @@ import typer
 from rich.console import Console
 from ruamel.yaml import YAML
 
-from task_format import resolve_task_id
+from task_format import resolve_task_id  # ty: ignore[unresolved-import]
 
 if TYPE_CHECKING:
     from github.Issue import Issue
