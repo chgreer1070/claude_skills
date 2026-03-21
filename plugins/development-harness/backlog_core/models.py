@@ -319,6 +319,65 @@ class ValidationError(BacklogError):
     """Raised on input validation failure."""
 
 
+class BranchConflictError(BacklogError):
+    """Raised when a merge fails due to conflicts.
+
+    Attributes:
+        head_branch: Source branch that was being merged.
+        base_branch: Target branch that was being merged into.
+        conflict_files: List of file paths with conflicts (when available from API).
+    """
+
+    head_branch: str
+    base_branch: str
+    conflict_files: list[str]
+
+    def __init__(self, head_branch: str, base_branch: str, conflict_files: list[str] | None = None) -> None:
+        """Initialize with merge conflict details.
+
+        Args:
+            head_branch: Source branch being merged.
+            base_branch: Target branch being merged into.
+            conflict_files: File paths with conflicts. Defaults to empty list.
+        """
+        self.head_branch = head_branch
+        self.base_branch = base_branch
+        self.conflict_files = conflict_files or []
+        files_str = ", ".join(self.conflict_files[:5]) if self.conflict_files else "unknown"
+        super().__init__(f"Merge conflict: {head_branch} -> {base_branch} (files: {files_str})")
+
+
+# ---------------------------------------------------------------------------
+# Branch TypedDicts
+# ---------------------------------------------------------------------------
+
+
+class BranchInfo(TypedDict):
+    """Information about a Git branch."""
+
+    name: str
+    """Full branch name (e.g. ``milestone/3-v1.1-milestone-workflow``)."""
+
+    sha: str
+    """HEAD commit SHA."""
+
+    last_commit_date: str
+    """ISO 8601 timestamp of the last commit (e.g. ``2026-03-20T14:30:00Z``)."""
+
+    age_days: int
+    """Number of days since the last commit. Computed at query time."""
+
+
+class MergeResult(TypedDict):
+    """Result of a successful merge operation."""
+
+    sha: str
+    """New HEAD SHA of the base branch after merge."""
+
+    message: str
+    """Commit message used for the merge."""
+
+
 # ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------

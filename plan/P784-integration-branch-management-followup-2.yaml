@@ -1,0 +1,14 @@
+feature: integration-branch-management-followup-2
+version: '1.0'
+description: ''
+goal: |-
+  Add missing input validation to github_branches.py (slug regex, milestone_number > 0, head != base) and corresponding tests
+tasks:
+- id: T1
+  title: Add input validation to github_branches.py and tests
+  status: not-started
+  agent: python-cli-architect
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
