@@ -786,7 +786,25 @@ def _migrate_one(plan_path: Path, dry_run: bool) -> tuple[Path | None, str]:
     source_format = result.source_format
     plan = result.plan
 
-    output_path = plan_path if plan_path.is_dir() else plan_path.with_suffix(".yaml")
+    # Rename legacy tasks-{N}-{slug}.md to P{NNN}-{slug}.yaml
+    if plan_path.is_dir():
+        output_path = plan_path
+    else:
+        m = re.match(r"^tasks-(\d+)-(.+)\.md$", plan_path.name)
+        if m:
+            num = int(m.group(1))
+            slug = m.group(2)
+            output_path = plan_path.parent / f"P{num:03d}-{slug}.yaml"
+        else:
+            output_path = plan_path.with_suffix(".yaml")
+
+    # Collision check: skip if target P{NNN} file already exists (different slug)
+    if output_path != plan_path and output_path.exists():
+        msg = f"Skipping {plan_path.name}: target {output_path.name} already exists"
+        typer.echo(msg, err=True)
+        if not dry_run:
+            raise FileExistsError(msg)
+        return None, source_format
 
     if dry_run:
         typer.echo(f"Would migrate: {plan_path}")

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sam_schema.cli import app
+import pytest
+from sam_schema.cli import _migrate_one, app
 from typer.testing import CliRunner
 
 runner = CliRunner()
@@ -23,7 +24,7 @@ def _make_legacy_plan_dir(tmp_path: Path, *, count: int = 2) -> Path:
     """Return a plan dir with ``count`` legacy .md files.
 
     Files are named ``tasks-{N}-legacy-{N}.md`` so each resolves to a distinct
-    plan number.
+    plan number and output path (``P00{N}-legacy-{N}.yaml``).
 
     Args:
         tmp_path: pytest tmp_path fixture value.
@@ -43,8 +44,9 @@ def _make_legacy_plan_dir(tmp_path: Path, *, count: int = 2) -> Path:
 def _make_mixed_plan_dir(tmp_path: Path) -> Path:
     """Return a plan dir with one legacy .md and one already-converted .yaml.
 
-    The existing .yaml file sits alongside a legacy .md so the collision
-    detection path is exercised.
+    The existing .yaml is named using the legacy suffix-only pattern
+    (``tasks-1-collision.yaml``) so the ``_migrate_all`` pre-check loop
+    catches it before delegating to ``_migrate_one``.
 
     Args:
         tmp_path: pytest tmp_path fixture value.
@@ -57,6 +59,8 @@ def _make_mixed_plan_dir(tmp_path: Path) -> Path:
     legacy_content = _LEGACY_MD.read_text(encoding="utf-8")
     yaml_content = _PURE_YAML.read_text(encoding="utf-8")
     (d / "tasks-1-collision.md").write_text(legacy_content, encoding="utf-8")
+    # _migrate_all pre-check uses plan_path.with_suffix(".yaml"), so this name
+    # triggers the early-continue in the loop before _migrate_one is called.
     (d / "tasks-1-collision.yaml").write_text(yaml_content, encoding="utf-8")
     return d
 
@@ -185,7 +189,16 @@ def test_migrate_all_skip_sync_does_not_attempt_sync(tmp_path: Path) -> None:
 
 
 def test_migrate_all_updates_backlog_plan_references(tmp_path: Path) -> None:
-    """--all rewrites plan: fields in .claude/backlog/*.md to the new path."""
+    """--all rewrites plan: fields in .claude/backlog/*.md to the P{NNN} path.
+
+    Tests: Backlog reference rewriting after bulk migration.
+    How: Create a legacy ``tasks-5-example.md`` and a backlog item whose
+         ``plan:`` frontmatter field points at it.  Run ``sam migrate --all``
+         and verify the backlog item now references the canonical
+         ``P005-example.yaml`` path, not the old path.
+    Why: Consumers (backlog items, CI scripts) must point at the new canonical
+         name after migration; stale references break ``sam read`` lookups.
+    """
     plan_dir = tmp_path / "plan"
     plan_dir.mkdir()
     legacy_content = _LEGACY_MD.read_text(encoding="utf-8")
@@ -206,9 +219,14 @@ def test_migrate_all_updates_backlog_plan_references(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     updated_text = backlog_item.read_text(encoding="utf-8")
-    expected_new_path = str(legacy_file.with_suffix(".yaml"))
-    assert expected_new_path in updated_text
-    assert str(legacy_file) not in updated_text
+    # _migrate_one renames tasks-{N}-{slug}.md → P{NNN}-{slug}.yaml
+    expected_new_path = str(plan_dir / "P005-example.yaml")
+    assert expected_new_path in updated_text, (
+        f"Expected backlog to reference {expected_new_path!r}, got:\n{updated_text}"
+    )
+    assert str(legacy_file) not in updated_text, (
+        f"Old path {str(legacy_file)!r} should have been replaced in:\n{updated_text}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -254,3 +272,99 @@ def test_migrate_single_dry_run_still_works(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Would migrate" in result.output
     assert set(plan_dir.iterdir()) == original_files
+
+
+# ---------------------------------------------------------------------------
+# P{NNN} output naming verification
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_all_produces_p_numbered_yaml_filenames(tmp_path: Path) -> None:
+    """--all writes output files as P{NNN}-{slug}.yaml, not tasks-{N}-{slug}.yaml.
+
+    Tests: Output filename convention after bulk migration.
+    How: Create ``tasks-1-foo.md`` and ``tasks-42-bar.md``, run ``sam migrate --all``,
+         then assert the resulting YAML files use zero-padded plan numbers.
+    Why: The canonical filename format is ``P{NNN}-{slug}.yaml`` (e.g. ``P001-foo.yaml``).
+         A plain suffix swap would produce ``tasks-1-foo.yaml`` which is the old
+         convention and breaks ``sam read P1`` address resolution.
+    """
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    content = _LEGACY_MD.read_text(encoding="utf-8")
+    (plan_dir / "tasks-1-foo.md").write_text(content, encoding="utf-8")
+    (plan_dir / "tasks-42-bar.md").write_text(content, encoding="utf-8")
+
+    result = runner.invoke(app, ["migrate", "--all", "--skip-sync", "--plan-dir", str(plan_dir)])
+
+    assert result.exit_code == 0
+    yaml_names = {p.name for p in plan_dir.glob("*.yaml")}
+    assert "P001-foo.yaml" in yaml_names, f"Expected P001-foo.yaml in {yaml_names}"
+    assert "P042-bar.yaml" in yaml_names, f"Expected P042-bar.yaml in {yaml_names}"
+    # Old-style names must not appear
+    assert "tasks-1-foo.yaml" not in yaml_names
+    assert "tasks-42-bar.yaml" not in yaml_names
+
+
+# ---------------------------------------------------------------------------
+# _migrate_one collision — unit-level tests
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_one_collision_non_dry_run_raises_file_exists_error(tmp_path: Path) -> None:
+    """_migrate_one raises FileExistsError when the P{NNN} target already exists.
+
+    Tests: Collision guard in ``_migrate_one`` (non-dry-run path).
+    How: Pre-create ``P001-collide.yaml`` in the plan directory, then call
+         ``_migrate_one`` on ``tasks-1-collide.md`` with ``dry_run=False``.
+         Assert ``FileExistsError`` is raised and the pre-existing file is
+         not overwritten.
+    Why: Migration must be idempotent — re-running after a partial failure
+         must never silently overwrite a YAML file that was already written.
+    """
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    content = _LEGACY_MD.read_text(encoding="utf-8")
+    legacy_file = plan_dir / "tasks-1-collide.md"
+    legacy_file.write_text(content, encoding="utf-8")
+
+    # Pre-create the canonical target to trigger the collision guard
+    existing_yaml = plan_dir / "P001-collide.yaml"
+    existing_yaml.write_text("sentinel: true\n", encoding="utf-8")
+    original_mtime = existing_yaml.stat().st_mtime
+
+    with pytest.raises(FileExistsError):
+        _migrate_one(legacy_file, dry_run=False)
+
+    # Existing file must not be touched
+    assert existing_yaml.stat().st_mtime == original_mtime
+    assert existing_yaml.read_text(encoding="utf-8") == "sentinel: true\n"
+
+
+def test_migrate_one_collision_dry_run_returns_none_and_prints_skip(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """_migrate_one returns (None, source_format) and prints a skip message on dry-run collision.
+
+    Tests: Collision guard in ``_migrate_one`` (dry-run path).
+    How: Pre-create ``P001-collide.yaml``, call ``_migrate_one`` with
+         ``dry_run=True``, assert the return value is ``(None, <format>)``
+         and that a skip message was printed without raising an exception.
+    Why: ``--dry-run`` must be non-destructive and non-raising so callers can
+         preview all collisions before committing to a live migration.
+    """
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    content = _LEGACY_MD.read_text(encoding="utf-8")
+    legacy_file = plan_dir / "tasks-1-collide.md"
+    legacy_file.write_text(content, encoding="utf-8")
+
+    existing_yaml = plan_dir / "P001-collide.yaml"
+    existing_yaml.write_text("sentinel: true\n", encoding="utf-8")
+
+    written, source_format = _migrate_one(legacy_file, dry_run=True)
+
+    assert written is None, "dry-run collision must return None for output_path"
+    assert isinstance(source_format, str), "source_format must be a non-empty string"
+    # Existing file must remain untouched
+    assert existing_yaml.read_text(encoding="utf-8") == "sentinel: true\n"
