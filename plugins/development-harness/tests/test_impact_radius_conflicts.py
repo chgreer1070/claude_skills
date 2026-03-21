@@ -13,6 +13,8 @@ Covers:
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from backlog_core.operations import ImpactRadiusItem, analyze_impact_radius_conflicts
 from dispatch_schema.core.models import ConflictGroup
@@ -200,12 +202,12 @@ def test_analyze_impact_radius_conflicts_items_without_radius_do_not_form_groups
     items = [
         _item("A", 1, "common.py"),
         _item("B", 2, "common.py"),
-        {"title": "C", "issue": 3},  # no impact_radius key
+        _item("C", 3),  # no impact_radius key
         _item("D", 4, ""),  # empty
     ]
 
     # Act
-    result = analyze_impact_radius_conflicts(items)  # ty: ignore[invalid-argument-type]
+    result = analyze_impact_radius_conflicts(items)
 
     # Assert — only A and B conflict
     assert len(result) == 1
@@ -254,11 +256,13 @@ def test_analyze_impact_radius_conflicts_none_impact_radius_value_excluded() -> 
     both must be excluded.
     """
     # Arrange — item A has impact_radius=None, item B has a valid path
-    item_a: dict[str, object] = {"title": "A", "issue": 1, "impact_radius": None}
+    # cast is used to deliberately pass None for a key declared as str — this tests
+    # the runtime branch that excludes items where impact_radius is present but None.
+    item_a = cast("ImpactRadiusItem", {"title": "A", "issue": 1, "impact_radius": None})
     item_b = _item("B", 2, "plugins/shared.py")
 
     # Act
-    result = analyze_impact_radius_conflicts([item_a, item_b])  # ty: ignore[invalid-argument-type]
+    result = analyze_impact_radius_conflicts([item_a, item_b])
 
     # Assert — no conflict: A is excluded, B has nothing to conflict with
     assert result == []

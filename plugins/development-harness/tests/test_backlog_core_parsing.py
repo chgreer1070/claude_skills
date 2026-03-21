@@ -819,7 +819,7 @@ class TestBuildIssueBodyFromFileDict:
         Returns:
             Never returns; always skips.
         """
-        pytest.skip("scripts/backlog.py does not exist. Functionality moved to backlog_core/.")  # ty: ignore[invalid-argument-type,too-many-positional-arguments]
+        raise pytest.skip.Exception("scripts/backlog.py does not exist. Functionality moved to backlog_core/.")
 
     def test_returns_none_when_no_groomed_section(self, build_fn: object) -> None:
         """Dict item without '## Groomed' in _raw_body returns None.

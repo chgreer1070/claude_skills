@@ -40,8 +40,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 import typer
 from rich.console import Console
 from ruamel.yaml import YAML
-
-from task_format import resolve_task_id  # ty: ignore[unresolved-import]
+from sam_schema.task_format import resolve_task_id
 
 if TYPE_CHECKING:
     from github.Issue import Issue
@@ -56,10 +55,6 @@ if TYPE_CHECKING:
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parents[2]
 _BACKLOG_CORE = _PROJECT_ROOT / ".claude" / "skills" / "backlog" / "backlog_core"
-
-_TASK_FORMAT_DIR = _SCRIPT_DIR.parent / "skills" / "implementation-manager" / "scripts"
-if _TASK_FORMAT_DIR.exists():
-    sys.path.insert(0, str(_TASK_FORMAT_DIR))
 
 if _BACKLOG_CORE.exists():
     sys.path.insert(0, str(_BACKLOG_CORE.parent))

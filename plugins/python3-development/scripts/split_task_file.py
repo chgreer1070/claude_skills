@@ -42,9 +42,6 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 from rich.console import Console
 
-_SCRIPTS_DIR = Path(__file__).parent.parent / "skills" / "implementation-manager" / "scripts"
-sys.path.insert(0, str(_SCRIPTS_DIR))
-
 # sam_schema is the canonical task/plan schema package.
 # Installed as a workspace dependency in the project venv.
 # Fallback: add packages/ to sys.path for direct-script execution outside the venv.
@@ -54,8 +51,7 @@ if _SPLIT_SAM_PACKAGES_DIR not in sys.path:
     sys.path.insert(0, _SPLIT_SAM_PACKAGES_DIR)
 
 from sam_schema.core.query import load_plan as sam_load_plan
-
-from task_format import has_yaml_frontmatter  # ty: ignore[unresolved-import]
+from sam_schema.task_format import has_yaml_frontmatter
 
 if TYPE_CHECKING:
     from sam_schema.core.models import Task as SamTask
