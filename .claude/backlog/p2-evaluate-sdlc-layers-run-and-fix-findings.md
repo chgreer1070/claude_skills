@@ -7,9 +7,10 @@ metadata:
   added: '2026-02-23'
   priority: P2
   type: Bug
-  status: open
+  status: needs-grooming
   issue: '#249'
-  last_synced: '2026-03-21T16:01:30Z'
+  last_synced: '2026-03-21T08:20:58Z'
+  groomed: '2026-03-21'
 ---
 
 ## Story
@@ -33,6 +34,8 @@ The evaluate-sdlc-layers skill exists with six checks (cross-refs, doc completen
 
 ## RT-ICA
 
+<div><sub>2026-03-21T08:20:58Z</sub>
+
 RT-ICA Final: evaluate-sdlc-layers: Run and fix findings
 Goal: Run the six-check evaluate-sdlc-layers skill and fix all findings with --fix where applicable.
 Conditions:
@@ -51,8 +54,11 @@ New conditions discovered by swarm:
 - Layer 2 directory (.claude/docs/sdlc-layers/layer-2/) is missing — this is the primary finding the skill will report; not a grooming blocker, it IS the work
 
 Decision: APPROVED — all conditions AVAILABLE. Item is ready for planning phase.
+</div>
 
 ## Fact-Check
+
+<div><sub>2026-03-21T08:15:52Z</sub>
 
 ## Fact-Check Summary
 
@@ -73,10 +79,28 @@ Decision: APPROVED — all conditions AVAILABLE. Item is ready for planning phas
 
 **Inconclusive Item:** Layer 2 implementation status — SKILL.md describes checking for Layer 2 files (README, layer-2-overview, stack-profile-schema, stack-profile-template, pilot profiles), but the layer-2 directory does not exist. This is expected per backlog item intent ("evaluate and fix findings"), not a factual claim error. The skill will correctly identify this gap during execution.
 
+</div>
+
 ## Groomed (2026-03-21)
 
 
 ### Reproducibility
+
+<div><sub>2026-03-21T08:15:58Z</sub>
+
+Run the `/evaluate-sdlc-layers` skill to validate SDLC layer architecture across documentation, research metadata, integration points, and cross-references. The skill's 6 checks inspect:
+
+1. Cross-reference validity — verify linked paths exist (e.g., `.claude/docs/TASK_FILE_FORMAT.md`, layer-specific docs)
+2. Doc completeness — confirm all 9 Layer 0 docs, 6 Layer 1 docs, Layer 2 docs, and ARL docs are present
+3. Knowledge-Explorer layer filtering — test `uv run research/knowledge-explorer.py list --layer {0|1|2}` returns correct layer metadata
+4. Research entry layer metadata — verify frontmatter contains `layer:` field in `.md` files under `research/`
+5. Integration points — cross-check skill documentation references layer model (work-backlog-item, groom-backlog-item)
+6. Consistency with plan — align actual file structure against deliverables from any attached plan
+
+Run the skill with `--dry-run` to see all failing checks without applying fixes. Failures appear as FAIL/PARTIAL results in the structured report with recommended actions.
+</div>
+
+<div><sub>2026-03-21T08:17:52Z</sub>
 
 Run `/evaluate-sdlc-layers` against `.claude/docs/sdlc-layers/` to trigger the validation checks. The need for fixes is revealed when any of the six checks produces a FAIL or PARTIAL result:
 
@@ -88,14 +112,45 @@ Run `/evaluate-sdlc-layers` against `.claude/docs/sdlc-layers/` to trigger the v
 6. **Plan Consistency FAIL**: Files implemented do not match File and Directory Changes table in attached plan, or dependency order is violated.
 
 Reproduce: Run the skill with no arguments to get a report, then use `--fix` to apply safe corrections.
+</div>
 
 ### Priority
+
+<div><sub>2026-03-21T08:16:11Z</sub>
+
+**P2 — Should-Have**: SDLC layers document the architecture for orchestrator discipline, role resolution, language stack selection, and research metadata. Without validation:
+
+- Cross-reference rot accumulates; linked docs become outdated or renamed, breaking dependency chains
+- Integration gaps obscure which skills/plugins depend on layer model — future changes may miss critical touchpoints
+- Missing research metadata prevents layer-aware research filtering, breaking discovery workflows
+- Incomplete docs leave implementors guessing at layer semantics — design intent becomes implicit
+
+P2 rather than P1 because the layer system is foundational but already partially functional; blocking issues are manageable. P2 signals: urgent enough to schedule soon, but not critical-path to active development.
+</div>
+
+<div><sub>2026-03-21T08:18:05Z</sub>
 
 **P2: Should-Have** — improves documentation consistency and prevents drift without blocking feature development.
 
 **Justification**: The SDLC Layer Separation Architecture is foundational to the development workflow; incomplete or broken cross-references weaken its authority and trustworthiness. Documentation drift creates confusion for new contributors and agents. However, this is not urgent: it improves tooling quality, not core product functionality. P0 work (authentication, core services) and P1 work (critical tooling) take precedence. Once P0/P1 items stabilize, validation ensures the architectural foundation remains sound for scaling.
+</div>
 
 ### Impact
+
+<div><sub>2026-03-21T08:16:24Z</sub>
+
+If this item is never completed:
+
+- **Broken docs**: Cross-references point to moved, renamed, or deleted files; docs become non-executable guidance
+- **Missing layer metadata**: Research entries lack `layer:` frontmatter, breaking the knowledge-explorer layer filtering feature and preventing discovery workflows from scoping properly
+- **Integration ambiguity**: Skills like `work-backlog-item` and `groom-backlog-item` remain undocumented in relation to layer model; future maintainers don't know which skill layers to load for which task
+- **Silent divergence**: Plan artifacts diverge from implementation without audit trail; layers semantics decay as documentation drifts from code
+- **Reduced discoverability**: Without complete layer docs, new developers cannot understand orchestrator discipline, role resolution, or language manifest structure — onboarding friction increases
+
+Resolution: Systematic validation + automated fixes prevent silent doc rot and keep architecture documentation aligned with implementation.
+</div>
+
+<div><sub>2026-03-21T08:18:21Z</sub>
 
 **If this work is not done:**
 
@@ -107,8 +162,25 @@ Reproduce: Run the skill with no arguments to get a report, then use `--fix` to 
 - **Scaled maintenance debt**: Each new entry, link, or cross-reference is a chance to introduce inconsistency. Without validation, debt compounds exponentially as codebase grows.
 
 **Operationally**: Contributors become unsure whether layer docs are current, leading to either ignoring them or working around them. Layer architecture degrades from authoritative to aspirational.
+</div>
 
 ### Expected Behavior
+
+<div><sub>2026-03-21T08:16:38Z</sub>
+
+Success state: `/evaluate-sdlc-layers --fix` runs to completion with all 6 checks reporting PASS:
+
+1. **Cross-Reference Validation**: PASS — all linked paths in `.claude/docs/sdlc-layers/` exist and contain expected content
+2. **Doc Completeness**: PASS — all 9 Layer 0 docs, 6 Layer 1 docs, Layer 2 docs, and ARL docs are present at expected paths
+3. **Knowledge-Explorer Layer Filter**: PASS — `uv run research/knowledge-explorer.py list --layer {0|1|2}` returns entries tagged with correct layer; non-tagged entries are excluded
+4. **Research Entry Layer Metadata**: PASS — all research `.md` files have frontmatter `layer:` field set correctly (e.g., `layer: "2"` for fastapi.md)
+5. **Integration Points**: PASS — work-backlog-item and groom-backlog-item skills document layer model; orchestrator/language-manifest docs reference layer 0 gates
+6. **Plan Consistency**: PASS — file and directory structure matches attached plan deliverables (or no plan present)
+
+After `--fix`, no regressions in `.claude/docs/sdlc-layers/`; files contain valid markdown with correct frontmatter and working cross-references.
+</div>
+
+<div><sub>2026-03-21T08:18:33Z</sub>
 
 **Success state**: Running `/evaluate-sdlc-layers` produces a report with all six checks returning **PASS**:
 
@@ -125,8 +197,21 @@ Reproduce: Run the skill with no arguments to get a report, then use `--fix` to 
 With `--fix` applied, any auto-fixable issues (broken paths, missing frontmatter, obvious typos, missing directory stubs) are corrected, and the report documents each change made.
 
 **Verification**: Re-running `/evaluate-sdlc-layers` after `--fix` should produce all PASS with zero findings reported. No regression in `.claude/docs/sdlc-layers/` or related docs.
+</div>
 
 ### Acceptance Criteria
+
+<div><sub>2026-03-21T08:16:51Z</sub>
+
+- [ ] Run `/evaluate-sdlc-layers --dry-run` and generate report with all 6 checks clearly listed (Cross-Reference, Doc Completeness, Knowledge-Explorer, Research Metadata, Integration Points, Plan Consistency)
+- [ ] Run `/evaluate-sdlc-layers --fix` and apply all safe fixes; report outputs each change (e.g., "Updated research/fastapi.md frontmatter: added layer: 2", "Fixed cross-reference in layer-1/README.md")
+- [ ] After `--fix`, re-run `/evaluate-sdlc-layers` and confirm all 6 checks show PASS (no regressions)
+- [ ] Verify `.claude/docs/sdlc-layers/` contains all expected files: 9 Layer 0 docs, 6 Layer 1 docs, Layer 2 structure, ARL docs
+- [ ] Confirm no markdown syntax errors or missing frontmatter fields in any `.md` file under `.claude/docs/sdlc-layers/`
+- [ ] Document any findings in backlog/plan for follow-up (e.g., broken references that require manual review)
+</div>
+
+<div><sub>2026-03-21T08:18:49Z</sub>
 
 - [ ] **AC1**: Run `/evaluate-sdlc-layers --dry-run` against `.claude/docs/sdlc-layers/` and review findings report. Document any FAIL or PARTIAL results observed.
 - [ ] **AC2**: Run `/evaluate-sdlc-layers --fix` to apply safe corrections. Capture output showing what was changed (paths fixed, metadata added, etc.).
@@ -138,8 +223,29 @@ With `--fix` applied, any auto-fixable issues (broken paths, missing frontmatter
 - [ ] **AC8**: Plan consistency check compares attached plan's File and Directory Changes table against actual implementation; no missing or diverged items.
 - [ ] **AC9**: Re-run `/evaluate-sdlc-layers --dry-run` after fixes and confirm all six checks return PASS; zero findings reported.
 - [ ] **AC10**: Verify no regression in `.claude/docs/sdlc-layers/` — all existing content preserved, new files/metadata are additions only.
+</div>
 
 ### Files
+
+<div><sub>2026-03-21T08:17:10Z</sub>
+
+Directly modified by `/evaluate-sdlc-layers --fix`:
+
+- `.claude/docs/sdlc-layers/layer-0/` — all 9 docs (README, sam-pipeline, arl-touchpoints, artifact-conventions, rt-ica-gate, verification-protocol, task-file-format, evidence-discipline, orchestrator-discipline)
+- `.claude/docs/sdlc-layers/layer-1/` — all 6 docs (README, layer-1-overview, language-manifest-template, linting-discovery-protocol, workflow-pattern-taxonomy, harness-role-mapping)
+- `.claude/docs/sdlc-layers/layer-2/` — README, layer-2-overview, stack-profile-schema, stack-profile-template, and pilot profiles (python-fastapi, python-cli)
+- `.claude/docs/sdlc-layers/arl-meta-layer.md`, `arl-human-probing-design.md` — ARL layer docs
+- `research/` — any `.md` files with missing or incorrect frontmatter `layer:` field
+- `.claude/skills/work-backlog-item/SKILL.md` — integration check only (no modification unless documentation update needed)
+- `.claude/skills/groom-backlog-item/SKILL.md` — integration check only
+- `plugins/development-harness/CLAUDE.md` — integration check only
+
+Indirectly verified (read-only during checks):
+- `research/knowledge-explorer.py` — layer filtering logic
+- Cross-referenced external docs (e.g., nested in plugins or sibling repos)
+</div>
+
+<div><sub>2026-03-21T08:19:05Z</sub>
 
 **Files likely to be read or modified by the skill and fixes**:
 
@@ -167,8 +273,27 @@ With `--fix` applied, any auto-fixable issues (broken paths, missing frontmatter
 
 **Output Artifact**:
 - Evaluation report written to stdout (no permanent file created unless agent saves it)
+</div>
 
 ### Effort
+
+<div><sub>2026-03-21T08:17:24Z</sub>
+
+**Low — 30–60 minutes**
+
+Justification:
+
+- The `/evaluate-sdlc-layers` skill is already implemented and ready to run — no new code needed
+- Most fixes are mechanical: add missing frontmatter fields, repair broken paths, verify file existence
+- 6 checks are well-scoped and focused (doc completeness, cross-references, metadata, integration points)
+- Safe fixes are automated by the skill's `--fix` flag — no manual intervention required for common issues
+- If all checks pass on first run: trivial (< 10 minutes to run and verify)
+- If failures found: moderate complexity (< 1 hour to read findings, apply fixes, re-run, and document results)
+
+Risk: Low. The skill runs read-only checks by default (`--dry-run`) and applies only safe, reversible fixes (`--fix`). No breaking changes anticipated.
+</div>
+
+<div><sub>2026-03-21T08:19:21Z</sub>
 
 **Estimate: Medium (4–8 hours)**
 
@@ -185,8 +310,11 @@ With `--fix` applied, any auto-fixable issues (broken paths, missing frontmatter
 - **Tool-assisted**: The skill already knows what to check; most work is applying the skill's suggestions and verifying results.
 
 **Success criterion**: All 6 checks PASS, zero findings, zero regression in existing docs.
+</div>
 
 ### Impact Radius
+
+<div><sub>2026-03-21T08:19:03Z</sub>
 
 
 
@@ -250,3 +378,5 @@ With `--fix` applied, any auto-fixable issues (broken paths, missing frontmatter
   - Cross-referenced files: verify all paths exist and are accurate
 - [ ] CI/config files updated and validated
   - No CI changes required for this evaluation; manual skill invocation sufficient
+
+</div>
