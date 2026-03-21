@@ -85,6 +85,38 @@ class QualityGates(BaseModel):
     post_merge: list[str] = Field(default_factory=list, validation_alias=AliasChoices("post_merge", "post-merge"))
 
 
+class GateRunMode(StrEnum):
+    """Execution strategy for a quality gate run."""
+
+    FAIL_FAST = "fail-fast"
+    """Stop after the first failing command."""
+
+    RUN_ALL = "run-all"
+    """Run all commands and collect all results."""
+
+
+class CommandResult(BaseModel):
+    """Result of executing one gate command."""
+
+    model_config = ConfigDict(populate_by_name=True, use_enum_values=True)
+
+    command: str = Field(..., description="Original command string as declared in the dispatch plan.")
+    exit_code: int = Field(..., description="Process exit code. 127 when command was not found.")
+    stdout: str = Field(default="")
+    stderr: str = Field(default="")
+    passed: bool = Field(..., description="True iff exit_code == 0.")
+
+
+class GateResult(BaseModel):
+    """Aggregate result of a quality gate run."""
+
+    model_config = ConfigDict(populate_by_name=True, use_enum_values=True)
+
+    passed: bool = Field(..., description="True iff every CommandResult.passed is True.")
+    results: list[CommandResult] = Field(default_factory=list)
+    mode: GateRunMode = Field(..., description="Execution mode used for this run.")
+
+
 class DispatchPlan(BaseModel):
     """Root model for plan/milestone-{N}-dispatch.yaml."""
 

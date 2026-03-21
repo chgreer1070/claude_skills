@@ -9,8 +9,11 @@ Import directly from this package:
 from __future__ import annotations
 
 from dispatch_schema.core.models import (
+    CommandResult,
     ConflictGroup,
     DispatchPlan,
+    GateResult,
+    GateRunMode,
     ItemPriority,
     ItemStatus,
     MilestoneHeader,
@@ -19,13 +22,17 @@ from dispatch_schema.core.models import (
     WaveItem,
 )
 from dispatch_schema.core.validator import StalePlanResult, ValidationResult, detect_stale_plan, validate_plan_integrity
+from dispatch_schema.gates import run_quality_gates
 from dispatch_schema.readers.yaml_reader import read_dispatch_plan
 from dispatch_schema.writers.yaml_writer import write_dispatch_plan
 
 __all__ = [
     # Models
+    "CommandResult",
     "ConflictGroup",
     "DispatchPlan",
+    "GateResult",
+    "GateRunMode",
     "ItemPriority",
     "ItemStatus",
     "MilestoneHeader",
@@ -38,6 +45,8 @@ __all__ = [
     "detect_stale_plan",
     # I/O
     "read_dispatch_plan",
+    # Gates
+    "run_quality_gates",
     "validate_plan_integrity",
     "write_dispatch_plan",
 ]
