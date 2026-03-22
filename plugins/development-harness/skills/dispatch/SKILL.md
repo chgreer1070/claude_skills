@@ -8,6 +8,8 @@ user-invocable: true
 
 Teams are the standard mechanism for parallel work. When you have 2+ independent tasks, dispatch one agent per problem domain via TeamCreate. This keeps your context window clean and gets results faster.
 
+For the full delegation quality framework — verification flowchart, ecosystem context rules, anti-pattern taxonomy — activate the `/agent-orchestration:agent-orchestration` skill.
+
 ## The Pattern
 
 ```mermaid
@@ -65,26 +67,38 @@ CONTEXT:
 
 All agents in the same team launch concurrently.
 
-## Agent Prompt Quality
+## Agent Prompt Structure
 
-Each agent prompt needs four things — nothing more:
+Every agent prompt uses four canonical sections from the delegation template:
 
-**Observations** — what you observed, not what you think is wrong. Verbatim error messages, file paths, command output already in your context. Do NOT run commands to gather data for the agent — the agent has tools and gathers its own data.
+**OBSERVATIONS** — what you observed, not what you think is wrong. Verbatim error messages, file paths, command output already in your context. Use "observed", "measured", "reported" language only. This enables agents to apply the scientific method — forming their own hypotheses from facts rather than inheriting your guesses.
 
-**Definition of success** — measurable outcome. What does DONE look like? Include how to verify.
+**DEFINITION OF SUCCESS** — measurable outcome. What does DONE look like? Include verification method.
 
-**Context** — where to look, what's in scope, what constraints exist. File paths you already know. Do NOT read files to "understand" before delegating.
+**CONTEXT** — where to look, what's in scope, what constraints exist. File paths you already know.
 
-**Skills to load** — relevant skills the agent should activate.
+**ECOSYSTEM CONTEXT** — session-specific facts the agent cannot find in CLAUDE.md: authenticated CLIs, session-specific access, non-obvious doc locations. Omit if nothing session-specific applies.
 
 ### What NOT to include
 
 - Pre-gathered data the agent will collect itself (anti-pattern: running `ruff check` then pasting 244 errors)
 - Prescriptions for HOW to implement ("use sed to edit line 42")
-- Assumptions stated as facts ("the bug is in the parser")
+- Assumptions stated as facts ("the bug is in the parser") — state these as "Hypothesis to verify:"
 - Tool dictation ("use the MCP GitHub tool to fetch logs")
 
 The agent is a specialist with full tool access and an empty context window. Describe the ecosystem and the goal — let the agent determine the approach.
+
+## Pre-Send Verification (5 Checks)
+
+Before launching agents, verify each prompt:
+
+1. Uses observational language only — no "I think", "probably", "likely", "seems"
+2. Defines WHAT must work, not HOW to implement it
+3. Contains no pre-gathered data you collected by running commands now
+4. References file paths rather than transcribing file contents inline
+5. Describes the ecosystem — does not name a specific tool to use
+
+For the full verification flowchart with per-check remediation steps, activate `/agent-orchestration:agent-orchestration`.
 
 ## Step 4 — Wait for Results
 
@@ -134,6 +148,8 @@ Shut down teammates first via SendMessage shutdown requests, then delete the tea
 **No observations** — "Fix the race condition" without error messages or file locations. Paste what you observed.
 
 **Pre-gathering** — Reading files and running diagnostics before delegating. The agent does this — you save context by not doing it.
+
+**Assumption cascade** — "I think the issue is X, which probably means Y, so likely Z needs fixing." Each unverified assumption compounds. Replace with observed symptoms and let the agent investigate.
 
 **Prescribing solutions** — "Replace lines 127-138 with a helper function." Describe the problem and success criteria. The agent determines the approach.
 
