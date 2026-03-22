@@ -191,15 +191,15 @@ class ArtifactBackend(Protocol):
 
         Args:
             path: Repo-relative path to the artifact file (e.g.
-                ``plan/architect-foo.md``).  Must start with ``plan/`` and
-                must not escape the repository root.
+                ``plan/architect-foo.md`` or ``research/findings.md``).
+                Must not escape the repository root.
 
         Returns:
             Raw UTF-8 file content.
 
         Raises:
             ValueError: When *path* fails the safety checks (path traversal
-                or non-plan path).
+                detected — path resolves outside the repository root).
             FileNotFoundError: When the file does not exist in the root
                 worktree (cache miss — the artifact is registered but not yet
                 committed or was deleted).
@@ -365,22 +365,21 @@ class GitHubArtifactProvider:
     def read_artifact_content(self, path: str) -> str:
         """Read artifact file content from the root worktree filesystem.
 
-        Validates that *path*:
-
-        1. Does not contain ``..`` components (path traversal prevention).
-        2. Starts with ``plan/`` (only plan artifacts are accessible).
-        3. When resolved, is under the repository root (double-check after
-           ``Path.resolve()``).
+        Validates that *path* resolves to a location inside the repository
+        root (path traversal prevention via ``Path.resolve()``).  No
+        directory prefix restriction is applied — any repo-relative path is
+        accessible, including ``plan/``, ``research/``, and others.
 
         Args:
             path: Repo-relative path to the artifact file, e.g.
-                ``plan/architect-foo.md``.
+                ``plan/architect-foo.md`` or ``research/findings.md``.
 
         Returns:
             Raw UTF-8 file content.
 
         Raises:
-            ValueError: When *path* fails the safety checks.
+            ValueError: When *path* resolves outside the repository root
+                (path traversal detected).
             FileNotFoundError: When the resolved file does not exist.
         """
         self._validate_artifact_path(path)
@@ -476,26 +475,19 @@ class GitHubArtifactProvider:
     # ------------------------------------------------------------------
 
     def _validate_artifact_path(self, path: str) -> None:
-        """Raise ``ValueError`` when *path* fails the safety checks.
+        """Raise ``ValueError`` when *path* fails the path traversal check.
 
-        Two checks are applied:
-
-        - The repo-relative path must start with ``plan/`` to prevent access
-          to arbitrary files outside the plan directory.
-        - After resolution the absolute path must be a descendant of
-          ``self._root_worktree`` to prevent path traversal (``..``).
+        The resolved absolute path must be a descendant of
+        ``self._root_worktree``.  No directory prefix restriction is applied —
+        any repo-relative path (``plan/``, ``research/``, etc.) is permitted
+        as long as it stays inside the repository root.
 
         Args:
             path: Repo-relative path string as provided by the caller.
 
         Raises:
-            ValueError: When either safety check fails.
+            ValueError: When the resolved path escapes the repository root.
         """
-        if not path.startswith("plan/"):
-            raise ValueError(
-                f"Artifact path must start with 'plan/' — got {path!r}. "
-                "Only plan artifacts are accessible via artifact_read."
-            )
         # Resolve the candidate path and check it stays under root_worktree.
         candidate = (self._root_worktree / path).resolve()
         try:

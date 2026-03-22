@@ -974,7 +974,7 @@ async def artifact_read(
        the artifact path against the root worktree.
 
     Path safety (filesystem path): the provider validates that the resolved
-    path is under the repository root and within the plan/ directory.
+    path is under the repository root (path traversal prevention).
 
     Returns:
         Dict with type (str), path (str), content (str), status (str), and

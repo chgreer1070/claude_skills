@@ -38,7 +38,7 @@ def worktree(tmp_path: Path) -> Path:
     """Provide a temporary directory acting as the root worktree.
 
     Tests: A filesystem root containing plan/ directory
-    How: Create tmp_path/plan/ to satisfy plan-prefix path validation.
+    How: Create tmp_path/plan/ for tests that read from the plan/ directory.
     Why: GitHubArtifactProvider validates paths against root_worktree; tests
          need real filesystem paths for read_artifact_content.
     """
@@ -303,8 +303,8 @@ class TestGitHubArtifactProviderSetManifest:
 class TestGitHubArtifactProviderReadArtifactContent:
     """Unit tests for GitHubArtifactProvider.read_artifact_content.
 
-    Tests: Successful read, path traversal rejection, non-plan path rejection,
-           and FileNotFoundError on missing file (cache miss).
+    Tests: Successful read from plan/ and other directories, path traversal
+           rejection, and FileNotFoundError on missing file (cache miss).
     Strategy: Uses real tmp_path filesystem. No GitHub mocking needed for read.
     """
 
@@ -327,27 +327,36 @@ class TestGitHubArtifactProviderReadArtifactContent:
         assert "Content here." in content
 
     def test_rejects_path_traversal_with_dotdot(self, provider: GitHubArtifactProvider) -> None:
-        """read_artifact_content rejects paths containing path traversal components.
+        """read_artifact_content rejects paths that escape the repository root.
 
         Tests: Path traversal rejection (architect spec 7.3 scenario 6)
-        How: Pass ../../../etc/passwd as path; assert ValueError raised.
+        How: Pass ../../../etc/passwd as path; assert ValueError raised with
+             "path traversal" in the message.
         Why: Critical security requirement — must prevent arbitrary file reads.
         """
         # Arrange / Act / Assert
-        with pytest.raises(ValueError, match="plan/"):
+        with pytest.raises(ValueError, match="traversal"):
             provider.read_artifact_content("../../../etc/passwd")
 
-    def test_rejects_path_not_starting_with_plan(self, provider: GitHubArtifactProvider) -> None:
-        """read_artifact_content rejects paths that do not start with 'plan/'.
+    def test_reads_research_path_outside_plan_directory(self, provider: GitHubArtifactProvider, worktree: Path) -> None:
+        """read_artifact_content reads files outside plan/ (e.g. research/).
 
-        Tests: Non-plan path rejection (architect spec 7.3 scenario 7)
-        How: Pass src/main.py as path; assert ValueError raised.
-        Why: Only plan artifacts are accessible via artifact_read — prevents
-             leaking source code, credentials, or other sensitive files.
+        Tests: Removal of plan/ prefix restriction — any repo-relative path allowed
+        How: Write a file to research/; call read_artifact_content; assert content returned.
+        Why: Research artifacts live under research/, not plan/. The path traversal
+             protection (resolve + relative_to) is the real security boundary.
         """
-        # Arrange / Act / Assert
-        with pytest.raises(ValueError, match="plan/"):
-            provider.read_artifact_content("src/main.py")
+        # Arrange
+        research_dir = worktree / "research"
+        research_dir.mkdir()
+        research_file = research_dir / "findings.md"
+        research_file.write_text("# Research Findings\n\nContent.", encoding="utf-8")
+
+        # Act
+        content = provider.read_artifact_content("research/findings.md")
+
+        # Assert
+        assert "# Research Findings" in content
 
     def test_rejects_plan_path_with_embedded_traversal(self, provider: GitHubArtifactProvider) -> None:
         """read_artifact_content rejects plan/ paths that traverse outside root via resolve.
@@ -357,7 +366,7 @@ class TestGitHubArtifactProviderReadArtifactContent:
         Why: A path starting with plan/ could still escape via resolve() — must be caught.
         """
         # Arrange / Act / Assert
-        with pytest.raises(ValueError, match="path traversal"):
+        with pytest.raises(ValueError, match="traversal"):
             provider.read_artifact_content("plan/../../etc/shadow")
 
     def test_raises_file_not_found_for_registered_but_missing_file(self, provider: GitHubArtifactProvider) -> None:
@@ -372,16 +381,26 @@ class TestGitHubArtifactProviderReadArtifactContent:
         with pytest.raises(FileNotFoundError):
             provider.read_artifact_content("plan/does-not-exist.md")
 
-    def test_rejects_src_path_even_with_plan_substring(self, provider: GitHubArtifactProvider) -> None:
-        """read_artifact_content rejects paths that contain 'plan' but don't start with 'plan/'.
+    def test_reads_path_with_plan_substring_not_at_start(
+        self, provider: GitHubArtifactProvider, worktree: Path
+    ) -> None:
+        """read_artifact_content reads paths where 'plan' appears but is not a prefix.
 
-        Tests: Path prefix check is strict (startswith 'plan/')
-        How: Pass 'myplan/architect.md'; assert ValueError raised.
-        Why: The check is startswith('plan/') — 'myplan/...' must not pass.
+        Tests: No plan/ prefix restriction — 'myplan/...' is now a valid repo-relative path
+        How: Write a file to myplan/; call read_artifact_content; assert content returned.
+        Why: The old plan/ check was artificial; path traversal protection is the real guard.
         """
-        # Arrange / Act / Assert
-        with pytest.raises(ValueError, match="plan/"):
-            provider.read_artifact_content("myplan/architect.md")
+        # Arrange
+        myplan_dir = worktree / "myplan"
+        myplan_dir.mkdir()
+        myplan_file = myplan_dir / "architect.md"
+        myplan_file.write_text("# My Plan\n\nContent.", encoding="utf-8")
+
+        # Act
+        content = provider.read_artifact_content("myplan/architect.md")
+
+        # Assert
+        assert "# My Plan" in content
 
 
 # ---------------------------------------------------------------------------
@@ -450,6 +469,40 @@ class _InMemoryArtifactBackend:
             content: File content string.
         """
         self._files[path] = content
+
+    def read_local_artifact_content(self, path: str) -> str | None:
+        """Return in-memory file content or None when absent.
+
+        Args:
+            path: Repo-relative file path.
+
+        Returns:
+            File content string or None.
+        """
+        return self._files.get(path)
+
+    def read_artifact_content_from_github(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+        """Return None — in-memory backend has no GitHub comment storage.
+
+        Args:
+            issue_number: GitHub issue number (unused).
+            artifact_type: Artifact type string (unused).
+            path: Repo-relative path (unused).
+
+        Returns:
+            Always None.
+        """
+        return None
+
+    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+        """No-op — in-memory backend stores content only via add_file.
+
+        Args:
+            issue_number: GitHub issue number (unused).
+            artifact_type: Artifact type string (unused).
+            path: Repo-relative path (unused).
+            content: Content string (unused).
+        """
 
 
 @pytest.fixture
