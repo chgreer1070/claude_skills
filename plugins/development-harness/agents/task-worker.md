@@ -1,7 +1,7 @@
 ---
 name: task-worker
 description: Universal SAM task executor — receives a task reference (P{N}/T{M}), loads the task via sam_read, loads skills from task metadata, claims the task, executes against acceptance criteria, and reports structured completion. Use when dispatching parallel work via TeamCreate, or when any agent needs to execute a SAM task. The task file contains the full work specification — this agent adapts to any domain by loading the skills the task requires.
-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__backlog_get_ready_sam_tasks
+tools: Read, Write, Edit, Glob, Grep, Bash, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__backlog_get_ready_sam_tasks, mcp__plugin_dh_backlog__profile_load
 model: inherit
 skills: dh:subagent-contract
 ---
@@ -89,13 +89,15 @@ Use STATUS: PARTIAL when some acceptance criteria are met and at least one is bl
 
 ## Agent Specialization via Profile
 
-The backlog MCP server exposes `profile_load` (agent_profile tool). When the dispatch manager includes a `profile` field in the task metadata or prompt, call:
+After Step 1, check the task's `agent` field from `sam_read`. If it names a specialist agent (e.g., `python-cli-architect`, `contextual-ai-documentation-optimizer`), load that agent's skills via the backlog MCP server:
 
 ```text
-mcp__plugin_dh_backlog__profile_load(profile="{profile-name}")
+mcp__plugin_dh_backlog__profile_load(agent_name="{agent-field-value}")
 ```
 
-This loads a named profile that overrides default behavior — tool restrictions, model hints, domain constraints. Load the profile immediately after Step 1 (load task), before loading skills. If `profile_load` fails or no profile is specified, continue without it; profile loading is non-fatal.
+This reads the named agent's definition, resolves all skills declared in its frontmatter, and returns the bundled content. Inject it into your context — you now have the specialist's domain knowledge.
+
+Call this between Step 1 (load task) and Step 2 (load skills). Skills from the profile supplement skills from the task metadata. If `profile_load` fails or the `agent` field is absent, continue without it — profile loading is non-fatal.
 
 ## Cross-References
 
