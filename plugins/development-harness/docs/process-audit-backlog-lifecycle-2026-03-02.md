@@ -12,7 +12,7 @@
 ```text
 CREATE → GROOM → WORK → (IMPLEMENT) → CLOSE/RESOLVE
 
-/create-backlog-item     → per-item file (.claude/backlog/) + optional GitHub Issue
+/create-backlog-item     → per-item file (~/.dh/projects/{slug}/backlog/) + optional GitHub Issue
 /groom-backlog-item      → validity check → fact-check → RT-ICA → classify → root-cause → groomer agent → write sections
 /work-backlog-item       → find item → already-implemented? → GitHub sync → auto-groom → RT-ICA gate → compose → /add-new-feature → update plan ref
   /add-new-feature       → discovery → codebase analysis → architecture → tasks → validate → context manifest
@@ -200,7 +200,7 @@ Auto mode derives priority from "urgency keywords" (`critical`, `required`, `mus
 
 `fact-check` SKILL.md Step 6 (Post-Actions) says:
 
-- Commit: `git add .claude/backlog/ && git commit -m "..."`
+- Commit: `git add ~/.dh/projects/{slug}/backlog/ && git commit -m "..."` (NOTE: state files outside repo — this step may be a no-op or apply to other committed files)
 - Push: `git push -u origin HEAD`
 
 This auto-commits and pushes without user confirmation, potentially:

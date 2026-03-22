@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import backlog_core.models as _backlog_models
+import dh_paths
 import tiktoken
 from backlog_core.artifact_provider import GitHubArtifactProvider
 from backlog_core.artifact_registry import ArtifactRegistry as _ArtifactRegistry
@@ -46,6 +47,30 @@ from sam_schema.core.query import (
 
 _log = logging.getLogger(__name__)
 _artifact_registry = _ArtifactRegistry()
+
+_PLAN_DIR_SENTINEL = "plan"
+
+
+def _resolve_plan_dir(plan_dir: str) -> Path:
+    """Resolve the plan directory, using dh_paths when the caller passes the default sentinel.
+
+    The MCP API exposes ``plan_dir`` with a default of ``"plan"`` (the legacy
+    repo-relative path).  When a caller omits the parameter (or passes the
+    sentinel value ``"plan"``), we route through :func:`dh_paths.plan_dir` so
+    the resolved path follows the three-tier DH state layout.  Explicit
+    non-sentinel values are resolved as-is, preserving backward compatibility
+    for callers that supply a concrete path.
+
+    Args:
+        plan_dir: The raw ``plan_dir`` string from the MCP tool parameter.
+
+    Returns:
+        Absolute :class:`~pathlib.Path` to the plan directory.
+    """
+    if plan_dir == _PLAN_DIR_SENTINEL:
+        return dh_paths.plan_dir()
+    return Path(plan_dir)
+
 
 # Token budget for auto-pagination: 4400 tokens (cl100k_base encoding).
 _TOKEN_BUDGET: int = 4_400
@@ -98,7 +123,7 @@ def sam_read(
         with an ``error`` key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         if task is not None:
             result = get_task_assignment(plan_path, task)
             return result.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -130,7 +155,7 @@ def sam_state(
     """
     try:
         new_status = TaskStatus(status)
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         result = update_status(plan_path, task, new_status)
         return result.model_dump(mode="json")
     except Exception as exc:  # noqa: BLE001
@@ -153,7 +178,7 @@ def sam_ready(
         a dict with an ``error`` key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         tasks = get_ready_tasks(plan_path)
         return {"ready_tasks": [t.model_dump(mode="json") for t in tasks], "count": len(tasks)}
     except Exception as exc:  # noqa: BLE001
@@ -178,7 +203,7 @@ def sam_status(
         key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         result = get_plan_status(plan_path)
         return result.model_dump(mode="json")
     except Exception as exc:  # noqa: BLE001
@@ -296,7 +321,7 @@ def sam_list(
         - ``warnings``: list of non-fatal warning strings.
         - ``errors``: list of error strings (e.g. unreadable files).
     """
-    p_dir = Path(plan_dir)
+    p_dir = _resolve_plan_dir(plan_dir)
     warnings: list[str] = []
     errors: list[str] = []
     messages: list[str] = []
@@ -409,7 +434,9 @@ def sam_create(
         if not isinstance(parsed, dict) or "tasks" not in parsed:
             return {"error": "tasks_yaml must be a YAML string with a top-level 'tasks' key"}
         task_list: list[dict[str, Any]] = parsed["tasks"]
-        plan = create_plan(slug=slug, goal=goal, tasks=task_list, plan_dir=Path(plan_dir), context=context, issue=issue)
+        plan = create_plan(
+            slug=slug, goal=goal, tasks=task_list, plan_dir=_resolve_plan_dir(plan_dir), context=context, issue=issue
+        )
         # Derive plan_number from source_path stem (e.g. "P003-auth-system" -> 3).
         plan_number: int | None = None
         if plan.source_path is not None:
@@ -473,7 +500,7 @@ def sam_update(
             plan_part = address
             task_id = None
 
-        plan_path = resolve_plan_address(plan_part, Path(plan_dir))
+        plan_path = resolve_plan_address(plan_part, _resolve_plan_dir(plan_dir))
 
         set_fields: dict[str, str] | None = None
         if set_fields_json is not None:
@@ -518,7 +545,7 @@ def sam_claim(
         ``{"claimed": false, "error": str}`` if the task cannot be claimed.
     """
     try:
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         updated_task = claim_task(plan_path, task)
     except (ValueError, KeyError) as exc:
         return {"claimed": False, "error": str(exc)}

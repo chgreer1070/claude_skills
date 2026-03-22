@@ -4,8 +4,8 @@ Reference for implementers planning backend integrations across the full develop
 
 For artifact-specific Protocol details, see [artifact-manifest-backends.md](./artifact-manifest-backends.md).
 For detailed platform research with citations, see [research/task-management/artifact-manifest-backend-providers.md](../../../research/task-management/artifact-manifest-backend-providers.md).
-For the architect spec, see [plan/architect-artifact-manifest.md](../../../plan/architect-artifact-manifest.md).
-For the feature context and desired outcomes, see [plan/feature-context-artifact-manifest.md](../../../plan/feature-context-artifact-manifest.md).
+For the architect spec, see `~/.dh/projects/{slug}/plan/architect-artifact-manifest.md` (state artifact, access via `artifact_read(artifact_type="architect")`).
+For the feature context and desired outcomes, see `~/.dh/projects/{slug}/plan/feature-context-artifact-manifest.md` (state artifact, access via `artifact_read(artifact_type="feature-context")`).
 
 ## Current Architecture
 
@@ -14,14 +14,14 @@ The development harness uses three subsystems, all currently backed by GitHub an
 ### Issues/Backlog (backlog MCP)
 
 - **Source of truth**: GitHub Issues via PyGithub REST + GraphQL
-- **Local cache**: `.claude/backlog/` per-item markdown files
+- **Local cache**: `~/.dh/projects/{slug}/backlog/` per-item markdown files (resolved via `dh_paths.backlog_dir()`)
 - **Implementation**: `backlog_core/` package, exposed as FastMCP 3.x server (`mcp__plugin_dh_backlog__*`)
 - **Operations**: CRUD on issues, label management, grooming, syncing, milestone/project management
 - **Sync direction**: GitHub Issues are canonical; local files are derived cache updated by `backlog_sync` and `backlog_pull`
 
 ### Plans/Tasks (SAM MCP)
 
-- **Source of truth**: Local YAML task files in `plan/` directory
+- **Source of truth**: Local YAML task files in `~/.dh/projects/{slug}/plan/` directory (resolved via `dh_paths.plan_dir()`)
 - **GitHub link**: Each task YAML can contain a `github_issue` field linking to a GitHub sub-issue for status sync
 - **Implementation**: `sam_schema/` package, exposed as FastMCP 3.x server (`mcp__plugin_dh_sam__*`)
 - **Operations**: List plans, read/claim/update tasks, check readiness, create plans
@@ -107,7 +107,7 @@ How each platform maps to the development harness core concepts:
 
 1. **Follow each platform's native primitive** -- Linear uses Attachments for structured metadata, not fake custom fields. GitLab uses issue description sections until its custom field API matures. Each provider maps to what the platform actually supports.
 
-2. **Backend as source of truth, local files as cache** -- same pattern as the current backlog MCP where GitHub Issues are canonical and `.claude/backlog/` files are derived. Future backends maintain this direction: the remote platform is authoritative, local state is a sync target.
+2. **Backend as source of truth, local files as cache** -- same pattern as the current backlog MCP where GitHub Issues are canonical and `~/.dh/projects/{slug}/backlog/` files are derived. Future backends maintain this direction: the remote platform is authoritative, local state is a sync target.
 
 3. **Protocol-based abstraction** -- consumers call the same MCP tools (`backlog_*`, `sam_*`, `artifact_*`) regardless of which backend is active. Backend selection is a server configuration concern, not a consumer concern.
 
@@ -178,8 +178,8 @@ sam MCP server
 ## References
 
 - [research/task-management/artifact-manifest-backend-providers.md](../../../research/task-management/artifact-manifest-backend-providers.md) -- cross-platform research with full citations
-- [plan/architect-artifact-manifest.md](../../../plan/architect-artifact-manifest.md) -- architecture spec for ArtifactBackend Protocol
-- [plan/feature-context-artifact-manifest.md](../../../plan/feature-context-artifact-manifest.md) -- problem space and desired outcomes
+- `~/.dh/projects/{slug}/plan/architect-artifact-manifest.md` -- architecture spec for ArtifactBackend Protocol (access via `artifact_read`)
+- `~/.dh/projects/{slug}/plan/feature-context-artifact-manifest.md` -- problem space and desired outcomes (access via `artifact_read`)
 - [artifact-manifest-backends.md](./artifact-manifest-backends.md) -- artifact-specific backend details
 - [backlog_core/artifact_provider.py](../backlog_core/artifact_provider.py) -- ArtifactBackend Protocol definition and GitHubArtifactProvider
 - [backlog_core/github.py](../backlog_core/github.py) -- current GitHub-specific issue operations

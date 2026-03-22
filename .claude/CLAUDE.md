@@ -281,7 +281,9 @@ Skip only for trivial single-step requests (typos, one-off questions, immediate 
 <backlog_operations>
 
 **Primary interface (MCP)**: Use `mcp__plugin_dh_backlog__*` tools for all backlog and GitHub issue CRUD.
-GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache.
+GitHub Issues are the source of truth; `~/.dh/projects/{slug}/backlog/` per-item files are the local cache.
+
+**DH state location**: `~/.dh/projects/{slug}/` where `{slug}` is the absolute project path with directory separators replaced by hyphens (leading hyphen is intentional). Example: `/home/ubuntulinuxqa2/repos/claude_skills` → `-home-ubuntulinuxqa2-repos-claude_skills`. Override with `DH_STATE_HOME` env var.
 
 Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`,
 `backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`.
@@ -289,7 +291,7 @@ Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, 
 All tools return a dict. Check for `error` key on failure. Success responses include `messages`
 and `warnings` lists.
 
-Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
+Do not edit `~/.dh/projects/{slug}/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
 
 Skills `/dh:create-backlog-item` and `/dh:work-backlog-item` invoke these tools. See `/backlog` skill.
 

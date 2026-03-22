@@ -162,7 +162,7 @@ Output of `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")`. CLI fallback
 }
 ```
 
-### 2.3 T0 Baseline YAML (plan/T0-baseline-{slug}.yaml)
+### 2.3 T0 Baseline YAML (~/.dh/projects/{slug}/plan/T0-baseline-{slug}.yaml)
 
 Written by `t0-baseline-capture` agent. Array of per-criterion capture records.
 
@@ -174,7 +174,7 @@ Written by `t0-baseline-capture` agent. Array of per-criterion capture records.
   stderr: "string"
 ```
 
-### 2.4 TN Verification YAML (plan/TN-verification-{slug}.yaml)
+### 2.4 TN Verification YAML (~/.dh/projects/{slug}/plan/TN-verification-{slug}.yaml)
 
 Written by `tn-verification-gate` agent. Array of `BookendVerification` records. No top-level verdict field.
 
@@ -205,13 +205,13 @@ Relevant fields for the pipeline:
 }
 ```
 
-### 2.6 Active-task context file (.claude/context/active-task-{CLAUDE_SESSION_ID}.json)
+### 2.6 Active-task context file (~/.dh/projects/{slug}/context/active-task-{CLAUDE_SESSION_ID}.json)
 
 Written by `/start-task` skill. Read by `task_status_hook.py` PostToolUse handler.
 
 ```json
 {
-  "task_file_path": "plan/P719-my-feature.yaml",
+  "task_file_path": "~/.dh/projects/{slug}/plan/P719-my-feature.yaml",
   "task_id": "T04",
   "parent_issue_number": 719
 }
@@ -239,13 +239,13 @@ Exit code 1 when: already claimed, task not found, or `status != not-started`.
 
 | Artifact | Publisher | Consumer(s) |
 |----------|-----------|-------------|
-| `plan/feature-context-{slug}.md` | `feature-researcher` | `python-cli-design-spec`, `swarm-task-planner` |
-| `plan/codebase/{FOCUS}.md` | `codebase-analyzer` | `swarm-task-planner` |
-| `plan/architect-{slug}.md` | `python-cli-design-spec` | `swarm-task-planner`, executing agents via `/start-task` |
-| `plan/P{NNN}-{slug}.yaml` | `swarm-task-planner` via `sam create` | `/implement-feature`, `sam ready`, `sam status`, all execution agents |
-| `plan/T0-baseline-{slug}.yaml` | `t0-baseline-capture` | `tn-verification-gate` |
-| `plan/TN-verification-{slug}.yaml` | `tn-verification-gate` | `/complete-implementation` Pre-Phase 1 check |
-| `.claude/context/active-task-{sid}.json` | `/start-task` skill | `task_status_hook.py` PostToolUse handler |
+| `~/.dh/projects/{slug}/plan/feature-context-{slug}.md` | `feature-researcher` | `python-cli-design-spec`, `swarm-task-planner` |
+| `~/.dh/projects/{slug}/plan/codebase/{FOCUS}.md` | `codebase-analyzer` | `swarm-task-planner` |
+| `~/.dh/projects/{slug}/plan/architect-{slug}.md` | `python-cli-design-spec` | `swarm-task-planner`, executing agents via `/start-task` |
+| `~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml` | `swarm-task-planner` via `sam create` | `/implement-feature`, `sam ready`, `sam status`, all execution agents |
+| `~/.dh/projects/{slug}/plan/T0-baseline-{slug}.yaml` | `t0-baseline-capture` | `tn-verification-gate` |
+| `~/.dh/projects/{slug}/plan/TN-verification-{slug}.yaml` | `tn-verification-gate` | `/complete-implementation` Pre-Phase 1 check |
+| `~/.dh/projects/{slug}/context/active-task-{sid}.json` | `/start-task` skill | `task_status_hook.py` PostToolUse handler |
 | `last-activity` field in task | `task_status_hook.py` PostToolUse handler | progress reporting |
 | `status: complete`, `completed` field | `task_status_hook.py` SubagentStop handler | `sam ready` readiness evaluation |
 | `status: in-progress`, `started` field | `sam claim` via `/start-task` | `sam status`, `sam ready` exclusion |
@@ -281,8 +281,8 @@ The `parent_issue_number` (GitHub issue) propagates through these fields:
 flowchart TD
     GH["GitHub Issue #N<br>created by backlog_add"]
     BI["BacklogItem.issue field<br>(string, e.g. '719')"]
-    PF["plan file name<br>plan/P{NNN}-{slug}.yaml<br>issue: N in plan YAML"]
-    CTX[".claude/context/active-task-{sid}.json<br>parent_issue_number: N<br>written by /start-task"]
+    PF["plan file name<br>~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml<br>issue: N in plan YAML"]
+    CTX["~/.dh/projects/{slug}/context/active-task-{sid}.json<br>parent_issue_number: N<br>written by /start-task"]
     HOOK["task_status_hook.py<br>reads parent_issue_number<br>syncs completion to GitHub sub-issue"]
     TF["Task field: github_issue<br>linked sub-issue number"]
     GH --> BI
@@ -314,10 +314,10 @@ Processing sequence:
 
 1. Read `prompt` field from hook input (falls back to `tool_input.prompt`).
 2. Parse prompt for `/start-task <path> --task <id>` or `Skill(skill="start-task", args="<path> --task <id>")` pattern.
-3. If no match, fall back to `.claude/context/active-task-{session_id}.json`.
+3. If no match, fall back to `~/.dh/projects/{slug}/context/active-task-{session_id}.json`.
 4. If still no match, exit 0 silently (not a `/start-task` sub-agent).
 5. Call `sam_update_status(full_path, task_id, COMPLETE, timestamp_field="completed")`.
-6. Delete `.claude/context/active-task-{session_id}.json`.
+6. Delete `~/.dh/projects/{slug}/context/active-task-{session_id}.json`.
 7. Call `sync_completion_to_github()` — best-effort, never changes exit code.
 
 Fields written: `status: complete`, `completed: <ISO timestamp>`
@@ -334,7 +334,7 @@ Context:    Declared on /start-task skill
 Processing sequence:
 
 1. Read `session_id` from hook input. If absent, exit 0.
-2. Read `.claude/context/active-task-{session_id}.json`. If absent, exit 0.
+2. Read `~/.dh/projects/{slug}/context/active-task-{session_id}.json`. If absent, exit 0.
 3. Resolve `task_file_path` and `task_id` from context file.
 4. Read current task via `sam_get_task`. If `status == complete`, return without writing.
 5. Call `sam_update_plan_fields(full_path, task_id, set_fields={"last-activity": <ISO timestamp>})`.

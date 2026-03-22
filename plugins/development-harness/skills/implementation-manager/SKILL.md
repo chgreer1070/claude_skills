@@ -39,7 +39,7 @@ mcp__plugin_dh_sam__sam_list()
     {
       "slug": "prepare-host",
       "task_file": "tasks-1-prepare-host.md",
-      "path": "/path/to/project/plan/tasks-1-prepare-host.md"
+      "path": "~/.dh/projects/{project-slug}/plan/tasks-1-prepare-host.md"
     }
   ],
   "count": 1

@@ -32,6 +32,7 @@ import sys
 from pathlib import Path
 from typing import Annotated, NoReturn
 
+import dh_paths
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -63,6 +64,45 @@ except ImportError:
 app = typer.Typer(name="sam", help="SAM task/plan file interface.", no_args_is_help=True)
 
 _OUTPUT_FORMATS = ("json", "yaml", "rich")
+
+
+def _coerce_plan_dir(plan_dir: Path | None) -> Path:
+    """Return the resolved plan directory.
+
+    When ``plan_dir`` is ``None`` (the Typer default for all commands), returns
+    the DH-paths canonical location via :func:`dh_paths.plan_dir`.  When an
+    explicit path is supplied on the command line, that path is returned as-is.
+
+    Args:
+        plan_dir: Path supplied by the caller, or ``None`` when the option was
+                  omitted.
+
+    Returns:
+        Resolved :class:`~pathlib.Path` to the plan directory.
+    """
+    if plan_dir is None:
+        return dh_paths.plan_dir()
+    return plan_dir
+
+
+def _coerce_backlog_dir(backlog_dir: Path | None) -> Path:
+    """Return the resolved backlog directory.
+
+    When ``backlog_dir`` is ``None`` (the Typer default for the migrate command),
+    returns the DH-paths canonical location via :func:`dh_paths.backlog_dir`.
+    When an explicit path is supplied on the command line, that path is returned
+    as-is.
+
+    Args:
+        backlog_dir: Path supplied by the caller, or ``None`` when the option was
+                     omitted.
+
+    Returns:
+        Resolved :class:`~pathlib.Path` to the backlog directory.
+    """
+    if backlog_dir is None:
+        return dh_paths.backlog_dir()
+    return backlog_dir
 
 
 def _err(msg: str, exit_code: int = 1) -> NoReturn:
@@ -267,7 +307,7 @@ def _read_task_assignment(plan_path: Path, task_id: str, output_format: str) -> 
 
 @app.command(name="list")
 def list_plans(
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
     search: Annotated[str | None, typer.Option("--search", help="Case-insensitive substring filter")] = None,
     offset: Annotated[int, typer.Option("--offset", help="Zero-based index of first item to return")] = 0,
     limit: Annotated[int | None, typer.Option("--limit", help="Maximum number of items to return")] = None,
@@ -291,6 +331,7 @@ def list_plans(
         limit: Maximum number of items to return. Defaults to all results.
         output_format: Output serialization format (json or yaml).
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     if output_format not in _OUTPUT_FORMATS:
         _err(f"Invalid format '{output_format}'. Must be one of: {', '.join(_OUTPUT_FORMATS)}")
 
@@ -349,7 +390,7 @@ def _plan_summary_matches(summary: dict[str, object], search: str) -> bool:
 @app.command()
 def read(
     address: Annotated[str, typer.Argument(help="Plan address (P{N}) or task address (P{N}/T{M})")],
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
     output_format: Annotated[str, typer.Option("--format", help="Output format: json|yaml|rich")] = "json",
 ) -> None:
     """Read a plan or task and print its fields.
@@ -366,6 +407,7 @@ def read(
         plan_dir: Directory to search for plan files.
         output_format: Output serialization format.
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     if output_format not in _OUTPUT_FORMATS:
         _err(f"Invalid format '{output_format}'. Must be one of: {', '.join(_OUTPUT_FORMATS)}")
 
@@ -388,7 +430,7 @@ def read(
 def state(
     address: Annotated[str, typer.Argument(help="Task address: P{plan}/T{task}")],
     new_status: Annotated[str, typer.Argument(help="New status value")],
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
 ) -> None:
     """Update a task's status.
 
@@ -397,6 +439,7 @@ def state(
         new_status: New status string (e.g., ``complete``, ``in-progress``).
         plan_dir: Directory to search for plan files.
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     try:
         plan_ref, task_ref = parse_address(address)
     except ValueError as exc:
@@ -440,7 +483,7 @@ def state(
 @app.command()
 def ready(
     plan_address: Annotated[str, typer.Argument(help="Plan address: P{plan}")],
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
     output_format: Annotated[str, typer.Option("--format", help="Output format: json|yaml")] = "json",
 ) -> None:
     """List tasks ready for dispatch.
@@ -450,6 +493,7 @@ def ready(
         plan_dir: Directory to search for plan files.
         output_format: Output serialization format (json or yaml).
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     if output_format not in _OUTPUT_FORMATS:
         _err(f"Invalid format '{output_format}'. Must be one of: {', '.join(_OUTPUT_FORMATS)}")
 
@@ -479,7 +523,7 @@ def status(
     plan_address: Annotated[
         str | None, typer.Argument(help="Plan address: P{plan}. Omit with --all to list every plan.")
     ] = None,
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
     output_format: Annotated[str, typer.Option("--format", help="Output format: json|rich")] = "json",
     all_plans: Annotated[bool, typer.Option("--all", help="List status for every plan in plan_dir")] = False,
 ) -> None:
@@ -494,6 +538,7 @@ def status(
         output_format: Output serialization format (json or rich).
         all_plans: If ``True``, return status for every plan found in ``plan_dir``.
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     if all_plans:
         if not plan_dir.exists():
             _err(f"Plan directory does not exist: {plan_dir}")
@@ -530,7 +575,7 @@ def status(
 def create(
     slug: Annotated[str, typer.Argument(help="Short identifier for the plan (e.g., auth-system)")],
     goal: Annotated[str, typer.Option("--goal", help="Human-readable goal statement")],
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Directory to create the plan in")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Directory to create the plan in")] = None,
     context: Annotated[str | None, typer.Option("--context", help="Plan-level context (markdown)")] = None,
     issue: Annotated[int | None, typer.Option("--issue", help="GitHub issue number")] = None,
     from_stdin: Annotated[bool, typer.Option("--stdin", help="Read task YAML from stdin")] = False,
@@ -556,6 +601,7 @@ def create(
         from_stdin: If ``True``, read task YAML from stdin.
         output_format: Output format (only ``json`` is supported).
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     tasks: list[dict[str, object]] = []
 
     if from_stdin:
@@ -593,7 +639,7 @@ def create(
 @app.command()
 def update(
     address: Annotated[str, typer.Argument(help="Plan address (P{N}) or task address (P{N}/T{M})")],
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
     set_field: Annotated[list[str], typer.Option("--set", help="field=value pairs to update")] = [],  # noqa: B006
     context: Annotated[str | None, typer.Option("--context", help="Set plan-level context field")] = None,
     append_section_name: Annotated[
@@ -622,6 +668,7 @@ def update(
         section_content: Body text for the appended section.
         output_format: Output format (only ``json`` is supported).
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     try:
         plan_ref, task_ref = parse_address(address)
     except ValueError as exc:
@@ -663,7 +710,7 @@ def update(
 @app.command()
 def claim(
     address: Annotated[str, typer.Argument(help="Task address: P{plan}/T{task}")],
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
     output_format: Annotated[str, typer.Option("--format", help="Output format: json")] = "json",
 ) -> None:
     """Claim a task by transitioning it to ``in-progress``.
@@ -681,6 +728,7 @@ def claim(
         plan_dir: Directory to search for plan files.
         output_format: Output format (only ``json`` is supported).
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     try:
         plan_ref, task_ref = parse_address(address)
     except ValueError as exc:
@@ -712,7 +760,7 @@ def claim(
 @app.command()
 def validate(
     address: Annotated[str, typer.Argument(help="Plan address: P{plan}")],
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
     output_format: Annotated[str, typer.Option("--format", help="Output format: json")] = "json",
 ) -> None:
     """Validate a plan file against the canonical schema.
@@ -729,6 +777,7 @@ def validate(
         plan_dir: Directory to search for plan files.
         output_format: Output format (only ``json`` is supported).
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
     try:
         plan_ref, _ = parse_address(address)
     except ValueError as exc:
@@ -1016,15 +1065,15 @@ def _update_backlog_refs(old_path: Path, new_path: Path, backlog_dir: Path) -> i
 @app.command()
 def migrate(
     plan_address: Annotated[str | None, typer.Argument(help="Plan address: P{plan}. Omit when using --all.")] = None,
-    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    plan_dir: Annotated[Path | None, typer.Option("--plan-dir", help="Plan directory")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview changes without writing")] = False,
     all_plans: Annotated[bool, typer.Option("--all", help="Migrate every legacy plan file in plan_dir")] = False,
     skip_sync: Annotated[
         bool, typer.Option("--skip-sync", help="Skip backlog sync to GitHub before migrating")
     ] = False,
     backlog_dir: Annotated[
-        Path, typer.Option("--backlog-dir", help="Backlog directory for plan reference updates")
-    ] = Path(".claude") / "backlog",
+        Path | None, typer.Option("--backlog-dir", help="Backlog directory for plan reference updates")
+    ] = None,
 ) -> None:
     """Migrate a legacy or YAML-frontmatter plan to canonical pure-YAML format.
 
@@ -1042,6 +1091,8 @@ def migrate(
         skip_sync: If ``True``, skip the pre-migration backlog sync step.
         backlog_dir: Directory containing backlog ``*.md`` files for reference updates.
     """
+    plan_dir = _coerce_plan_dir(plan_dir)
+    backlog_dir = _coerce_backlog_dir(backlog_dir)
     if all_plans:
         _migrate_all(plan_dir=plan_dir, dry_run=dry_run, skip_sync=skip_sync, backlog_dir=backlog_dir)
         return
@@ -1066,9 +1117,7 @@ def migrate(
         _err(str(exc), exit_code=2)
 
 
-def _migrate_all(
-    plan_dir: Path, dry_run: bool, skip_sync: bool, backlog_dir: Path = Path(".claude") / "backlog"
-) -> None:
+def _migrate_all(plan_dir: Path, dry_run: bool, skip_sync: bool, backlog_dir: Path | None = None) -> None:
     """Bulk-migrate all legacy plan files in ``plan_dir``.
 
     Steps:
@@ -1084,6 +1133,7 @@ def _migrate_all(
         skip_sync: If ``True``, skip the backlog sync step.
         backlog_dir: Directory containing backlog ``*.md`` files for reference updates.
     """
+    resolved_backlog_dir = _coerce_backlog_dir(backlog_dir)
     if not plan_dir.exists():
         _err(f"Plan directory does not exist: {plan_dir}")
 
@@ -1127,7 +1177,7 @@ def _migrate_all(
     ref_updates = 0
     if not dry_run:
         for old_path, new_path in migrated:
-            ref_updates += _update_backlog_refs(old_path, new_path, backlog_dir)
+            ref_updates += _update_backlog_refs(old_path, new_path, resolved_backlog_dir)
 
     # Step 5: Report
     typer.echo("")

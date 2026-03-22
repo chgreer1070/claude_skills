@@ -40,7 +40,7 @@ uv run sam claim P{N}/T{M}                         # Claim a task
 uv run sam ready P{N} --format json                # List ready tasks
 uv run sam status P{N}                             # Plan progress summary
 uv run sam validate P{N} --format json             # Validate plan (CLI only)
-uv run sam migrate plan/tasks-{N}-{slug}.md        # Migrate legacy format (CLI only)
+uv run sam migrate tasks-{N}-{slug}.md             # Migrate legacy format (CLI only)
 ```
 
 ---
@@ -49,9 +49,11 @@ uv run sam migrate plan/tasks-{N}-{slug}.md        # Migrate legacy format (CLI 
 
 ### File Names
 
+Plan files are stored under the per-project state directory (`~/.dh/projects/{project-slug}/plan/`), resolved via `dh_paths.plan_dir()`. The `{project-slug}` is computed from the absolute project root path by replacing `/` with `-`.
+
 ```text
-plan/P{NNN}-{slug}.yaml            # single-file plan (under 500 lines)
-plan/P{NNN}-{slug}/                # directory plan (500+ lines)
+~/.dh/projects/{project-slug}/plan/P{NNN}-{slug}.yaml            # single-file plan (under 500 lines)
+~/.dh/projects/{project-slug}/plan/P{NNN}-{slug}/                # directory plan (500+ lines)
     P{NNN}-PLAN.yaml               # plan-level metadata, goal, context, task list
     P{NNN}-ARCHITECT.md            # architecture spec
     P{NNN}-CONTEXT.md              # feature context
@@ -70,11 +72,11 @@ P719/T04      -- task T04 in plan P719
 my-slug/T1    -- task T1 in plan matching slug "my-slug"
 ```
 
-`sam read P1/T3` globs `plan/P001-*/` and finds `T03.yaml` (or the T03 section in a single-file plan).
+`sam read P1/T3` globs the plan directory under `dh_paths.plan_dir()` for `P001-*/` and finds `T03.yaml` (or the T03 section in a single-file plan).
 
 ### Legacy Names
 
-Plans created before this specification use `tasks-{N}-{slug}.md` naming. The addressing module resolves both patterns. Migrate using `sam migrate`. See [Legacy Format Support](#legacy-format-support).
+Plans created before this specification use `tasks-{N}-{slug}.md` naming (formerly stored in the repo-relative `plan/` directory, now resolved via `dh_paths.plan_dir()`). The addressing module resolves both patterns. Migrate using `sam migrate`. See [Legacy Format Support](#legacy-format-support).
 
 ---
 
@@ -214,7 +216,7 @@ echo "$YAML_CONTENT" | uv run sam create my-feature \
   --stdin \
   --format json
 
-# Output: { "path": "plan/P719-my-feature.yaml", "plan_number": 719, "task_count": 14 }
+# Output: { "path": "~/.dh/projects/{project-slug}/plan/P719-my-feature.yaml", "plan_number": 719, "task_count": 14 }
 ```
 
 Stdin YAML structure:
@@ -325,9 +327,9 @@ uv run sam validate P719 --format json
 ### sam migrate — Convert legacy format to pure YAML
 
 ```bash
-uv run sam migrate plan/tasks-3-integrate-sam-schema.md
+uv run sam migrate tasks-3-integrate-sam-schema.md
 # Converts YAML frontmatter .md file to pure YAML .yaml file
-# Output: plan/P719-integrate-sam-schema.yaml
+# Output: ~/.dh/projects/{project-slug}/plan/P719-integrate-sam-schema.yaml
 ```
 
 ---
@@ -340,13 +342,13 @@ The `sam` CLI reads but does not write these legacy formats:
 
 | Pattern | Example | Support |
 |---------|---------|---------|
-| `tasks-{N}-{slug}.md` with YAML frontmatter | `plan/tasks-3-my-feature.md` | Read via `sam read`, `sam ready`, `sam status` |
-| `tasks-{N}-{slug}/` directory with `.md` files | `plan/tasks-3-my-feature/T01.md` | Read only |
+| `tasks-{N}-{slug}.md` with YAML frontmatter | `tasks-3-my-feature.md` (under plan_dir()) | Read via `sam read`, `sam ready`, `sam status` |
+| `tasks-{N}-{slug}/` directory with `.md` files | `tasks-3-my-feature/T01.md` (under plan_dir()) | Read only |
 | Bold markdown fields (`**Status**: NOT STARTED`) | legacy `.md` files | Read via `sam migrate` preprocessing |
 
 ### Number Collision Warning
 
-When a canonical `P{NNN}-{slug}.yaml` file and a legacy `tasks-{NNN}-{slug}.md` file share the same number, the canonical file takes precedence. The `sam` CLI emits a warning to stderr:
+When a canonical `P{NNN}-{slug}.yaml` file and a legacy `tasks-{NNN}-{slug}.md` file share the same number (both under `plan_dir()`), the canonical file takes precedence. The `sam` CLI emits a warning to stderr:
 
 ```text
 WARNING: P698 resolved to 'P698-research-curator-code-analysis.yaml' but a legacy file
@@ -358,7 +360,7 @@ To resolve: migrate or rename the legacy file so numbers are unique.
 
 ### File Path Rejection
 
-Passing a raw file path (e.g., `plan/tasks-698-foo.md`) as an address is rejected with a clear error. Use plan addresses (`P698`, `gates-subprocess-timeout`) instead.
+Passing a raw file path (e.g., `tasks-698-foo.md`) as an address is rejected with a clear error. Use plan addresses (`P698`, `gates-subprocess-timeout`) instead.
 
 ### Migration Path
 
@@ -366,11 +368,12 @@ Migrate a legacy plan to the canonical format:
 
 ```bash
 # 1. Migrate format (YAML frontmatter .md -> pure YAML .yaml)
-uv run sam migrate plan/tasks-3-my-feature.md
+#    Legacy files are resolved from dh_paths.plan_dir() automatically
+uv run sam migrate tasks-3-my-feature.md
 
 # 2. Rename to P{NNN} convention (dry run first)
-uv run python scripts/rename_plan_files.py plan/ --dry-run
-uv run python scripts/rename_plan_files.py plan/
+uv run python scripts/rename_plan_files.py --dry-run
+uv run python scripts/rename_plan_files.py
 
 # 3. Update backlog plan references (handled by rename script with --update-backlog)
 ```
@@ -415,9 +418,9 @@ Disabled hooks take precedence over profile and exit 0 after consuming stdin (Cl
 Generate current schema files:
 
 ```bash
-uv run sam schema --model Plan > .claude/docs/plan-schema.json
-uv run sam schema --model Task > .claude/docs/task-schema.json
-uv run sam schema --model TaskAssignment > .claude/docs/assignment-schema.json
+uv run sam schema --model Plan > plugins/development-harness/docs/plan-schema.json
+uv run sam schema --model Task > plugins/development-harness/docs/task-schema.json
+uv run sam schema --model TaskAssignment > plugins/development-harness/docs/assignment-schema.json
 ```
 
 ---

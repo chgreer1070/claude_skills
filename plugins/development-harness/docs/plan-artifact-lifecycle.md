@@ -37,11 +37,11 @@ These artifacts capture the human's original intent. Agents must NEVER modify th
 
 | Artifact | Location | Created by |
 |---|---|---|
-| Backlog items | `.claude/backlog/*.md` | Human (via `/create-backlog-item`) |
+| Backlog items | `~/.dh/projects/{slug}/backlog/*.md` | Human (via `/create-backlog-item`) |
 | Grooming output | Embedded in backlog item under `## Groomed` | Human (via grooming session) |
 | Fact-check results | Embedded in backlog item under `## Fact-Check` | Human or agent (captures human-verified facts) |
 | RT-ICA assessments | Embedded in backlog item under `## RT-ICA` | Agent (captures human-approved assessment) |
-| Interview transcripts | `.claude/docs/interviews/` or inline | Human |
+| Interview transcripts | `.dh/docs/interviews/` or inline | Human |
 | Human design decisions | Embedded in feature-context under `## Original Request` or backlog item | Human |
 
 ### Category 2: Generated Artifacts (Mutable, Intent-Bound)
@@ -50,10 +50,10 @@ These artifacts are produced by agents during planning phases. They may be updat
 
 | Artifact | Location | Created by | Updated by |
 |---|---|---|---|
-| Feature context | `plan/feature-context-{slug}.md` | `feature-researcher` agent | `context-refinement` agent |
-| Codebase analysis | `plan/codebase/{FOCUS}.md` | `codebase-analyzer` agent | Not updated (informational snapshot) |
-| Architecture spec | `plan/architect-{slug}.md` | `python-cli-design-spec` agent | `context-refinement` agent |
-| Task plan | `plan/P{NNN}-{slug}.yaml` or `plan/P{NNN}-{slug}/` | `swarm-task-planner` agent | Status fields by hooks; Context Manifest by `context-refinement` |
+| Feature context | `~/.dh/projects/{slug}/plan/feature-context-{slug}.md` | `feature-researcher` agent | `context-refinement` agent |
+| Codebase analysis | `~/.dh/projects/{slug}/plan/codebase/{FOCUS}.md` | `codebase-analyzer` agent | Not updated (informational snapshot) |
+| Architecture spec | `~/.dh/projects/{slug}/plan/architect-{slug}.md` | `python-cli-design-spec` agent | `context-refinement` agent |
+| Task plan | `~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml` or `~/.dh/projects/{slug}/plan/P{NNN}-{slug}/` | `swarm-task-planner` agent | Status fields by hooks; Context Manifest by `context-refinement` |
 | Context Manifest | Embedded in task file | `context-gathering` agent | `context-refinement` agent (existing behavior) |
 
 ---
@@ -132,7 +132,7 @@ During task execution, agents record divergence observations in the task file un
 
 ### DN-1: {Brief title}
 
-- **Plan artifact**: plan/architect-{slug}.md, section "{section name}"
+- **Plan artifact**: ~/.dh/projects/{project-slug}/plan/architect-{slug}.md, section "{section name}"
 - **Plan claim**: "{quoted text from plan artifact}"
 - **Actual implementation**: "{what was actually done and why}"
 - **Classification**: design-refinement | intent-divergence
@@ -229,6 +229,7 @@ artifacts:
     status: current
     created_at: "2026-03-15T02:00:00Z"
     agent: swarm-task-planner
+# Note: paths are state-relative (resolved from dh_paths.state_root(), not project root)
 ```
 <!-- ARTIFACT_MANIFEST_END -->
 ```
@@ -237,7 +238,7 @@ Each entry records the artifact `type`, filesystem `path`, `status` (current, su
 
 ### Source of Truth
 
-GitHub is the source of truth for the manifest. Local plan files under `plan/` are the content cache — they hold the artifact content itself, but the manifest in the issue body is the authoritative registry of what artifacts exist, their types, and their status.
+GitHub is the source of truth for the manifest. Local plan files under `~/.dh/projects/{slug}/plan/` are the content cache — they hold the artifact content itself, but the manifest in the issue body is the authoritative registry of what artifacts exist, their types, and their status.
 
 ### Producer Registration
 
@@ -259,7 +260,7 @@ This policy applies forward-only. Existing plan artifacts are not retroactively 
 
 ### Existing Plan Artifacts
 
-No changes are made to existing files in `plan/`. Existing feature-context files, architect specs, and task files continue to work as before. They lack `Artifact Type` and `Intent Source` metadata, which means:
+No changes are made to existing files in `~/.dh/projects/{slug}/plan/`. Existing feature-context files, architect specs, and task files continue to work as before. They lack `Artifact Type` and `Intent Source` metadata, which means:
 
 - The `context-refinement` agent treats missing `Intent Source` as "skip intent-divergence classification"
 - All divergences in pre-policy artifacts are classified as `design-refinement` (safe default)
@@ -279,6 +280,6 @@ The `divergence-notes` field is optional with a default of 0. Existing task file
 New artifacts created after this policy is in place will include lifecycle metadata headers:
 
 - `Artifact Type: generated` -- identifies the artifact as a generated (mutable) artifact
-- `Intent Source: .claude/backlog/{backlog-item-file}.md` -- links to the human-decision artifact that established the intent
+- `Intent Source: ~/.dh/projects/{slug}/backlog/{backlog-item-file}.md` -- links to the human-decision artifact that established the intent
 
 These fields enable the `context-refinement` agent to locate the human intent when classifying divergence. Their absence in pre-policy artifacts triggers the safe default behavior described above.

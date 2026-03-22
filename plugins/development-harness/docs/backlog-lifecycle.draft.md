@@ -30,10 +30,10 @@ wins.
 - Issue body mirrors the item file body after each sync
 - Milestone field mirrors `metadata.milestone`
 
-### Layer 2 — `.claude/backlog/*.md` (local cache for agent consumption)
+### Layer 2 — `~/.dh/projects/{slug}/backlog/*.md` (local cache for agent consumption)
 
 Per-item files exist to avoid GitHub API saturation during agent sessions. Agents read
-these files instead of hitting the API for every lookup.
+these files instead of hitting the API for every lookup. Path resolved via `dh_paths.backlog_dir()`.
 
 - Named `{priority}-{slug}.md` — e.g., `p1-error-recovery.md`
 - Contain YAML frontmatter + body sections
@@ -43,7 +43,7 @@ these files instead of hitting the API for every lookup.
 ### Layer 3 — `backlog.py` (sole interface)
 
 All reads and writes to both layers go through this script. No direct edits to
-`.claude/backlog/*.md` files. No direct `gh issue edit` calls — use `backlog_update` MCP tool instead. The script handles:
+`~/.dh/projects/{slug}/backlog/*.md` files. No direct `gh issue edit` calls — use `backlog_update` MCP tool instead. The script handles:
 
 - Creating per-item files with correct frontmatter
 - Creating and closing GitHub Issues
@@ -78,7 +78,7 @@ uv run .claude/skills/backlog/scripts/backlog.py add \
 
 **What gets created**:
 
-- Per-item file: `.claude/backlog/{priority}-{slug}.md`
+- Per-item file: `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md`
 - Frontmatter fields set: `name`, `description`, `metadata.topic`, `metadata.source`,
   `metadata.added`, `metadata.priority`, `metadata.type`, `metadata.status: needs-grooming`
 - Body sections written: Description, optionally Acceptance Criteria, Research First,
@@ -99,7 +99,7 @@ passed (or the user confirmed in guided/quick mode).
 
 ### State 2: Synced to GitHub
 
-**Trigger**: `backlog sync` (also triggered by GitHub Action on `.claude/backlog/` changes).
+**Trigger**: `backlog sync` (also triggered by GitHub Action on `~/.dh/projects/{slug}/backlog/` changes).
 
 **Command**:
 
@@ -109,7 +109,7 @@ uv run .claude/skills/backlog/scripts/backlog.py sync [--dry-run]
 
 **What happens**:
 
-- Script scans `.claude/backlog/` for P0/P1 items without a `metadata.issue` field
+- Script scans `~/.dh/projects/{slug}/backlog/` for P0/P1 items without a `metadata.issue` field
 - Creates a GitHub Issue for each such item
 - Writes `metadata.issue: '#N'` back to the per-item file frontmatter
 - Applies `status:needs-grooming` and `priority:P*` labels to the issue
@@ -117,7 +117,7 @@ uv run .claude/skills/backlog/scripts/backlog.py sync [--dry-run]
 **Where data lives**: Both local file and GitHub Issue. The local file is now linked.
 
 **GitHub Action integration**: [VERIFY] The GitHub Action triggers `backlog sync` when
-`.claude/backlog/` files are changed in a push. This means committing a new P0/P1 item
+`~/.dh/projects/{slug}/backlog/` files are changed in a push. This means committing a new P0/P1 item
 file triggers issue creation automatically without a manual sync call.
 
 ---
@@ -200,21 +200,21 @@ file is created.
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py update "{title}" \
-  --plan "plan/P{NNN}-{slug}.yaml" \
+  --plan "~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml" \
   --status in-progress \
   -R Jamie-BitFlight/claude_skills
 ```
 
 **What gets written**:
 
-- `metadata.plan: plan/P{NNN}-{slug}.yaml` in per-item file frontmatter
+- `metadata.plan: ~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml` in per-item file frontmatter
 - `metadata.status: in-progress` in frontmatter
 - GitHub label: current status label removed, `status:in-progress` added
 
 **Critical constraint**: `status:in-progress` MUST NOT be set before RT-ICA returns APPROVED
 and the plan file exists. Setting it during grooming or RT-ICA checking is incorrect.
 
-**Where data lives**: Both local and GitHub. Plan file exists at `plan/P{NNN}-{slug}.yaml`.
+**Where data lives**: Both local and GitHub. Plan file exists at `~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml`.
 
 ---
 
@@ -227,7 +227,7 @@ acceptance criteria verification passes.
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py close "{title}" \
-  --plan "plan/P{NNN}-{slug}.yaml" \
+  --plan "~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml" \
   --checklist-pass \
   [-R Jamie-BitFlight/claude_skills]
 ```
@@ -305,7 +305,7 @@ uv run .claude/skills/backlog/scripts/backlog.py pull [--dry-run] [--force]
 
 ```mermaid
 flowchart TD
-    subgraph local["Local: .claude/backlog/"]
+    subgraph local["Local: ~/.dh/projects/{slug}/backlog/"]
         LF["Per-item file\n{priority}-{slug}.md\n(frontmatter + body)"]
     end
 
@@ -324,7 +324,7 @@ flowchart TD
     end
 
     Create(["/create-backlog-item"]) --> ADD
-    ADD -->|"Creates file\n.claude/backlog/{priority}-{slug}.md"| LF
+    ADD -->|"Creates file\n~/.dh/projects/{slug}/backlog/{priority}-{slug}.md"| LF
     ADD -->|"P0/P1 + --create-issue\nCreates issue + writes metadata.issue"| GH
 
     LF -->|"P0/P1 items missing issue"| SYNC
@@ -412,10 +412,10 @@ manages label transitions; no direct `gh label` calls are permitted. Use `backlo
 
 | Priority | GitHub Label | Local file naming |
 |----------|-------------|------------------|
-| P0 | `priority:P0` | `.claude/backlog/p0-{slug}.md` |
-| P1 | `priority:P1` | `.claude/backlog/p1-{slug}.md` |
-| P2 | `priority:P2` | `.claude/backlog/p2-{slug}.md` |
-| Ideas | `priority:Ideas` | `.claude/backlog/ideas-{slug}.md` |
+| P0 | `priority:P0` | `~/.dh/projects/{slug}/backlog/p0-{slug}.md` |
+| P1 | `priority:P1` | `~/.dh/projects/{slug}/backlog/p1-{slug}.md` |
+| P2 | `priority:P2` | `~/.dh/projects/{slug}/backlog/p2-{slug}.md` |
+| Ideas | `priority:Ideas` | `~/.dh/projects/{slug}/backlog/ideas-{slug}.md` |
 
 Priority labels are set at creation and do not change unless the item is explicitly
 re-prioritized. [VERIFY: whether `backlog update` supports `--priority` flag]
@@ -437,7 +437,7 @@ re-prioritized. [VERIFY: whether `backlog update` supports `--priority` flag]
 ### After `backlog add`
 
 ```text
-.claude/backlog/{priority}-{slug}.md  — CREATED
+~/.dh/projects/{slug}/backlog/{priority}-{slug}.md  — CREATED
   frontmatter:
     name: "Item title"
     description: "one-sentence summary"
@@ -464,7 +464,7 @@ GitHub Issue: NOT YET CREATED (unless P0/P1 + --create-issue)
 ### After `backlog sync` (P0/P1 item gets issue)
 
 ```text
-.claude/backlog/p1-{slug}.md  — MODIFIED
+~/.dh/projects/{slug}/backlog/p1-{slug}.md  — MODIFIED
   frontmatter:
     metadata.issue: '#42'          ← written back by script
 
@@ -478,7 +478,7 @@ GitHub Issue #42:
 ### After `backlog groom` (all sections written)
 
 ```text
-.claude/backlog/p1-{slug}.md  — MODIFIED
+~/.dh/projects/{slug}/backlog/p1-{slug}.md  — MODIFIED
   frontmatter:
     metadata.groomed: 2026-02-27   ← set after all 7 sections present
     metadata.status: groomed       ← [VERIFY: whether groom sets status or only update does]
@@ -501,9 +501,9 @@ GitHub Issue #42:
 ### After `backlog update --status in-progress`
 
 ```text
-.claude/backlog/p1-{slug}.md  — MODIFIED
+~/.dh/projects/{slug}/backlog/p1-{slug}.md  — MODIFIED
   frontmatter:
-    metadata.plan: "plan/P{NNN}-{slug}.yaml"
+    metadata.plan: "~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml"
     metadata.status: in-progress
 
 GitHub Issue #42:
@@ -513,7 +513,7 @@ GitHub Issue #42:
 ### After `backlog close --checklist-pass`
 
 ```text
-.claude/backlog/p1-{slug}.md  — MODIFIED (or DELETED if --cleanup)
+~/.dh/projects/{slug}/backlog/p1-{slug}.md  — MODIFIED (or DELETED if --cleanup)
   frontmatter:
     metadata.status: done
 
@@ -525,7 +525,7 @@ GitHub Issue #42:
 ### After `backlog resolve --reason "..."`
 
 ```text
-.claude/backlog/p1-{slug}.md  — MODIFIED (or DELETED if --cleanup)
+~/.dh/projects/{slug}/backlog/p1-{slug}.md  — MODIFIED (or DELETED if --cleanup)
   frontmatter:
     metadata.status: resolved
 
@@ -538,7 +538,7 @@ GitHub Issue #42:
 ### After `backlog close --cleanup` (or equivalent with cleanup)
 
 ```text
-.claude/backlog/p1-{slug}.md  — DELETED
+~/.dh/projects/{slug}/backlog/p1-{slug}.md  — DELETED
 
 GitHub Issue #42:  (state unchanged — already closed by backlog close)
 ```
@@ -569,7 +569,7 @@ metadata:
   groomed: 2026-02-21                             # set by groom-backlog-item
   issue: '#42'                                    # GitHub issue number
   milestone: 3                                    # GitHub milestone number
-  plan: plan/P005-fix-error-recovery.yaml          # SAM task file path
+  plan: ~/.dh/projects/{slug}/plan/P005-fix-error-recovery.yaml          # SAM task file path
 ---
 
 ## Description
@@ -579,7 +579,7 @@ metadata:
 ## Acceptance Criteria
 
 - Running `command X` produces `output Y`
-- File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter
+- File `~/.dh/projects/{slug}/backlog/p1-{slug}.md` exists with correct frontmatter
 
 ## Research First
 
@@ -617,7 +617,7 @@ Missing: None
 ## Acceptance Criteria Verification
 
 [PASS] Running `command X` produces `output Y` — verified at src/main.py:42
-[PASS] File exists with correct frontmatter — confirmed at .claude/backlog/p1-…
+[PASS] File exists with correct frontmatter — confirmed at ~/.dh/projects/{slug}/backlog/p1-…
 Overall: PASS (2/2 criteria met)
 ```
 
@@ -663,7 +663,7 @@ Items to verify in the next session by running the commands and observing actual
 
 ### GitHub Action Integration
 
-- [ ] Confirm GitHub Action triggers on `.claude/backlog/` file changes (read `.github/workflows/` for trigger definition)
+- [ ] Confirm GitHub Action triggers on `~/.dh/projects/{slug}/backlog/` file changes (read `.github/workflows/` for trigger definition)
 - [ ] Confirm Action calls `backlog sync` (not a different command)
 - [ ] Confirm Action runs with GITHUB_TOKEN available
 

@@ -11,12 +11,12 @@ metadata:
 
 # Add New Feature (SAM Workflow)
 
-You MUST convert the user's request into **durable SAM artifacts** under the repo:
+You MUST convert the user's request into **durable SAM artifacts** under the per-project state directory (`~/.dh/projects/{project-slug}/plan/`, resolved via `dh_paths.plan_dir()`):
 
-- `plan/feature-context-{slug}.md` (discovery)
-- `plan/codebase/{FOCUS}.md` (optional, analysis)
-- `plan/architect-{slug}.md` (architecture/design spec)
-- `plan/P{NNN}-{slug}.yaml` (executable task plan with Agents, deps, and verification)
+- `feature-context-{slug}.md` (discovery)
+- `codebase/{FOCUS}.md` (optional, analysis)
+- `architect-{slug}.md` (architecture/design spec)
+- `P{NNN}-{slug}.yaml` (executable task plan with Agents, deps, and verification)
 
 <feature_request>
 $ARGUMENTS
@@ -104,7 +104,7 @@ Research #{issue}: "{title}".
 If research artifacts exist for this issue, read them via
 artifact_read(issue_number={issue}, artifact_type="research") before starting
 discovery — they contain prior investigation findings that should be incorporated.
-Write plan/feature-context-{slug}.md with WHAT/WHY analysis — problem space, desired
+Write feature-context-{slug}.md to dh_paths.plan_dir() with WHAT/WHY analysis — problem space, desired
 outcome, stakeholders, risks, open questions.
 Do NOT prescribe HOW to build it.
 ```
@@ -115,7 +115,7 @@ After the agent writes the feature-context file, register it as an artifact on t
 mcp__plugin_dh_backlog__artifact_register(
     issue_number={issue},
     artifact_type="feature-context",
-    path="plan/feature-context-{slug}.md",
+    path="plan/feature-context-{slug}.md",  # state-relative path
     agent="feature-researcher"
 )
 ```
@@ -133,7 +133,7 @@ If helpful, delegate to `@dh:codebase-analyzer` for one or more focus areas:
 - testing
 - conventions
 
-Outputs go to `plan/codebase/`.
+Outputs go to `dh_paths.plan_dir() / "codebase/"` (resolves to `~/.dh/projects/{project-slug}/plan/codebase/`).
 
 Delegation prompt template (one per focus area):
 
@@ -150,7 +150,7 @@ statements of fact without citation, code smells, missing documentation.
 </quality_vigilance>
 
 Analyze {focus_area} for #{issue}: "{title}".
-Write plan/codebase/{focus_area}.md documenting what exists today — patterns,
+Write {focus_area}.md to dh_paths.plan_dir() / "codebase/" documenting what exists today — patterns,
 conventions, constraints.
 Do NOT prescribe changes.
 ```
@@ -161,7 +161,7 @@ After the agent writes each codebase analysis file, register it as an artifact:
 mcp__plugin_dh_backlog__artifact_register(
     issue_number={issue},
     artifact_type="codebase-analysis",
-    path="plan/codebase/{FOCUS}.md",
+    path="plan/codebase/{FOCUS}.md",  # state-relative path
     agent="codebase-analyzer"
 )
 ```
@@ -205,12 +205,13 @@ statements of fact without citation, code smells, missing documentation.
 </quality_vigilance>
 
 Design the implementation for #{issue}: "{title}".
-Read the feature context at plan/feature-context-{slug}.md.
-[If codebase analysis exists: Read plan/codebase/ for current state.]
+Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context")
+or from dh_paths.plan_dir() / "feature-context-{slug}.md".
+[If codebase analysis exists: Read dh_paths.plan_dir() / "codebase/" for current state.]
 If research artifacts exist for this issue, read them via
 artifact_read(issue_number={issue}, artifact_type="research") for prior research
 findings that should inform the architecture.
-Write plan/architect-{slug}.md with interfaces, contracts, data models, module boundaries.
+Write architect-{slug}.md to dh_paths.plan_dir() with interfaces, contracts, data models, module boundaries.
 Do NOT implement — define WHAT to build, not the code.
 ```
 
@@ -220,7 +221,7 @@ After the agent writes the architect spec, register it as an artifact:
 mcp__plugin_dh_backlog__artifact_register(
     issue_number={issue},
     artifact_type="architect",
-    path="plan/architect-{slug}.md",
+    path="plan/architect-{slug}.md",  # state-relative path
     agent="python-cli-design-spec"
 )
 ```
@@ -252,8 +253,10 @@ statements of fact without citation, code smells, missing documentation.
 </quality_vigilance>
 
 Decompose #{issue}: "{title}" into executable tasks.
-Read the architecture spec at plan/architect-{slug}.md.
-Read the feature context at plan/feature-context-{slug}.md.
+Read the architecture spec via artifact_read(issue_number={issue}, artifact_type="architect")
+or from dh_paths.plan_dir() / "architect-{slug}.md".
+Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context")
+or from dh_paths.plan_dir() / "feature-context-{slug}.md".
 Goal: {goal_from_feature_request}
 Create the plan via sam_create with CLEAR+CoVe task definitions.
 ```
@@ -264,7 +267,7 @@ After the agent writes the task plan, register it as an artifact:
 mcp__plugin_dh_backlog__artifact_register(
     issue_number={issue},
     artifact_type="task-plan",
-    path="plan/P{NNN}-{slug}.yaml",
+    path="plan/P{NNN}-{slug}.yaml",  # state-relative path; auto-registered by sam_create when issue is set
     agent="swarm-task-planner"
 )
 ```

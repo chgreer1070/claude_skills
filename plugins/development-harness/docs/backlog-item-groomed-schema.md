@@ -2,7 +2,7 @@
 
 **Purpose**: Define the structure of groomed content written into backlog item files. Grooming (backlog refinement) transforms items from vague ("this problem happens") to ready for planning — problem is clear, facts are verified, resources are mapped, effort is estimated, and blockers are surfaced. The agent does this autonomously: fact-checking claims, searching the codebase for related work, and identifying gaps. It does NOT produce architecture, task decomposition, or implementation plans — those happen in the SAM planning phase.
 
-**Location**: Groomed content lives in the **body** of `.claude/backlog/{priority}-{slug}.md`. Frontmatter uses the research-style `metadata:` block (aligned with `./research/` entries). Body has no duplication of frontmatter — only extra fields when present, plus `## Groomed` when groomed.
+**Location**: Groomed content lives in the **body** of `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md` (resolved via `dh_paths.backlog_dir()`). Frontmatter uses the research-style `metadata:` block (aligned with `./research/` entries). Body has no duplication of frontmatter — only extra fields when present, plus `## Groomed` when groomed.
 
 ---
 
@@ -167,7 +167,7 @@ Original problem statement from backlog.
 
 ### Output / Evidence
 
-- Screenshot: `.claude/backlog/assets/p1-foo-screenshot.png`
+- Screenshot: `~/.dh/projects/{slug}/backlog/assets/p1-foo-screenshot.png`
 - Log excerpt in `plugins/plugin-creator/planning/qa-report.md`
 
 ### Priority
@@ -206,5 +206,5 @@ Plugin validator should report unique files, not validator invocations.
 |------|------|
 | Skill | plugin-creator:claude-hooks-reference-2026 |
 | Agent | @refactor-executor |
-| Prior work | plan/tasks-2-validator-ux-coverage.md |
+| Prior work | ~/.dh/projects/{slug}/plan/tasks-2-validator-ux-coverage.md |
 ```

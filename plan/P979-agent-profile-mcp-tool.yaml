@@ -185,6 +185,41 @@ context: |-
   6. Tests achieve 100% coverage on resolver.py and 80%+ on discovery/parser
   7. No new dependencies are introduced
   8. Integration with SAM task metadata (the `agent:` field) is validated as a prerequisite
+
+  ### Implementation Discoveries (2026-03-22)
+
+  Context-refinement agent comparison of spec vs. actual implementation across server.py, resolver.py, and models.py.
+
+  #### server.py — Tool naming and mount semantics (design-refinement)
+
+  The spec showed tool functions named `profile_load` and `profile_list` registered at the sub-server level. The implementation uses `@mcp.tool(name="load")` and `@mcp.tool(name="list")` with internal function names `_load` and `_list`. This is correct FastMCP mount semantics: when `mcp.mount("profile", _agent_profile_mcp)` runs in backlog_core, FastMCP prepends the mount prefix, producing `profile_load` and `profile_list` in the consumer namespace. The spec described the consumer-visible names; the implementation correctly registers short names within the sub-server. The underscore prefix on function names avoids shadowing Python builtins (`list`).
+
+  #### resolver.py — Internal decomposition refined (design-refinement)
+
+  The spec described `_resolve_single` as the primary internal method. The implementation decomposes this into two methods:
+
+  - `_resolve_single(uri, context_plugin, visited, warnings) -> ResolvedSkill | None` — resolves one URI to a skill object or None
+  - `_resolve_into(uri, context_plugin, visited, resolved, warnings) -> None` — accumulator wrapper that calls `_resolve_single`, appends to `resolved`, then recurses into sub-skills
+
+  This is cleaner than the spec's implicit design: the spec's `_resolve_single` would have needed to both return a skill and handle recursion. The split improves testability and single-responsibility.
+
+  Three additional private helper methods were added (`_locate_plugin_qualified`, `_locate_domain`, `_locate_bare`) that are not in the spec's interface contract. These decompose the location logic per URI format, making each branch independently testable.
+
+  The `_classify_uri` return value uses `"plugin-qualified"` (hyphenated) for the format type string where the spec suggested `"qualified"`. Functionally identical — only affects internal branch labels.
+
+  A module-level helper `_plugin_and_name_from_dir(skill_dir, plugins_root)` derives plugin name and skill name from a resolved path, handling nested skill paths (e.g., `testing/analyze-test-failures`). This was not in the spec but is required to populate `ResolvedSkill.plugin` and `ResolvedSkill.skill_name` correctly from resolved filesystem paths.
+
+  #### models.py — description field strictness (design-refinement, verified safe)
+
+  The spec declared `description: str = Field(default="", ...)` with a default empty string for `AgentMetadata`, `AgentProfile`, and `ProfileListEntry`. The implementation declares `description: str = Field(description="...")` with no default — making `description` a required field.
+
+  Verified across all 60 agent `.md` files across all plugins: every file has a `description:` key in frontmatter. The stricter implementation is consistent with the actual corpus and will surface missing descriptions as parse errors rather than silently defaulting. This is correct behavior.
+
+  The `model_rebuild()` calls at module bottom (`AgentEntry.model_rebuild(...)`, `ResolvedSkill.model_rebuild(...)`) were not in the spec. They are required by Pydantic v2 when `from __future__ import annotations` is active and `Path` is imported only inside `if TYPE_CHECKING`. Without these calls, Pydantic cannot resolve the `Path` annotation at validation time.
+
+  #### No intent-divergences found
+
+  All three files implement the spec's intent faithfully. The deviations are implementation improvements (better decomposition, correct FastMCP semantics, Pydantic v2 correctness) not contradictions of architectural decisions or feature requirements.
 issue: '979'
 tasks:
 - id: T1

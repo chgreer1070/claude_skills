@@ -69,8 +69,8 @@ For each module in the feature, extract what it provides and what it should cons
 **From task file, extract:**
 
 ```bash
-# Read task file to get expected outputs
-Read(path="{project_path}/plan/tasks-{N}-{slug}.md")
+# Read task file to get expected outputs (path resolves via dh_paths.plan_dir())
+Read(path="~/.dh/projects/{project-slug}/plan/tasks-{N}-{slug}.md")
 ```
 
 **Build provides/consumes map:**

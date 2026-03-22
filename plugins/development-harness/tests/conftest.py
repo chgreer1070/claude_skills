@@ -4,7 +4,8 @@ Adds the plugin root to sys.path so ``from backlog_core.parsing import ...``
 resolves correctly regardless of pytest invocation directory.
 
 Shared fixtures for scenario integration tests:
-- ``backlog_dir``: Redirects BACKLOG_DIR to tmp_path for test isolation
+- ``backlog_dir``: Redirects backlog state to tmp_path via DH_STATE_HOME for
+  test isolation (uses dh_paths.backlog_dir() path conventions)
 - ``mock_github``: Patches all github.py functions at operations.py boundary
 - ``write_test_item``: Factory for creating per-item files with valid frontmatter
 """
@@ -37,18 +38,32 @@ if str(_scripts_dir) not in sys.path:
 
 
 @pytest.fixture
-def backlog_dir(tmp_path, monkeypatch):
-    """Redirect BACKLOG_DIR to a temp directory for test isolation.
+def backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Redirect backlog state to a temp directory for test isolation.
 
-    Patches BACKLOG_DIR in all three modules that import it at module level:
-    models, operations, and parsing. Returns the directory path so tests can
-    inspect created files.
+    Sets DH_STATE_HOME so dh_paths resolves all state directories under
+    tmp_path. Patches backlog_core.models.BACKLOG_DIR with the resolved
+    dh_paths backlog directory so that parsing and operations (which access
+    it via _models.BACKLOG_DIR) also see the temp path.
+
+    Returns the directory path so tests can inspect created files.
     """
-    bd = tmp_path / ".claude" / "backlog"
-    bd.mkdir(parents=True)
+    import dh_paths
+
+    # Override DH_STATE_HOME so dh_paths resolves state under tmp_path.
+    monkeypatch.setenv("DH_STATE_HOME", str(tmp_path / "dh_state"))
+
+    # Use a stable fake project root whose slug is deterministic.
+    fake_project_root = tmp_path / "project"
+    fake_project_root.mkdir(parents=True, exist_ok=True)
+
+    bd = dh_paths.backlog_dir(project_root=fake_project_root)
+    bd.mkdir(parents=True, exist_ok=True)
+
+    # Only models.py exports BACKLOG_DIR at module level. parsing.py and
+    # operations.py access it via `_models.BACKLOG_DIR`, so patching models
+    # is sufficient to redirect all consumers.
     monkeypatch.setattr("backlog_core.models.BACKLOG_DIR", bd)
-    monkeypatch.setattr("backlog_core.operations.BACKLOG_DIR", bd)
-    monkeypatch.setattr("backlog_core.parsing.BACKLOG_DIR", bd)
     return bd
 
 

@@ -13,7 +13,7 @@ The plan file path is provided as `$ARGUMENTS`.
 
 Invocation: `/dh:interop <path-to-plan-file>`
 
-SOURCE: [plan/architect-dh-phase2-interop-adapter.md](../../../../plan/architect-dh-phase2-interop-adapter.md)
+SOURCE: plan/architect-dh-phase2-interop-adapter.md (historical plan artifact, archived to `~/.dh/projects/{project-slug}/plan/`)
 
 ---
 
@@ -122,7 +122,7 @@ plan file path as a note in the prompt (e.g., "Plan file for context: {plan-file
 `work-backlog-item` skill does not accept a second positional argument, so the path is passed
 as contextual prose in the delegation prompt, not as an arg.
 
-This step runs: groom → RT-ICA → SAM planning and produces `plan/tasks-N-slug.md`.
+This step runs: groom → RT-ICA → SAM planning and produces `~/.dh/projects/{project-slug}/plan/tasks-N-slug.md` (resolved via `dh_paths.plan_dir()`).
 
 Wait for `/work-backlog-item` to complete. The task file path it produces is required for Steps
 5 and 6.
@@ -173,14 +173,13 @@ flowchart TD
     Insert --> Done
 ```
 
-The exact text to write (substituting the real task filename):
+The exact text to write (substituting the real task filename and full state path):
 
 ```markdown
-**SAM tasks:** [plan/tasks-N-slug.md](../../../plan/tasks-N-slug.md)
+**SAM tasks:** ~/.dh/projects/{project-slug}/plan/tasks-N-slug.md
 ```
 
-The relative path uses three `../` levels because Superpowers plans live at
-`docs/superpowers/plans/` — three directory levels below the repo root where `plan/` lives.
+Plan files live outside the repository under `~/.dh/projects/{project-slug}/plan/` (resolved via `dh_paths.plan_dir()`). Use the absolute path — relative paths from `docs/superpowers/plans/` cannot reach state files outside the repo.
 
 Use the Edit tool to make this change. Do not rewrite the file.
 
@@ -197,8 +196,8 @@ flowchart TD
     ForEach([For each Chunk N captured]) --> HasTask{Does chunk number N<br>have a corresponding SAM task T{N}?}
     HasTask -->|No — chunk count exceeds task count| Skip[Skip this chunk — no annotation]
     HasTask -->|Yes| CheckExisting{Does the line immediately<br>following this heading already<br>contain a SAM annotation comment?}
-    CheckExisting -->|Yes — re-run scenario| ReplaceAnnotation["Replace existing annotation in-place<br><!-- SAM: T{N} in plan/tasks-N-slug.md -->"]
-    CheckExisting -->|No| InsertAnnotation["Insert on the line immediately<br>after the ## Chunk N: heading<br><!-- SAM: T{N} in plan/tasks-N-slug.md -->"]
+    CheckExisting -->|Yes — re-run scenario| ReplaceAnnotation["Replace existing annotation in-place<br><!-- SAM: T{N} in ~/.dh/projects/{project-slug}/plan/tasks-N-slug.md -->"]
+    CheckExisting -->|No| InsertAnnotation["Insert on the line immediately<br>after the ## Chunk N: heading<br><!-- SAM: T{N} in ~/.dh/projects/{project-slug}/plan/tasks-N-slug.md -->"]
     ReplaceAnnotation --> Next([Next chunk])
     InsertAnnotation --> Next
     Skip --> Next
@@ -207,7 +206,7 @@ flowchart TD
 Annotation format — substitute the real chunk number and task filename:
 
 ```markdown
-<!-- SAM: T3 in plan/tasks-N-slug.md -->
+<!-- SAM: T3 in ~/.dh/projects/{project-slug}/plan/tasks-N-slug.md -->
 ```
 
 The task number `T{N}` matches the chunk number `N` by position. Chunk 1 → T1, chunk 2 → T2.

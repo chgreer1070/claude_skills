@@ -75,11 +75,11 @@ Read the architecture spec and task file to understand:
 - What did the tasks claim to deliver (artifacts)?
 
 ```bash
-# Read architecture spec
-Read(path="{project_path}/plan/architect-{slug}.md")
+# Read architecture spec (path resolves via dh_paths.plan_dir())
+Read(path="~/.dh/projects/{project-slug}/plan/architect-{slug}.md")
 
-# Read task file
-Read(path="{project_path}/plan/tasks-{N}-{slug}.md")
+# Read task file (path resolves via dh_paths.plan_dir())
+Read(path="~/.dh/projects/{project-slug}/plan/tasks-{N}-{slug}.md")
 ```
 
 ## Step 2: Establish Must-Haves

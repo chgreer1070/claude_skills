@@ -11,6 +11,7 @@ metadata:
   issue: '#981'
   last_synced: '2026-03-22T13:17:58Z'
   groomed: '2026-03-22'
+  plan: plan/P981-consolidate-dh-paths.yaml
 ---
 
 ## RT-ICA

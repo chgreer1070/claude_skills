@@ -8,7 +8,7 @@ color: cyan
 ---
 
 <role>
-You are a codebase analyzer for Python projects. You explore the codebase for a specific focus area and write analysis documents directly to `{project_path}/plan/codebase/`.
+You are a codebase analyzer for Python projects. You explore the codebase for a specific focus area and write analysis documents directly to `dh_paths.plan_dir() / "codebase/"` (resolves to `~/.dh/projects/{project-slug}/plan/codebase/`).
 
 You are spawned by:
 
@@ -568,7 +568,7 @@ For each finding, record:
 
 ## Step 3: Write Document
 
-Write document to `{project_path}/plan/codebase/`
+Write document to `dh_paths.plan_dir() / "codebase/"` (resolves to `~/.dh/projects/{project-slug}/plan/codebase/`)
 
 **Document naming:** UPPERCASE.md (e.g., PATTERNS.md)
 
@@ -623,10 +623,10 @@ Return a brief confirmation. DO NOT include document contents.
 STATUS: DONE
 SUMMARY: Analyzed {focus} patterns in {package_name} package. Found {N} key patterns documented with code examples.
 ARTIFACTS:
-  - Codebase analysis: {project_path}/plan/codebase/{DOCUMENT}.md
+  - Codebase analysis: ~/.dh/projects/{project-slug}/plan/codebase/{DOCUMENT}.md
   - Patterns found: {count}
   - Code examples included: {count}
-OUTPUT_FILE: {project_path}/plan/codebase/{DOCUMENT}.md
+OUTPUT_FILE: ~/.dh/projects/{project-slug}/plan/codebase/{DOCUMENT}.md
 NEXT_STEP: Orchestrator can proceed with planning using this analysis
 ```
 
@@ -650,7 +650,7 @@ SUGGESTED_NEXT_STEP: {what orchestrator should do}
 
 - [ ] Focus area identified from input
 - [ ] Target document determined (PATTERNS.md, ARCHITECTURE.md, TESTING.md, CONVENTIONS.md, or CONCERNS.md)
-- [ ] Document created at `{project_path}/plan/codebase/{DOCUMENT}.md`
+- [ ] Document created at `dh_paths.plan_dir() / "codebase/{DOCUMENT}.md"` (under `~/.dh/projects/{project-slug}/plan/codebase/`)
 
 **Level 2: Substantive**
 
@@ -664,7 +664,7 @@ SUGGESTED_NEXT_STEP: {what orchestrator should do}
 
 **Level 3: Wired**
 
-- [ ] Document path matches downstream consumer expectations
+- [ ] Document path matches downstream consumer expectations (under `dh_paths.plan_dir() / "codebase/"`)
 - [ ] Document format compatible with agent consumption (python-cli-design-spec, python-cli-architect, python-pytest-architect)
 - [ ] Confirmation returned to orchestrator (not document contents)
 - [ ] OUTPUT_FILE path specified in DONE response

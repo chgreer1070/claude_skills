@@ -325,10 +325,11 @@ This runs the full SAM workflow: discovery, codebase analysis, architecture spec
 
 ### Step 7: Update Backlog with Plan Reference
 
-After `add-new-feature` completes, identify the task file it created:
+After `add-new-feature` completes, identify the task file it created (plan files live under `~/.dh/projects/{project-slug}/plan/`, resolved via `dh_paths.plan_dir()`):
 
-```text
-Glob(pattern="plan/P*-{slug}*")
+```python
+from dh_paths import plan_dir
+Glob(pattern=str(plan_dir() / "P*-{slug}*"))
 ```
 
 Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
@@ -338,7 +339,7 @@ Call the `mcp__plugin_dh_backlog__backlog_update` tool to add the Plan:
 | Parameter | Value |
 |-----------|-------|
 | `selector` | `"{title}"` |
-| `plan` | `"plan/P{NNN}-{slug}.yaml"` |
+| `plan` | `"plan/P{NNN}-{slug}.yaml"` (state-relative path) |
 
 If the item has `**Issue**: #N`, record it in the plan file header comment. Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages — issue closure is handled exclusively by `/complete-implementation` in its final commit step.
 
@@ -382,7 +383,7 @@ Do not stop for user input at any point.
 ```text
 Backlog item "{title}" is now planned.
 
-- Plan file: plan/P{NNN}-{slug}.yaml (or plan/P{NNN}-{slug}/ directory)
+- Plan file: ~/.dh/projects/{project-slug}/plan/P{NNN}-{slug}.yaml (or .../plan/P{NNN}-{slug}/ directory)
 - To execute:      /implement-feature {slug}
 - To check status: /implementation-manager status . {slug}
 - To close when done: /work-backlog-item close {slug}

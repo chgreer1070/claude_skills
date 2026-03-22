@@ -208,7 +208,7 @@ hooks:
 5. Write active-task context file:
 
    ```text
-   .claude/context/active-task-{CLAUDE_SESSION_ID}.json
+   ~/.dh/projects/{slug}/context/active-task-{CLAUDE_SESSION_ID}.json
    ```
 
    Contents: `{"task_file_path": "...", "task_id": "...", "parent_issue_number": N}` — omit `parent_issue_number` if story issue number is unknown; hook treats absence as `None` and skips GitHub sync.
@@ -236,7 +236,7 @@ Shared utilities: `sam_schema` package (internal — not a standalone script fil
 | Hook Event | Trigger Context | Action |
 |------------|----------------|--------|
 | `SubagentStop` | `/implement-feature` finishes a sub-agent | Parse prompt for `/start-task` invocation, extract task file path and task ID, set status to COMPLETE, add `Completed` timestamp, delete context file, then call `sync_completion_to_github()` to sync completion to GitHub sub-issue (best-effort, exit 0 on failure) |
-| `PostToolUse` (Write\|Edit\|Bash) | `/start-task` during task execution | Read `.claude/context/active-task-{session_id}.json`, update `LastActivity` timestamp in the task section |
+| `PostToolUse` (Write\|Edit\|Bash) | `/start-task` during task execution | Read `~/.dh/projects/{slug}/context/active-task-{session_id}.json`, update `LastActivity` timestamp in the task section |
 
 ### Timestamp Responsibilities
 
@@ -410,7 +410,7 @@ Worktree-isolated agents MUST use `artifact_read` (MCP) instead of filesystem ac
 
 | File | Created By | Read By | Lifetime |
 |------|-----------|---------|----------|
-| `.claude/context/active-task-{session_id}.json` | `/start-task` skill | `task_status_hook.py` (PostToolUse) | Deleted by `task_status_hook.py` (SubagentStop) |
+| `~/.dh/projects/{slug}/context/active-task-{session_id}.json` | `/start-task` skill | `task_status_hook.py` (PostToolUse) | Deleted by `task_status_hook.py` (SubagentStop) |
 
 ---
 
@@ -454,7 +454,7 @@ User
   │  │    ├─ Set status: IN PROGRESS                        │
   │  │    ├─ Load skills from task metadata (step 2a)       │
   │  │    ├─ Add Started timestamp                          │
-  │  │    ├─ Write .claude/context/active-task-{sid}.json   │
+  │  │    ├─ Write ~/.dh/projects/{slug}/context/active-task-{sid}.json │
   │  │    ├─ Implement acceptance criteria                  │
   │  │    └─ [PostToolUse hook updates LastActivity]        │
   │  │                                                      │

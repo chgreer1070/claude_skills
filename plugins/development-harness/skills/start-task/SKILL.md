@@ -72,7 +72,7 @@ $ARGUMENTS
 
    Use the returned content as context for implementation instead of reading filesystem paths directly. This is especially important for worktree-isolated agents that cannot access uncommitted plan files from the root worktree.
 
-   **Fallback**: If `artifact_list` returns an empty manifest (no `artifacts` entries) or an error, fall back to filesystem path conventions (`plan/architect-{slug}.md`, `plan/feature-context-{slug}.md`). This ensures backward compatibility with issues that predate the artifact manifest system.
+   **Fallback**: If `artifact_list` returns an empty manifest (no `artifacts` entries) or an error, fall back to filesystem path conventions (`dh_paths.plan_dir() / "architect-{slug}.md"` and `dh_paths.plan_dir() / "feature-context-{slug}.md"`). This ensures backward compatibility with issues that predate the artifact manifest system.
 
 2. Select the task:
    - If `--task` provided, use that ID
@@ -153,7 +153,7 @@ regardless.
 
 ### DN-1: {Brief title}
 
-- **Plan artifact**: plan/architect-{slug}.md, section "{section name}"
+- **Plan artifact**: ~/.dh/projects/{project-slug}/plan/architect-{slug}.md, section "{section name}"
 - **Plan claim**: "{quoted text from plan artifact}"
 - **Actual implementation**: "{what was actually done and why}"
 - **Classification**: design-refinement | intent-divergence

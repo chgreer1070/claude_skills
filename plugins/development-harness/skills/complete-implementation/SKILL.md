@@ -5,8 +5,13 @@ user-invocable: true
 description: "Holistic completion workflow after a feature's tasks are marked COMPLETE: code review, feature verification, integration check, documentation drift audit/update, and context refinement. Creates follow-up task files when issues are found."
 compatibility: Python 3.11+
 metadata:
-  version: 1.0.0
-  last_updated: '2026-02-28'
+  version: 2.0.0
+  last_updated: '2026-03-22'
+hooks:
+  SubagentStop:
+  - hooks:
+    - type: command
+      command: python3 "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
 ---
 
 # Complete Implementation (Quality Gates + Recursion)
@@ -36,13 +41,13 @@ Before invoking Phase 1, check for a TN verification report produced by `tn-veri
 
 Extract `{slug}` from the task file path (`plan/P{NNN}-{slug}.yaml` — strip the `P{NNN}-` prefix and `.yaml` suffix).
 
-Read `plan/TN-verification-{slug}.yaml`.
+Read `dh_paths.plan_dir() / "TN-verification-{slug}.yaml"` (resolves to `~/.dh/projects/{project-slug}/plan/TN-verification-{slug}.yaml`).
 
 The file contains a list of per-criterion `BookendVerification` records — one per `acceptance-criteria-structured` entry. There is no top-level `verdict` field. Aggregate the verdict by scanning all records: the overall result is FAIL if any record has `status: regressed`; otherwise PASS.
 
 ```mermaid
 flowchart TD
-    Read["Read plan/TN-verification-{slug}.yaml"] --> Exists{File exists?}
+    Read["Read dh_paths.plan_dir() / TN-verification-{slug}.yaml"] --> Exists{File exists?}
     Exists -->|No| Proceed["No structured criteria — proceed to Phase 1"]
     Exists -->|Yes| Scan["Scan all per-criterion records<br>for status: regressed"]
     Scan --> AnyRegressed{Any criterion<br>has status: regressed?}
@@ -106,103 +111,185 @@ If no concerns section exists, proceed to Phase 1.
 
 ---
 
-## Phase 1: Code Review
+## Quality Gate Plan Creation
 
-### Resolve Code-Reviewer Role
+After the pre-phases complete, set up the SAM-enforced quality gate plan for the 6 phases.
 
-Before launching the code review agent, resolve the `code-reviewer` role from the active language manifest.
+Extract `{slug}` from the task file path (`plan/P{NNN}-{slug}.yaml` — strip the `P{NNN}-` prefix and `.yaml` suffix).
 
-**Step 1 — Detect project language.**
-
-Scan the project root for language markers:
-
-- `pyproject.toml`, `setup.py`, `setup.cfg` → Python
-- `package.json`, `tsconfig.json` → TypeScript/JavaScript
-- `Cargo.toml` → Rust
-- `go.mod` → Go
-
-**Step 2 — Find and parse the language manifest.**
-
-Search installed language plugins for `references/language-manifest.md` matching the detected language. For Python, look for the file at:
+### Step 1: Check for existing QG plan
 
 ```text
-plugins/python3-development/skills/python3-development/references/language-manifest.md
+mcp__plugin_dh_sam__sam_list(search="qg-{slug}")
 ```
-
-Parse the `## Role Fulfillment` section and extract the value for `code-reviewer`.
-
-**Step 3 — Apply fallback if manifest is absent or role is undeclared.**
-
-If no manifest is found, or the manifest does not declare `code-reviewer`, use `@python3-development:code-reviewer` as the fallback agent.
 
 ```mermaid
 flowchart TD
-    Scan[Scan project root for language markers] --> Found{Language identified?}
-    Found -->|Yes| Search[Search language plugin for<br>references/language-manifest.md]
-    Found -->|No| Fallback[Use general-purpose agent]
-    Search --> Exists{Manifest found?}
-    Exists -->|Yes| Parse[Parse Role Fulfillment section<br>extract code-reviewer entry]
-    Exists -->|No| Fallback
-    Parse --> Declared{code-reviewer declared?}
-    Declared -->|Yes| UseManifest[Use agent from manifest]
-    Declared -->|No| Fallback
-    UseManifest --> Launch([Launch resolved agent])
-    Fallback --> Launch
+    List["sam_list(search='qg-{slug}')"] --> Found{QG plan found?}
+    Found -->|No| Create["Call build_quality_gate_plan,<br>then sam_create"]
+    Found -->|Yes| Check{All tasks terminal?}
+    Check -->|Yes — COMPLETE or SKIPPED| Skip["Skip to Completion Verification Gate"]
+    Check -->|No — tasks remain| Reset["Reset BLOCKED tasks to NOT_STARTED,<br>resume SAM dispatch loop"]
+    Create --> Loop["Enter SAM Dispatch Loop"]
+    Reset --> Loop
 ```
 
-### Run Code Review
+### Step 2: Create QG plan (if not found)
 
-Query plan status and pass `TaskAssignment` JSON to the resolved `code-reviewer` agent:
+If no QG plan exists, generate the 6-task plan YAML and create it via SAM:
+
+```python
+# Call the pure function (from sam_schema.core.quality_gates)
+tasks_yaml = build_quality_gate_plan(
+    slug="{slug}",
+    issue="{issue_number}",       # from plan's issue field, if known
+    impl_plan_address="P{N}",     # implementation plan address
+)
+```
+
+Then create the plan:
 
 ```text
-mcp__plugin_dh_sam__sam_status(plan="P{N}")
+mcp__plugin_dh_sam__sam_create(
+    slug="qg-{slug}",
+    goal="Quality gate enforcement for {slug}",
+    tasks_yaml="{tasks_yaml_string}",
+    issue="{issue_number}"
+)
 ```
 
-Launch the resolved code-reviewer agent with the `TaskAssignment` JSON output (not the raw file path).
+The response contains the QG plan address (e.g., `QG003`). Store it as `{QG}` for use throughout the dispatch loop.
 
----
+### Step 3: Reset BLOCKED tasks (on re-run)
 
-## Phase 2: Feature Verification (goal-backward)
-
-Read task data via the SAM MCP tool:
+If the QG plan already exists and has BLOCKED tasks, reset each to NOT_STARTED before entering the dispatch loop:
 
 ```text
-mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")
+For each task where status == "blocked":
+    mcp__plugin_dh_sam__sam_state(plan="{QG}", task="{task_id}", status="not-started")
 ```
 
-Launch `@dh:feature-verifier` with the `TaskAssignment` JSON. If the `TaskAssignment` contains `issue-classification` metadata, include it in the agent prompt so the feature verifier can apply proportional verification checks.
+This allows re-running `complete-implementation` to resume from the blocked phase without re-executing completed phases.
 
 ---
 
-## Phase 3: Integration Check
+## SAM Dispatch Loop (Phases 1-6)
 
-Launch `@dh:integration-checker` with the `TaskAssignment` JSON from `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")`.
+The 6 quality gate phases are enforced via a SAM task loop. Each phase is a task in the QG plan. The dependency chain (T1 → T2 → T3 → T4 → T5 → T6) enforces ordered execution — a phase cannot start until the previous phase completes.
+
+**Phase task mapping:**
+
+| Task | Phase | Agent |
+|------|-------|-------|
+| T1 | Code Review | code-reviewer |
+| T2 | Feature Verification | feature-verifier |
+| T3 | Integration Check | integration-checker |
+| T4 | Documentation Drift Audit | doc-drift-auditor |
+| T5 | Documentation Update | service-docs-maintainer |
+| T6 | Context Refinement | context-refinement |
+
+### Dispatch Loop
+
+Repeat until `sam_ready` returns an empty list:
+
+**1. Get next ready task:**
+
+```text
+mcp__plugin_dh_sam__sam_ready(plan="{QG}")
+```
+
+If the result is empty, exit the loop and proceed to Completion Verification Gate.
+
+**2. Claim the task:**
+
+```text
+mcp__plugin_dh_sam__sam_claim(plan="{QG}", task="{task_id}")
+```
+
+If `"claimed": false`, stop — another agent is running this phase. Do not re-dispatch.
+
+**3. Dispatch via start-task:**
+
+```text
+Skill(skill="start-task", args="plan/{QG}-qg-{slug}.yaml --task {task_id}")
+```
+
+The SubagentStop hook marks the task COMPLETE after the sub-agent finishes.
+
+**4. Phase-specific post-dispatch actions:**
+
+After each dispatched phase completes, run the phase-specific processing before querying `sam_ready` again:
+
+```mermaid
+flowchart TD
+    Done{Which task<br>just completed?}
+    Done -->|T1 Code Review| T1Post["Extract follow-up task files<br>from code-reviewer ARTIFACTS output.<br>Store file paths for Step 4 of<br>Recursive Follow-up Handling."]
+    Done -->|T4 Drift Audit| T4Post{Drift found<br>in T4 output?}
+    T4Post -->|No drift| SkipT5["sam_state(plan='{QG}', task='T5', status='skipped')"]
+    T4Post -->|Drift found| T5Ready["T5 remains NOT_STARTED — will be<br>dispatched on next loop iteration"]
+    Done -->|T6 Context Refinement| T6Post["Check T6 agent output for<br>DIVERGENCE_REQUIRING_REVIEW block.<br>If present, store for final output."]
+    Done -->|T2, T3, T5| Continue["No phase-specific action —<br>continue loop"]
+    T1Post --> Continue
+    SkipT5 --> Continue
+    T5Ready --> Continue
+    T6Post --> Continue
+```
+
+**Detecting drift in T4 output**: The doc-drift-auditor agent output contains a `## Findings` section. No drift found is indicated by a statement such as "No documentation drift detected" or an empty findings list. Presence of drift items (file paths, outdated sections) means drift was found.
 
 ---
 
-## Phase 4: Documentation Drift Audit
+## Completion Verification Gate
 
-Launch `@dh:doc-drift-auditor` with the `TaskAssignment` JSON from `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")` (audit-only).
+After the SAM dispatch loop exits (no ready tasks), verify all 6 phases reached terminal status before allowing label application.
 
----
+```text
+mcp__plugin_dh_sam__sam_status(plan="{QG}")
+```
 
-## Phase 5: Documentation Update (if drift found)
+Examine each of the 6 tasks:
 
-If drift exists or docs must be updated for the feature, launch `@dh:service-docs-maintainer` with the `TaskAssignment` JSON from `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")`.
+```mermaid
+flowchart TD
+    Status["sam_status(plan='{QG}')"] --> Iter["Iterate over all 6 tasks"]
+    Iter --> Check{For each task:<br>check status}
+    Check -->|"status == 'complete'"| PassTask["Task passes"]
+    Check -->|"status == 'skipped' AND task_id == 'T5'"| PassTask
+    Check -->|"status == 'skipped' AND task_id != 'T5'"| FailUnauth["FAIL — unauthorized skip"]
+    Check -->|"status == 'not-started' OR 'in-progress'"| FailIncomplete["FAIL — incomplete phase"]
+    Check -->|"status == 'blocked'"| FailBlocked["FAIL — blocked phase"]
+    PassTask --> AllPassed{All 6 tasks<br>passed?}
+    AllPassed -->|Yes| Proceed["Proceed to Recursive Follow-up Handling"]
+    AllPassed -->|No| Stop["STOP — report failures, do NOT apply label"]
+    FailUnauth --> AllPassed
+    FailIncomplete --> AllPassed
+    FailBlocked --> AllPassed
+```
 
----
+**Skip whitelist**: ONLY T5 (Documentation Update) may have `status: skipped`. Any other task with `status: skipped` is an unauthorized skip — treat as a failure.
 
-## Phase 6: Context Refinement
+**On verification failure**, output:
 
-Launch `@dh:context-refinement` with the `TaskAssignment` JSON from `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")` to update the Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [plan-artifact-lifecycle.md](../../docs/plan-artifact-lifecycle.md)).
+```text
+COMPLETION BLOCKED — Quality Gate Incomplete
+
+Failed tasks:
+  {task_id} ({phase_name}): status={status}
+  [repeat for each failing task]
+
+To resume: re-run /complete-implementation {task_file_path}
+BLOCKED tasks will be reset to NOT_STARTED automatically.
+```
+
+Stop. Do not apply the `status:verified` label.
+
+**On verification success**, proceed to Recursive Follow-up Handling.
 
 ---
 
 ## Post-Phase-6: Surface Divergence Findings
 
-After Phase 6 completes, check the `context-refinement` agent output for a `DIVERGENCE_REQUIRING_REVIEW` block.
-
-If present, include in the final output to the human:
+If the T6 (Context Refinement) sub-agent output contained a `DIVERGENCE_REQUIRING_REVIEW` block (collected in the dispatch loop), include in the final output to the human:
 
 ```text
 Plan artifacts have intent divergences requiring your review.
@@ -227,10 +314,10 @@ Extract file paths from the `Task files:` list in the code-reviewer's ARTIFACTS 
 If the `Task files:` list is empty or absent, run a confirmatory glob:
 
 ```bash
-plan/P*-{slug}-followup-*.yaml
+~/.dh/projects/{project-slug}/plan/P*-{slug}-followup-*.yaml
 ```
 
-Where `{slug}` is extracted from the parent task file path (`plan/P{NNN}-{slug}.yaml` -- strip `P{NNN}-` prefix and `.yaml` suffix).
+Where `{project-slug}` is computed by `dh_paths.compute_slug()` and `{slug}` is extracted from the parent task file path (`plan/P{NNN}-{slug}.yaml` -- strip `P{NNN}-` prefix and `.yaml` suffix).
 
 If both ARTIFACTS and glob return empty: skip the entire routing section (no follow-ups to route).
 

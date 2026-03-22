@@ -229,7 +229,7 @@ def generate_slug(input_text: str) -> str:
 
 ## Step 6: Write Output Document
 
-Write to: `{project_path}/plan/feature-context-{slug}.md`
+Write to: `dh_paths.plan_dir() / "feature-context-{slug}.md"` (resolves to `~/.dh/projects/{project-slug}/plan/feature-context-{slug}.md`)
 
 Use the output format template below.
 

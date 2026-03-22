@@ -2,7 +2,7 @@
 
 **Status**: Decided
 **Date**: 2026-03-02
-**Supersedes**: ADR-8 (`close --reason` Semantic Correction, in `plan/architect-backlog-mcp-migration.md`)
+**Supersedes**: ADR-8 (`close --reason` Semantic Correction, in `~/.dh/projects/{slug}/plan/architect-backlog-mcp-migration.md`)
 
 ## Context
 

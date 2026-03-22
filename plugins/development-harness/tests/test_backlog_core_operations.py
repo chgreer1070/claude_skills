@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import backlog_core.operations as ops
-import backlog_core.parsing as parsing
 import pytest
 from backlog_core.models import (
     BacklogItem,
@@ -79,20 +78,29 @@ def _write_item(
 
 @pytest.fixture(autouse=True)
 def _isolate_backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Redirect BACKLOG_DIR in every module that uses it to tmp_path.
+    """Redirect BACKLOG_DIR to tmp_path for test isolation.
 
     Tests: File-system isolation for all backlog operations.
-    How: Monkeypatches the BACKLOG_DIR name in backlog_core.models, parsing, and operations.
+    How: Sets DH_STATE_HOME so dh_paths resolves under tmp_path, then patches
+         backlog_core.models.BACKLOG_DIR. parsing.py and operations.py access
+         the path via _models.BACKLOG_DIR, so patching models is sufficient.
     Why: Prevents tests from reading/writing the real backlog directory.
+         After T03, parsing.py and operations.py no longer export BACKLOG_DIR
+         at module level — they delegate to backlog_core.models.
     """
-    fake_dir = tmp_path / "backlog"
+    import dh_paths
+
+    monkeypatch.setenv("DH_STATE_HOME", str(tmp_path / "dh_state"))
+
+    fake_project_root = tmp_path / "project"
+    fake_project_root.mkdir(parents=True, exist_ok=True)
+
+    fake_dir = dh_paths.backlog_dir(project_root=fake_project_root)
     fake_dir.mkdir(parents=True, exist_ok=True)
 
     import backlog_core.models as models
 
     monkeypatch.setattr(models, "BACKLOG_DIR", fake_dir)
-    monkeypatch.setattr(parsing, "BACKLOG_DIR", fake_dir)
-    monkeypatch.setattr(ops, "BACKLOG_DIR", fake_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -1364,7 +1372,9 @@ class TestGroomItemEntryBlocks:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.BACKLOG_DIR
         filepath = _write_item(backlog_dir, title="Test Entry Groom", priority="P1", topic="test-entry-groom")
 
         out = Output()
@@ -1384,7 +1394,9 @@ class TestGroomItemEntryBlocks:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.BACKLOG_DIR
         filepath = _write_item(backlog_dir, title="Multi Entry", priority="P1", topic="multi-entry")
 
         out = Output()
@@ -1417,7 +1429,9 @@ class TestGroomItemAppend:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.BACKLOG_DIR
         filepath = _write_item(backlog_dir, title="Append First", priority="P1", topic="append-first")
 
         out = Output()
@@ -1442,7 +1456,9 @@ class TestGroomItemAppend:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.BACKLOG_DIR
         filepath = _write_item(backlog_dir, title="Append Multi", priority="P1", topic="append-multi")
 
         out = Output()
@@ -1468,7 +1484,9 @@ class TestGroomItemAppend:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.BACKLOG_DIR
         filepath = _write_item(backlog_dir, title="Append Default", priority="P1", topic="append-default")
 
         out = Output()
@@ -1496,7 +1514,9 @@ class TestStrikeEntryOperation:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.BACKLOG_DIR
         filepath = _write_item(backlog_dir, title="Strike Test", priority="P1", topic="strike-test")
 
         out = Output()
@@ -1524,7 +1544,9 @@ class TestStrikeEntryOperation:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.BACKLOG_DIR
         _write_item(backlog_dir, title="No Entry", priority="P1", topic="no-entry")
 
         out = Output()
@@ -1547,9 +1569,10 @@ class TestPullItemsEntryAwareMerge:
         How: Set up local item with one entry, mock GitHub with two entries, call pull_items.
         Why: Validates that generate_diff is wired into the pull merge path.
         """
+        import backlog_core.models as _m
         from backlog_core.models import Output
 
-        backlog_dir = tmp_path / "backlog"
+        backlog_dir = _m.BACKLOG_DIR
 
         local_entry = "<div><sub>2026-01-01T00:00:00Z</sub>\n\nLocal content\n</div>"
         _write_item(
@@ -1596,9 +1619,10 @@ class TestPullItemsEntryAwareMerge:
         How: Local has struck entry, remote has active version, merge should keep struck.
         Why: Struck entries represent deliberate user action and must be preserved.
         """
+        import backlog_core.models as _m
         from backlog_core.models import Output
 
-        backlog_dir = tmp_path / "backlog"
+        backlog_dir = _m.BACKLOG_DIR
 
         struck_entry = (
             "<div><sub>2026-01-01T00:00:00Z</sub>\n"
@@ -1659,13 +1683,7 @@ class TestRefreshClosedIssueReconciliation:
         Why: Without fetching closed issues, local cache drifts from GitHub state.
         """
         # Arrange
-        import backlog_core.models as models
-
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
+        # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
 
         mock_repo = mocker.MagicMock()
         # Open issues pass: return empty list
@@ -1694,11 +1712,8 @@ class TestRefreshClosedIssueReconciliation:
         # Arrange
         import backlog_core.models as models
 
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
+        # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
+        fake_dir = models.BACKLOG_DIR
 
         filepath = _write_item(fake_dir, title="Closable Item", issue="#50", topic="closable-item")
 
@@ -1737,11 +1752,8 @@ class TestRefreshClosedIssueReconciliation:
         # Arrange
         import backlog_core.models as models
 
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
+        # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
+        fake_dir = models.BACKLOG_DIR
 
         filepath = _write_item(fake_dir, title="Already Done", issue="#60", topic="already-done", skip=True)
         original_content = filepath.read_text(encoding="utf-8")
@@ -1779,11 +1791,8 @@ class TestRefreshClosedIssueReconciliation:
         # Arrange
         import backlog_core.models as models
 
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
+        # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
+        fake_dir = models.BACKLOG_DIR
 
         _write_item(fake_dir, title="Ambiguous Item", issue="#70", topic="ambiguous-item")
 
@@ -1820,16 +1829,7 @@ class TestRefreshClosedIssueReconciliation:
         How: Return closed issue #80 with no corresponding local file; verify no crash.
         Why: Not all GitHub issues have local backlog files — must skip silently.
         """
-        # Arrange
-        import backlog_core.models as models
-
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
-        # No local files written — empty backlog dir
-
+        # Arrange — autouse _isolate_backlog_dir redirects BACKLOG_DIR; no local files written.
         mock_repo = mocker.MagicMock()
         closed_issue = mocker.MagicMock()
         closed_issue.number = 80
