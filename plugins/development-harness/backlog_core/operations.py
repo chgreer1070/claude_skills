@@ -31,6 +31,8 @@ from .entry_blocks import (
     strike_entry as strike_entry_block,
 )
 from .github import (
+    IssueNode,
+    _fetch_issue_graphql,
     _graphql_request,
     _projects_v2_create_mutation,
     _projects_v2_list_query,
@@ -100,7 +102,6 @@ from .parsing import (
 )
 
 if TYPE_CHECKING:
-    from github.Issue import SubIssue
     from github.Repository import Repository
 
 
@@ -2134,15 +2135,15 @@ def pull_single_issue(
     out = output or Output()
 
     try:
-        issue = repo_obj.get_issue(issue_num)
-    except GithubException as e:
+        owner, repo_name = repo_obj.full_name.split("/", 1)
+        issue = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_num)
+    except (GithubException, BacklogError) as e:
         out.warn(f"  WARNING: Could not fetch issue #{issue_num}: {e}")
         return {"file_path": None, **out.to_dict()}
 
     fields = issue_to_local_fields(issue)
     # Strip conventional-commit prefix from title (e.g., "feat: Title" -> "Title")
-    raw_title = fields.title
-    clean_title = _COMMIT_PREFIX_RE.sub("", raw_title).strip()
+    clean_title = _COMMIT_PREFIX_RE.sub("", fields.title).strip()
 
     if filepath is None:
         slug = title_to_slug(clean_title)
@@ -2337,34 +2338,23 @@ def _write_sam_task_cache(tasks: list[dict[str, object]], parent_issue_number: i
     return True
 
 
-def _sub_issues_to_task_dicts(sub_issues: list[SubIssue]) -> list[dict[str, object]]:
-    """Convert a list of PyGithub SubIssue objects to task dicts.
+def _sub_issues_to_task_dicts(sub_issues: list[IssueNode]) -> list[dict[str, object]]:
+    """Convert a list of GraphQL IssueNode dicts to task dicts.
 
     Each dict contains ``issue_number``, ``issue_url``, ``title`` plus all
     ``SamTask`` fields parsed from the issue body's ``<!-- sam:task ... -->`` block.
 
+    Args:
+        sub_issues: List of IssueNode TypedDicts from ``get_task_issues()``.
+
     Returns:
         List of task dicts with GitHub issue fields and SAM metadata merged.
-
-    Note:
-        ``SubIssue`` extends ``Issue`` directly (``class SubIssue(Issue)`` in
-        ``github/Issue.py``). The ``body`` property is inherited from ``Issue``
-        and calls ``_completeIfNotSet(self._body)``, which lazy-fetches the full
-        issue via the GitHub REST API if the attribute was not populated in the
-        initial paginated response. Accessing ``si.body`` is therefore always
-        reliable — the PyGitHub lazy-completion mechanism ensures the value is
-        fetched on first access. A roundtrip via ``repo.get_issue(si.number).body``
-        is unnecessary and would double the number of API calls.
-
-        SOURCE: Verified against installed PyGitHub source at
-        ``.venv/lib/python3.11/site-packages/github/Issue.py`` (lines 822-861,
-        196-198) on 2026-03-07.
     """
     tasks: list[dict[str, object]] = []
     for si in sub_issues:
-        body = si.body or ""
+        body = si["body"] or ""
         task_meta = parse_sam_task_metadata(body)
-        task_dict: dict[str, object] = {"issue_number": si.number, "issue_url": si.html_url, "title": si.title}
+        task_dict: dict[str, object] = {"issue_number": si["number"], "issue_url": "", "title": si["title"]}
         if task_meta is not None:
             task_dict.update(task_meta.model_dump())
         tasks.append(task_dict)
@@ -2425,7 +2415,7 @@ def create_sam_task(
     issue = create_task_issue(repo, parent_issue_number, task, description, acceptance_criteria, labels, output=out)
     if issue is None:
         return {"issue_number": 0, "title": "", "url": "", **out.to_dict()}
-    return {"issue_number": issue.number, "title": issue.title, "url": issue.html_url, **out.to_dict()}
+    return {"issue_number": issue["number"], "title": issue["title"], "url": "", **out.to_dict()}
 
 
 def get_sam_tasks(parent_issue_number: int, refresh_cache: bool = True, output: Output | None = None) -> SamTasksResult:
