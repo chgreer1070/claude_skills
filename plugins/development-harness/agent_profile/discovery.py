@@ -123,6 +123,53 @@ def get_plugins_root() -> Path:
     )
 
 
+def _resolve_agents_dir(plugin_dir: Path) -> Path | None:
+    """Return the ``agents/`` directory for *plugin_dir*, handling both layouts.
+
+    Repo layout::
+
+        plugins/plugin-name/agents/         <- direct child
+
+    Cache layout::
+
+        cache/org/plugin-name/7.2.8/agents/ <- versioned subdir
+
+    When the direct ``agents/`` child does not exist, the function inspects
+    immediate children for semver-looking directories and returns the
+    ``agents/`` dir of the highest version.  Returns ``None`` when no
+    ``agents/`` directory can be found in either location.
+
+    Args:
+        plugin_dir: Directory that is either a plugin directory (repo layout)
+            or a plugin-name directory whose children are version dirs (cache
+            layout).
+
+    Returns:
+        Absolute :class:`~pathlib.Path` to the ``agents/`` directory, or
+        ``None`` if no ``agents/`` directory is found.
+    """
+    direct = plugin_dir / "agents"
+    if direct.is_dir():
+        return direct
+
+    # Cache layout: look for semver-named child directories.
+    version_dirs = [
+        d for d in plugin_dir.iterdir() if d.is_dir() and _looks_like_semver(d.name) and (d / "agents").is_dir()
+    ]
+    if not version_dirs:
+        return None
+
+    # Sort by version components numerically to pick the highest version.
+    def _version_key(p: Path) -> tuple[int, ...]:
+        try:
+            return tuple(int(x) for x in p.name.split("."))
+        except ValueError:
+            return (0,)
+
+    best = max(version_dirs, key=_version_key)
+    return best / "agents"
+
+
 def _agent_name_from_path(agent_path: Path, agents_dir: Path) -> str:
     """Derive the colon-separated agent name from its path relative to agents_dir.
 
@@ -171,8 +218,12 @@ def scan_all_agents(plugins_root: Path | None = None) -> list[AgentEntry]:
     for plugin_dir in sorted(plugins_root.iterdir()):
         if not plugin_dir.is_dir():
             continue
-        agents_dir = plugin_dir / "agents"
-        if not agents_dir.is_dir():
+        # Skip version-numbered directories that appear directly under
+        # plugins_root (can happen in unusual layouts).
+        if _looks_like_semver(plugin_dir.name):
+            continue
+        agents_dir = _resolve_agents_dir(plugin_dir)
+        if agents_dir is None:
             continue
 
         plugin_name = plugin_dir.name
@@ -250,7 +301,10 @@ def _find_plugin_qualified(agent_name: str, plugins_root: Path) -> AgentEntry:
     """
     plugin_part, _, rest = agent_name.partition(":")
     plugin_dir = plugins_root / plugin_part
-    agents_dir = plugin_dir / "agents"
+    agents_dir = _resolve_agents_dir(plugin_dir)
+
+    if agents_dir is None:
+        raise FileNotFoundError(f"Agent '{agent_name}' not found: no agents/ directory under {plugin_dir}")
 
     # Convert colon-separated remainder to a slash path + .md suffix.
     relative_path = Path(*rest.split(":")).with_suffix(".md")
