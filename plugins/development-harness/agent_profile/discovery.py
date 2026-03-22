@@ -85,9 +85,20 @@ def get_plugins_root() -> Path:
     current = Path(__file__).resolve().parent
     while current != current.parent:
         if (current / "agents").is_dir():
-            plugins_root = current.parent
-            logger.debug("plugins_root from __file__ walk: %s", plugins_root)
-            return plugins_root
+            candidate = current.parent
+            has_sibling_plugins = any(
+                d.is_dir() and d.name != current.name and ((d / "agents").is_dir() or (d / "skills").is_dir())
+                for d in candidate.iterdir()
+                if d.is_dir()
+            )
+            if has_sibling_plugins:
+                logger.debug("plugins_root from __file__ walk (repo): %s", candidate)
+                return candidate
+            plugins_root = candidate.parent
+            if plugins_root.exists():
+                logger.debug("plugins_root from __file__ walk (cache): %s", plugins_root)
+                return plugins_root
+            return candidate
         current = current.parent
 
     raise FileNotFoundError(
