@@ -129,11 +129,18 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 ---
 
-## Skills Overview (16)
+## Skills Overview (30)
 
 **Main orchestration:**
 
 - `/dh:development-harness` - Entry point. Detects language, resolves roles, orchestrates S1-S7.
+
+**SAM workflow (4):**
+
+- `/dh:add-new-feature` - Plan a feature: discovery, analysis, architecture, task decomposition
+- `/dh:implement-feature` - Execute tasks from a SAM task file via agent delegation loop
+- `/dh:start-task` - Start or complete a specific task inside a SAM task file
+- `/dh:complete-implementation` - Quality gates after all tasks are COMPLETE
 
 **Workflow stages (7):**
 
@@ -156,15 +163,34 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 - `/dh:implementation-manager` - Coordinate implementation across tasks
 
+**Backlog management (4):**
+
+- `/dh:backlog` - Backlog overview and operations reference
+- `/dh:create-backlog-item` - Create new backlog items
+- `/dh:work-backlog-item` - Work on a backlog item through its lifecycle
+- `/dh:groom-backlog-item` - Groom and prioritize backlog items
+
+**Milestone management (2):**
+
+- `/dh:groom-milestone` - Groom milestone issues into dispatch plans
+- `/dh:work-milestone` - Execute milestone tasks in isolated worktrees
+
 **Testing (3):**
 
 - `/dh:comprehensive-test-review` - Review test coverage and quality
 - `/dh:analyze-test-failures` - Diagnose and categorize test failures
 - `/dh:test-failure-mindset` - Systematic approach to understanding test failures
 
+**Other (4):**
+
+- `/dh:dispatch` - Dispatch tasks to agents
+- `/dh:dh-meta-docs` - Plugin meta-documentation
+- `/dh:interop` - Cross-plugin interoperability
+- `/dh:subagent-contract` - Subagent contract definitions
+
 ---
 
-## Agents Overview (11)
+## Agents Overview (15)
 
 **Planning and decomposition:**
 
@@ -181,6 +207,8 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 - `@dh:feature-verifier` - Verify feature meets acceptance criteria
 - `@dh:integration-checker` - Check integration points and compatibility
+- `@dh:t0-baseline-capture` - Capture baseline state before implementation
+- `@dh:tn-verification-gate` - Verify acceptance criteria after implementation
 
 **Context management:**
 
@@ -191,6 +219,11 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 - `@dh:doc-drift-auditor` - Detect documentation drift from implementation
 - `@dh:service-docs-maintainer` - Generate and maintain service documentation
+
+**Execution:**
+
+- `@dh:generic-stage-agent` - Generic agent for pipeline stages
+- `@dh:task-worker` - Execute individual tasks
 
 ---
 
@@ -214,7 +247,7 @@ Do NOT use when:
 
 ## Layer Model
 
-This harness implements the **SDLC Layer Separation Architecture**. Layer 0 = framework (this harness); Layer 1 = language plugin; Layer 2 = stack profile (optional). See [.claude/docs/sdlc-layers/](../../.claude/docs/sdlc-layers/) and [plugins/development-harness/docs/layer-2/](./docs/layer-2/).
+This harness implements the **SDLC Layer Separation Architecture**. Layer 0 = framework (this harness); Layer 1 = language plugin; Layer 2 = stack profile (optional). See [docs/sdlc-layers/](./docs/sdlc-layers/) and [docs/sdlc-layers/layer-2/](./docs/sdlc-layers/layer-2/).
 
 ---
 
@@ -243,4 +276,4 @@ The development harness supports pluggable backends via Protocol-based abstracti
 - SAM methodology: <https://github.com/bitflight-devops/stateless-agent-methodology>
 - Flow experiments & learnings: <https://github.com/Jamie-BitFlight/sam-flow-experiments>
 - ARL skill: `plugins/plugin-creator/skills/arl/`
-- RT-ICA skill: `plugins/python3-development/skills/planner-rt-ica/`
+- RT-ICA skill: `plugins/development-harness/skills/planner-rt-ica/`
