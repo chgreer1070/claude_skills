@@ -9,9 +9,8 @@ metadata:
   type: Feature
   status: open
   groomed: '2026-03-22'
+  issue: '#984'
 ---
-
-
 
 ## Groomed (2026-03-22)
 
