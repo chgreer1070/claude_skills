@@ -19,6 +19,7 @@ lookup syntax used by skills also works for agents.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from .models import AgentEntry
@@ -31,68 +32,60 @@ __all__ = ["find_agent", "get_plugins_root", "scan_all_agents"]
 def get_plugins_root() -> Path:
     """Return the absolute path to the directory that contains all plugin directories.
 
-    Walks up from this module's location to find the first ancestor that has an
-    ``agents/`` subdirectory — that ancestor is the plugin root for
-    ``development-harness``.  Its parent is the plugins root (the directory that
-    contains ``development-harness`` as well as sibling plugins such as
-    ``python3-development`` and ``plugin-creator``).
+    Uses ``CLAUDE_PLUGIN_ROOT`` env var (set by Claude Code for MCP server
+    subprocesses and hooks) when available.  Falls back to walking up from
+    ``__file__`` for repo-layout development.
 
-    This strategy handles both the repository layout::
+    Layout differences::
 
-        plugins/development-harness/agent_profile/discovery.py
-        ^-- plugins/ is parents[2]
+        Repo:  plugins/development-harness/agents/
+               CLAUDE_PLUGIN_ROOT = plugins/development-harness/
+               plugins_root       = plugins/                        (.parent)
 
-    and the versioned cache layout::
-
-        ~/.claude/plugins/cache/org/development-harness/{version}/agent_profile/discovery.py
-        ^-- {version}/ is parents[1]; development-harness/ is parents[2]; org/ is parents[3]
-
-    rather than hard-coding a fixed ``parents[N]`` index that breaks when an extra
-    version directory is present.
+        Cache: cache/org/development-harness/4.4.19/agents/
+               CLAUDE_PLUGIN_ROOT = cache/org/development-harness/4.4.19/
+               plugins_root       = cache/org/                      (.parent.parent)
 
     Returns:
-        Absolute :class:`~pathlib.Path` to the directory whose children are the
-        individual plugin directories.
+        Absolute :class:`~pathlib.Path` whose children are plugin directories.
 
     Raises:
-        FileNotFoundError: When no ancestor with an ``agents/`` subdirectory is
-            found, which indicates an unexpected installation layout.
+        FileNotFoundError: When the plugins root cannot be determined.
     """
+    plugin_root_env = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if plugin_root_env:
+        plugin_root = Path(plugin_root_env).resolve()
+        candidate = plugin_root.parent
+        # Check if candidate has sibling dirs with agents/ or skills/
+        # (repo layout: candidate = plugins/, siblings = python3-development/ etc.)
+        has_sibling_plugins = any(
+            d.is_dir() and d.name != plugin_root.name and ((d / "agents").is_dir() or (d / "skills").is_dir())
+            for d in candidate.iterdir()
+            if d.is_dir()
+        )
+        if has_sibling_plugins:
+            logger.debug("plugins_root from CLAUDE_PLUGIN_ROOT (repo): %s", candidate)
+            return candidate
+        # Cache layout: candidate is plugin-name dir with version subdirs.
+        # Go up one more level to the org directory.
+        plugins_root = candidate.parent
+        if plugins_root.exists():
+            logger.debug("plugins_root from CLAUDE_PLUGIN_ROOT (cache): %s", plugins_root)
+            return plugins_root
+
+    # Fallback: walk up from __file__ to find agents/ directory.
     current = Path(__file__).resolve().parent
-    # Walk upward until we find a directory that contains agents/ — that is
-    # either the plugin root (repo layout) or the version directory (cache
-    # layout).  We need the directory whose children are plugin directories.
-    #
-    # Repo:  plugins/development-harness/agents/  → parent = plugins/  ✓
-    # Cache: cache/org/development-harness/4.4.16/agents/ → parent = development-harness/
-    #        Need parent.parent = org/  ✓
-    #
-    # Strategy: after finding agents/, check if parent has sibling dirs that
-    # also contain agents/ or skills/.  If yes → parent is the plugins root.
-    # If no → we're in the cache version layout; go up two levels.
     while current != current.parent:
         if (current / "agents").is_dir():
-            candidate = current.parent
-            # Check for sibling plugin directories at candidate level
-            has_sibling_plugins = any(
-                d.is_dir() and d.name != current.name and ((d / "agents").is_dir() or (d / "skills").is_dir())
-                for d in candidate.iterdir()
-                if d.is_dir()
-            )
-            if has_sibling_plugins:
-                return candidate
-            # No sibling plugins found — cache layout where current is a
-            # version dir inside the plugin-name dir.  Go up two levels:
-            # version/ → plugin-name/ → org/ (which has sibling plugins).
-            plugins_root = candidate.parent
-            if plugins_root.exists():
-                return plugins_root
-            return candidate
+            plugins_root = current.parent
+            logger.debug("plugins_root from __file__ walk: %s", plugins_root)
+            return plugins_root
         current = current.parent
 
     raise FileNotFoundError(
-        f"Could not locate the plugin root by searching ancestors of {Path(__file__).resolve()}. "
-        "No ancestor directory contains an 'agents/' subdirectory."
+        f"Could not locate the plugin root. "
+        f"Searched ancestors of {Path(__file__).resolve()} and "
+        "CLAUDE_PLUGIN_ROOT is not set."
     )
 
 
