@@ -731,6 +731,20 @@ def _fetch_issue_comments_graphql(
     return comments
 
 
+def _update_issue_comment_graphql(repo: Repository, comment_node_id: str, body: str) -> None:
+    """Update an existing issue comment body via GraphQL mutation.
+
+    Args:
+        repo: PyGithub Repository object (provides requester transport).
+        comment_node_id: GraphQL node ID of the comment to update.
+        body: New comment body text.
+
+    Raises:
+        BacklogError: On GraphQL errors.
+    """
+    _graphql_request(repo, _UPDATE_COMMENT_MUTATION, {"id": comment_node_id, "body": body})
+
+
 # ---------------------------------------------------------------------------
 # GraphQL helper functions — label resolution
 # ---------------------------------------------------------------------------

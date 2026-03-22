@@ -27,7 +27,7 @@ from . import models as _models, operations
 from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .dispatch_state import DispatchStateManager as _DispatchStateManager
-from .github import get_github as _get_github
+from .github import IssueNode as _IssueNode, _fetch_issues_graphql, get_github as _get_github
 from .models import (
     ArtifactContent,
     ArtifactEntry,
@@ -1382,10 +1382,12 @@ async def dispatch_stale_check(
 
     def _fetch_milestone_issue_numbers() -> list[int]:
         gh_repo = _get_github(repo)
-        ms_obj = gh_repo.get_milestone(milestone_number)
-        return [
-            issue.number for issue in gh_repo.get_issues(milestone=ms_obj, state="all") if issue.pull_request is None
-        ]
+        owner, repo_name = gh_repo.full_name.split("/", 1)
+        open_issues = _fetch_issues_graphql(gh_repo, owner, repo_name, state="OPEN", milestone_number=milestone_number)
+        closed_issues = _fetch_issues_graphql(
+            gh_repo, owner, repo_name, state="CLOSED", milestone_number=milestone_number
+        )
+        return [issue["number"] for issue in open_issues + closed_issues]
 
     try:
         current_numbers = await asyncio.to_thread(_fetch_milestone_issue_numbers)
@@ -1417,16 +1419,17 @@ async def dispatch_conflicts(
 
     def _fetch_items_with_impact_radius() -> list[_ImpactRadiusItem]:
         gh_repo = _get_github(repo)
-        ms_obj = gh_repo.get_milestone(milestone_number)
+        owner, repo_name = gh_repo.full_name.split("/", 1)
+        issue_nodes: list[_IssueNode] = _fetch_issues_graphql(
+            gh_repo, owner, repo_name, state="OPEN", milestone_number=milestone_number
+        )
         items: list[_ImpactRadiusItem] = []
         ir_re = _re.compile(r"##\s+Impact\s+Radius\b(.*?)(?=\n##|\Z)", _re.IGNORECASE | _re.DOTALL)
-        for issue in gh_repo.get_issues(milestone=ms_obj, state="open"):
-            if issue.pull_request is not None:
-                continue
-            body = issue.body or ""
+        for issue in issue_nodes:
+            body = issue["body"] or ""
             match = ir_re.search(body)
             impact_radius = match.group(1).strip() if match else ""
-            items.append({"title": issue.title, "issue": issue.number, "impact_radius": impact_radius})
+            items.append({"title": issue["title"], "issue": issue["number"], "impact_radius": impact_radius})
         return items
 
     try:

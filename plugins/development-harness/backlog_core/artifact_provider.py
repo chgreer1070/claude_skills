@@ -41,7 +41,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
-from .github import _graphql_request, get_github
+from .github import (
+    _add_comment_graphql,
+    _fetch_issue_comments_graphql,
+    _fetch_issue_graphql,
+    _update_issue_comment_graphql,
+    _update_issue_graphql,
+    get_github,
+)
 
 # dh_paths lives one level above backlog_core (at plugin root).
 _plugin_root = Path(__file__).parent.parent
@@ -61,6 +68,7 @@ __all__ = [
     "render_manifest_section",
     "replace_manifest_in_body",
 ]
+
 
 # ---------------------------------------------------------------------------
 # Artifact content comment constants
@@ -322,7 +330,7 @@ class GitHubArtifactProvider:
     def get_manifest(self, issue_number: int) -> ArtifactManifest:
         """Retrieve the artifact manifest from the GitHub Issue body.
 
-        Fetches the issue body via PyGithub REST, then extracts and parses
+        Fetches the issue body via GraphQL, then extracts and parses
         the ``<!-- artifact-manifest:begin/end -->`` section.  Returns an
         empty manifest when the section is absent.
 
@@ -336,11 +344,12 @@ class GitHubArtifactProvider:
         Raises:
             backlog_core.models.GitHubUnavailableError: When ``GITHUB_TOKEN``
                 is not set.
-            github.GithubException: On GitHub API failures.
+            backlog_core.models.BacklogError: On GraphQL API failures.
         """
         repo_obj = get_github(self._repo)
-        issue = repo_obj.get_issue(issue_number)
-        body = issue.body or ""
+        owner, repo_name = self._repo.split("/", 1)
+        issue = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_number)
+        body = issue.get("body") or ""
         return parse_manifest_section(body, issue_number)
 
     def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
@@ -348,7 +357,7 @@ class GitHubArtifactProvider:
 
         Renders the manifest as a markdown table, then replaces the existing
         manifest section in the issue body (or appends it if absent) via a
-        PyGithub ``issue.edit(body=...)`` call.
+        GraphQL ``updateIssue`` mutation.
 
         Args:
             issue_number: GitHub Issue number (positive integer).
@@ -357,11 +366,12 @@ class GitHubArtifactProvider:
         Raises:
             backlog_core.models.GitHubUnavailableError: When ``GITHUB_TOKEN``
                 is not set.
-            github.GithubException: On GitHub API failures.
+            backlog_core.models.BacklogError: On GraphQL API failures.
         """
         repo_obj = get_github(self._repo)
-        issue = repo_obj.get_issue(issue_number)
-        current_body = issue.body or ""
+        owner, repo_name = self._repo.split("/", 1)
+        issue = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_number)
+        current_body = issue.get("body") or ""
 
         # Stamp last_updated before rendering
         manifest = manifest.model_copy(update={"last_updated": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")})
@@ -369,7 +379,7 @@ class GitHubArtifactProvider:
         new_body = replace_manifest_in_body(current_body, rendered)
 
         if new_body != current_body:
-            issue.edit(body=new_body)
+            _update_issue_graphql(repo_obj, issue["id"], body=new_body)
 
     def read_artifact_content(self, path: str) -> str:
         """Read artifact file content from the root worktree filesystem.
@@ -400,7 +410,8 @@ class GitHubArtifactProvider:
 
         Creates or updates a collapsible comment identified by the
         ``<!-- artifact-content:type=...:path=... -->`` markers.  If a
-        matching comment already exists it is edited in-place.
+        matching comment already exists it is edited in-place via GraphQL
+        ``updateIssueComment`` mutation.
 
         Content exceeding ``_GITHUB_COMMENT_MAX_CHARS`` is truncated with a
         warning notice appended so the comment stays within GitHub's limit.
@@ -412,23 +423,25 @@ class GitHubArtifactProvider:
             content: Full artifact content to store.
         """
         repo_obj = get_github(self._repo)
-        issue = repo_obj.get_issue(issue_number)
+        owner, repo_name = self._repo.split("/", 1)
+        issue = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_number)
         comment_body = _build_artifact_content_comment(artifact_type, path, content)
 
-        # Search for an existing comment to update in-place.
-        for comment in issue.get_comments():
-            tag_match = _ARTIFACT_CONTENT_TAG_RE.match(comment.body or "")
+        # Search for an existing comment to update in-place via GraphQL.
+        comments = _fetch_issue_comments_graphql(repo_obj, owner, repo_name, issue_number)
+        for comment in comments:
+            tag_match = _ARTIFACT_CONTENT_TAG_RE.match(comment.get("body") or "")
             if tag_match and tag_match.group("type") == artifact_type and tag_match.group("path") == path:
-                comment.edit(comment_body)
+                _update_issue_comment_graphql(repo_obj, comment["id"], comment_body)
                 return
 
-        issue.create_comment(comment_body)
+        _add_comment_graphql(repo_obj, issue["id"], comment_body)
 
     def read_artifact_content_from_github(self, issue_number: int, artifact_type: str, path: str) -> str | None:
         """Search issue comments for stored artifact content.
 
-        Scans the issue's comments for an artifact content block whose
-        ``type`` and ``path`` match the given arguments.
+        Scans the issue's comments via GraphQL for an artifact content block
+        whose ``type`` and ``path`` match the given arguments.
 
         Args:
             issue_number: GitHub Issue number (positive integer).
@@ -440,10 +453,11 @@ class GitHubArtifactProvider:
             matching comment exists.
         """
         repo_obj = get_github(self._repo)
-        issue = repo_obj.get_issue(issue_number)
+        owner, repo_name = self._repo.split("/", 1)
+        comments = _fetch_issue_comments_graphql(repo_obj, owner, repo_name, issue_number)
 
-        for comment in issue.get_comments():
-            body = comment.body or ""
+        for comment in comments:
+            body = comment.get("body") or ""
             tag_match = _ARTIFACT_CONTENT_TAG_RE.match(body)
             if tag_match and tag_match.group("type") == artifact_type and tag_match.group("path") == path:
                 return _extract_content_from_comment(body)
@@ -503,45 +517,3 @@ class GitHubArtifactProvider:
             candidate.relative_to(self._root_worktree.resolve())
         except ValueError:
             raise ValueError(f"Path traversal detected: {path!r} resolves outside the repository root.") from None
-
-
-# ---------------------------------------------------------------------------
-# GraphQL-backed variant (optional — used when issue.edit() is rate-limited)
-# ---------------------------------------------------------------------------
-
-
-def _build_update_issue_body_mutation() -> str:
-    """Return the GraphQL mutation string for updating an issue body.
-
-    Returns:
-        GraphQL mutation string that accepts ``$id`` (node ID) and
-        ``$body`` (new body text) variables.
-    """
-    return """
-mutation UpdateIssueBody($id: ID!, $body: String!) {
-  updateIssue(input: {id: $id, body: $body}) {
-    issue {
-      id
-      number
-    }
-  }
-}"""
-
-
-def _update_issue_body_graphql(repo_obj: object, issue_node_id: str, new_body: str) -> None:
-    """Update an issue body via GraphQL mutation.
-
-    Provided as an alternative to ``issue.edit(body=...)`` for callers that
-    already hold the issue node ID from a prior GraphQL query and want to
-    avoid the extra REST round-trip.
-
-    Args:
-        repo_obj: PyGithub ``Repository`` object (provides requester access).
-        issue_node_id: GitHub GraphQL node ID of the issue (e.g. ``"I_kwDO…"``).
-        new_body: Full new body text for the issue.
-
-    Raises:
-        backlog_core.models.BacklogError: On GraphQL errors.
-    """
-    mutation = _build_update_issue_body_mutation()
-    _graphql_request(repo_obj, mutation, {"id": issue_node_id, "body": new_body})  # type: ignore[arg-type]
