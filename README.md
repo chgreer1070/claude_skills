@@ -59,18 +59,18 @@ Comprehensive frameworks with multiple skills, commands, and specialized agents.
 
 | Plugin | What It Does |
 | --- | --- |
-| [python3-development](./plugins/python3-development) | Transform Claude into a Python 3.11+ expert with 27 skills, 16 agents, 2 commands, TDD workflows, modern library selection (Typer, Rich, httpx), and SAM methodology for feature development |
+| [python3-development](./plugins/python3-development) | Transform Claude into a Python 3.11+ expert with 34 skills, 6 agents, 2 commands, TDD workflows, modern library selection (Typer, Rich, httpx), and SAM methodology for feature development |
 | [bash-development](./plugins/bash-development) | Write robust Bash 5.1+ scripts with modern patterns, error handling, POSIX portability, and specialized agents for development and auditing |
 | [perl-development](./plugins/perl-development) | Build production-quality Perl 5.30+ scripts with modern practices, CPAN ecosystem integration, comprehensive testing, and CLI architecture |
 | [plugin-creator](./plugins/plugin-creator) | Complete toolkit for creating, refactoring, and validating Claude Code plugins with 32 skills, 8 specialized agents, and systematic workflows |
 | [uv](./plugins/uv) | Expert guidance for Astral's uv — the fast Python package manager that replaces pip, poetry, pyenv, and virtualenv with modern lockfiles |
-| [clang-format](./plugins/clang-format) | Configure clang-format to match your existing C/C++ code style by analyzing patterns and showing impact before changes |
+| [clang-format](./plugins/clang-format) | Configure clang-format to match your existing C/C++ code style by analyzing patterns and showing impact before changes (install name: `clang-format-configuration`) |
 | [holistic-linting](./plugins/holistic-linting) | Automatic code quality enforcement — Claude won't say "done" until code passes all configured linters with root-cause fixing |
 | [summarizer](./plugins/summarizer) | Faithful information summarization with anti-hallucination methodology, structured output templates, and autonomous agents |
 | [agentskill-kaizen](./plugins/agentskill-kaizen) | Analyze Claude Code session transcripts to find inefficiencies, anti-patterns, and repeated mistakes with DuckDB process-mining and live sentiment dashboard |
 | [dasel](./plugins/dasel) | Query, transform, and convert structured data files (JSON, YAML, TOML, XML, CSV) using dasel v3 with enterprise XML support and exploration agents |
 | [development-harness](./plugins/development-harness) | Language-agnostic development process harness implementing the SAM 7-stage pipeline with planning, verification, and testing methodology |
-| [the-rewrite-room](./plugins/the-rewrite-room) | Documentation workflow router — routes tasks like drift audits, doc sync, prompt optimization, and summarization to canonical workflows with validation |
+| [the-rewrite-room](./plugins/the-rewrite-room) | Documentation workflow router — routes tasks like drift audits, doc sync, prompt optimization, and summarization to canonical workflows with validation (install name: `rwr`) |
 | [process-siren](./plugins/process-siren) | Converts bullet steps, ASCII art, markdown tables, and prose workflows into Mermaid diagrams for AI-facing documents, with process quality methodology for improving ambiguous or incomplete processes before conversion |
 | [fastmcp-creator](./plugins/fastmcp-creator) | Build production-ready Model Context Protocol (MCP) servers with FastMCP 3.x framework and agent-centric design patterns |
 
@@ -94,12 +94,6 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 | [commitlint](./plugins/commitlint) | Configure and validate commit messages against commitlint rules for CI/CD enforcement |
 | [gitlab-skill](./plugins/gitlab-skill) | Write GitLab CI pipelines and GLFM documentation with local testing before pushing |
 
-#### AI and LLM Tools
-
-| Plugin | What It Does |
-| --- | --- |
-| [prompt-optimization-claude-45](./plugins/prompt-optimization-claude-45) | Optimize CLAUDE.md and skills using Anthropic's best practices — transforms negative rules into positive patterns |
-
 #### Better Claude Behavior
 
 | Plugin | What It Does |
@@ -107,6 +101,7 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 | [agent-orchestration](./plugins/agent-orchestration) | Makes Claude more thorough on complex tasks by investigating root causes and verifying work actually functions |
 | [verification-gate](./plugins/verification-gate) | Forces Claude to investigate before acting, preventing correct diagnosis with wrong implementation |
 | [hallucination-detector](https://github.com/bitflight-devops/hallucination-detector) | Blocks task completion when Claude speculates or makes ungrounded claims, forcing evidence-first rewrites |
+| [scientific-method](./plugins/scientific-method) | Structures hypothesis-driven debugging and investigation with experiment protocols and evidence-first methodology |
 | [brainstorming-skill](./plugins/brainstorming-skill) | Significantly improves brainstorming with 30+ research-validated prompt patterns across 14 categories |
 | [orchestrator-discipline](./plugins/orchestrator-discipline) | Prevents orchestrator context window bloat via PreToolUse hooks — blocks file reads without edits, diagnostic commands that should be delegated |
 
@@ -114,7 +109,7 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 
 | Plugin | What It Does |
 | --- | --- |
-| [twelve-factor-app](./plugins/twelve-factor-app) | Apply twelve-factor app methodology to your projects for portable, scalable, cloud-native architecture |
+| [twelve-factor-app](./plugins/twelve-factor-app) | Apply twelve-factor app methodology to your projects for portable, scalable, cloud-native architecture (not yet in marketplace — use `--plugin-dir ./plugins/twelve-factor-app` for local use) |
 
 ## How Plugins Work
 
