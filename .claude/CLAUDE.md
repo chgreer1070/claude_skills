@@ -101,7 +101,7 @@ Three or more Read/Grep/Bash calls on source files without an intervening Edit/W
 
 When triggered: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate to a specialist agent.
 
-**Parallel execution rule**: When 2+ independent questions need answering, launch one subagent per question simultaneously. Use TeamCreate when workers benefit from coordinating with each other during execution (sharing findings, challenging approaches, reacting to discoveries). Use parallel Agent() calls when workers are fully independent and only report results back. Do not serialize independent research.
+**Parallel execution rule**: When 2+ independent tasks need doing, use TeamCreate to dispatch parallel agents. Create the team, create tasks for tracking, spawn one agent per independent problem domain as a teammate. Teams are the standard mechanism for parallel work — not a special case. Do not serialize independent work.
 
 ---
 
