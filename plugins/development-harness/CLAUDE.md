@@ -218,8 +218,17 @@ This harness implements the **SDLC Layer Separation Architecture**. Layer 0 = fr
 
 ---
 
+## Backend Providers
+
+When discussing, extending, or adding backend providers for the development harness — including state management, task management, planning, issues, jobs, milestones, or boards — read [docs/backend-providers.md](./docs/backend-providers.md) first. Amend that document with any new points, references, discoveries, or user inputs that arise during the conversation.
+
+The development harness supports pluggable backends via Protocol-based abstractions. The current implementation uses GitHub. Future backends include GitLab, Linear, and Supabase. Each backend uses its platform's native primitives — see the reference doc for verified capabilities and official documentation URLs per platform.
+
+---
+
 ## References
 
+- [Backend Providers](./docs/backend-providers.md)
 - [Default Development Flow](./skills/development-harness/references/default-development-flow.md)
 - [Role Resolution Protocol](./skills/development-harness/references/role-resolution-protocol.md)
 - [Language Manifest Schema](./skills/development-harness/references/language-manifest-schema.md)
