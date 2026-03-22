@@ -529,13 +529,24 @@ async def backlog_groom(
     reason: Annotated[
         str | None, Field(description="Reason for striking entries (required when replace_section=True)")
     ] = None,
+    append: Annotated[
+        bool,
+        Field(
+            description=(
+                "When True and section is provided, append new content after existing section content "
+                "(newline-separated) instead of replacing it. No entry-block wrapping is applied. "
+                "Use this to incrementally add lines to a section such as ## Concerns."
+            )
+        ),
+    ] = False,
 ) -> dict:
     """Write groomed content into a backlog item's per-item file and sync to its GitHub issue.
 
     Provide section + content for section updates. Use entry_id to replace
     a specific entry, or replace_section=True to strike all entries and
-    append new content. When the item has a GitHub issue, the groomed
-    content is synced there automatically.
+    append new content. Set append=True to add content after existing section
+    text without entry-block wrapping. When the item has a GitHub issue, the
+    groomed content is synced there automatically.
 
     Returns:
         Dict with groomed item title, synced status, and output
@@ -553,6 +564,7 @@ async def backlog_groom(
             entry_id=entry_id,
             replace_section=replace_section,
             reason=reason,
+            append=append,
         )
         for w in out.warnings:
             await ctx.warning(w)

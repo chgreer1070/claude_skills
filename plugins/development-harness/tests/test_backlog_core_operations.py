@@ -1399,6 +1399,88 @@ class TestGroomItemEntryBlocks:
 
 
 # ---------------------------------------------------------------------------
+# groom_item append=True: raw-append mode (no entry-block wrapping)
+# ---------------------------------------------------------------------------
+
+
+class TestGroomItemAppend:
+    """Tests for append=True parameter on groom_item."""
+
+    def test_groom_item_append_true_first_write_creates_section(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """append=True on a missing section creates the section with the new content.
+
+        Tests: groom_item append=True first write creates section.
+        How: Write item with no Concerns section; call groom_item with append=True.
+        Why: append=True must still create the section when it does not exist.
+        """
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = tmp_path / "backlog"
+        filepath = _write_item(backlog_dir, title="Append First", priority="P1", topic="append-first")
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Append First", section="Concerns", content="First concern.", output=out, append=True
+        )
+        assert "error" not in result
+
+        body = filepath.read_text(encoding="utf-8")
+        assert "First concern." in body
+        # No entry-block wrapping when append=True
+        assert "<div><sub>" not in body
+
+    def test_groom_item_append_true_second_write_appends_content(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """append=True on an existing section appends new content after existing content.
+
+        Tests: groom_item append=True incremental append preserves existing content.
+        How: Call groom_item twice with append=True into the same section.
+        Why: implement-feature needs to add individual concern lines incrementally.
+        """
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = tmp_path / "backlog"
+        filepath = _write_item(backlog_dir, title="Append Multi", priority="P1", topic="append-multi")
+
+        out = Output()
+        ops.groom_item(selector="Append Multi", section="Concerns", content="Concern A.", output=out, append=True)
+        ops.groom_item(selector="Append Multi", section="Concerns", content="Concern B.", output=out, append=True)
+
+        body = filepath.read_text(encoding="utf-8")
+        assert "Concern A." in body
+        assert "Concern B." in body
+        # Both concerns must be present — A must appear before B
+        assert body.index("Concern A.") < body.index("Concern B.")
+        # No entry-block wrapping when append=True
+        assert "<div><sub>" not in body
+
+    def test_groom_item_append_false_default_uses_entry_blocks(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """append=False (default) continues to wrap content in entry blocks.
+
+        Tests: groom_item append=False default behaviour unchanged.
+        How: Call groom_item without append parameter.
+        Why: Ensures backward compatibility — existing callers must not be affected.
+        """
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = tmp_path / "backlog"
+        filepath = _write_item(backlog_dir, title="Append Default", priority="P1", topic="append-default")
+
+        out = Output()
+        ops.groom_item(selector="Append Default", section="Decision", content="Default behaviour.", output=out)
+
+        body = filepath.read_text(encoding="utf-8")
+        assert "Default behaviour." in body
+        # Default (append=False) must still produce entry blocks
+        assert "<div><sub>" in body
+
+
+# ---------------------------------------------------------------------------
 # Entry block integration: strike_entry operation
 # ---------------------------------------------------------------------------
 

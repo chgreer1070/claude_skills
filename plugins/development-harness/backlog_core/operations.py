@@ -365,12 +365,15 @@ def _write_groomed_to_item_file(
     replace_section: bool = False,
     reason: str | None = None,
     added_date: str = "0000-00-00",
+    append: bool = False,
 ) -> None:
     """Merge groomed content into per-item file.
 
     Updates frontmatter groomed date and body.
     If section_name is set, wrap content in an entry block via rewrite_section
     and append/replace that section only (incremental).
+    When append=True and section_name is set, the new content is appended after
+    the existing section content instead of replacing it (no entry-block wrapping).
     Else replace full ## Groomed.
     """
     text = filepath.read_text(encoding="utf-8")
@@ -382,16 +385,20 @@ def _write_groomed_to_item_file(
     fm_text, body = parts[1].strip(), parts[2].strip()
     today_str = today()
     if section_name:
-        existing_section_body = _extract_subsection_body(body, section_name)
-        rewritten = rewrite_section_entries(
-            existing_body=existing_section_body,
-            new_content=groomed_content,
-            entry_id=entry_id,
-            replace=replace_section,
-            reason=reason,
-            added_date=added_date,
-        )
-        new_body = append_or_replace_section(body, section_name, rewritten)
+        if append:
+            # Raw-append mode: skip entry-block wrapping, append text directly.
+            new_body = append_or_replace_section(body, section_name, groomed_content, append=True)
+        else:
+            existing_section_body = _extract_subsection_body(body, section_name)
+            rewritten = rewrite_section_entries(
+                existing_body=existing_section_body,
+                new_content=groomed_content,
+                entry_id=entry_id,
+                replace=replace_section,
+                reason=reason,
+                added_date=added_date,
+            )
+            new_body = append_or_replace_section(body, section_name, rewritten)
     else:
         groomed_section = f"## Groomed ({today_str})\n\n{groomed_content.strip()}"
         groomed_re = re.compile(r"\n## Groomed\s*\([^)]*\)\s*\n[\s\S]*?(?=\n## |\Z)", re.MULTILINE)
@@ -488,6 +495,7 @@ def _handle_update_groomed(
     entry_id: str | None = None,
     replace_section: bool = False,
     reason: str | None = None,
+    append: bool = False,
 ) -> None:
     """Handle groomed content update: GitHub-first, then cache locally.
 
@@ -519,6 +527,7 @@ def _handle_update_groomed(
         replace_section=replace_section,
         reason=reason,
         added_date=added_date,
+        append=append,
     )
     out.info(f"Updated {filepath.name} with groomed content")
 
@@ -1813,6 +1822,7 @@ def update_item(
     replace_section: bool = False,
     reason: str | None = None,
     verified: bool = False,
+    append: bool = False,
 ) -> dict[str, str | int | bool | list[str]]:
     """Update item: add Plan, set status:in-progress, create issue, apply verified label, or write groomed content.
 
@@ -1855,6 +1865,7 @@ def update_item(
             entry_id=entry_id,
             replace_section=replace_section,
             reason=reason,
+            append=append,
         )
         return {**result, "groomed_updated": True, **out.to_dict()}
 
@@ -1894,6 +1905,7 @@ def groom_item(
     entry_id: str | None = None,
     replace_section: bool = False,
     reason: str | None = None,
+    append: bool = False,
 ) -> dict[str, str | int | bool | list[str]]:
     """Write groomed content into per-item file. Delegates to update_item.
 
@@ -1921,6 +1933,7 @@ def groom_item(
         entry_id=entry_id,
         replace_section=replace_section,
         reason=reason,
+        append=append,
     )
 
 

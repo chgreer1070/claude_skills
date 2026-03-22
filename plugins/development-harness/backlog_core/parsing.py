@@ -609,8 +609,50 @@ def build_body_extra_only(
     return "\n\n".join(parts) + "\n" if parts else ""
 
 
-def append_or_replace_section(body: str, section_name: str, content: str) -> str:
+def _build_section_block(header: str, existing_body: str, new_content: str, *, append: bool) -> str:
+    """Build section block content, optionally appending to existing body.
+
+    Returns:
+        Complete section block string (header + body + trailing newline).
+    """
+    body_text = existing_body.rstrip() + "\n" + new_content if append and existing_body else new_content
+    return header + body_text + "\n"
+
+
+def _replace_groomed_subsection(body: str, section_name: str, content: str, *, append: bool) -> str:
+    """Replace or append a ### subsection under ## Groomed.
+
+    Returns:
+        Updated body string.
+    """
+    sub_header = f"### {section_name.strip()}\n\n"
+    # [^\n]* absorbs trailing text like ": BLOCKED" on the heading line.
+    sub_re = re.compile(
+        rf"\n?### {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
+    )
+    groomed_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
+    match = groomed_re.search(body)
+    if match:
+        groomed_body = match.group(2)
+        sub_match = sub_re.search(groomed_body)
+        if sub_match:
+            new_block = _build_section_block(sub_header, sub_match.group(1), content, append=append)
+            new_groomed_body = sub_re.sub(lambda _: f"\n{new_block}", groomed_body)
+        else:
+            new_groomed_body = groomed_body.rstrip() + "\n\n" + sub_header + content + "\n"
+        captured = match.group(1) + new_groomed_body + "\n"
+        return groomed_re.sub(lambda _: captured, body, count=1)
+    groomed_header = f"## Groomed ({today()})"
+    return body.rstrip() + "\n\n" + groomed_header + "\n\n" + sub_header + content + "\n"
+
+
+def append_or_replace_section(body: str, section_name: str, content: str, *, append: bool = False) -> str:
     """Append or replace a section in body. section_name: Fact-Check, RT-ICA, or groomed subsection (Reproducibility, Priority, etc.).
+
+    When ``append=True`` and the section already exists, the new content is
+    appended after the existing section content (separated by a newline) instead
+    of replacing it.  When the section does not yet exist the behaviour is
+    identical regardless of ``append``.
 
     Returns:
         Updated body string.
@@ -618,42 +660,23 @@ def append_or_replace_section(body: str, section_name: str, content: str) -> str
     content = content.strip()
     if not content:
         return body
-    today_str = today()
     section_lower = section_name.strip().lower()
     if section_lower in {"fact-check", "rt-ica"}:
         header = f"## {section_name.strip()}\n\n"
         # [^\n]* absorbs trailing text like ": BLOCKED" on the heading line.
         # Using \s* instead would silently fail on headings with suffixes.
         section_re = re.compile(
-            rf"\n## {re.escape(section_name.strip())}[^\n]*\n[\s\S]*?(?=\n## |\Z)", re.IGNORECASE | re.MULTILINE
+            rf"\n## {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n## |\Z)", re.IGNORECASE | re.MULTILINE
         )
-        new_block = header + content + "\n"
-        if section_re.search(body):
+        existing_match = section_re.search(body)
+        if existing_match:
+            new_block = _build_section_block(header, existing_match.group(1), content, append=append)
             return section_re.sub(lambda _: f"\n{new_block}", body)
-        return body.rstrip() + "\n\n" + new_block
+        return body.rstrip() + "\n\n" + header + content + "\n"
     # Treat known groomed subsections AND any unrecognized section name as a
     # ### subsection under ## Groomed.  Previous code silently dropped unknown
     # section names (returned body unchanged), violating "no silent data loss".
-    groomed_header = f"## Groomed ({today_str})"
-    sub_header = f"### {section_name.strip()}\n\n"
-    # [^\n]* absorbs trailing text like ": BLOCKED" on the heading line.
-    # Using \s* instead would silently fail on headings with suffixes.
-    # This regex only searches within groomed_body (scoped by groomed_re below).
-    sub_re = re.compile(
-        rf"\n?### {re.escape(section_name.strip())}[^\n]*\n[\s\S]*?(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
-    )
-    new_block = sub_header + content + "\n"
-    groomed_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
-    match = groomed_re.search(body)
-    if match:
-        groomed_body = match.group(2)
-        if sub_re.search(groomed_body):
-            new_groomed_body = sub_re.sub(lambda _: f"\n{new_block}", groomed_body)
-        else:
-            new_groomed_body = groomed_body.rstrip() + "\n\n" + new_block
-        captured = match.group(1) + new_groomed_body + "\n"
-        return groomed_re.sub(lambda _: captured, body, count=1)
-    return body.rstrip() + "\n\n" + groomed_header + "\n\n" + new_block
+    return _replace_groomed_subsection(body, section_name, content, append=append)
 
 
 # ---------------------------------------------------------------------------
