@@ -41,6 +41,7 @@ markers = [
     "cli: marks tests as CLI integration tests",
     "unit: marks tests as unit tests",
     "critical: marks tests requiring property-based or mutation testing",
+    "e2e: marks tests as end-to-end tests",
 ]
 
 [tool.coverage.run]
