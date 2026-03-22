@@ -149,11 +149,7 @@ def should_skip_hook(event_name: str, profile: HookProfile, disabled_hooks: set[
     return bool(profile == HookProfile.MINIMAL and event_name == "PostToolUse")
 
 
-def run_strict_pre_completion_checks(
-    task_file_path: Path,
-    task_id: str,
-    hook_input: dict[str, Any],
-) -> list[str]:
+def run_strict_pre_completion_checks(task_file_path: Path, task_id: str, hook_input: dict[str, Any]) -> list[str]:
     """Run pre-completion validation checks for strict mode.
 
     Called when CLAUDE_SKILLS_HOOK_PROFILE=strict and a SubagentStop event fires.
@@ -456,12 +452,65 @@ def sync_completion_to_github(task_file_path: Path, task_id: str, parent_issue_n
         print(f"[hook] GitHub sync failed: {e}", file=sys.stderr)
 
 
+def _glob_active_context_files() -> list[Path]:
+    """Return all active-task-*.json files in the DH context directory.
+
+    Returns:
+        List of Path objects for found context files. Empty list if the
+        directory does not exist or no files match.
+    """
+    try:
+        context_dir = _dh_paths.context_dir()
+    except Exception:  # noqa: BLE001
+        return []
+    if not context_dir.exists():
+        return []
+    return list(context_dir.glob("active-task-*.json"))
+
+
+def _read_context_file(context_file: Path) -> tuple[Path | None, str | None, int | None]:
+    """Read task_file_path, task_id, and parent_issue_number from a context file.
+
+    Args:
+        context_file: Path to an active-task-*.json file.
+
+    Returns:
+        Tuple of (task_file_path, task_id, parent_issue_number).
+        Any field absent or unreadable is returned as None.
+    """
+    try:
+        data: dict[str, Any] = json.loads(context_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None, None, None
+
+    raw_path = data.get("task_file_path")
+    task_id = data.get("task_id")
+    if not raw_path or not task_id:
+        return None, None, None
+
+    parent_issue: int | None = None
+    if "parent_issue_number" in data:
+        with contextlib.suppress(TypeError, ValueError):
+            parent_issue = int(data["parent_issue_number"])
+
+    return Path(raw_path), task_id, parent_issue
+
+
 def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = HookProfile.STANDARD) -> None:
     """Handle SubagentStop event - mark task COMPLETE with timestamp.
 
-    Parses the sub-agent's prompt to find the /start-task invocation
-    and extracts task file path and task ID. Delegates all file writes
-    to sam_schema.core.query.update_status (handles both .yaml and .md formats).
+    Discovers the active task by globbing for all active-task-*.json files in
+    the DH context directory. For each file, checks whether the task is
+    currently IN_PROGRESS; if so, marks it COMPLETE and deletes the context
+    file. Stale context files (crashed agents whose task is already COMPLETE)
+    are deleted without re-completing the task.
+
+    The SubagentStop hook input schema does NOT include a ``prompt`` field, so
+    prompt-parsing is not used as the primary discovery path. The context file
+    written by ``/start-task`` step 4 is the authoritative source.
+
+    Delegates all file writes to sam_schema.core.query.update_status
+    (handles both .yaml and .md formats).
 
     When profile is STRICT, runs pre-completion validation checks and prints
     any warnings to stderr before completing (warnings do not prevent completion).
@@ -470,50 +519,74 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
         hook_input: Parsed hook input from stdin.
         profile: Active hook profile. Defaults to STANDARD.
     """
-    # Get the sub-agent's prompt which contains /start-task invocation
-    prompt = hook_input.get("prompt", "")
-    if not prompt:
-        # Try tool_input for backwards compatibility
-        tool_input = hook_input.get("tool_input", {})
-        prompt = tool_input.get("prompt", "")
+    cwd = Path(hook_input.get("cwd", "."))
 
-    task_file_path, task_id = extract_task_info_from_prompt(prompt)
+    context_files = _glob_active_context_files()
 
-    # Fallback: read from context file written by /start-task step 4
-    if task_file_path is None or task_id is None:
-        task_file_path, task_id = _fallback_to_context_file(hook_input)
-
-    if task_file_path is None or task_id is None:
-        # Not a /start-task sub-agent, exit silently
+    if not context_files:
+        # No active task context files — not a /start-task sub-agent.
         sys.exit(0)
 
-    # Resolve path relative to cwd
-    cwd = Path(hook_input.get("cwd", "."))
-    full_path = cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
+    completed_any = False
 
-    if not full_path.exists():
-        print(f"Task file not found: {full_path}", file=sys.stderr)
-        sys.exit(2)
+    for context_file in context_files:
+        task_file_path, task_id, parent_issue_number = _read_context_file(context_file)
 
-    # Strict mode: run pre-completion checks and emit warnings. Never blocks completion.
-    if profile == HookProfile.STRICT:
-        for warning in run_strict_pre_completion_checks(full_path, task_id, hook_input):
-            print(warning, file=sys.stderr)
+        if task_file_path is None or task_id is None:
+            # Unreadable or malformed context file — clean up.
+            with contextlib.suppress(OSError):
+                context_file.unlink()
+            continue
 
-    try:
-        # Single code path for all formats: sam_schema handles .yaml and .md uniformly.
-        sam_update_status(full_path, task_id, SamTaskStatus.COMPLETE, timestamp_field="completed")
-    except (ValueError, KeyError, FileNotFoundError) as e:
-        print(str(e), file=sys.stderr)
-        sys.exit(2)
+        # Resolve task file path relative to cwd.
+        full_path = cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
 
-    # Clean up context file
-    session_id = hook_input.get("session_id", "")
-    if session_id:
-        delete_task_context(cwd, session_id)
+        if not full_path.exists():
+            # Task file gone — delete stale context file and move on.
+            with contextlib.suppress(OSError):
+                context_file.unlink()
+            continue
 
-    # Step 5: sync_completion_to_github — best-effort, never changes exit code
-    sync_completion_to_github(full_path, task_id, get_parent_issue_number(hook_input))
+        # Check current task status before marking complete.
+        try:
+            current_task = sam_get_task(full_path, task_id)
+        except (KeyError, FileNotFoundError, ValueError, OSError):
+            # Task not found in file — delete stale context file.
+            with contextlib.suppress(OSError):
+                context_file.unlink()
+            continue
+
+        if current_task.status == SamTaskStatus.COMPLETE:
+            # Already complete — just clean up the stale context file.
+            with contextlib.suppress(OSError):
+                context_file.unlink()
+            continue
+
+        # Strict mode: run pre-completion checks and emit warnings. Never blocks completion.
+        if profile == HookProfile.STRICT:
+            for warning in run_strict_pre_completion_checks(full_path, task_id, hook_input):
+                print(warning, file=sys.stderr)
+
+        try:
+            # Single code path for all formats: sam_schema handles .yaml and .md uniformly.
+            sam_update_status(full_path, task_id, SamTaskStatus.COMPLETE, timestamp_field="completed")
+        except (ValueError, KeyError, FileNotFoundError) as e:
+            print(str(e), file=sys.stderr)
+            sys.exit(2)
+
+        # Delete the context file now that the task is marked complete.
+        with contextlib.suppress(OSError):
+            context_file.unlink()
+
+        # Sync completion to GitHub — best-effort, never changes exit code.
+        sync_completion_to_github(full_path, task_id, parent_issue_number)
+
+        completed_any = True
+
+    if not completed_any:
+        # All context files were stale (already complete or missing task files).
+        # Exit silently — not a /start-task sub-agent with pending work.
+        sys.exit(0)
 
 
 def handle_activity_update(hook_input: dict[str, Any]) -> None:
