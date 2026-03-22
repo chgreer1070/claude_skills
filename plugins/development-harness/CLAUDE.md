@@ -106,7 +106,7 @@ Plan artifacts are registered in a structured manifest stored in the GitHub Issu
 - `artifact_get` — Get metadata for a specific artifact type on an issue
 - `artifact_read` — Read artifact file content from root worktree path (with path safety validation)
 
-**Artifact types:** `feature-context`, `architect`, `task-plan`, `codebase-analysis`, `T0-baseline`, `TN-verification`
+**Artifact types:** `feature-context`, `architect`, `task-plan`, `codebase-analysis`, `T0-baseline`, `TN-verification`, `dispatch-plan`
 
 **Registration:** Producers call `artifact_register` after creation. Auto-registration is built into `sam_create` and `backlog_update(plan=...)`.
 
@@ -118,12 +118,16 @@ Wave-based parallel execution state for `/work-milestone`. State is persisted to
 
 **MCP tools (on backlog server) — Dispatch Orchestration:**
 
+- `dispatch_read(milestone_number)` — Read an existing dispatch plan from `plan/milestone-{N}-dispatch.yaml`. Returns parsed plan structure or error.
+- `dispatch_validate(milestone_number)` — Validate structural integrity of an existing dispatch plan. Returns is_valid, errors, warnings.
+- `dispatch_stale_check(milestone_number)` — Check whether any wave items have stale or dead PIDs and return staleness summary.
+- `dispatch_create_plan(milestone_number, plan_yaml, overwrite, validate, issue)` — Validate and persist a dispatch plan YAML atomically. Returns plan_path, wave_count, item_count, and validation results. Set overwrite=True when re-grooming. Pass issue to auto-register as a `dispatch-plan` artifact.
 - `dispatch_wave_start(milestone, wave_num, items)` — Create a wave entry; initialise all items with `status=pending`. Call before spawning processes. Returns error if wave already exists.
 - `dispatch_item_status(milestone, issue, status, result, error, cost)` — Record completion or failure of one item. Looks up item by milestone+issue across all waves. Valid status: `complete`, `failed`, `skipped`.
 - `dispatch_wave_status(milestone, wave_num)` — Query wave progress with per-item detail and elapsed time. Checks stale PIDs (marks dead processes failed) before returning.
 - `dispatch_spawn(milestone, wave_num, ...)` — Background task tool (`task=True`) that calls `dispatch_wave_start` then spawns one `claude -p` kage-bunshin process per wave item. Used by `/work-milestone`.
 
-**Workflow:** `/groom-milestone` writes a dispatch plan YAML. `/work-milestone` calls `dispatch_wave_start` per wave, `dispatch_spawn` to launch sessions, and `dispatch_wave_status` to poll progress. Spawned sessions call `dispatch_item_status` on completion.
+**Workflow:** `/groom-milestone` calls `dispatch_create_plan` to validate and persist the dispatch plan YAML. `/work-milestone` calls `dispatch_wave_start` per wave, `dispatch_spawn` to launch sessions, and `dispatch_wave_status` to poll progress. Spawned sessions call `dispatch_item_status` on completion.
 
 ---
 

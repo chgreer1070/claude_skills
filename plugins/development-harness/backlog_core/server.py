@@ -7,12 +7,14 @@ import asyncio
 import contextlib
 import dataclasses
 import json as _json
+import logging as _logging
 import os as _os
 import re as _re
 import sqlite3
 import sys
 import time as _time
 from datetime import UTC, datetime as _datetime
+from io import StringIO as _StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -20,8 +22,8 @@ import dh_paths as _dh_paths
 import dispatch_schema as _ds
 import tiktoken
 from fastmcp import Context, FastMCP
-from pydantic import Field
-from ruamel.yaml import YAML as _YAML
+from pydantic import Field, ValidationError as _ValidationError
+from ruamel.yaml import YAML as _YAML, YAMLError as _YAMLError
 
 from . import models as _models, operations
 from .artifact_provider import GitHubArtifactProvider
@@ -1312,6 +1314,46 @@ def _dispatch_plan_path(milestone_number: int) -> Path:
     return _ds.dispatch_plan_path(milestone_number, _models.get_repo_root())
 
 
+def _try_register_dispatch_plan_artifact(issue_number: int, plan_path: Path) -> None:
+    """Register the newly written dispatch plan file as a dispatch-plan artifact.
+
+    Best-effort: logs a warning on any failure but never raises.  Called after
+    ``dispatch_create_plan`` writes the plan file when the caller provides an
+    associated GitHub issue number.
+
+    Args:
+        issue_number: GitHub issue number to register the artifact against.
+        plan_path: Absolute or repo-relative path to the created plan file.
+    """
+    log = _logging.getLogger(__name__)
+    try:
+        repo = _models.DEFAULT_REPO
+        if not repo:
+            log.warning("dispatch_create_plan: skipping artifact registration — DEFAULT_REPO not set")
+            return
+        provider = GitHubArtifactProvider(
+            repo=repo,
+            root_worktree=_models._REPO_ROOT,  # noqa: SLF001
+        )
+        entry = ArtifactEntry(
+            artifact_type=ArtifactType.DISPATCH_PLAN,
+            path=str(plan_path),
+            status=ArtifactStatus.CURRENT,
+            agent="dispatch_create_plan",
+        )
+        manifest = provider.get_manifest(issue_number)
+        updated_manifest = _artifact_registry.register(manifest, entry)
+        provider.set_manifest(issue_number, updated_manifest)
+        log.info("dispatch_create_plan: registered dispatch-plan artifact %s for issue #%d", plan_path, issue_number)
+    except Exception:
+        log.warning(
+            "dispatch_create_plan: artifact registration failed for issue #%d (path=%s)",
+            issue_number,
+            plan_path,
+            exc_info=True,
+        )
+
+
 @mcp.tool
 async def dispatch_read(milestone_number: Annotated[int, Field(description="GitHub milestone number")]) -> dict:
     """Read a dispatch plan for the given milestone.
@@ -1398,6 +1440,183 @@ async def dispatch_stale_check(
 
     result = await asyncio.to_thread(_ds.detect_stale_plan, plan, current_numbers)
     return {"milestone_number": milestone_number, "plan_path": str(plan_path), **dataclasses.asdict(result)}
+
+
+@mcp.tool
+async def dispatch_create_plan(  # noqa: PLR0911
+    milestone_number: Annotated[int, Field(description="GitHub milestone number")],
+    plan_yaml: Annotated[
+        str,
+        Field(
+            description=(
+                "YAML string containing the full dispatch plan. Must include top-level keys: "
+                "'milestone' (with number, title, integration-branch), 'waves' (list of wave dicts "
+                "with items), and optionally 'conflict-groups' and 'quality-gates'. "
+                "Both kebab-case and snake_case keys are accepted."
+            )
+        ),
+    ],
+    overwrite: Annotated[
+        bool,
+        Field(
+            description=(
+                "Allow overwriting an existing plan file. When False (default), returns an error "
+                "if plan/milestone-{N}-dispatch.yaml already exists."
+            )
+        ),
+    ] = False,
+    validate: Annotated[
+        bool,
+        Field(
+            description=(
+                "Run structural integrity validation after writing. When True (default), the response "
+                "includes is_valid, errors, and warnings from validate_plan_integrity()."
+            )
+        ),
+    ] = True,
+    issue: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Optional GitHub issue number to associate. When provided, auto-registers the plan "
+                "file as a 'dispatch-plan' artifact on the issue."
+            )
+        ),
+    ] = None,
+) -> dict:
+    """Create or overwrite a dispatch plan YAML file for a milestone.
+
+    Accepts a YAML string, validates it against the ``DispatchPlan`` Pydantic
+    model, writes it atomically to ``plan/milestone-{N}-dispatch.yaml``, and
+    optionally validates structural integrity after writing.
+
+    Args:
+        milestone_number: GitHub milestone number.
+        plan_yaml: Full dispatch plan as a YAML string.
+        overwrite: When ``False`` (default) returns an error if the plan file
+            already exists.
+        validate: When ``True`` (default) runs ``validate_plan_integrity`` after
+            writing and includes the result in the response.
+        issue: Optional GitHub issue number.  When provided, auto-registers the
+            plan file as a ``dispatch-plan`` artifact (best-effort).
+
+    Returns:
+        Success dict with ``milestone_number``, ``plan_path``, ``wave_count``,
+        ``item_count``, ``is_valid``, ``errors``, ``warnings``, and ``messages``.
+        Error dict contains an ``error`` key.
+    """
+    out = Output()
+    plan_path = _dispatch_plan_path(milestone_number)
+
+    # 1. Parse YAML
+    try:
+        yaml_parser = _YAML()
+        parsed = yaml_parser.load(_StringIO(plan_yaml))
+    except _YAMLError as exc:
+        return {
+            "error": f"Invalid YAML: {exc}",
+            "milestone_number": milestone_number,
+            "plan_path": str(plan_path),
+            **out.to_dict(),
+        }
+
+    # 2. Verify parsed result is a mapping
+    if not isinstance(parsed, dict):
+        return {
+            "error": "plan_yaml must be a YAML mapping (dict), not a list or scalar",
+            "milestone_number": milestone_number,
+            "plan_path": str(plan_path),
+            **out.to_dict(),
+        }
+
+    # 3. Check milestone.number consistency; inject if absent
+    milestone_section = parsed.get("milestone")
+    if isinstance(milestone_section, dict):
+        yaml_number = milestone_section.get("number")
+        if yaml_number is not None and int(yaml_number) != milestone_number:
+            return {
+                "error": (
+                    f"Milestone number mismatch: parameter is {milestone_number} "
+                    f"but YAML milestone.number is {yaml_number}"
+                ),
+                "milestone_number": milestone_number,
+                "plan_path": str(plan_path),
+                **out.to_dict(),
+            }
+        if yaml_number is None:
+            milestone_section["number"] = milestone_number
+    else:
+        # No milestone key — inject a minimal one so model_validate can proceed
+        parsed["milestone"] = {"number": milestone_number}
+
+    # 4. Validate against DispatchPlan
+    try:
+        plan = _ds.DispatchPlan.model_validate(parsed)
+    except _ValidationError as exc:
+        violations = "; ".join(f"{e['loc']}: {e['msg']}" for e in exc.errors())
+        return {
+            "error": f"Plan validation failed: {violations}",
+            "milestone_number": milestone_number,
+            "plan_path": str(plan_path),
+            **out.to_dict(),
+        }
+
+    # 5. Check for existing file when overwrite is False
+    if not overwrite and plan_path.exists():
+        return {
+            "error": (f"Plan file already exists: {plan_path}. Pass overwrite=True to replace it."),
+            "milestone_number": milestone_number,
+            "plan_path": str(plan_path),
+            **out.to_dict(),
+        }
+
+    # 6. Write atomically
+    try:
+        await asyncio.to_thread(_ds.write_dispatch_plan, plan, plan_path)
+    except ValueError as exc:
+        return {
+            "error": f"Cannot write plan (symlink target rejected): {exc}",
+            "milestone_number": milestone_number,
+            "plan_path": str(plan_path),
+            **out.to_dict(),
+        }
+    except OSError as exc:
+        return {
+            "error": f"Failed to write plan file: {exc}",
+            "milestone_number": milestone_number,
+            "plan_path": str(plan_path),
+            **out.to_dict(),
+        }
+
+    out.info(f"Wrote dispatch plan to {plan_path}")
+
+    # 7. Post-write validation
+    is_valid: bool | None = None
+    val_errors: list[str] = []
+    val_warnings: list[str] = []
+    if validate:
+        val_result = await asyncio.to_thread(_ds.validate_plan_integrity, plan)
+        is_valid = val_result.is_valid
+        val_errors = list(val_result.errors)
+        val_warnings = list(val_result.warnings)
+
+    # 8. Artifact registration (best-effort)
+    if issue is not None:
+        _try_register_dispatch_plan_artifact(issue, plan_path)
+
+    wave_count = len(plan.waves)
+    item_count = sum(len(wave.items) for wave in plan.waves)
+
+    return {
+        "milestone_number": milestone_number,
+        "plan_path": str(plan_path),
+        "wave_count": wave_count,
+        "item_count": item_count,
+        "is_valid": is_valid,
+        "errors": val_errors,
+        "warnings": val_warnings,
+        **out.to_dict(),
+    }
 
 
 @mcp.tool

@@ -1,6 +1,6 @@
 # Dispatch Plan Schema
 
-The dispatch plan is written by `/groom-milestone` to `plan/milestone-{N}-dispatch.yaml` and read by `/work-milestone` to drive wave-based parallel execution.
+The dispatch plan is persisted by `/groom-milestone` via the `dispatch_create_plan` MCP tool to `plan/milestone-{N}-dispatch.yaml` and read by `/work-milestone` to drive wave-based parallel execution.
 
 ## Full Schema Example
 
@@ -152,3 +152,17 @@ This section clarifies how `/work-milestone` uses the dispatch plan when spawnin
 **Each item executes in an isolated worktree.** The worktree agent receives the issue number, integration branch, quality gate commands, and prior-wave relay content. It self-discovers item description, acceptance criteria, task list, and skills via MCP. The agent executes work directly without delegating to subagents (worktree agents cannot spawn further agents).
 
 **Conflict groups handle serialization; no runtime coordination fields are needed.** Items in the same wave are guaranteed non-overlapping by the conflict group analysis performed during `/groom-milestone`. Worktree agents do not communicate with each other. The orchestrator relays context between waves via the discovery relay mechanism.
+
+## Creating Plans via MCP
+
+Use the `dispatch_create_plan` MCP tool (on the backlog server) to create or update dispatch plans. The YAML content shown in the schema example above is exactly what the `plan_yaml` parameter accepts.
+
+**Parameters:**
+
+- `milestone_number` — GitHub milestone number; the tool writes to `plan/milestone-{N}-dispatch.yaml`
+- `plan_yaml` — YAML string containing the full dispatch plan (accepts both kebab-case and snake_case keys)
+- `overwrite` — Allow replacing an existing plan file; set to `True` when re-grooming (default: `False`)
+- `validate` — Run `validate_plan_integrity()` after writing and include results in response (default: `True`)
+- `issue` — Optional GitHub issue number; when provided, auto-registers the plan file as a `dispatch-plan` artifact
+
+**Response:** Returns `plan_path`, `wave_count`, `item_count`, `is_valid`, `errors`, and `warnings`. On error, the response contains an `error` key with a description.
