@@ -9,11 +9,12 @@ from __future__ import annotations
 import functools
 import os
 import re
+from enum import StrEnum
 from pathlib import Path
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import git
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Path constants
@@ -545,3 +546,136 @@ class SamTask(BaseModel):
     dependencies: list[str] = Field(default_factory=list)
     """Feature-scoped task IDs this task depends on, e.g. ["T1", "T2"].
     Cross-feature deps use GitHub issue numbers: ["#479"]."""
+
+
+# ---------------------------------------------------------------------------
+# Artifact manifest models
+# ---------------------------------------------------------------------------
+
+
+class ArtifactType(StrEnum):
+    """Categories of plan artifacts produced by the SAM workflow.
+
+    Each value corresponds to a distinct artifact class produced by a specific
+    agent phase.  The string values use kebab-case to match the naming
+    conventions used in plan file names (e.g. ``plan/feature-context-{slug}.md``).
+    """
+
+    FEATURE_CONTEXT = "feature-context"
+    ARCHITECT = "architect"
+    TASK_PLAN = "task-plan"
+    T0_BASELINE = "T0-baseline"
+    TN_VERIFICATION = "TN-verification"
+    CODEBASE_ANALYSIS = "codebase-analysis"
+
+
+class ArtifactStatus(StrEnum):
+    """Lifecycle state of a plan artifact.
+
+    Artifacts progress forward through states; they do not regress.
+    ``superseded`` is set when a newer artifact of the same type replaces this
+    one; ``archived`` marks artifacts that are no longer relevant.
+    """
+
+    DRAFT = "draft"
+    CURRENT = "current"
+    SUPERSEDED = "superseded"
+    ARCHIVED = "archived"
+
+
+class ArtifactEntry(BaseModel):
+    """A single artifact reference stored in the manifest.
+
+    Accepts both kebab-case (``artifact-type``, ``created-at``) and snake_case
+    (``artifact_type``, ``created_at``) field names as well as the short alias
+    ``type`` for backward compatibility with markdown table rows produced by
+    earlier tooling.
+
+    The ``model_config`` enables population by field name and by alias so that
+    either form works with ``model_validate``.
+    """
+
+    model_config = {"populate_by_name": True}
+
+    artifact_type: ArtifactType = Field(
+        ...,
+        validation_alias=AliasChoices("artifact_type", "artifact-type", "type"),
+        serialization_alias="artifact-type",
+    )
+    """Artifact category.  Serialised as ``artifact-type`` in markdown tables."""
+
+    path: str = Field(..., description="Repo-relative path to the artifact file, e.g. plan/architect-foo.md.")
+    """Repo-relative path to the artifact file, e.g. ``plan/architect-foo.md``."""
+
+    status: ArtifactStatus = Field(default=ArtifactStatus.CURRENT)
+    """Lifecycle state.  Defaults to ``current`` on initial registration."""
+
+    created_at: str = Field(
+        default="", validation_alias=AliasChoices("created_at", "created-at"), serialization_alias="created-at"
+    )
+    """ISO 8601 timestamp of when the artifact was registered.  Empty string when unknown."""
+
+    agent: str = Field(default="")
+    """Name of the agent that produced the artifact, e.g. ``feature-researcher``."""
+
+
+class ArtifactManifest(BaseModel):
+    """Complete artifact inventory for a single GitHub Issue.
+
+    This model is the canonical in-memory representation of the
+    ``<!-- artifact-manifest:begin/end -->`` section stored in the GitHub Issue
+    body.  Serialisation and deserialisation are handled by
+    ``backlog_core.artifact_registry``.
+    """
+
+    issue_number: int = Field(..., description="GitHub Issue number this manifest belongs to.")
+    """GitHub Issue number this manifest belongs to."""
+
+    artifacts: list[ArtifactEntry] = Field(default_factory=list)
+    """Ordered list of registered artifact entries."""
+
+    last_updated: str = Field(
+        default="", validation_alias=AliasChoices("last_updated", "last-updated"), serialization_alias="last-updated"
+    )
+    """ISO 8601 timestamp of the most recent registry mutation.  Empty string when unknown."""
+
+    model_config = {"populate_by_name": True}
+
+
+class RegisterResult(BaseModel):
+    """Response shape returned by the ``artifact_register`` MCP tool.
+
+    Indicates whether the operation added a new entry or updated an existing
+    one, and how many artifacts are now registered for the issue.
+    """
+
+    registered: bool = Field(..., description="True when the operation succeeded.")
+    """True when the operation succeeded."""
+
+    artifact_count: int = Field(..., description="Total number of artifacts in the manifest after the operation.")
+    """Total number of artifacts in the manifest after the operation."""
+
+    action: Literal["added", "updated"] = Field(
+        ..., description="'added' for a new entry, 'updated' when an existing entry was modified."
+    )
+    """``'added'`` for a new entry; ``'updated'`` when an existing entry was modified."""
+
+
+class ArtifactContent(BaseModel):
+    """Response shape returned by the ``artifact_read`` MCP tool.
+
+    Carries the raw file content alongside identifying metadata so callers do
+    not need a separate lookup to know which artifact was returned.
+    """
+
+    artifact_type: ArtifactType = Field(..., description="Category of the returned artifact.")
+    """Category of the returned artifact."""
+
+    path: str = Field(..., description="Repo-relative path that was read.")
+    """Repo-relative path that was read."""
+
+    content: str = Field(..., description="Raw file content.")
+    """Raw file content."""
+
+    status: ArtifactStatus = Field(..., description="Current lifecycle state of the artifact.")
+    """Current lifecycle state of the artifact."""
