@@ -131,17 +131,20 @@ Wait for `/work-backlog-item` to complete. The task file path it produces is req
 
 ## Step 5 — Capture the task file path
 
-After `/work-backlog-item` completes, identify the task file it produced using Glob:
+After `/work-backlog-item` completes, identify the task file it produced. Plan files are stored under `~/.dh/projects/{slug}/plan/` (resolved via `dh_paths.plan_dir()`). Use Glob with the resolved path:
 
-```text
-Glob(pattern="plan/tasks-N-*.md")
+```python
+from dh_paths import plan_dir
+plan_root = plan_dir()
+# Find the specific plan file:
+Glob(pattern=str(plan_root / "tasks-N-*.md"))
 ```
 
 Where `N` is the backlog item number from Step 3. If the item number is unknown or the glob
 returns no results, broaden to:
 
-```text
-Glob(pattern="plan/tasks-*.md")
+```python
+Glob(pattern=str(plan_dir() / "tasks-*.md"))
 ```
 
 Compare results against any task file paths mentioned in the `/work-backlog-item` output. Select

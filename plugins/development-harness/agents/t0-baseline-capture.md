@@ -1,6 +1,6 @@
 ---
 name: t0-baseline-capture
-description: Captures baseline state of structured acceptance criteria before implementation begins. Reads acceptance-criteria-structured from a SAM plan file, runs each check_command via Bash, and writes results to plan/T0-baseline-{slug}.yaml. Non-zero exit codes are expected and are NOT failures — this agent records whatever state exists at T0 time.
+description: Captures baseline state of structured acceptance criteria before implementation begins. Reads acceptance-criteria-structured from a SAM plan file, runs each check_command via Bash, and writes results to ~/.dh/projects/{slug}/plan/T0-baseline-{slug}.yaml. Non-zero exit codes are expected and are NOT failures — this agent records whatever state exists at T0 time.
 tools: Read, Bash, Write, Glob
 model: haiku
 skills: subagent-contract
@@ -18,7 +18,7 @@ You are the T0 baseline capture agent. You run before any implementation tasks b
 
 **Capture stdout and stderr in full.** No truncation. The TN agent needs the full output to compute diffs.
 
-**Write to the exact path.** Output must be at `plan/T0-baseline-{slug}.yaml` where `{slug}` is the `feature` field from the plan file.
+**Write to the exact path.** Output must be at `~/.dh/projects/{slug}/plan/T0-baseline-{slug}.yaml` where `{slug}` in the path is the project slug (from `dh_paths.compute_slug()`) and `{slug}` in the filename is the `feature` field from the plan file.
 
 </critical_rules>
 
@@ -64,12 +64,12 @@ Capture:
 
 ## Step 3: Write T0 Baseline YAML
 
-Write `plan/T0-baseline-{slug}.yaml` with the following schema:
+Write `~/.dh/projects/{project-slug}/plan/T0-baseline-{slug}.yaml` (use `dh_paths.plan_dir()` to resolve the directory) with the following schema:
 
 ```yaml
 feature: "{slug}"
 captured_at: "2026-03-15T10:00:00Z"
-plan_path: "plan/tasks-5-{slug}.md"
+plan_path: "~/.dh/projects/{project-slug}/plan/tasks-5-{slug}.md"
 criteria_count: 2
 results:
   - criterion-id: AC-1
@@ -107,10 +107,10 @@ results:
 | `results[].timestamp` | str (ISO 8601 UTC) | When this command started |
 | `results[].duration-seconds` | float | Elapsed time in seconds |
 
-Use the Write tool to write this file:
+Use the Write tool to write this file. Resolve the path via `dh_paths.plan_dir()`:
 
 ```bash
-Write(file_path="plan/T0-baseline-{slug}.yaml", content="...")
+Write(file_path=str(dh_paths.plan_dir() / "T0-baseline-{slug}.yaml"), content="...")
 ```
 
 ## Step 4: Verify Output
@@ -130,7 +130,7 @@ Return STATUS: DONE with:
 STATUS: DONE
 
 ARTIFACTS:
-  - plan/T0-baseline-{slug}.yaml
+  - ~/.dh/projects/{project-slug}/plan/T0-baseline-{slug}.yaml
 
 SUMMARY:
   - Criteria executed: {N}
@@ -146,6 +146,6 @@ NOTES:
 Return STATUS: BLOCKED if:
 - Plan file cannot be read
 - `feature` field is absent from plan frontmatter
-- Write to `plan/T0-baseline-{slug}.yaml` fails
+- Write to `~/.dh/projects/{project-slug}/plan/T0-baseline-{slug}.yaml` fails
 
 </output>

@@ -160,7 +160,7 @@ If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
 
    Parse the returned dict. Each entry in `items` has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 
-2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`.claude/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.
+2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`~/.dh/projects/{slug}/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.
 
 3. Present a numbered list. Use these status indicators in user-visible output only:
 
@@ -264,7 +264,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 1. Extract title from `$1`+ joined. Build slug: title lowercased, spaces → hyphens.
 
-2. Find the item in `.claude/backlog/` per-item files (same logic as Step 1). If not found, create a minimal item with the title.
+2. Find the item in `~/.dh/projects/{slug}/backlog/` per-item files (same logic as Step 1). If not found, create a minimal item with the title.
 
 3. Extract the item's description and acceptance criteria if available.
 
@@ -288,7 +288,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 **Trigger:** `$0` is `progress`.
 
-1. Scan `.claude/backlog/` per-item files. Count items by priority (P0, P1, P2, Ideas) and status (done, resolved, closed).
+1. Scan `~/.dh/projects/{slug}/backlog/` per-item files. Count items by priority (P0, P1, P2, Ideas) and status (done, resolved, closed).
 
 2. Query GitHub for the active milestone:
 
@@ -333,7 +333,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 1. Extract title from `$1`+ joined. If `$1` starts with `#`, fetch title from GitHub Issue (same logic as Step 1b).
 
-2. Find the item in `.claude/backlog/` per-item files. Extract `metadata.plan` field. If absent:
+2. Find the item in `~/.dh/projects/{slug}/backlog/` per-item files. Extract `metadata.plan` field. If absent:
 
    <eg>
    No plan file recorded for "{title}".

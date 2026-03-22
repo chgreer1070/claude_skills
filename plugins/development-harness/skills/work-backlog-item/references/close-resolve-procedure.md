@@ -14,7 +14,7 @@ Call the `mcp__plugin_dh_backlog__backlog_view` tool with `selector="{$1}"` (acc
 - If the returned dict contains an `error` key, report and stop.
 - Extract `title` from the returned dict and use it as the working title.
 
-If the view command found a local file (`file_path` in JSON), use it. Otherwise scan `.claude/backlog/` per-item files for a title match.
+If the view command found a local file (`file_path` in JSON), use it. Otherwise scan `~/.dh/projects/{slug}/backlog/` per-item files for a title match.
 
 - Zero matches: report "No backlog item found matching: {$1}" and stop.
 - Multiple matches: list all matches and ask user to pick one.
@@ -104,7 +104,7 @@ Then stop.
 
 ## 9d: Resolve path — typed acceptance-criteria verification
 
-4. Extract `**Acceptance Criteria**:` from the per-item file (`.claude/backlog/{priority}-{slug}.md`) or from the backlog item body. The field format is a bullet list following the header:
+4. Extract `**Acceptance Criteria**:` from the per-item file (`~/.dh/projects/{slug}/backlog/{priority}-{slug}.md`) or from the backlog item body. The field format is a bullet list following the header:
 
    ```markdown
    **Acceptance Criteria**:

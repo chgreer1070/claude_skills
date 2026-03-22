@@ -1,6 +1,6 @@
 ---
 name: implement-feature
-description: Execute a SAM task plan (plan/tasks-*.md) by looping ready tasks, delegating each to its specified agent, and relying on hooks to update task timestamps/status. Use when a task file exists and you need to run the implementation loop that picks up ready tasks and delegates them to agents.
+description: Execute a SAM task plan by looping ready tasks, delegating each to its specified agent, and relying on hooks to update task timestamps/status. Task plans are stored under ~/.dh/projects/{slug}/plan/ (resolved via dh_paths.plan_dir()). Use when a task file exists and you need to run the implementation loop that picks up ready tasks and delegates them to agents.
 argument-hint: <task-file-path or feature-slug>
 user-invocable: true
 version: 1.0.0
@@ -122,7 +122,7 @@ When the plan contains `acceptance-criteria-structured` entries, `swarm-task-pla
 - **T0** has `priority: 1` and `dependencies: []`, so it is the first ready task and dispatches before any implementation task.
 - **TN** has `dependencies: [all non-bookend task IDs]`, so it becomes ready only after all implementation tasks complete and dispatches last.
 
-T0 runs agent `t0-baseline-capture`. TN runs agent `tn-verification-gate`. Both agents write YAML result files (`plan/T0-baseline-{slug}.yaml`, `plan/TN-verification-{slug}.yaml`) that `/complete-implementation` reads in its pre-Phase 1 check.
+T0 runs agent `t0-baseline-capture`. TN runs agent `tn-verification-gate`. Both agents write YAML result files to `~/.dh/projects/{project-slug}/plan/T0-baseline-{slug}.yaml` and `~/.dh/projects/{project-slug}/plan/TN-verification-{slug}.yaml` (resolved via `dh_paths.plan_dir()`). These files are read by `/complete-implementation` in its pre-Phase 1 check.
 
 ### Bookend Artifact Registration
 

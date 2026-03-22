@@ -190,7 +190,7 @@ GitHub setup complete.
 ## Field Mapping Reference
 
 ```text
-.claude/backlog/    →  GitHub Issue
+~/.dh/projects/{slug}/backlog/    →  GitHub Issue
   metadata.priority →  priority:* label
   Description       →  Issue body (story format)
   metadata.status   →  status:* label

@@ -152,13 +152,13 @@ grep -n "Module:\|Purpose:\|Responsibility:" {project_path}/architecture.md
 
 ## Output Format (MANDATORY)
 
-Write the audit report to `.claude/reports/DOCUMENTATION_DRIFT_AUDIT.md` then return:
+Write the audit report to `~/.dh/projects/{slug}/reports/DOCUMENTATION_DRIFT_AUDIT.md` (where `{slug}` is computed from the project root by `dh_paths.compute_slug()`) then return:
 
 ```text
 STATUS: DONE
 SUMMARY: {one_paragraph_summary_of_findings}
 ARTIFACTS:
-  - Report: .claude/reports/DOCUMENTATION_DRIFT_AUDIT.md
+  - Report: ~/.dh/projects/{slug}/reports/DOCUMENTATION_DRIFT_AUDIT.md
   - Total findings: {count}
   - Critical: {count}, High: {count}, Medium: {count}, Low: {count}
 RISKS:

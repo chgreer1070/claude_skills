@@ -1,6 +1,6 @@
 ---
 name: groom-backlog-item
-description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — fact-checks item claims against primary sources, runs RT-ICA per item, then spawns @backlog-item-groomer agents. Writes groomed content into per-item files in .claude/backlog/. Use when preparing backlog items for planning or execution.
+description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — fact-checks item claims against primary sources, runs RT-ICA per item, then spawns @backlog-item-groomer agents. Writes groomed content into per-item files in ~/.dh/projects/{slug}/backlog/. Use when preparing backlog items for planning or execution.
 argument-hint: <item-title-or-section-or-all>
 user-invocable: true
 ---
@@ -403,7 +403,7 @@ Then expand by searching for:
 - CI workflows that test these modules
 - Test files that exercise these systems
 
-Exclude archived and generated content: `plan/` artifacts, `docs/plans/`, `.claude/archive/`, `.claude/grooming-sessions/`, test fixtures. Backlog item files (`.claude/backlog/*.md`) are informational — they describe the problem, not the system.
+Exclude archived and generated content: plan artifacts (under `~/.dh/projects/{slug}/plan/`), `docs/plans/`, `.claude/archive/`, `.claude/grooming-sessions/`, test fixtures. Backlog item files (`~/.dh/projects/{slug}/backlog/*.md`) are informational — they describe the problem, not the system.
 
 **Phase 2: Impact Checklist (per system)**
 
@@ -589,7 +589,7 @@ Provide groomed content inline via the `groomed_content` parameter.
 
 **Valid section names** — top-level: `Fact-Check`, `RT-ICA`, `Impact Radius`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
 
-The backlog script updates `.claude/backlog/{priority}-{slug}.md` with merged sections, sets `groomed` in frontmatter, and syncs to the GitHub issue when the item has one.
+The backlog script updates `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md` with merged sections, sets `groomed` in frontmatter, and syncs to the GitHub issue when the item has one.
 
 **Bulk grooming (multiple items)** — when grooming 2+ items, optionally persist a session summary to `.claude/grooming-sessions/{YYYY-MM-DD}.md`:
 

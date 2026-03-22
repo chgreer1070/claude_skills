@@ -1,12 +1,12 @@
 ---
 name: backlog
-description: Single interface for backlog items and GitHub Issues. GitHub Issues are the source of truth; .claude/backlog/ per-item files are the local cache. All backlog CRUD goes through MCP tools (mcp__plugin_dh_backlog__*) in orchestrator sessions — no direct file edits. Use when creating, listing, viewing, updating, closing, resolving, grooming, or syncing backlog items and GitHub issues.
+description: Single interface for backlog items and GitHub Issues. GitHub Issues are the source of truth; ~/.dh/projects/{slug}/backlog/ per-item files are the local cache. All backlog CRUD goes through MCP tools (mcp__plugin_dh_backlog__*) in orchestrator sessions — no direct file edits. Use when creating, listing, viewing, updating, closing, resolving, grooming, or syncing backlog items and GitHub issues.
 ---
 
 # Backlog
 
 MCP tools are the **primary interface** for backlog items and GitHub Issues.
-GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache.
+GitHub Issues are the source of truth; `~/.dh/projects/{slug}/backlog/` per-item files are the local cache.
 Skills and agents invoke MCP tools or the CLI — no direct `Write`/`Edit` on per-item files.
 
 ## Primary Interface (MCP)
@@ -220,8 +220,8 @@ Available tools mirror the MCP tools: `backlog_add`, `backlog_list`, `backlog_vi
   `backlog_update`
 - `/groom-backlog-item` — calls `backlog_groom` and `backlog_update` for groomed content
 - `/group-items-to-milestone` — calls `backlog_list` to enumerate items for milestone grouping
-- **GitHub Action** — invokes `fastmcp call backlog_sync` on `.claude/backlog/` changes
+- **GitHub Action** — invokes `fastmcp call backlog_sync` on `~/.dh/projects/{slug}/backlog/` changes
 
-Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic. Use `backlog_update` MCP tool for all item modifications.
+Do not edit `~/.dh/projects/{slug}/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic. Use `backlog_update` MCP tool for all item modifications.
 If the MCP tools or CLI lack a needed operation, invoke `/backlog-tools-administrator` to close
 the gap.

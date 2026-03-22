@@ -90,7 +90,7 @@ When all workers return:
 3. Run verification (tests, linter) across the full changeset
 4. Relay synthesis findings to user or feed into next wave
 
-File pointer pattern: instruct workers to write findings to `.claude/reports/` and return the path. Read reports, not inline summaries, to keep orchestrator context lean.
+File pointer pattern: instruct workers to write findings to `~/.dh/projects/{slug}/reports/` (resolved via `dh_paths.reports_dir()`) and return the path. Read reports, not inline summaries, to keep orchestrator context lean.
 
 ### 6 — Clean Up
 

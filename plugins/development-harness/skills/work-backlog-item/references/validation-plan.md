@@ -23,7 +23,7 @@ Each step of the GitHub integration can be independently verified using MCP back
 
 ```bash
 # Verify issue field written to per-item file:
-grep -rn "issue:" .claude/backlog/ | head -10
+grep -rn "issue:" ~/.dh/projects/{slug}/backlog/ | head -10
 ```
 
 ## V3: Milestone Assignment Verification
@@ -53,7 +53,7 @@ grep -rn "issue:" .claude/backlog/ | head -10
 ## V6: Per-Item File Consistency Check
 
 ```bash
-cat .claude/backlog/{priority}-{slug}.md
+cat ~/.dh/projects/{slug}/backlog/{priority}-{slug}.md
 # Expected: frontmatter contains issue, plan, status fields, all consistent with GitHub
 ```
 

@@ -107,11 +107,22 @@ $ARGUMENTS
    - The task is claimed. `status: in-progress` and `started:` are written on disk.
    - Proceed to step 4 (write context file) and step 5 (implement).
 
-4. Write the active-task context file (required for hook-driven updates):
+4. Write the active-task context file (required for hook-driven updates). The context directory is resolved via `dh_paths.context_dir(session_id)`:
 
 ```bash
-mkdir -p .claude/context
-printf '%s' '{"task_file_path": "{task_file_path}", "task_id": "{task_id}", "parent_issue_number": N}' > ".claude/context/active-task-${CLAUDE_SESSION_ID}.json"
+# Python (preferred — uses dh_paths):
+import json
+from dh_paths import context_dir
+ctx = context_dir(session_id="${CLAUDE_SESSION_ID}")
+ctx.mkdir(parents=True, exist_ok=True)
+(ctx / f"active-task-${CLAUDE_SESSION_ID}.json").write_text(
+    json.dumps({"task_file_path": "{task_file_path}", "task_id": "{task_id}", "parent_issue_number": N})
+)
+
+# Shell fallback (when Python not available):
+mkdir -p "$(python3 -c 'from dh_paths import context_dir; print(context_dir("${CLAUDE_SESSION_ID}"))')"
+printf '%s' '{"task_file_path": "{task_file_path}", "task_id": "{task_id}", "parent_issue_number": N}' \
+    > "$(python3 -c 'from dh_paths import context_dir; print(context_dir("${CLAUDE_SESSION_ID}") / "active-task-${CLAUDE_SESSION_ID}.json")')"
 ```
 
 Omit `parent_issue_number` if the story issue number is not known. The hook treats absence as

@@ -4,7 +4,7 @@
 
 # Backlog Skill
 
-A unified interface for managing backlog items and GitHub Issues from inside Claude Code sessions. Every item lives in two places at once: a local Markdown file in `.claude/backlog/` that Claude can read instantly, and a GitHub Issue that humans can browse, comment on, and track. The skill keeps them in sync automatically.
+A unified interface for managing backlog items and GitHub Issues from inside Claude Code sessions. Every item lives in two places at once: a local Markdown file in `~/.dh/projects/{slug}/backlog/` that Claude can read instantly, and a GitHub Issue that humans can browse, comment on, and track. The skill keeps them in sync automatically.
 
 ## Why Use This?
 
@@ -21,10 +21,10 @@ With this skill active:
 
 ### The Local Cache
 
-Each item is a Markdown file at `.claude/backlog/{priority}-{slug}.md`. The file uses YAML frontmatter for machine-readable metadata and structured Markdown sections for human-readable content.
+Each item is a Markdown file at `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md`. The file uses YAML frontmatter for machine-readable metadata and structured Markdown sections for human-readable content.
 
 ```text
-.claude/backlog/
+~/.dh/projects/{slug}/backlog/
   p0-reduce-session-start-context-load.md
   p1-add-fuzzy-duplicate-detection.md
   p2-unify-issue-body-template.md
@@ -371,11 +371,11 @@ What the integration provides:
 - **PR safety**: `backlog_close` and `backlog_resolve` check for open PRs referencing the issue before closing (bypass with `force=True`)
 - **Pull**: `backlog_pull` merges GitHub issue body content into local files, keeping the longer version of each section
 
-GitHub Issues are the source of truth. The local `.claude/backlog/` files are a read-optimized cache that avoids API saturation during sessions.
+GitHub Issues are the source of truth. The local `~/.dh/projects/{slug}/backlog/` files are a read-optimized cache that avoids API saturation during sessions.
 
 ## Syncing in CI
 
-A GitHub Actions workflow (`backlog-sync.yml`) runs the CLI sync on every push that touches `.claude/backlog/`:
+A GitHub Actions workflow (`backlog-sync.yml`) runs the CLI sync on every push that touches `~/.dh/projects/{slug}/backlog/`:
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py sync -R {OWNER/REPO}
@@ -385,7 +385,7 @@ This is intentional: CI has no MCP client, so the CLI is the correct interface t
 
 ## Do Not
 
-- Edit `.claude/backlog/*.md` files directly — bypasses sync logic
+- Edit `~/.dh/projects/{slug}/backlog/*.md` files directly — bypasses sync logic
 - Use `gh issue edit` to update issues — bypasses label and status tracking. Use `backlog_update` MCP tool instead.
 - Set GitHub labels with `gh label` directly — the backlog tools own label transitions. Use `backlog_update` with `status` parameter instead.
 - Call `backlog_close` for completed work — use `backlog_resolve` instead

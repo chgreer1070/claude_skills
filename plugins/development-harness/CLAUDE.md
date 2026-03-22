@@ -75,19 +75,21 @@ The full resolution protocol is documented in [./skills/development-harness/refe
 
 ## State Management
 
-All artifacts are written to `plan/` using SAM naming conventions.
+All artifacts are written to the per-project state directory (`~/.dh/projects/{project-slug}/plan/`) resolved via `dh_paths.plan_dir()`. The `{project-slug}` is derived from the absolute project root path (replacing `/` with `-`). The base state directory can be overridden via the `DH_STATE_HOME` environment variable (used in CI and testing).
 
 **Token pattern:** `ARTIFACT:{TYPE}({SCOPE_OR_ID})`
 
-**File layout example:**
+**File layout example** (under `~/.dh/projects/{project-slug}/`):
 
 - `plan/feature-context-{slug}.md` - S1 output
 - `plan/architect-{slug}.md` - architecture output
 - `plan/P{NNN}-{slug}.yaml` - task plan
 - `plan/T0-baseline-{slug}.yaml` - pre-implementation baseline
 - `plan/TN-verification-{slug}.yaml` - post-implementation verification
+- `backlog/*.md` - backlog item cache (synced from GitHub Issues)
+- `context/active-task-{session-id}.json` - ephemeral task execution context
 
-This directory coexists with other planning tools without conflict.
+The `.dh/` directory in the repository root (Tier 1) holds committed project configuration. State files live outside the repo at `~/.dh/`, preventing pollution of the working tree.
 
 Full conventions in [./skills/development-harness/references/artifact-conventions.md](./skills/development-harness/references/artifact-conventions.md).
 

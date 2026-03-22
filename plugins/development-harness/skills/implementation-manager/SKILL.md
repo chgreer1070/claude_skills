@@ -13,7 +13,7 @@ disable-model-invocation: false
 !`uv run sam list 2>/dev/null || echo '{"features": [], "count": 0, "message": "Not in a project with task files"}'`
 
 **Active task context (if any):**
-!`python3 -c "import pathlib, json; context_dir = pathlib.Path('.claude/context'); files = list(context_dir.glob('active-task-*.json')) if context_dir.exists() else []; print(files[0].read_text() if files else 'No active task')" 2>/dev/null || echo "No active task"`
+!`python3 -c "from dh_paths import context_dir; import os; cdir = context_dir(os.environ.get('CLAUDE_SESSION_ID', '')); files = list(cdir.glob('active-task-*.json')) if cdir.exists() else []; print(files[0].read_text() if files else 'No active task')" 2>/dev/null || echo "No active task"`
 
 A skill for querying and managing feature implementation task files. Provides programmatic access to task status for orchestrators coordinating multi-step feature implementations.
 
@@ -184,7 +184,7 @@ When `/dh:execution` launches a sub-agent via `/start-task {task_file} --task {i
 
 **PostToolUse (Activity Tracking)**:
 
-When `/dh:start-task` runs, it creates a context file at `.claude/context/active-task-{session_id}.json` containing the task file path and task ID. On each Write, Edit, or Bash operation, the PostToolUse hook:
+When `/dh:start-task` runs, it creates a context file at `~/.dh/projects/{slug}/context/active-task-{session_id}.json` (resolved via `dh_paths.context_dir(session_id)`) containing the task file path and task ID. On each Write, Edit, or Bash operation, the PostToolUse hook:
 
 1. Reads the context file to identify the active task
 2. Updates `**LastActivity**: {ISO timestamp}` in the task section

@@ -1,6 +1,6 @@
 ---
 name: create-backlog-item
-description: Use when capturing a new backlog item — creates a per-item file in .claude/backlog/. Three modes — guided intake (no args), quick entry (quick {title}), or fully autonomous (--auto {title}). Validates required fields, detects duplicates, and offers GitHub Issue creation for P0/P1 items.
+description: Use when capturing a new backlog item — creates a per-item file in ~/.dh/projects/{slug}/backlog/. Three modes — guided intake (no args), quick entry (quick {title}), or fully autonomous (--auto {title}). Validates required fields, detects duplicates, and offers GitHub Issue creation for P0/P1 items.
 argument-hint: '[quick {title} | --auto {title} | <empty for guided intake>]'
 user-invocable: true
 ---
@@ -10,7 +10,7 @@ user-invocable: true
 
 # Create Backlog Item
 
-Capture a new backlog item and create a per-item file in `.claude/backlog/`.
+Capture a new backlog item and create a per-item file in `~/.dh/projects/{slug}/backlog/`.
 
 ## PROHIBITED: Backlog Items Describe Problems, Not Solutions
 
@@ -57,7 +57,7 @@ Solutions come from investigation during grooming and planning — not at creati
 Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUserQuestion`. Instead:
 
 1. Search `research/` recursively for any file whose name or content matches the title (case-insensitive). Read the best match.
-2. Search `.claude/backlog/` per-item files for related items to understand existing priority patterns.
+2. Search `~/.dh/projects/{slug}/backlog/` per-item files for related items to understand existing priority patterns.
 3. Derive all fields from the research file, task description, and available context:
    - **Title**: from `<item_title/>` onward
    - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
@@ -161,7 +161,7 @@ Required fields: `title`, `priority`, `description`.
 
 ### Step 3: Duplicate Detection
 
-Scan `.claude/backlog/` per-item files. Search item titles for case-insensitive overlap with `title`.
+Scan `~/.dh/projects/{slug}/backlog/` per-item files. Search item titles for case-insensitive overlap with `title`.
 
 If a match is found within edit distance ≤ 2 tokens (same first 3 words), report:
 
@@ -258,11 +258,11 @@ Next steps:
 - Missing required field: report field name, stop.
 - Duplicate detected and user says No: stop without writing.
 - backlog script fails: report error, stop.
-- GITHUB_TOKEN not set (for P0/P1 issue creation): script reports; per-item file still written to `.claude/backlog/`.
+- GITHUB_TOKEN not set (for P0/P1 issue creation): script reports; per-item file still written to `~/.dh/projects/{slug}/backlog/`.
 
 ## Completion Criteria
 
 - backlog add invoked successfully
-- Per-item file created in `.claude/backlog/` (script handles)
+- Per-item file created in `~/.dh/projects/{slug}/backlog/` (script handles)
 - GitHub Issue created and `issue` field set in per-item frontmatter (P0/P1 only, if --create-issue; script handles)
 - Next-step commands shown to user

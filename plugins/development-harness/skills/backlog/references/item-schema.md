@@ -1,6 +1,6 @@
 # Backlog Item Schema
 
-Canonical schema for per-item files at `.claude/backlog/{priority}-{slug}.md`.
+Canonical schema for per-item files at `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md`.
 All skills that read or write item files MUST conform to this schema.
 
 SOURCE: Derived from comparative analysis of GSD repo patterns and claude_skills backlog skill implementations (accessed 2026-02-26).
@@ -82,7 +82,7 @@ Sections appear in this order. All sections after Description are populated incr
 ```markdown
 **Acceptance Criteria**:
 - Running `command X` produces `output Y`
-- File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter
+- File `~/.dh/projects/{slug}/backlog/p1-{slug}.md` exists with correct frontmatter
 - `backlog_view(selector="#N")` returns `state: "open"` in the dict
 ```
 
@@ -139,7 +139,7 @@ Missing: {list or "None"}
 ## Acceptance Criteria Verification
 
 [PASS] Running `command X` produces `output Y` — verified at src/main.py:42
-[FAIL] File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter — file not found
+[FAIL] File `~/.dh/projects/{slug}/backlog/p1-{slug}.md` exists with correct frontmatter — file not found
 [PASS] `backlog_view(selector="#N")` returns `state: "open"` — confirmed via MCP tool output
 
 Overall: FAIL (2/3 criteria met)
@@ -203,6 +203,6 @@ Both locations MUST be updated together. `group-items-to-milestone` is the only 
 
 ## Backlog Directory Structure
 
-The backlog script reads per-item files from `.claude/backlog/`. Each file is named `{priority}-{slug}.md` (e.g., `p1-error-recovery.md`). The `work-backlog-item progress` subcommand scans this directory to produce situational awareness output.
+The backlog script reads per-item files from `~/.dh/projects/{slug}/backlog/`. Each file is named `{priority}-{slug}.md` (e.g., `p1-error-recovery.md`). The `work-backlog-item progress` subcommand scans this directory to produce situational awareness output.
 
 SOURCE: claude_skills_backlog_management_systematic_improvements_list.md, Cross-Cutting Improvements section 5 (2026-02-26).

@@ -16,7 +16,7 @@ Bridge a backlog item into the SAM planning pipeline via `/add-new-feature` (def
 **Phase separation**: Grooming (Step 3) is autonomous research — the agent verifies facts, maps resources, estimates effort, and surfaces blockers. Planning (Step 6) is solution design — architecture, tasks, implementation. The human sets priorities and resolves blockers; the agent handles research and fact-checking autonomously.
 
 **SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
-Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `.claude/backlog/` per-item files are the local cache and are kept in sync.
+Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `~/.dh/projects/{slug}/backlog/` per-item files are the local cache and are kept in sync.
 
 When invoked with no arguments, shows an interactive browser. When invoked with `#N` or a title substring, proceeds directly to the planning workflow.
 
@@ -402,7 +402,7 @@ Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references
 
 ## GitHub Integration
 
-`.claude/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. See [github-integration.md](./references/github-integration.md) for step-by-step commands and example sessions. Note: `Fixes #N` trailers are restricted to the `/complete-implementation` final commit step only.
+`~/.dh/projects/{slug}/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. See [github-integration.md](./references/github-integration.md) for step-by-step commands and example sessions. Note: `Fixes #N` trailers are restricted to the `/complete-implementation` final commit step only.
 
 ### Step 2.5: GitHub Issue Sync
 
