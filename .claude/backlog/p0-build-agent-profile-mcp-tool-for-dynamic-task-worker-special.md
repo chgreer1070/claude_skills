@@ -5,9 +5,9 @@ metadata:
   topic: build-agent-profile-mcp-tool-for-dynamic-task-worker-special
   source: 'Session 2026-03-22: designing peak customization for task-worker agent composition'
   added: '2026-03-22'
-  priority: P0
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#979'
   last_synced: '2026-03-22T01:56:35Z'
   groomed: '2026-03-22'

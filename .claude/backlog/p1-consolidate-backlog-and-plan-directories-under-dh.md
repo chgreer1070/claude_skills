@@ -9,7 +9,7 @@ metadata:
   type: Refactor
   status: open
   issue: '#981'
-  last_synced: '2026-03-22T13:14:16Z'
+  last_synced: '2026-03-22T13:17:58Z'
   groomed: '2026-03-22'
 ---
 
@@ -902,6 +902,24 @@ When #981 implements, its migration sweep must include updating any path constan
 SOURCE: plan/alignment-review-981-vs-986.md
 </div>
 
+### Outstanding Questions Resolution
+
+<div><sub>2026-03-22T13:17:58Z</sub>
+
+**All 5 outstanding questions from RT-ICA are now RESOLVED (2026-03-22).**
+
+**Q1 — Target directory layout**: RESOLVED. Superseded by two-namespace architecture decision. In-repo `.dh/` for committed config; `~/.dh/projects/{slug}/` for runtime state. None of the original Options A/B/C apply. See "Architecture Decision" section.
+
+**Q2 — Scope of context/ and reports/**: RESOLVED. Both in scope, moving to `~/.dh/projects/{slug}/context/` and `~/.dh/projects/{slug}/reports/` (Tier 3 in AC).
+
+**Q3 — Migration strategy**: RESOLVED. Big bang recommended — avoid symlink complexity. Prototype on small subset (10 backlog items, 5 plan files) before migrating all 600+ files.
+
+**Q4 — Plugin cache interaction**: RESOLVED (derivable). Plugin cache (`~/.claude/plugins/cache/`) and DH state (`~/.dh/projects/{slug}/`) are separate namespaces with no overlap. Plugin cache is Claude Code infrastructure, not DH state.
+
+**Q5 — Backward compatibility**: RESOLVED. Grep of `~/.claude/plugins/cache/` found 30 files referencing `.claude/backlog` or `plan/` paths. Breakdown: 26 are SKILL.md and reference documentation (describe paths to Claude, not runtime file access). 4 are Python runtime code (`dispatch_schema/paths.py`, `readers/yaml_reader.py`, `writers/yaml_writer.py`, `core/models.py`) — all run INSIDE the MCP server process. No external consumer reads `.claude/backlog/` or `plan/` directly — all access goes through backlog MCP and SAM MCP tools. When paths change, update the MCP server internals and the documentation references in the next plugin version. No backward compatibility shim is needed.
+
+The "Dependencies" section claim "all design decisions resolved" is now accurate. The "Outstanding Questions" section in the original RT-ICA can be marked resolved.
+</div>
 
 
 ## Classification
