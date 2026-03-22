@@ -15,8 +15,10 @@ The orchestrator's role:
 - Define measurable success criteria
 - Enable comprehensive discovery via world-building context
 - Trust agent expertise and their 200k context windows
+- Use agents liberally to keep the orchestrator's context window clean
+- When a problem is hard, throw more compute at it — spawn agents in parallel rather than working sequentially in the orchestrator
 
-**Reason**: Sub-agents are specialized experts with full tool access. Prescribing implementation limits their ability to discover better solutions.
+**Reason**: Sub-agents are specialized experts with full tool access. Prescribing implementation limits their ability to discover better solutions. The orchestrator's context window is finite and shared across the whole session — agents get fresh context per task. Parallel dispatch solves more, faster, without accumulating context debt.
 
 ## Scientific Method Alignment
 
@@ -723,33 +725,47 @@ flowchart TD
 
 ---
 
-## Agent Teams — When Subagents Are Not Enough
+## Parallel Dispatch — Teams as Standard Mechanism
 
-Agent teams coordinate multiple Claude Code instances with inter-agent messaging and shared task lists. Use subagents when workers report back independently. Use agent teams when workers must share findings, challenge each other, and coordinate among themselves.
+Agent teams are the standard mechanism for parallel work. When you have 2+ independent tasks, reach for TeamCreate first. Single `Agent()` calls are for exactly one task.
 
-### When Agent Teams Apply vs When Subagents Suffice
+**Reason**: Teams keep the orchestrator's context window clean, get results faster, and have been validated at scale (60+ parallel issues in a single session). The coordination overhead is minimal compared to the throughput gain.
 
-<!-- Converted from two prose bullet lists: combined into a single decision flowchart with evaluable gates -->
+### Dispatch Decision
 
 ```mermaid
 flowchart TD
-    Start(["Workflow with multiple units of work"]) --> Q1{"Are there 3 or more<br>independent units of work?"}
-    Q1 -->|"No — fewer than 3 units"| UseSubagents(["Use subagents —<br>coordination overhead not justified"])
-    Q1 -->|"Yes — 3 or more units"| Q2
+    Start(["Work to dispatch"]) --> Q1{"How many independent<br>units of work?"}
+    Q1 -->|"Exactly 1"| Single["Single Agent() call<br>No team needed"]
+    Q1 -->|"2 or more"| Q2
 
-    Q2{"Do the units need to share findings<br>with each other during execution<br>— not just report back to orchestrator?"}
-    Q2 -->|"No — units are fully independent"| UseSubagents
-    Q2 -->|"Yes — findings from one inform or challenge another"| Q3
+    Q2{"Do any units write<br>to the same file?"}
+    Q2 -->|"Yes — shared file mutations"| Serialize["Sequence those units<br>Parallelize the rest via TeamCreate"]
+    Q2 -->|"No — fully independent"| Teams["TeamCreate<br>One Agent() per task<br>All launch concurrently"]
 
-    Q3{"Will any two units<br>write to the same file?"}
-    Q3 -->|"Yes — shared file mutations"| UseSubagents
-    Q3 -->|"No — no shared file mutations"| Q4
-
-    Q4{"Is the final result a synthesis<br>or reconciliation of findings,<br>not just a collection?"}
-    Q4 -->|"No — result is concatenation only"| UseSubagents
-    Q4 -->|"Yes — value comes from combining findings"| UseTeams(["Use agent teams —<br>all four criteria satisfied"])
+    Teams --> Liberal["Liberal use encouraged —<br>throw compute at the problem<br>context window stays clean"]
+    Single --> Done(["Delegate"])
+    Serialize --> Done
+    Liberal --> Done
 ```
 
-See [Agent Teams Documentation](./../../../plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md) for complete criteria, architecture, and usage patterns.
+**When to dispatch immediately (no analysis needed):**
+
+- 2+ test files failing with different root causes
+- Multiple subsystems to modify independently
+- Parallel reviews (security, performance, coverage, documentation)
+- Research tasks that don't depend on each other
+- Grooming or processing multiple backlog items
+- Any work where each unit can proceed without waiting on others
+
+**When NOT to dispatch in parallel:**
+
+- Failures are related — fixing one fixes others (explore first, then dispatch)
+- Tasks share output state — task B needs task A's result
+- You don't know what's broken yet — do a single investigation first, then parallelize the fixes
+
+For complete TeamCreate mechanics, step-by-step dispatch pattern, and example prompts, activate the `/dh:dispatch` skill.
+
+See [Agent Teams Documentation](./../../../plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md) for architecture and usage patterns.
 
 SOURCE: Lines 10-39 of agent-teams.md (accessed 2026-02-06)
