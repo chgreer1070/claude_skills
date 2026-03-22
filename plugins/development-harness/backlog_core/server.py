@@ -1985,5 +1985,9 @@ async def artifact_migrate(
     return {**result, **out.to_dict()}
 
 
+from agent_profile import mcp as _agent_profile_mcp
+
+mcp.mount(_agent_profile_mcp, namespace="profile")
+
 if __name__ == "__main__":
     mcp.run()
