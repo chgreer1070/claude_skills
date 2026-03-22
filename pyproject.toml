@@ -67,6 +67,7 @@ members = ["plugins/development-harness"]
 [tool.pytest.ini_options]
 addopts = [
     "--cov=scripts",
+    "--cov=plugins",
     "--strict-config",
     "--strict-markers",
     "--tb=short",
