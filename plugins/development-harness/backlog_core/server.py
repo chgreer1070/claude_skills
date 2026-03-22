@@ -15,6 +15,7 @@ import dispatch_schema as _ds
 import tiktoken
 from fastmcp import Context, FastMCP
 from pydantic import Field
+from ruamel.yaml import YAML as _YAML
 
 from . import models as _models, operations
 from .artifact_provider import GitHubArtifactProvider
@@ -1420,6 +1421,510 @@ async def dispatch_conflicts(
         "conflict_groups": [dataclasses.asdict(cg) for cg in conflict_groups],
         "count": len(conflict_groups),
     }
+
+
+# ---------------------------------------------------------------------------
+# artifact_migrate helpers
+# ---------------------------------------------------------------------------
+
+#: Lazily created YAML parser for migration helpers (preserve_quotes prevents
+#: round-trip mutations when loading frontmatter).
+_migrate_yaml: _YAML | None = None
+
+
+def _get_migrate_yaml() -> _YAML:
+    """Return (or lazily create) the shared YAML instance for migration.
+
+    Returns:
+        Configured ``YAML`` instance with ``preserve_quotes=True``.
+    """
+    global _migrate_yaml  # noqa: PLW0603
+    if _migrate_yaml is None:
+        _migrate_yaml = _YAML()
+        _migrate_yaml.preserve_quotes = True
+    return _migrate_yaml
+
+
+#: Filename pattern → ArtifactType mapping (ordered — first match wins).
+_MIGRATE_FILENAME_PATTERNS: list[tuple[_re.Pattern[str], ArtifactType]] = [
+    (_re.compile(r"^feature-context-(.+)\.md$"), ArtifactType.FEATURE_CONTEXT),
+    (_re.compile(r"^architect-(.+)\.md$"), ArtifactType.ARCHITECT),
+    (_re.compile(r"^P\d+-(.+)\.yaml$"), ArtifactType.TASK_PLAN),
+    (_re.compile(r"^T0-baseline-(.+)\.yaml$"), ArtifactType.T0_BASELINE),
+    (_re.compile(r"^TN-verification-(.+)\.yaml$"), ArtifactType.TN_VERIFICATION),
+]
+
+#: Pattern matching markdown files in plan/codebase/ → codebase-analysis.
+_MIGRATE_CODEBASE_PATTERN = _re.compile(r"^.+\.md$")
+
+
+def _migrate_extract_issue(file_path: Path) -> int | None:
+    """Read the ``issue`` field from YAML frontmatter or a bare YAML file.
+
+    Args:
+        file_path: Absolute path to the file.
+
+    Returns:
+        Integer issue number when found and parseable, ``None`` otherwise.
+    """
+    try:
+        text = file_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+    yaml = _get_migrate_yaml()
+    raw_data: object = None
+    if file_path.suffix in {".yaml", ".yml"}:
+        try:
+            raw_data = yaml.load(text)
+        except Exception:  # noqa: BLE001
+            return None
+    else:
+        fm_match = _re.match(r"^---\r?\n(.*?)\r?\n(?:---|\.\.\.)(?:\r?\n|$)", text, _re.DOTALL)
+        if not fm_match:
+            return None
+        try:
+            raw_data = yaml.load(fm_match.group(1))
+        except Exception:  # noqa: BLE001
+            return None
+
+    if isinstance(raw_data, dict):
+        return _migrate_coerce_issue(raw_data.get("issue"))
+    return None
+
+
+def _migrate_coerce_issue(value: object) -> int | None:
+    """Coerce a YAML value to a positive integer issue number.
+
+    Args:
+        value: Raw value from YAML (may be int, str, or None).
+
+    Returns:
+        Positive integer, or ``None``.
+    """
+    if value is None:
+        return None
+    try:
+        n = int(str(value))
+    except (ValueError, TypeError):
+        return None
+    return n if n > 0 else None
+
+
+def _migrate_slug_from_path(file_path: Path) -> str:
+    r"""Extract the slug from a plan filename.
+
+    Strips known prefixes and the file extension.
+
+    Args:
+        file_path: Path object for the plan file.
+
+    Returns:
+        Slug string (e.g. ``"my-feature"``).
+    """
+    name = file_path.stem
+    for prefix in ("feature-context-", "architect-", "T0-baseline-", "TN-verification-"):
+        if name.startswith(prefix):
+            return name[len(prefix) :]
+    p_match = _re.match(r"^P\d+-(.+)$", name)
+    if p_match:
+        return p_match.group(1)
+    return name
+
+
+def _migrate_find_issue_via_backlog(slug: str, backlog_items: list[dict]) -> int | None:
+    """Match a slug against cached backlog items to find an issue number.
+
+    Args:
+        slug: Slug string extracted from the artifact filename.
+        backlog_items: List of backlog item dicts (each has ``title``,
+            ``number``, and optionally ``plan`` fields).
+
+    Returns:
+        Matched GitHub issue number, or ``None``.
+    """
+    slug_words = set(slug.replace("-", " ").replace("_", " ").lower().split())
+    for item in backlog_items:
+        title: str = item.get("title", "") or ""
+        plan_path: str = item.get("plan", "") or ""
+        issue_number = _migrate_coerce_issue(item.get("number"))
+        if issue_number is None:
+            continue
+        if slug in plan_path:
+            return issue_number
+        title_words = set(title.replace("-", " ").replace("_", " ").lower().split())
+        overlap = slug_words & title_words
+        if len(overlap) >= max(1, len(slug_words) // 2):
+            return issue_number
+    return None
+
+
+def _migrate_resolve_issue(file_path: Path, backlog_items: list[dict]) -> int | None:
+    """Resolve the issue number for a file via frontmatter or slug fallback.
+
+    Args:
+        file_path: Absolute path to the artifact file.
+        backlog_items: Pre-fetched backlog items for slug-based fallback.
+
+    Returns:
+        Resolved issue number, or ``None``.
+    """
+    issue = _migrate_extract_issue(file_path)
+    if issue is None:
+        slug = _migrate_slug_from_path(file_path)
+        issue = _migrate_find_issue_via_backlog(slug, backlog_items)
+    return issue
+
+
+def _migrate_classify_plan_file(file_path: Path) -> ArtifactType | None:
+    """Classify a plan file by its filename pattern.
+
+    Args:
+        file_path: Path to the file.
+
+    Returns:
+        Matching ``ArtifactType``, or ``None``.
+    """
+    name = file_path.name
+    for pattern, artifact_type in _MIGRATE_FILENAME_PATTERNS:
+        if pattern.match(name):
+            return artifact_type
+    return None
+
+
+_MigrateCandidate = tuple[str, ArtifactType, int | None, str | None]
+
+
+def _migrate_make_candidate(
+    rel: str, atype: ArtifactType, issue: int | None, issue_filter: int | None
+) -> _MigrateCandidate:
+    """Build a candidate tuple, setting skip_reason when appropriate.
+
+    Args:
+        rel: Repo-relative path string.
+        atype: Resolved artifact type.
+        issue: Resolved issue number or ``None``.
+        issue_filter: When set, candidates not matching this issue are marked
+            as filtered.
+
+    Returns:
+        ``(rel, atype, issue, skip_reason)`` tuple.
+    """
+    if issue is None:
+        return (rel, atype, issue, "no issue number found")
+    if issue_filter is not None and issue != issue_filter:
+        return (rel, atype, issue, f"filtered (issue={issue_filter})")
+    return (rel, atype, issue, None)
+
+
+def _migrate_scan_codebase_dir(
+    codebase_dir: Path, repo_root: Path, issue_filter: int | None, backlog_items: list[dict]
+) -> list[_MigrateCandidate]:
+    """Scan ``plan/codebase/`` for markdown codebase-analysis files.
+
+    Args:
+        codebase_dir: Absolute path to the ``plan/codebase/`` directory.
+        repo_root: Absolute path to the repository root.
+        issue_filter: When set, non-matching candidates are marked filtered.
+        backlog_items: Pre-fetched backlog items for slug-based fallback.
+
+    Returns:
+        List of candidate tuples for codebase-analysis files.
+    """
+    results: list[_MigrateCandidate] = []
+    for child in codebase_dir.iterdir():
+        if not (child.is_file() and _MIGRATE_CODEBASE_PATTERN.match(child.name)):
+            continue
+        rel = child.relative_to(repo_root).as_posix()
+        issue = _migrate_resolve_issue(child, backlog_items)
+        results.append(_migrate_make_candidate(rel, ArtifactType.CODEBASE_ANALYSIS, issue, issue_filter))
+    return results
+
+
+def _migrate_scan_plan_dir(
+    plan_dir: Path, repo_root: Path, issue_filter: int | None, backlog_items: list[dict]
+) -> list[_MigrateCandidate]:
+    """Scan ``plan/`` (excluding subdirectories other than ``codebase/``).
+
+    Args:
+        plan_dir: Absolute path to the ``plan/`` directory.
+        repo_root: Absolute path to the repository root.
+        issue_filter: When set, non-matching candidates are marked filtered.
+        backlog_items: Pre-fetched backlog items for slug-based fallback.
+
+    Returns:
+        List of candidate tuples for plan artifact files.
+    """
+    results: list[_MigrateCandidate] = []
+    for file_path in plan_dir.iterdir():
+        if file_path.is_dir():
+            if file_path.name == "codebase":
+                results.extend(_migrate_scan_codebase_dir(file_path, repo_root, issue_filter, backlog_items))
+            continue
+        if not file_path.is_file():
+            continue
+        atype = _migrate_classify_plan_file(file_path)
+        if atype is None:
+            continue
+        rel = file_path.relative_to(repo_root).as_posix()
+        issue = _migrate_resolve_issue(file_path, backlog_items)
+        results.append(_migrate_make_candidate(rel, atype, issue, issue_filter))
+    return results
+
+
+def _migrate_discover_candidates(
+    repo_root: Path, issue_filter: int | None, backlog_items: list[dict]
+) -> list[_MigrateCandidate]:
+    """Scan plan/ and research/ for artifact files.
+
+    Args:
+        repo_root: Absolute path to the repository root.
+        issue_filter: When set, only candidates linked to this issue number
+            are returned (others are kept but marked with a skip_reason).
+        backlog_items: Pre-fetched backlog items for slug-based fallback.
+
+    Returns:
+        List of ``(rel_path, artifact_type, issue_number, skip_reason)``
+        tuples where ``skip_reason`` is ``None`` when the candidate should
+        be processed.
+    """
+    candidates: list[_MigrateCandidate] = []
+
+    plan_dir = repo_root / "plan"
+    if plan_dir.is_dir():
+        candidates.extend(_migrate_scan_plan_dir(plan_dir, repo_root, issue_filter, backlog_items))
+
+    research_dir = repo_root / "research"
+    if research_dir.is_dir():
+        for file_path in research_dir.rglob("*.md"):
+            if not file_path.is_file():
+                continue
+            rel = file_path.relative_to(repo_root).as_posix()
+            issue = _migrate_resolve_issue(file_path, backlog_items)
+            candidates.append(_migrate_make_candidate(rel, ArtifactType.RESEARCH, issue, issue_filter))
+
+    return candidates
+
+
+def _migrate_register_one(
+    provider: GitHubArtifactProvider, rel_path: str, artifact_type: ArtifactType, issue_number: int
+) -> tuple[bool, str]:
+    """Register a single artifact, uploading content when available.
+
+    Idempotent — the registry upserts on (artifact_type, path).
+
+    Args:
+        provider: Initialised ``GitHubArtifactProvider`` instance.
+        rel_path: Repo-relative path string.
+        artifact_type: Resolved artifact type.
+        issue_number: GitHub issue number (must be positive).
+
+    Returns:
+        Tuple of ``(success: bool, message: str)``.
+    """
+    entry = ArtifactEntry(
+        artifact_type=artifact_type,
+        path=rel_path,
+        status=ArtifactStatus.CURRENT,
+        created_at=_datetime.now(UTC).isoformat(),
+        agent="artifact-migrate",
+    )
+    manifest = provider.get_manifest(issue_number)
+    existed = any(e.artifact_type == artifact_type and e.path == rel_path for e in manifest.artifacts)
+    updated_manifest = _artifact_registry.register(manifest, entry)
+    provider.set_manifest(issue_number, updated_manifest)
+
+    local_content = provider.read_local_artifact_content(rel_path)
+    if local_content is not None:
+        provider.store_artifact_content(issue_number, str(artifact_type), rel_path, local_content)
+        content_note = " (content uploaded)"
+    else:
+        content_note = " (no local file — manifest-only)"
+
+    action = "updated" if existed else "added"
+    return True, f"{action}{content_note}"
+
+
+# ---------------------------------------------------------------------------
+# artifact_migrate helpers (dry-run / live-run)
+# ---------------------------------------------------------------------------
+
+
+def _migrate_dry_run(issue_number: int | None) -> dict:
+    """Discover candidates and return a preview without making any API calls.
+
+    Args:
+        issue_number: Optional issue filter passed to candidate discovery.
+
+    Returns:
+        Dict with ``dry_run``, ``would_register``, ``would_skip``, and
+        ``details`` keys.
+    """
+    repo_root = _models._REPO_ROOT  # noqa: SLF001
+    candidates = _migrate_discover_candidates(repo_root, issue_number, [])
+
+    details: list[dict] = []
+    would_register = 0
+    would_skip = 0
+    for rel_path, atype, issue, skip_reason in candidates:
+        if skip_reason:
+            details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": f"skip — {skip_reason}"})
+            would_skip += 1
+        else:
+            details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": "would register"})
+            would_register += 1
+
+    return {"dry_run": True, "would_register": would_register, "would_skip": would_skip, "details": details}
+
+
+def _migrate_queue_manifest_only(
+    provider: GitHubArtifactProvider, issue_number: int, candidates: list[_MigrateCandidate], out: Output
+) -> list[_MigrateCandidate]:
+    """Append manifest-only entries (content_stored=False) to the candidate list.
+
+    Called when ``issue_number`` is provided so already-registered entries
+    without uploaded content are re-processed to trigger the auto-upload path.
+
+    Args:
+        provider: Initialised provider used to read the manifest.
+        issue_number: Issue whose manifest to inspect.
+        candidates: Existing candidate list (may be mutated by extension).
+        out: Output accumulator for warnings.
+
+    Returns:
+        Extended candidate list.
+    """
+    try:
+        manifest = provider.get_manifest(issue_number)
+    except Exception:  # noqa: BLE001
+        out.warn(f"Could not read existing manifest for issue #{issue_number}. Skipping manifest check.")
+        return candidates
+
+    result = list(candidates)
+    for entry in manifest.artifacts:
+        # Re-queue every registered entry so the auto-upload path can attempt
+        # content upload for entries where no content was stored yet.
+        # _migrate_register_one is idempotent (upserts on type+path).
+        already_queued = any(
+            rel == entry.path and atype == entry.artifact_type
+            for rel, atype, _, skip_reason in candidates
+            if skip_reason is None
+        )
+        if not already_queued:
+            result.append((entry.path, entry.artifact_type, issue_number, None))
+            out.warn(f"Queued manifest-only entry for re-registration: {entry.path!r}")
+    return result
+
+
+def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
+    """Execute the live migration against GitHub.
+
+    Args:
+        issue_number: Optional issue filter.
+        out: Output accumulator (warnings written here).
+
+    Returns:
+        Dict with ``migrated``, ``skipped``, ``failed``, and ``details``.
+    """
+    repo_root = _models._REPO_ROOT  # noqa: SLF001
+    provider = _get_artifact_provider()
+
+    backlog_items: list[dict] = []
+    try:
+        raw = operations.list_items()
+        if isinstance(raw, list):
+            backlog_items = raw
+        elif isinstance(raw, dict):
+            backlog_items = raw.get("items", [])
+    except Exception:  # noqa: BLE001
+        out.warn("Could not fetch backlog items for slug matching. Continuing without fallback.")
+
+    candidates = _migrate_discover_candidates(repo_root, issue_number, backlog_items)
+
+    if issue_number is not None:
+        candidates = _migrate_queue_manifest_only(provider, issue_number, candidates, out)
+
+    migrated = 0
+    skipped = 0
+    failed = 0
+    run_details: list[dict] = []
+
+    for rel_path, atype, issue, skip_reason in candidates:
+        if skip_reason:
+            skipped += 1
+            run_details.append({
+                "path": rel_path,
+                "type": str(atype),
+                "issue": issue,
+                "outcome": f"skipped — {skip_reason}",
+            })
+            continue
+
+        assert issue is not None  # skip_reason is None only when issue resolved  # noqa: S101
+        try:
+            _ok, action_msg = _migrate_register_one(provider, rel_path, atype, issue)
+            migrated += 1
+            run_details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": action_msg})
+        except Exception as exc:  # noqa: BLE001
+            failed += 1
+            run_details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": f"FAILED: {exc}"})
+
+    return {"migrated": migrated, "skipped": skipped, "failed": failed, "details": run_details}
+
+
+# ---------------------------------------------------------------------------
+# artifact_migrate MCP tool
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+async def artifact_migrate(
+    issue_number: Annotated[
+        int | None, Field(description="Migrate artifacts for a specific issue number only. Omit to scan all issues.")
+    ] = None,
+    dry_run: Annotated[
+        bool, Field(description="When true, report what would be migrated without making any API calls.")
+    ] = False,
+) -> dict:
+    """Migrate existing plan/research artifacts into the artifact manifest system.
+
+    Scans ``plan/`` and ``research/`` directories for artifact files,
+    determines the artifact type from the filename pattern, extracts the
+    linked GitHub issue number from YAML frontmatter (falling back to slug
+    matching against backlog items), and calls the artifact_register logic
+    for each discovered file.
+
+    When ``issue_number`` is provided the tool also checks the existing
+    manifest for that issue: any already-registered entry that has
+    ``content_stored=False`` is re-registered so the auto-upload path can
+    run and upload the local file content.
+
+    Safe to re-run — the registry upserts on ``(artifact_type, path)``
+    so existing entries are updated in-place rather than duplicated.
+
+    Returns:
+        Dict with ``migrated`` (int), ``skipped`` (int), ``failed`` (int),
+        and ``details`` (list of per-artifact outcome dicts).  Each detail
+        dict contains ``path``, ``type``, ``issue``, and ``outcome``.
+        On error, dict contains an ``error`` key.
+    """
+    out = Output()
+
+    if dry_run:
+        try:
+            result = await asyncio.to_thread(_migrate_dry_run, issue_number)
+        except Exception as exc:  # noqa: BLE001
+            return {"error": f"Discovery failed: {exc}", **out.to_dict()}
+        return {**result, **out.to_dict()}
+
+    try:
+        result = await asyncio.to_thread(_migrate_live_run, issue_number, out)
+    except GitHubUnavailableError as exc:
+        return {"error": str(exc), **out.to_dict()}
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"Migration failed: {exc}", **out.to_dict()}
+
+    return {**result, **out.to_dict()}
 
 
 if __name__ == "__main__":
