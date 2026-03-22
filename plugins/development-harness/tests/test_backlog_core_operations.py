@@ -1687,11 +1687,11 @@ class TestRefreshClosedIssueReconciliation:
     def test_refresh_fetches_closed_issues(self, mocker: MockerFixture, tmp_path: Path) -> None:
         """Bulk GraphQL fetch is called for both open and closed states during refresh.
 
-        Tests: _fetch_issues_graphql is invoked with state='CLOSED' during refresh.
-        How: Mock _fetch_issues_graphql; call refresh; verify it was called with
+        Tests: sync_issues_graphql is invoked with state='CLOSED' during refresh.
+        How: Mock sync_issues_graphql; call refresh; verify it was called with
              state='CLOSED' at least once.
         Why: Without fetching closed issues, local cache drifts from GitHub state.
-             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
              repo.get_issues (REST).
         """
         # Arrange
@@ -1700,29 +1700,29 @@ class TestRefreshClosedIssueReconciliation:
         mock_repo = mocker.MagicMock()
         mock_repo.full_name = "owner/repo"
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
-        mock_fetch = mocker.patch("backlog_core.operations._fetch_issues_graphql", return_value=[])
+        mock_fetch = mocker.patch("backlog_core.operations.sync_issues_graphql", return_value=[])
 
         out = Output()
 
         # Act
         ops.refresh_local_cache_from_github(output=out)
 
-        # Assert — _fetch_issues_graphql called at least once with state="CLOSED"
+        # Assert — sync_issues_graphql called at least once with state="CLOSED"
         calls = mock_fetch.call_args_list
         closed_calls = [
             c for c in calls if c.kwargs.get("state") == "CLOSED" or (len(c.args) >= 4 and c.args[3] == "CLOSED")
         ]
-        assert len(closed_calls) >= 1, f"Expected at least one _fetch_issues_graphql(state='CLOSED') call, got: {calls}"
+        assert len(closed_calls) >= 1, f"Expected at least one sync_issues_graphql(state='CLOSED') call, got: {calls}"
 
     def test_refresh_updates_local_status_for_closed(self, mocker: MockerFixture, tmp_path: Path) -> None:
         """Local file updated to status=closed when GitHub issue is closed.
 
         Tests: reconciliation updates local cache for closed issues.
         How: Create local item with open status and issue #50; mock
-             _fetch_issues_graphql to return a closed issue node; verify local
+             sync_issues_graphql to return a closed issue node; verify local
              file status changes to closed.
         Why: Local files must reflect GitHub state to prevent stale displays.
-             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
              repo.get_issues (REST). Node dicts use camelCase GraphQL field names.
         """
         # Arrange
@@ -1751,7 +1751,7 @@ class TestRefreshClosedIssueReconciliation:
                 return [closed_node]
             return []  # no open issues
 
-        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_fake_fetch)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
@@ -1769,9 +1769,9 @@ class TestRefreshClosedIssueReconciliation:
 
         Tests: terminal status guard in reconciliation.
         How: Create item with status=done and matching closed issue; mock
-             _fetch_issues_graphql to return the closed issue node; verify no update.
+             sync_issues_graphql to return the closed issue node; verify no update.
         Why: Re-processing terminal items wastes I/O and may corrupt metadata.
-             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
              repo.get_issues (REST).
         """
         # Arrange
@@ -1801,7 +1801,7 @@ class TestRefreshClosedIssueReconciliation:
                 return [closed_node]
             return []
 
-        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_fake_fetch)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
@@ -1817,10 +1817,10 @@ class TestRefreshClosedIssueReconciliation:
         """Issue appearing in both open and closed sets is treated as open.
 
         Tests: open-takes-precedence rule in reconciliation.
-        How: Mock _fetch_issues_graphql to return issue #70 in both OPEN and CLOSED
+        How: Mock sync_issues_graphql to return issue #70 in both OPEN and CLOSED
              passes; verify reconciled count is 0.
         Why: GitHub may return recently-reopened issues in both state sets.
-             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
              repo.get_issues (REST). open_issue_numbers set prevents reconciliation
              of issues that appeared in the open pass.
         """
@@ -1858,7 +1858,7 @@ class TestRefreshClosedIssueReconciliation:
                 return [closed_node]
             return [open_node]
 
-        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_fake_fetch)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_fake_fetch)
         mocker.patch("backlog_core.operations._write_issue_node_to_cache")
 
         out = Output()
@@ -1873,10 +1873,10 @@ class TestRefreshClosedIssueReconciliation:
         """Closed issue with no matching local file causes no error.
 
         Tests: graceful skip when closed issue has no local counterpart.
-        How: Mock _fetch_issues_graphql to return closed issue #80 with no
+        How: Mock sync_issues_graphql to return closed issue #80 with no
              corresponding local file; verify no crash and reconciled=0.
         Why: Not all GitHub issues have local backlog files — must skip silently.
-             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
              repo.get_issues (REST).
         """
         # Arrange — autouse _isolate_backlog_dir redirects BACKLOG_DIR; no local files written.
@@ -1898,7 +1898,7 @@ class TestRefreshClosedIssueReconciliation:
                 return [closed_node]
             return []
 
-        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_fake_fetch)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
@@ -1924,7 +1924,7 @@ class TestRefreshLocalCacheIncrementalSync:
 
         Tests: refresh_local_cache_from_github incremental sync path.
         How: Write a .last_sync file via dh_paths.state_root(); patch
-             _fetch_issues_graphql; verify it is called with since=<timestamp>.
+             sync_issues_graphql; verify it is called with since=<timestamp>.
         Why: Without incremental sync, every refresh fetches all issues regardless
              of whether anything changed since the last run.
         """
@@ -1940,7 +1940,7 @@ class TestRefreshLocalCacheIncrementalSync:
         mock_repo.full_name = "owner/repo"
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
 
-        fetch_mock = mocker.patch("backlog_core.operations._fetch_issues_graphql", return_value=[])
+        fetch_mock = mocker.patch("backlog_core.operations.sync_issues_graphql", return_value=[])
 
         # Act
         ops.refresh_local_cache_from_github()
@@ -1954,7 +1954,7 @@ class TestRefreshLocalCacheIncrementalSync:
         """Full two-pass fetch is performed when no .last_sync file exists.
 
         Tests: refresh_local_cache_from_github full-refresh fallback.
-        How: Ensure .last_sync does not exist; verify _fetch_issues_graphql
+        How: Ensure .last_sync does not exist; verify sync_issues_graphql
              is called with since=None (full-fetch signature).
         Why: First run or after cache wipe must fetch all issues.
         """
@@ -1974,7 +1974,7 @@ class TestRefreshLocalCacheIncrementalSync:
             calls.append({"state": state, "since": since})
             return []
 
-        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_capture_fetch)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_capture_fetch)
         mocker.patch("backlog_core.operations._reconcile_closed_issues", return_value=0)
 
         # Act
@@ -1990,7 +1990,7 @@ class TestRefreshLocalCacheIncrementalSync:
 
         Tests: refresh_local_cache_from_github full_refresh=True flag.
         How: Write a .last_sync file, call with full_refresh=True, verify
-             _fetch_issues_graphql is called with since=None.
+             sync_issues_graphql is called with since=None.
         Why: Operators must be able to force a complete resync regardless of
              the cached timestamp.
         """
@@ -2011,7 +2011,7 @@ class TestRefreshLocalCacheIncrementalSync:
             calls.append({"state": state, "since": since})
             return []
 
-        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_capture_fetch)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_capture_fetch)
         mocker.patch("backlog_core.operations._reconcile_closed_issues", return_value=0)
 
         # Act

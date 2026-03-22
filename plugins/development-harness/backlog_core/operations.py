@@ -35,7 +35,6 @@ from .github import (
     IssueNode,
     _add_comment_graphql,
     _fetch_issue_graphql,
-    _fetch_issues_graphql,
     _fetch_milestones_graphql,
     _graphql_request,
     _projects_v2_create_mutation,
@@ -1176,7 +1175,7 @@ def _reconcile_closed_issues(repo_obj: Repository, open_issue_numbers: set[int],
 
     owner, repo_name = repo_obj.full_name.split("/", 1)
     try:
-        closed_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="CLOSED")
+        closed_issues = sync_issues_graphql(repo_obj, owner, repo_name, state="CLOSED")
     except BacklogError as e:
         output.warn(f"  WARNING: Could not fetch closed issues: {e}")
         return 0
@@ -1227,9 +1226,12 @@ def _sync_incremental(
         Tuple of (refreshed_count, reconciled_count).
 
     Raises:
-        BacklogError: Propagated from ``_fetch_issues_graphql`` on GraphQL errors.
+        BacklogError: Propagated from ``sync_issues_graphql`` on GraphQL errors.
     """
-    all_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="OPEN,CLOSED", labels=label_names, since=since)
+    since_dt: datetime | None = datetime.fromisoformat(since) if since else None
+    all_issues = sync_issues_graphql(
+        repo_obj, owner, repo_name, state="OPEN,CLOSED", labels=label_names, since=since_dt
+    )
     count = 0
     reconciled = 0
     for issue_node in all_issues:
@@ -1263,7 +1265,7 @@ def _sync_full(
         fetch fails (caller should propagate the failure).
     """
     try:
-        open_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="OPEN", labels=label_names)
+        open_issues = sync_issues_graphql(repo_obj, owner, repo_name, state="OPEN", labels=label_names)
     except BacklogError as e:
         out.warn(f"  WARNING: Could not fetch open issues: {e}")
         return None
@@ -3114,16 +3116,16 @@ def _collect_issues(
     """
     owner, repo_name = gh_repo.full_name.split("/", 1)
     if state == "all":
-        open_nodes = _fetch_issues_graphql(
+        open_nodes = sync_issues_graphql(
             gh_repo, owner, repo_name, state="OPEN", labels=label_names, milestone_number=milestone_number
         )
-        closed_nodes = _fetch_issues_graphql(
+        closed_nodes = sync_issues_graphql(
             gh_repo, owner, repo_name, state="CLOSED", labels=label_names, milestone_number=milestone_number
         )
         issue_nodes = open_nodes + closed_nodes
     else:
         graphql_state = "OPEN" if state == "open" else "CLOSED"
-        issue_nodes = _fetch_issues_graphql(
+        issue_nodes = sync_issues_graphql(
             gh_repo, owner, repo_name, state=graphql_state, labels=label_names, milestone_number=milestone_number
         )
 

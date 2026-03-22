@@ -1237,7 +1237,7 @@ def batch_fetch_statuses(items: list[BacklogItem], repo: str = "") -> dict[int, 
         return {}
     try:
         owner, repo_name = repo_obj.full_name.split("/", 1)
-        all_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="OPEN")
+        all_issues = sync_issues_graphql(repo_obj, owner, repo_name, state="OPEN")
         issue_map = {iss["number"]: iss for iss in all_issues}
     except (BacklogError, GithubException):
         return {}
@@ -1364,7 +1364,7 @@ def fetch_open_issues_by_title(repo: Repository) -> dict[str, int]:
         Dict mapping normalized title strings to their GitHub issue number.
     """
     owner, repo_name = repo.full_name.split("/", 1)
-    issues = _fetch_issues_graphql(repo, owner, repo_name, state="OPEN")
+    issues = sync_issues_graphql(repo, owner, repo_name, state="OPEN")
     title_to_num: dict[str, int] = {}
     for issue in issues:
         key = normalize_issue_title(issue["title"])

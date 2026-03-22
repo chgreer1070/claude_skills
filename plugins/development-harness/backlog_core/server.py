@@ -29,7 +29,7 @@ from . import models as _models, operations
 from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .dispatch_state import DispatchStateManager as _DispatchStateManager
-from .github import IssueNode as _IssueNode, _fetch_issues_graphql, get_github as _get_github
+from .github import IssueNode as _IssueNode, get_github as _get_github, sync_issues_graphql as _sync_issues_graphql
 from .models import (
     ArtifactContent,
     ArtifactEntry,
@@ -1425,8 +1425,8 @@ async def dispatch_stale_check(
     def _fetch_milestone_issue_numbers() -> list[int]:
         gh_repo = _get_github(repo)
         owner, repo_name = gh_repo.full_name.split("/", 1)
-        open_issues = _fetch_issues_graphql(gh_repo, owner, repo_name, state="OPEN", milestone_number=milestone_number)
-        closed_issues = _fetch_issues_graphql(
+        open_issues = _sync_issues_graphql(gh_repo, owner, repo_name, state="OPEN", milestone_number=milestone_number)
+        closed_issues = _sync_issues_graphql(
             gh_repo, owner, repo_name, state="CLOSED", milestone_number=milestone_number
         )
         return [issue["number"] for issue in open_issues + closed_issues]
@@ -1639,7 +1639,7 @@ async def dispatch_conflicts(
     def _fetch_items_with_impact_radius() -> list[_ImpactRadiusItem]:
         gh_repo = _get_github(repo)
         owner, repo_name = gh_repo.full_name.split("/", 1)
-        issue_nodes: list[_IssueNode] = _fetch_issues_graphql(
+        issue_nodes: list[_IssueNode] = _sync_issues_graphql(
             gh_repo, owner, repo_name, state="OPEN", milestone_number=milestone_number
         )
         items: list[_ImpactRadiusItem] = []
