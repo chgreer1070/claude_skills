@@ -567,6 +567,7 @@ class ArtifactType(StrEnum):
     T0_BASELINE = "T0-baseline"
     TN_VERIFICATION = "TN-verification"
     CODEBASE_ANALYSIS = "codebase-analysis"
+    RESEARCH = "research"
 
 
 class ArtifactStatus(StrEnum):
