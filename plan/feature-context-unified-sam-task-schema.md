@@ -78,7 +78,7 @@ A single Python module that:
 
 - **Pydantic**: Already a project dependency (used by `backlog_core` and other modules). Available for schema definition.
 - **ruamel.yaml**: Already the project's standard YAML library (per `.claude/rules/yaml-toml-libraries.md`). Used in `task_format.py`.
-- **TASK_FILE_FORMAT.md**: Comprehensive specification at `.claude/docs/TASK_FILE_FORMAT.md` with JSON Schema, field definitions, status values, authorized writers table, and migration guide. This is the existing schema source of truth.
+- **TASK_FILE_FORMAT.md**: Comprehensive specification at `plugins/development-harness/docs/TASK_FILE_FORMAT.md` with JSON Schema, field definitions, status values, authorized writers table, and migration guide. This is the existing schema source of truth.
 - **Existing tests**: `plugins/python3-development/skills/implementation-manager/scripts/test_task_parsing.py` has tests for YAML frontmatter parsing that can be extended.
 
 ### Code References
@@ -88,7 +88,7 @@ A single Python module that:
 - `plugins/python3-development/skills/implementation-manager/scripts/task_format.py:132-171` — `parse_yaml_frontmatter()` — shared frontmatter parser
 - `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py:245-296` — `find_task_section()` — regex-based section finder (independent parser)
 - `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py:334-361` — `update_task_status()` — regex-based status updater (independent parser)
-- `.claude/docs/TASK_FILE_FORMAT.md:370-481` — JSON Schema definition for task fields
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:370-481` — JSON Schema definition for task fields
 - `plan/tasks-1-backlog-state-reconciliation.md:1-19` — the file that triggered the failure (global-manifest + prose body format)
 
 ---

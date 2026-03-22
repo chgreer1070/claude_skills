@@ -5,9 +5,9 @@ metadata:
   topic: migrate-milestone-skills-from-gh-cli-to-project-tooling
   source: Milestone orchestration design — .claude/reports/milestone-orchestration-design-20260320.md
   added: '2026-03-20'
-  priority: P1
+  priority: completed
   type: Refactor
-  status: open
+  status: done
   issue: '#923'
   last_synced: '2026-03-21T23:10:01Z'
   groomed: '2026-03-21'

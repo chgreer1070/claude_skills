@@ -8,6 +8,7 @@ import dataclasses
 import json as _json
 import re as _re
 import sys
+from datetime import UTC, datetime as _datetime
 from typing import TYPE_CHECKING, Annotated, cast
 
 import dispatch_schema as _ds
@@ -16,8 +17,20 @@ from fastmcp import Context, FastMCP
 from pydantic import Field
 
 from . import models as _models, operations
+from .artifact_provider import GitHubArtifactProvider
+from .artifact_registry import ArtifactRegistry
 from .github import get_github as _get_github
-from .models import BacklogError, GitHubUnavailableError, Output, init as _init_models
+from .models import (
+    ArtifactContent,
+    ArtifactEntry,
+    ArtifactStatus,
+    ArtifactType,
+    BacklogError,
+    GitHubUnavailableError,
+    Output,
+    RegisterResult,
+    init as _init_models,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -711,6 +724,221 @@ async def backlog_update_sam_task_status(
             operations.update_sam_task_status, issue_number=issue_number, new_status=new_status, output=out
         )
         return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# Artifact manifest tools
+# ---------------------------------------------------------------------------
+
+_artifact_registry = ArtifactRegistry()
+_artifact_provider: GitHubArtifactProvider | None = None
+
+
+def _require_artifact_entries(entries: list, label: str) -> None:
+    """Raise BacklogError when no artifact entries are found.
+
+    Args:
+        entries: List of artifact entries (may be empty).
+        label: Error message to include in the exception.
+
+    Raises:
+        BacklogError: When ``entries`` is empty.
+    """
+    if not entries:
+        raise BacklogError(label)
+
+
+def _get_artifact_provider() -> GitHubArtifactProvider:
+    """Return (or lazily create) the GitHubArtifactProvider singleton.
+
+    Deferred so the provider is created after ``_init_models()`` has resolved
+    the repo slug and project root from the ``--project-dir`` argument.
+
+    Returns:
+        Initialised ``GitHubArtifactProvider`` instance.
+
+    Raises:
+        GitHubUnavailableError: When GitHub credentials or repo slug are missing.
+    """
+    global _artifact_provider  # noqa: PLW0603
+    if _artifact_provider is None:
+        repo = _models.DEFAULT_REPO
+        if not repo:
+            raise GitHubUnavailableError("DEFAULT_REPO not set — GitHub credentials or repo slug missing")
+        _artifact_provider = GitHubArtifactProvider(
+            repo=repo,
+            root_worktree=_models._REPO_ROOT,  # noqa: SLF001
+        )
+    return _artifact_provider
+
+
+@mcp.tool
+async def artifact_register(
+    issue_number: Annotated[int, Field(description="GitHub issue number")],
+    artifact_type: Annotated[
+        str,
+        Field(
+            description=(
+                "Artifact type: feature-context, architect, task-plan, T0-baseline, TN-verification, codebase-analysis"
+            )
+        ),
+    ],
+    path: Annotated[str, Field(description="Relative path from repo root, e.g. plan/architect-foo.md")],
+    status: Annotated[str, Field(description="Lifecycle status: draft, current, superseded, archived")] = "current",
+    agent: Annotated[str, Field(description="Name of the producing agent")] = "",
+) -> dict:
+    """Upsert an artifact entry in the manifest for a GitHub issue.
+
+    Idempotent by (artifact_type, path). If an entry with the same type and
+    path already exists it is updated in-place (status, agent, timestamp).
+    If only the type matches but the path differs, a new row is added.
+
+    Returns:
+        Dict with registered (bool), artifact_count (int), action (str), and
+        output messages/warnings. On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        provider = _get_artifact_provider()
+        artifact_type_enum = ArtifactType(artifact_type)
+        status_enum = ArtifactStatus(status)
+        entry = ArtifactEntry(
+            artifact_type=artifact_type_enum,
+            path=path,
+            status=status_enum,
+            created_at=_datetime.now(UTC).isoformat(),
+            agent=agent,
+        )
+
+        def _run() -> RegisterResult:
+            manifest = provider.get_manifest(issue_number)
+            updated_manifest = _artifact_registry.register(manifest, entry)
+            provider.set_manifest(issue_number, updated_manifest)
+            # Determine action: "updated" if entry pre-existed, "added" otherwise.
+            existed = any(e.artifact_type == artifact_type_enum and e.path == path for e in manifest.artifacts)
+            action = "updated" if existed else "added"
+            return RegisterResult(registered=True, artifact_count=len(updated_manifest.artifacts), action=action)
+
+        result = await asyncio.to_thread(_run)
+        return {**result.model_dump(), **out.to_dict()}
+    except (ValueError, KeyError) as e:
+        return {"error": f"Invalid parameter: {e}", **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def artifact_list(
+    issue_number: Annotated[int, Field(description="GitHub issue number")],
+    artifact_type: Annotated[str | None, Field(description="Filter by artifact type (optional)")] = None,
+) -> dict:
+    """Return all artifacts registered for a GitHub issue.
+
+    Optionally filter by artifact type. Returns an empty list when no
+    manifest section exists yet — this is not an error.
+
+    Returns:
+        Dict with artifacts (list of dicts), count (int), and output
+        messages/warnings. On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        provider = _get_artifact_provider()
+        type_filter: ArtifactType | None = ArtifactType(artifact_type) if artifact_type else None
+
+        def _run() -> list[dict]:
+            manifest = provider.get_manifest(issue_number)
+            if type_filter is not None:
+                entries = _artifact_registry.get_by_type(manifest, type_filter)
+            else:
+                entries = manifest.artifacts
+            return [e.model_dump(mode="json") for e in entries]
+
+        artifacts = await asyncio.to_thread(_run)
+        return {"artifacts": artifacts, "count": len(artifacts), **out.to_dict()}
+    except (ValueError, KeyError) as e:
+        return {"error": f"Invalid parameter: {e}", **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def artifact_get(
+    issue_number: Annotated[int, Field(description="GitHub issue number")],
+    artifact_type: Annotated[str, Field(description="Artifact type to retrieve")],
+) -> dict:
+    """Return metadata for a specific artifact type registered on a GitHub issue.
+
+    If multiple artifacts of the same type exist (e.g. multiple
+    codebase-analysis files), all are returned.
+
+    Returns:
+        Dict with artifacts (list of dicts), count (int), and output
+        messages/warnings. Returns error key when type is not found.
+    """
+    out = Output()
+    try:
+        provider = _get_artifact_provider()
+        type_enum = ArtifactType(artifact_type)
+
+        def _run() -> list[dict]:
+            manifest = provider.get_manifest(issue_number)
+            entries = _artifact_registry.get_by_type(manifest, type_enum)
+            return [e.model_dump(mode="json") for e in entries]
+
+        artifacts = await asyncio.to_thread(_run)
+        if not artifacts:
+            return {"error": f"No artifacts of type '{artifact_type}' found for issue #{issue_number}", **out.to_dict()}
+        return {"artifacts": artifacts, "count": len(artifacts), **out.to_dict()}
+    except (ValueError, KeyError) as e:
+        return {"error": f"Invalid parameter: {e}", **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def artifact_read(
+    issue_number: Annotated[int, Field(description="GitHub issue number")],
+    artifact_type: Annotated[str, Field(description="Artifact type whose content to read")],
+) -> dict:
+    """Read the file content for an artifact registered on a GitHub issue.
+
+    Resolves the artifact path against the root worktree (not the caller's
+    working directory). Designed for worktree-isolated agents that cannot
+    access plan files via the filesystem directly.
+
+    Path safety: the provider validates that the resolved path is under the
+    repository root and within the plan/ directory.
+
+    Returns:
+        Dict with type (str), path (str), content (str), status (str), and
+        output messages/warnings. Returns error key on type-not-found or
+        path safety violation.
+    """
+    out = Output()
+    try:
+        provider = _get_artifact_provider()
+        type_enum = ArtifactType(artifact_type)
+
+        def _run() -> ArtifactContent:
+            manifest = provider.get_manifest(issue_number)
+            entries = _artifact_registry.get_by_type(manifest, type_enum)
+            _require_artifact_entries(
+                entries, f"No artifacts of type '{artifact_type}' found for issue #{issue_number}"
+            )
+            # Use the first (most recent) entry.
+            entry = entries[0]
+            content = provider.read_artifact_content(entry.path)
+            return ArtifactContent(
+                artifact_type=entry.artifact_type, path=entry.path, content=content, status=entry.status
+            )
+
+        result = await asyncio.to_thread(_run)
+        return {**result.model_dump(mode="json"), **out.to_dict()}
+    except (ValueError, KeyError) as e:
+        return {"error": f"Invalid parameter: {e}", **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
 

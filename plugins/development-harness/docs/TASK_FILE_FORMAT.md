@@ -419,3 +419,29 @@ uv run sam schema --model Plan > .claude/docs/plan-schema.json
 uv run sam schema --model Task > .claude/docs/task-schema.json
 uv run sam schema --model TaskAssignment > .claude/docs/assignment-schema.json
 ```
+
+---
+
+## Artifact Manifest Integration
+
+Task-plan artifacts are registered in the artifact manifest with `type: "task-plan"`. The manifest is stored in the GitHub Issue body and serves as the authoritative registry for all plan artifacts.
+
+### MCP Tools for Artifact Management
+
+Four MCP tools support artifact registration and discovery:
+
+```text
+artifact_register   -- Register a new artifact in the manifest (adds entry to GitHub Issue body)
+artifact_list       -- List all registered artifacts for a plan/issue
+artifact_get        -- Get metadata for a specific artifact by path
+artifact_read       -- Read artifact content by path (used by worktree-isolated agents)
+```
+
+### Auto-Registration via sam_create
+
+When `sam_create` is invoked with an `issue` field present in the plan, it automatically registers the created task-plan artifact in the manifest. No separate `artifact_register` call is needed for the initial plan creation when the issue number is known.
+
+Manual registration is required when:
+
+- The plan is created without an `issue` field and the issue is linked later
+- Non-plan artifacts (feature-context, architect-spec) are produced by planning agents

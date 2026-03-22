@@ -111,6 +111,26 @@ When the plan contains `acceptance-criteria-structured` entries, `swarm-task-pla
 
 T0 runs agent `t0-baseline-capture`. TN runs agent `tn-verification-gate`. Both agents write YAML result files (`plan/T0-baseline-{slug}.yaml`, `plan/TN-verification-{slug}.yaml`) that `/complete-implementation` reads in its pre-Phase 1 check.
 
+### Bookend Artifact Registration
+
+When the parent story issue number is known, include `artifact_register` instructions in each bookend task's delegation prompt so the bookend artifacts are registered in the issue's artifact manifest:
+
+**T0 delegation prompt addition:**
+
+```text
+After writing plan/T0-baseline-{slug}.yaml, register it:
+  mcp__plugin_dh_backlog__artifact_register(issue_number=N, artifact_type="T0-baseline", path="plan/T0-baseline-{slug}.yaml", agent="t0-baseline-capture")
+```
+
+**TN delegation prompt addition:**
+
+```text
+After writing plan/TN-verification-{slug}.yaml, register it:
+  mcp__plugin_dh_backlog__artifact_register(issue_number=N, artifact_type="TN-verification", path="plan/TN-verification-{slug}.yaml", agent="tn-verification-gate")
+```
+
+If the issue number is not known, skip registration. The artifacts remain discoverable via filesystem conventions.
+
 ---
 
 ## Completion Gate

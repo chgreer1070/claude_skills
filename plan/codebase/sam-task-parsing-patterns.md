@@ -692,7 +692,7 @@ pydantic>=2.12.3
 
 ### 10.1 Spec-Defined Fields NOT Extracted by Parser
 
-**File:** `.claude/docs/TASK_FILE_FORMAT.md` lines 150-154
+**File:** `plugins/development-harness/docs/TASK_FILE_FORMAT.md` lines 150-154
 
 **Fields defined but not used:**
 - `issue-classification` (enum: procedural, defect, etc.)

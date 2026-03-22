@@ -33,11 +33,11 @@ section "Task File Format Extension".
 ## Objective
 
 Add `divergence-notes` as an optional integer field to the Optional Fields table and the
-JSON Schema `properties` block in `.claude/docs/TASK_FILE_FORMAT.md`.
+JSON Schema `properties` block in `plugins/development-harness/docs/TASK_FILE_FORMAT.md`.
 
 ## Required Inputs
 
-- [.claude/docs/TASK_FILE_FORMAT.md](../../.claude/docs/TASK_FILE_FORMAT.md) — file to modify;
+- [plugins/development-harness/docs/TASK_FILE_FORMAT.md](../../plugins/development-harness/docs/TASK_FILE_FORMAT.md) — file to modify;
   read before editing
 
 ## Requirements
@@ -56,7 +56,7 @@ JSON Schema `properties` block in `.claude/docs/TASK_FILE_FORMAT.md`.
 
 ## Expected Outputs
 
-- File modified: `.claude/docs/TASK_FILE_FORMAT.md`
+- File modified: `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 
 ## Acceptance Criteria
 
@@ -64,4 +64,4 @@ JSON Schema `properties` block in `.claude/docs/TASK_FILE_FORMAT.md`.
 2. `divergence-notes` appears in the JSON schema with `"type": "integer"`, `"minimum": 0`, `"default": 0`
 3. The template block contains a commented `divergence-notes` line
 4. Backward-compatibility: `uv run implementation_manager.py validate . plugin-linter` exits 0
-5. `uv run prek run --files .claude/docs/TASK_FILE_FORMAT.md` exits 0
+5. `uv run prek run --files plugins/development-harness/docs/TASK_FILE_FORMAT.md` exits 0

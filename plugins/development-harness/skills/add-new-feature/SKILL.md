@@ -36,6 +36,17 @@ You are an orchestrator. You coordinate work across specialized agents. Prefer d
 
 Delegate to `@dh:feature-researcher` to produce `plan/feature-context-{slug}.md` and questions for resolution.
 
+After the agent writes the feature-context file, register it as an artifact on the GitHub Issue:
+
+```text
+mcp__plugin_dh_backlog__artifact_register(
+    issue_number={issue},
+    artifact_type="feature-context",
+    path="plan/feature-context-{slug}.md",
+    agent="feature-researcher"
+)
+```
+
 ---
 
 ## Phase 2: Codebase Analysis (@dh:codebase-analyzer)
@@ -50,6 +61,17 @@ If helpful, delegate to `@dh:codebase-analyzer` for one or more focus areas:
 - conventions
 
 Outputs go to `plan/codebase/`.
+
+After the agent writes each codebase analysis file, register it as an artifact:
+
+```text
+mcp__plugin_dh_backlog__artifact_register(
+    issue_number={issue},
+    artifact_type="codebase-analysis",
+    path="plan/codebase/{FOCUS}.md",
+    agent="codebase-analyzer"
+)
+```
 
 ---
 
@@ -81,6 +103,17 @@ Delegate to the resolved `design-spec` agent to write `plan/architect-{slug}.md`
 - codebase analysis docs (if created)
 - existing repo constraints (`CLAUDE.md`, `pyproject.toml`, etc.)
 
+After the agent writes the architect spec, register it as an artifact:
+
+```text
+mcp__plugin_dh_backlog__artifact_register(
+    issue_number={issue},
+    artifact_type="architect",
+    path="plan/architect-{slug}.md",
+    agent="python-cli-design-spec"
+)
+```
+
 ---
 
 ## Phase 4: Task Decomposition (@dh:swarm-task-planner)
@@ -92,6 +125,17 @@ Delegate to `@dh:swarm-task-planner` to:
   - **Status**, **Dependencies**, **Priority**, **Complexity**, **Agent**
   - Acceptance Criteria (3+)
   - Verification Steps (3+)
+
+After the agent writes the task plan, register it as an artifact:
+
+```text
+mcp__plugin_dh_backlog__artifact_register(
+    issue_number={issue},
+    artifact_type="task-plan",
+    path="plan/P{NNN}-{slug}.yaml",
+    agent="swarm-task-planner"
+)
+```
 
 ---
 

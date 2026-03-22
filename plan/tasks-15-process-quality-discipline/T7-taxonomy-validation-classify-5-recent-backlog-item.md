@@ -32,7 +32,7 @@ Classify at least 5 recent backlog items using the `issue-classification` taxono
 
 ## Required Inputs
 
-- Read `.claude/docs/TASK_FILE_FORMAT.md` after T1 — locate the `issue-classification` enum values and their meanings
+- Read `plugins/development-harness/docs/TASK_FILE_FORMAT.md` after T1 — locate the `issue-classification` enum values and their meanings
 - Read `.claude/docs/backlog-item-groomed-schema.md` after T1 — locate the Issue Classification section format
 - List recent backlog items: run `uv run .claude/skills/backlog/scripts/backlog.py list --format json` — select at least 5 recent items across different work types (Bug, Feature, Docs, Refactor, Chore)
 - For each selected item, read its file at `.claude/backlog/{slug}.md`

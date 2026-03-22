@@ -58,19 +58,19 @@ The fix is a separate architecture document that is purely about data shapes at 
 
 #### Pattern 1: Authorized Writers Table in TASK_FILE_FORMAT.md
 
-- **Location**: `.claude/docs/TASK_FILE_FORMAT.md:186-196`
+- **Location**: `plugins/development-harness/docs/TASK_FILE_FORMAT.md:186-196`
 - **Relevance**: Already defines the publisher-consumer relationship for task fields. Lists field, writer, and mechanism (e.g., `status: in-progress` written by `start-task` skill via `sam claim`). The new document should extend this pattern to cover backlog artifacts and cross-system edges.
 - **Reusable**: The table format (Field / Written By / Via) is the right grain for AC3.
 
 #### Pattern 2: Status Values Table in TASK_FILE_FORMAT.md
 
-- **Location**: `.claude/docs/TASK_FILE_FORMAT.md:166-175`
+- **Location**: `plugins/development-harness/docs/TASK_FILE_FORMAT.md:166-175`
 - **Relevance**: Defines the SAM task state lifecycle (not-started → in-progress → complete / blocked / deferred / skipped) with the actor that writes each transition. This covers most of AC4 but is buried in a reference doc not linked from the workflow diagram.
 - **Reusable**: The Status / Description / Written By columns map directly to the state lifecycle diagram requested in AC4.
 
 #### Pattern 3: Plan Schema and Task Schema in TASK_FILE_FORMAT.md
 
-- **Location**: `.claude/docs/TASK_FILE_FORMAT.md:100-178`
+- **Location**: `plugins/development-harness/docs/TASK_FILE_FORMAT.md:100-178`
 - **Relevance**: Defines both plan-level fields (`plan_number`, `slug`, `goal`, `context`, `acceptance_criteria`, `issue`, `feature`, `status`, `tasks`) and task-level required and optional fields with types. These are the data structure shapes for the SAM edges in AC2.
 - **Reusable**: Both field tables are complete and sourced from Pydantic models — they are the authoritative shapes for the SAM side.
 
@@ -88,7 +88,7 @@ The fix is a separate architecture document that is purely about data shapes at 
 
 ### Existing Infrastructure
 
-- `.claude/docs/TASK_FILE_FORMAT.md` — complete task schema, authorized writers table, status lifecycle. The new document can cross-reference this rather than duplicate it.
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — complete task schema, authorized writers table, status lifecycle. The new document can cross-reference this rather than duplicate it.
 - `plugins/development-harness/backlog_core/models.py` — Pydantic models for backlog items; path `.claude/backlog/*.md` per-item files are the local cache; GitHub Issues are the source of truth.
 - `plugins/development-harness/backlog_core/server.py` — all 8 backlog MCP tool signatures with annotated parameter types.
 - `.claude/docs/` directory — existing location for workflow reference documents; the new file belongs here.
@@ -97,10 +97,10 @@ The fix is a separate architecture document that is purely about data shapes at 
 
 - `plugins/development-harness/backlog_core/server.py:69-79` — `backlog_add` tool signature (backlog item creation fields)
 - `plugins/development-harness/backlog_core/models.py:42` — `BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"` (storage location)
-- `.claude/docs/TASK_FILE_FORMAT.md:100-130` — Plan schema (plan-level fields)
-- `.claude/docs/TASK_FILE_FORMAT.md:131-178` — Task schema (task-level required and optional fields)
-- `.claude/docs/TASK_FILE_FORMAT.md:166-175` — Status values with writers
-- `.claude/docs/TASK_FILE_FORMAT.md:186-196` — Authorized writers table
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:100-130` — Plan schema (plan-level fields)
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:131-178` — Task schema (task-level required and optional fields)
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:166-175` — Status values with writers
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:186-196` — Authorized writers table
 - `.claude/rules/local-workflow.md` — existing data flow diagram (node inventory for AC1)
 
 ---

@@ -105,9 +105,9 @@ The orchestrator passes only references to the worktree agent. The agent self-di
 **What the agent discovers autonomously:**
 
 - Groomed description and acceptance criteria — via `backlog_view(selector="#{issue}")`
+- Plan artifacts (architect spec, feature context, etc.) — via `artifact_list(issue_number={issue})` then `artifact_read(issue_number={issue}, artifact_type="architect")` for content
 - SAM task plan and task list — via `sam_read(plan="P{N}")` if a plan exists
 - Skills to load — from `skills` field in SAM task metadata
-- Architecture spec path — from SAM plan or backlog item
 
 ## Worktree Agent Prompt Template
 
@@ -127,13 +127,22 @@ Commit your changes frequently using conventional commits: `type(scope): descrip
 Before starting work:
 
 1. Read the backlog item: `backlog_view(selector="#{issue}")` — extract description and acceptance criteria.
-2. Check for a SAM plan: `sam_status(plan="P{issue}")` or search `sam_list()` by title.
+2. Discover plan artifacts via MCP:
+   - Call `artifact_list(issue_number={issue})` to get all registered artifacts for this issue.
+   - If artifacts exist: call `artifact_read(issue_number={issue}, artifact_type="architect")` to read the architecture spec content. Repeat for `"feature-context"` or other types as needed.
+   - If `artifact_list` returns empty (pre-manifest issue with no registered artifacts): fall back to filesystem paths from the SAM plan or backlog item.
+3. Check for a SAM plan: `sam_status(plan="P{issue}")` or search `sam_list()` by title.
    - If a plan exists: `sam_read(plan="P{plan_id}")` — extract task list, skills, and architect spec path.
    - If no plan exists: work from acceptance criteria directly.
-3. Load all skills listed in the SAM task metadata:
+4. Load all skills listed in the SAM task metadata:
    - For each skill name found: `Skill(skill="{skill_name}")`
    - If a skill fails to load, warn and continue.
-4. If an architect spec path is referenced in the plan or backlog item, read that file.
+
+## Filesystem Restriction
+
+You are running in an isolated git worktree. Do NOT access `plan/` files via the filesystem — they may not exist in your worktree checkout. Use MCP tools exclusively for plan artifact discovery and content retrieval:
+- `artifact_list(issue_number={issue})` — discover what artifacts exist
+- `artifact_read(issue_number={issue}, artifact_type="...")` — read artifact content via the MCP server (which reads from the root worktree, not your checkout)
 
 ## Quality Gates
 
@@ -183,7 +192,7 @@ If you encounter a blocker you cannot resolve:
 | `pre_merge_gates` | Dispatch plan | `quality_gates.pre_merge` commands |
 | `discovery_relay_content` | Orchestrator state | Collected from prior wave agent outputs |
 
-All other data (description, AC, task list, skills, architect spec) is discovered by the agent via MCP after spawning.
+All other data (description, AC, task list, skills, architect spec, plan artifacts) is discovered by the agent via MCP after spawning. The issue number is used both for `backlog_view` and for `artifact_list`/`artifact_read` queries.
 
 ## Agent Result Handling
 
@@ -242,6 +251,8 @@ Conflict resolution agent receives both branches' diffs and resolves in-place on
 | `TeamCreate` | Spawn parallel wave workers (standard parallel dispatch mechanism) |
 | `Agent(isolation: "worktree")` | Provide filesystem isolation per wave item (used inside TeamCreate) |
 | `backlog_view` | Read item description, AC, design decisions |
+| `artifact_list` | Discover plan artifacts registered for an issue |
+| `artifact_read` | Read plan artifact content from root worktree via MCP |
 | `sam_read` | Read SAM task plan for an item |
 | `sam_status` / `sam_list` | Check whether item has a SAM plan |
 | `github_branches create` | Create integration branch |

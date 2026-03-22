@@ -17,187 +17,30 @@ Manifest section format in issue body::
     | feature-context | plan/feature-context-foo.md | current | feature-researcher | 2026-03-21T10:00:00Z |
     <!-- artifact-manifest:end -->
 
-Note on T3 dependency:
-    The ``parse_manifest_section``, ``render_manifest_section``, and
-    ``replace_manifest_in_body`` helpers are implemented here so that T2
-    compiles and runs independently of T3.  Once T3 creates
-    ``artifact_registry.py``, those helpers will be consolidated there and
-    this module will import them via::
-
-        from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
+Parse/render helpers are consolidated in :mod:`backlog_core.artifact_registry`.
+This module imports them from there.
 """
 
 from __future__ import annotations
 
-import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
 from .github import _graphql_request, get_github
-from .models import ArtifactEntry, ArtifactManifest, ArtifactStatus, ArtifactType
 
-# ---------------------------------------------------------------------------
-# Manifest section constants
-# ---------------------------------------------------------------------------
+if TYPE_CHECKING:
+    from .models import ArtifactManifest
 
-_MANIFEST_BEGIN = "<!-- artifact-manifest:begin -->"
-_MANIFEST_END = "<!-- artifact-manifest:end -->"
-
-_MANIFEST_HEADER = "## Artifact Manifest"
-
-#: Regex that matches the complete manifest section including delimiters.
-_MANIFEST_SECTION_RE = re.compile(r"<!-- artifact-manifest:begin -->.*?<!-- artifact-manifest:end -->", re.DOTALL)
-
-#: Number of columns in the markdown table (Type | Path | Status | Agent | Created).
-_TABLE_COLUMN_COUNT = 5
-
-# ---------------------------------------------------------------------------
-# Manifest section parse / render helpers
-# ---------------------------------------------------------------------------
-# These helpers are intentionally placed here so that artifact_provider.py is
-# self-contained until T3 (artifact_registry.py) is implemented.  T3 will
-# extract them into artifact_registry.py and replace this implementation with
-# a sibling-module import.
-
-
-def _parse_table_row(row: str) -> ArtifactEntry | None:
-    """Parse one markdown table row into an ArtifactEntry, or return None.
-
-    Args:
-        row: A single markdown table row string, e.g.
-            ``"| feature-context | plan/fc.md | current | agent | 2026… |"``.
-
-    Returns:
-        Parsed ``ArtifactEntry``, or ``None`` when the row is a header,
-        separator, or otherwise unparseable.
-    """
-    stripped = row.strip()
-    if not stripped.startswith("|"):
-        return None
-    cells = [c.strip() for c in stripped.strip("|").split("|")]
-    if len(cells) < _TABLE_COLUMN_COUNT:
-        return None
-    type_cell, path_cell, status_cell, agent_cell, created_cell = (cells[0], cells[1], cells[2], cells[3], cells[4])
-    # Skip header row ("Type") and separator row ("---")
-    if type_cell.lower() in {"type", "---", "------"} or type_cell.startswith("-"):
-        return None
-    try:
-        artifact_type = ArtifactType(type_cell)
-    except ValueError:
-        return None
-    try:
-        status = ArtifactStatus(status_cell)
-    except ValueError:
-        status = ArtifactStatus.CURRENT
-    return ArtifactEntry(
-        artifact_type=artifact_type, path=path_cell, status=status, created_at=created_cell, agent=agent_cell
-    )
-
-
-def parse_manifest_section(issue_body: str, issue_number: int) -> ArtifactManifest:
-    """Extract and parse the artifact manifest section from an issue body.
-
-    Returns an empty ``ArtifactManifest`` when no manifest section is found —
-    this is not an error condition; it simply means no artifacts have been
-    registered yet.
-
-    Args:
-        issue_body: Full GitHub Issue body text.
-        issue_number: Issue number for the returned manifest object.
-
-    Returns:
-        ``ArtifactManifest`` parsed from the delimited section, or an empty
-        manifest when the section is absent.
-    """
-    match = _MANIFEST_SECTION_RE.search(issue_body)
-    if not match:
-        return ArtifactManifest(issue_number=issue_number)
-
-    section = match.group(0)
-    artifacts: list[ArtifactEntry] = []
-    for line in section.splitlines():
-        entry = _parse_table_row(line)
-        if entry is not None:
-            artifacts.append(entry)
-    return ArtifactManifest(issue_number=issue_number, artifacts=artifacts)
-
-
-def render_manifest_section(manifest: ArtifactManifest) -> str:
-    """Render an ``ArtifactManifest`` as a delimited markdown section.
-
-    Produces the complete section including the heading, HTML comment
-    delimiters, and markdown table.
-
-    Args:
-        manifest: The manifest to render.
-
-    Returns:
-        Multi-line string with heading, begin delimiter, table, end delimiter.
-    """
-    header_row = "| Type | Path | Status | Agent | Created |"
-    separator_row = "|------|------|--------|-------|---------|"
-    rows = [header_row, separator_row]
-    rows.extend(
-        f"| {entry.artifact_type} | {entry.path} | {entry.status} | {entry.agent} | {entry.created_at} |"
-        for entry in manifest.artifacts
-    )
-    table = "\n".join(rows)
-    return f"{_MANIFEST_HEADER}\n\n{_MANIFEST_BEGIN}\n{table}\n{_MANIFEST_END}"
-
-
-def replace_manifest_in_body(issue_body: str, rendered_section: str) -> str:
-    """Replace the manifest section in an issue body, or append it if absent.
-
-    Preserves all content outside the manifest section.  When no section
-    exists the rendered section is appended with a preceding blank line.
-
-    Args:
-        issue_body: Current full issue body text.
-        rendered_section: New manifest section produced by
-            :func:`render_manifest_section`.
-
-    Returns:
-        Updated issue body with the manifest section inserted or replaced.
-    """
-    if _MANIFEST_SECTION_RE.search(issue_body):
-        # Replace both the heading (if immediately before the begin delimiter)
-        # and the delimited block in one pass.
-        heading_and_section_re = re.compile(
-            r"##\s+Artifact Manifest\s*\n\s*\n?" + re.escape(_MANIFEST_BEGIN) + r".*?" + re.escape(_MANIFEST_END),
-            re.DOTALL,
-        )
-        if heading_and_section_re.search(issue_body):
-            return heading_and_section_re.sub(rendered_section, issue_body)
-        # Fallback: replace only the delimited block (heading may be elsewhere)
-        return _MANIFEST_SECTION_RE.sub(
-            f"{_MANIFEST_BEGIN}\n{_extract_table_from_rendered(rendered_section)}\n{_MANIFEST_END}", issue_body
-        )
-    return issue_body.rstrip() + "\n\n" + rendered_section + "\n"
-
-
-def _extract_table_from_rendered(rendered: str) -> str:
-    """Return just the table rows from a rendered section (without heading or delimiters).
-
-    Args:
-        rendered: Output of :func:`render_manifest_section`.
-
-    Returns:
-        Lines between the begin and end delimiters.
-    """
-    lines = rendered.splitlines()
-    inside = False
-    table_lines: list[str] = []
-    for line in lines:
-        if _MANIFEST_BEGIN in line:
-            inside = True
-            continue
-        if _MANIFEST_END in line:
-            break
-        if inside:
-            table_lines.append(line)
-    return "\n".join(table_lines)
-
+# Re-export so callers that imported these from artifact_provider continue to work.
+__all__ = [
+    "ArtifactBackend",
+    "GitHubArtifactProvider",
+    "parse_manifest_section",
+    "render_manifest_section",
+    "replace_manifest_in_body",
+]
 
 # ---------------------------------------------------------------------------
 # ArtifactBackend Protocol

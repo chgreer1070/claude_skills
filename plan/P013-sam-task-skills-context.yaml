@@ -11,7 +11,7 @@ tasks:
   started: '2026-03-01T00:00:00Z'
   completed: '2026-03-01T23:10:00Z'
   description: |-
-    The task YAML schema in `.claude/docs/TASK_FILE_FORMAT.md` defines all recognized frontmatter fields for SAM task files. The `skills` field does not exist in the schema, the JSON schema definition, the optional fields table, or the template. Without it, planners have no slot to declare which skills a sub-agent needs, and parsers have no basis for extracting or validating the field.
+    The task YAML schema in `plugins/development-harness/docs/TASK_FILE_FORMAT.md` defines all recognized frontmatter fields for SAM task files. The `skills` field does not exist in the schema, the JSON schema definition, the optional fields table, or the template. Without it, planners have no slot to declare which skills a sub-agent needs, and parsers have no basis for extracting or validating the field.
   objective: |-
     Add the `skills` field to every relevant section of TASK_FILE_FORMAT.md so that the field is schema-defined, documented, and included in examples and templates.
   requirements: |-
@@ -27,7 +27,7 @@ tasks:
     - [ ] Legacy format example shows `**Skills**: fastmcp-python-tests, python3-development`
     - [ ] Field Mapping table includes the `skills` conversion row
   verification-steps: |-
-    1. Read `.claude/docs/TASK_FILE_FORMAT.md` and confirm the JSON schema `properties` object contains the `skills` property with correct type, items, and default
+    1. Read `plugins/development-harness/docs/TASK_FILE_FORMAT.md` and confirm the JSON schema `properties` object contains the `skills` property with correct type, items, and default
     2. Confirm the Optional Fields table has a `skills` row between `parallelize-with` and the end of the table
     3. Confirm the template section includes `skills: []` with the OPTIONAL comment
 - id: '2.1'
@@ -238,7 +238,7 @@ tasks:
     2. Read the updated `plugins/development-harness/agents/swarm-task-planner.md` and confirm the same mapping exists
     3. Read the updated `.claude/skills/implement-feature/SKILL.md` and confirm the delegation prompt includes skill-loading instructions
     4. Read the updated `.claude/skills/start-task/SKILL.md` and confirm step 2a reads `skills:` and loads each skill
-    5. Read the updated `.claude/docs/TASK_FILE_FORMAT.md` and confirm the JSON schema includes the `skills` property
+    5. Read the updated `plugins/development-harness/docs/TASK_FILE_FORMAT.md` and confirm the JSON schema includes the `skills` property
     6. Construct a hypothetical task YAML for "Create pytest integration tests for FastMCP server" and verify the planner's mapping table would produce `skills: [fastmcp-python-tests, python3-development]`
   acceptance-criteria: |-
     - [ ] Both planner agents have consistent skills mapping tables with test-related keywords

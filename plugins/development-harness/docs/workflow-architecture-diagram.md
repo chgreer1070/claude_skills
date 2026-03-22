@@ -2,7 +2,7 @@
 
 > **Snapshot**: 2026-03-21T15:00:00Z (pre-SAM-consolidation-migration)
 >
-> Sources: `.claude/docs/TASK_FILE_FORMAT.md`, `backlog_core/server.py`, `backlog_core/models.py`,
+> Sources: `plugins/development-harness/docs/TASK_FILE_FORMAT.md`, `backlog_core/server.py`, `backlog_core/models.py`,
 > `plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py`
 > Last verified: 2026-03-21
 
@@ -86,6 +86,20 @@ flowchart TD
         A12 --> A13
         S4 --> A14
     end
+
+    subgraph ArtifactManifest [Artifact Manifest — GitHub Issue Body]
+        AR["artifact_register"]
+        AL["artifact_list"]
+        AREAD["artifact_read"]
+    end
+
+    A1 -->|"register feature-context"| AR
+    A3 -->|"register architect-spec"| AR
+    A4 -->|"register task-plan"| AR
+    S3 -->|"discover artifacts"| AL
+    A10 -->|"discover artifacts"| AL
+    A14 -->|"discover artifacts"| AL
+    S3 -->|"worktree content access"| AREAD
 
     Planning --> Execution
     Execution -->|"§2.4 TN verification"| QualityGates
@@ -237,6 +251,7 @@ Exit code 1 when: already claimed, task not found, or `status != not-started`.
 | `status: in-progress`, `started` field | `sam claim` via `/start-task` | `sam status`, `sam ready` exclusion |
 | Follow-up task files | `code-reviewer` | `/complete-implementation` recursion gate |
 | Context Manifest in task file | `context-gathering`, `context-refinement` | executing agents, future sessions |
+| Artifact manifest (GitHub Issue body) | Producer agents via `artifact_register` | Consumer agents via `artifact_list`, worktree agents via `artifact_read` |
 
 ---
 

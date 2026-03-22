@@ -166,7 +166,7 @@ Conditions:
 1. Parser code location and behavior | AVAILABLE | task_format.py, implementation_manager.py
 2. swarm-task-planner agent template | AVAILABLE | Both python3-development and development-harness copies
 3. split_task_file.py writer | AVAILABLE | plugins/python3-development/scripts/split_task_file.py
-4. TASK_FILE_FORMAT.md spec | AVAILABLE | .claude/docs/TASK_FILE_FORMAT.md
+4. TASK_FILE_FORMAT.md spec | AVAILABLE | plugins/development-harness/docs/TASK_FILE_FORMAT.md
 5. Actual failing task files as examples | DERIVABLE | git history may have examples
 6. Pure YAML multi-document format evaluation | DERIVABLE | requires design analysis of tradeoffs
 7. Script-only writes enforcement mechanism | DERIVABLE | needs architecture decision
@@ -218,7 +218,7 @@ Both templates show the task frontmatter wrapped in a fenced yaml code block. Th
 - plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py (parse_task_content, _create_empty_task_data)
 - plugins/python3-development/scripts/split_task_file.py (parse_tasks_with_body)
 - plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py (authorized writer)
-- .claude/docs/TASK_FILE_FORMAT.md (format spec, document script-only writes policy)
+- plugins/development-harness/docs/TASK_FILE_FORMAT.md (format spec, document script-only writes policy)
 
 ### Decision
 

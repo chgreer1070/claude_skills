@@ -209,7 +209,7 @@ When any component calls a sam CLI command against a task file in any supported 
 
 12. `grep -r "Read tool\|Edit tool" workshops/.claude/skills/implement-embedded-feature/SKILL.md workshops/.cursor/skills/implement-embedded-feature/SKILL.md | grep "task file"` returns no matches (workshop copies updated).
 
-13. `cat .claude/docs/TASK_FILE_FORMAT.md | grep "sam read\|sam state\|sam create"` returns at least 3 matches — the document describes sam CLI as the canonical interface.
+13. `cat plugins/development-harness/docs/TASK_FILE_FORMAT.md | grep "sam read\|sam state\|sam create"` returns at least 3 matches — the document describes sam CLI as the canonical interface.
 
 14. `uv run sam state {slug}/{task-id} complete` called on a `.md`-format task file exits 0 and `sam read {slug}/{task-id}` returns `status: complete` (format-agnostic state write confirmed).
 </div>
@@ -251,7 +251,7 @@ When any component calls a sam CLI command against a task file in any supported 
 
 **Documentation (confirmed stale):**
 
-- `.claude/docs/TASK_FILE_FORMAT.md`
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 - `.claude/rules/local-workflow.md`
 - `.claude/docs/sdlc-layers/layer-0/sam-pipeline.md`
 </div>
@@ -272,7 +272,7 @@ When any component calls a sam CLI command against a task file in any supported 
 | Prior work | `packages/sam_schema/sam_schema/cli.py` — existing 5 subcommands (read, state, ready, status, migrate) |
 | Prior work | `packages/sam_schema/sam_schema/core/models.py` — Plan model with goal/context/acceptance_criteria fields (line 175) |
 | Prior work | `packages/sam_schema/sam_schema/core/query.py` — get_task() that discards plan context (lines 44-63) |
-| Docs | `.claude/docs/TASK_FILE_FORMAT.md` — current (stale) format description |
+| Docs | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — current (stale) format description |
 | Docs | `.claude/rules/local-workflow.md` — SAM workflow documentation (stale CLI references) |
 </div>
 
@@ -422,7 +422,7 @@ plan/P001-backlog-state-reconciliation/
 
 | # | File | Breaks? | Stale? | Code Change? | Content Update? | Test? |
 |---|------|---------|--------|-------------|----------------|-------|
-| D1 | `.claude/docs/TASK_FILE_FORMAT.md` | No | YES — describes direct-file access patterns | N/A | YES — update to describe sam_schema CLI/MCP as canonical interface | No |
+| D1 | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | No | YES — describes direct-file access patterns | N/A | YES — update to describe sam_schema CLI/MCP as canonical interface | No |
 | D2 | `.claude/rules/local-workflow.md` | No | YES — documents implementation_manager.py CLI commands, task_status_hook.py behavior, direct file parsing | N/A | YES — update CLI references to sam_schema equivalents | No |
 | D3 | `.claude/docs/plan-artifact-lifecycle.md` | No | MAYBE — references task file mutation paths | N/A | MAYBE — verify mutation path descriptions | No |
 | D4 | `.claude/docs/sdlc-layers/layer-0/sam-pipeline.md` | No | YES — describes SAM pipeline architecture | N/A | YES — update to reflect sam_schema as sole interface | No |

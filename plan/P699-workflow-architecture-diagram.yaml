@@ -38,7 +38,7 @@ tasks:
 
     - Architecture spec: `plan/architect-workflow-architecture-diagram.md` — read in full; contains
       exact field definitions, node inventory, and implementation instructions (Sections 4–8)
-    - `.claude/docs/TASK_FILE_FORMAT.md` — canonical Task and Plan schemas; source for TaskAssignment
+    - `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — canonical Task and Plan schemas; source for TaskAssignment
       fields, status values, authorized writers table
     - `plugins/development-harness/backlog_core/server.py` — backlog MCP tool signatures; source for
       BacklogItem creation fields and all 8 MCP tool names
@@ -87,7 +87,7 @@ tasks:
       a source file, note it with a `# unverified` comment and flag it in the handoff.
     - Do NOT use tables for workflow steps or Mermaid diagrams — tables are only for the
       publisher-consumer lookup (Section 3) per CLAUDE.md formatting preferences.
-    - Do NOT duplicate content from `.claude/docs/TASK_FILE_FORMAT.md` — cross-reference it instead.
+    - Do NOT duplicate content from `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — cross-reference it instead.
     - Do NOT include agent sequencing narrative (that is `local-workflow.md`'s role).
 
     ## Expected Outputs

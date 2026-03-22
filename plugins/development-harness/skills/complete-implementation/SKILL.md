@@ -72,6 +72,20 @@ Fix the regressions, then re-run /complete-implementation.
 
 ---
 
+## Pre-Phase: Artifact Discovery
+
+When the parent story issue number is known (from the plan's `issue` field or the backlog item), query the artifact manifest to discover all plan artifacts for this feature:
+
+```text
+mcp__plugin_dh_backlog__artifact_list(issue_number=N)
+```
+
+If the response contains artifacts, pass the manifest to quality gate agents (Phases 1-6) so they can access plan artifacts via `artifact_read` instead of filesystem paths. This is critical for worktree-isolated agents.
+
+**Fallback**: If `artifact_list` returns an empty manifest or an error, quality gate agents use filesystem path conventions as before. This ensures backward compatibility with issues that predate the artifact manifest system.
+
+---
+
 ## Phase 1: Code Review
 
 ### Resolve Code-Reviewer Role

@@ -80,7 +80,7 @@ Concrete example: `plan/tasks-10-validate-agent-browser.md` Tasks 2.1, 2.2, and 
 
 #### Pattern 4: Task dataclass and YAML frontmatter schema
 
-- **Location**: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py:89-131` (Task dataclass) and `.claude/docs/TASK_FILE_FORMAT.md:127-159` (field definitions)
+- **Location**: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py:89-131` (Task dataclass) and `plugins/development-harness/docs/TASK_FILE_FORMAT.md:127-159` (field definitions)
 - **Relevance**: The Task dataclass has no field for grouping, compound membership, or output file paths. The YAML frontmatter schema defines `parallelize-with` but not a `compound-group` or `output-files` field. Adding a grouping mechanism requires schema extension.
 - **Reusable**: The existing `parallelize-with` field and the optional fields pattern in the schema.
 
@@ -112,7 +112,7 @@ Concrete example: `plan/tasks-10-validate-agent-browser.md` Tasks 2.1, 2.2, and 
 - `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py:89-131` — Task dataclass (no grouping fields)
 - `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py:444-491` — SubagentStop handler (single task ID)
 - `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py:121-174` — active-task context file (single task ID)
-- `.claude/docs/TASK_FILE_FORMAT.md:127-159` — YAML frontmatter field definitions
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:127-159` — YAML frontmatter field definitions
 - `.claude/skills/implement-feature/SKILL.md:58-66` — dispatch loop ("For each ready task... Route to the agent named in the task's Agent field")
 - `.claude/skills/start-task/SKILL.md:69-88` — single-task execution flow
 - `plan/tasks-10-validate-agent-browser.md:329-666` — concrete example of three tasks (2.1, 2.2, 2.3) all writing to the same SKILL.md

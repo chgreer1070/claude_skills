@@ -37,7 +37,7 @@ lifecycle policy with all nine required sections as specified in the architectur
   primary source: sections "Policy Document: Required Sections",
   "Artifact Classification Taxonomy", "Resolved Design Questions", "Divergence Recording",
   "Extended Context-Refinement Agent", "Backward Compatibility"
-- [.claude/docs/TASK_FILE_FORMAT.md](../../.claude/docs/TASK_FILE_FORMAT.md) — to reference
+- [plugins/development-harness/docs/TASK_FILE_FORMAT.md](../../plugins/development-harness/docs/TASK_FILE_FORMAT.md) — to reference
   correctly in cross-references section
 - [.claude/skills/start-task/SKILL.md](../../.claude/skills/start-task/SKILL.md) — to confirm
   correct path for cross-reference

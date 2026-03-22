@@ -75,7 +75,7 @@ Observed instance (2026-03-15): three legacy-format readers stripped markdown bo
 ### Existing Infrastructure
 
 - **SAM schema package** (`packages/sam_schema/`) -- Pydantic models, YAML readers/writers, CLI, MCP server. Landed via #715. The `AcceptanceCriterion` model would be added here.
-- **Task file format** (`.claude/docs/TASK_FILE_FORMAT.md`) -- canonical field definitions, authorized writers table. T0/TN agent names and their authorized fields must be added.
+- **Task file format** (`plugins/development-harness/docs/TASK_FILE_FORMAT.md`) -- canonical field definitions, authorized writers table. T0/TN agent names and their authorized fields must be added.
 - **Implementation loop** (`.claude/skills/implement-feature/SKILL.md`) -- orchestrates task dispatch. T0 is a regular task dispatched by priority/dependency ordering.
 - **Completion quality gates** (`.claude/skills/complete-implementation/SKILL.md`) -- six-phase validation after all tasks complete. TN verdict is checked before these phases run.
 - **Hook system** (`plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py`) -- SubagentStop and PostToolUse event handling. No hook changes needed if T0/TN are regular tasks.
@@ -87,7 +87,7 @@ Observed instance (2026-03-15): three legacy-format readers stripped markdown bo
 - `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py:814` -- `get_ready_tasks()` function
 - `plugins/python3-development/agents/feature-verifier.md` -- structural verification agent
 - `plugins/python3-development/agents/swarm-task-planner.md` -- task plan generator
-- `.claude/docs/TASK_FILE_FORMAT.md` -- task format specification with authorized writers
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` -- task format specification with authorized writers
 - `.claude/skills/implement-feature/SKILL.md` -- execution loop skill
 - `.claude/skills/complete-implementation/SKILL.md` -- quality gates skill
 

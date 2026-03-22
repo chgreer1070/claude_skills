@@ -28,7 +28,7 @@ For each linked path in `plugins/development-harness/docs/sdlc-layers/` and rela
 - [ ] `sam-definition.md` — exists at `.claude/skills/work-backlog-item/references/sam-definition.md`
 - [ ] `plugins/development-harness/CLAUDE.md` — exists
 - [ ] `stateless-agent-methodology/research/arl/PROVENANCE.md` — exists (sibling repo or configured path)
-- [ ] Layer 0 docs → `TASK_FILE_FORMAT.md` — exists at `.claude/docs/TASK_FILE_FORMAT.md`
+- [ ] Layer 0 docs → `TASK_FILE_FORMAT.md` — exists at `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 - [ ] Layer 1 → `language-manifest-schema.md`, `role-resolution-protocol.md` — exist in development-harness
 - [ ] Layer 2 → `plugins/development-harness/docs/layer-2/` — exists with README, schema, pilot profiles
 

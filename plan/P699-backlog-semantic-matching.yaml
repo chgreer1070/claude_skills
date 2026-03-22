@@ -482,7 +482,7 @@ context: |
   The service-docs-maintainer agent (T1) must read these source files to verify every field in the diagram:
 
   **Critical Sources for Section 2 (Data Structure Shapes):**
-  - .claude/docs/TASK_FILE_FORMAT.md: Canonical Task schema (status values, field types, authorized writers table for status transitions)
+  - plugins/development-harness/docs/TASK_FILE_FORMAT.md: Canonical Task schema (status values, field types, authorized writers table for status transitions)
   - plugins/development-harness/backlog_core/server.py: Backlog MCP tool signatures (backlog_add returns issue_number, backlog_list/view field types)
   - plugins/development-harness/backlog_core/models.py: BacklogItem Pydantic model (plan field as str | None)
   - plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py: Hook behavior (reads active-task context file, parent_issue_number handling via .get(), updates LastActivity, calls sync_completion_to_github)

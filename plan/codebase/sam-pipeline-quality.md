@@ -3,7 +3,7 @@
 **Analysis Date:** 2026-03-01
 **Focus:** Architecture and Conventions for Process Quality Discipline feature
 **Source Files Analyzed:**
-- `.claude/docs/TASK_FILE_FORMAT.md`
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 - `.claude/skills/groom-backlog-item/SKILL.md`
 - `.claude/skills/complete-implementation/SKILL.md`
 - `.claude/skills/verify/SKILL.md`
@@ -49,7 +49,7 @@ SAM Pipeline — Key Entry Points
 
 ### Canonical Location
 
-Schema is defined and versioned at `.claude/docs/TASK_FILE_FORMAT.md` (v2.0, 2026-02-04).
+Schema is defined and versioned at `plugins/development-harness/docs/TASK_FILE_FORMAT.md` (v2.0, 2026-02-04).
 
 ### YAML Frontmatter Format (Current Default)
 
@@ -71,7 +71,7 @@ skills: []                      # OPTIONAL — skills for sub-agent to load
 ---
 ```
 
-**Source:** `.claude/docs/TASK_FILE_FORMAT.md:127-151`
+**Source:** `plugins/development-harness/docs/TASK_FILE_FORMAT.md:127-151`
 
 ### Status Values
 
@@ -82,7 +82,7 @@ skills: []                      # OPTIONAL — skills for sub-agent to load
 | `complete` | Set after verification passes |
 | `blocked` | Set when waiting on external dependency |
 
-**Source:** `.claude/docs/TASK_FILE_FORMAT.md:155-160`
+**Source:** `plugins/development-harness/docs/TASK_FILE_FORMAT.md:155-160`
 
 ### Legacy Format (Still Supported, Being Migrated)
 
@@ -101,7 +101,7 @@ skills: []                      # OPTIONAL — skills for sub-agent to load
 
 **Status:** Migration in progress as of 2026-02-13. New tasks use YAML frontmatter. Legacy format is parsed via regex fallback in `implementation_manager.py`.
 
-**Source:** `.claude/docs/TASK_FILE_FORMAT.md:466-479`
+**Source:** `plugins/development-harness/docs/TASK_FILE_FORMAT.md:466-479`
 
 ### Fields Currently NOT in Schema (Future Fields Appendix)
 
@@ -112,7 +112,7 @@ The schema explicitly reserves these for future versions:
 - `verification-agent`
 - `retry-count`, `last-error`
 
-**Source:** `.claude/docs/TASK_FILE_FORMAT.md:899-911`
+**Source:** `plugins/development-harness/docs/TASK_FILE_FORMAT.md:899-911`
 
 ### `accuracy-risk` Field (swarm-task-planner Extension)
 
@@ -128,7 +128,7 @@ This field drives CoVe (Chain of Verification) checks in tasks. It is defined in
 
 ## Markdown Body Sections
 
-Task files use these sections after the YAML frontmatter (defined in template at `.claude/docs/TASK_FILE_FORMAT.md:172-186`):
+Task files use these sections after the YAML frontmatter (defined in template at `plugins/development-harness/docs/TASK_FILE_FORMAT.md:172-186`):
 
 ```markdown
 ## Context        — Why this task exists, background
@@ -142,7 +142,7 @@ Task files use these sections after the YAML frontmatter (defined in template at
 ## Handoff        — What to report to orchestrator (optional)
 ```
 
-**Source:** `.claude/docs/TASK_FILE_FORMAT.md:172-186`
+**Source:** `plugins/development-harness/docs/TASK_FILE_FORMAT.md:172-186`
 
 ---
 
@@ -574,7 +574,7 @@ No formal "analysis method selection" mechanism exists. The closest patterns are
 | New quality gate phase | `.claude/skills/complete-implementation/SKILL.md` — new `## Phase N:` |
 | New agent check (Python-specific) | `plugins/python3-development/agents/{agent-name}.md` |
 | New agent check (language-agnostic) | `plugins/development-harness/agents/{agent-name}.md` |
-| New task metadata field | `.claude/docs/TASK_FILE_FORMAT.md` + `plugins/python3-development/skills/implementation-manager/scripts/task_format.py` + `implementation_manager.py` `Task` dataclass |
+| New task metadata field | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` + `plugins/python3-development/skills/implementation-manager/scripts/task_format.py` + `implementation_manager.py` `Task` dataclass |
 | New status value | `task_format.py:STATUS_MAP` + `VALID_STATUSES` + `_YAML_STATUS_TO_ENUM` in `implementation_manager.py` |
 | New validation dimension | `plugins/python3-development/agents/plan-validator.md` `<validation_dimensions>` block |
 | New grooming section | `.claude/skills/groom-backlog-item/SKILL.md` Step 7 valid section names |

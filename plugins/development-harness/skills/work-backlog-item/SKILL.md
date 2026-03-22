@@ -344,13 +344,14 @@ If the item has `**Issue**: #N`, record it in the plan file header comment. Do N
 
 ### Step 8: Simplify
 
-Run the simplify skill to review files changed during this session for reuse, quality, and efficiency:
+Run the simplify skill only when source code was modified during this session. Planning-only sessions (plan artifacts, backlog items, documentation) do not need code review.
 
-```text
-Skill(skill: "simplify")
+```mermaid
+flowchart TD
+    Q{"Run: git diff --stat HEAD<br>Any .py .js .ts .cjs .mjs files<br>in the diff?"}
+    Q -->|"Yes — code was written"| Run["Skill(skill: 'simplify')"]
+    Q -->|"No — only .md .yaml .json<br>backlog items, plan artifacts"| Skip["Skip — no code to review"]
 ```
-
-This reviews any files modified during this session and fixes issues found.
 
 ### Step 8.5a: AUTO_MODE Continuation
 

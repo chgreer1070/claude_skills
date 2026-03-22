@@ -102,7 +102,7 @@ Silent parsing failure. The parser does not error on fenced YAML -- it silently 
 
 2. **`split_task_file.py`** at `plugins/python3-development/scripts/split_task_file.py` -- already imports `has_yaml_frontmatter` from `task_format` and uses `parse_task_file` from `implementation_manager`. This script would also be affected by fenced YAML blocks.
 
-3. **`TASK_FILE_FORMAT.md`** at `.claude/docs/TASK_FILE_FORMAT.md` -- comprehensive format specification with examples, JSON schema, migration guide. Does not currently mention a script-only writes policy or warn against fenced YAML blocks.
+3. **`TASK_FILE_FORMAT.md`** at `plugins/development-harness/docs/TASK_FILE_FORMAT.md` -- comprehensive format specification with examples, JSON schema, migration guide. Does not currently mention a script-only writes policy or warn against fenced YAML blocks.
 
 ### Code References
 

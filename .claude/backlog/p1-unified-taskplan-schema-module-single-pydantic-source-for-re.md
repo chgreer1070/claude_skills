@@ -40,7 +40,7 @@ metadata:
 **Conditions**:
 1. Inventory of all task file formats currently in use | **AVAILABLE** | Three formats observed: legacy markdown (`## Task N:`), YAML frontmatter per task, and the swarm-task-planner variant (`### TN:` headings with summary frontmatter)
 2. Inventory of all scripts that parse task files | **AVAILABLE** | implementation_manager.py, task_format.py, task_status_hook.py, split_task_file.py, migrate_task_format.py — identified by codebase-analyzer
-3. Task file field definitions (what fields a task must/can have) | **AVAILABLE** | Documented in .claude/docs/TASK_FILE_FORMAT.md: Status, Dependencies, Priority, Complexity, Agent, Skills, Started, Completed, LastActivity, plus Acceptance Criteria and Verification Steps
+3. Task file field definitions (what fields a task must/can have) | **AVAILABLE** | Documented in plugins/development-harness/docs/TASK_FILE_FORMAT.md: Status, Dependencies, Priority, Complexity, Agent, Skills, Started, Completed, LastActivity, plus Acceptance Criteria and Verification Steps
 4. Pydantic available in project dependencies | **AVAILABLE** | pydantic is a dependency of the project (used by backlog_core and other modules)
 5. Canonical output format decision (which format the writer produces) | **DERIVABLE** | YAML frontmatter format is the documented target per TASK_FILE_FORMAT.md and migrate_task_format.py. Legacy format is read-only backward compat.
 6. Location for the shared module | **DERIVABLE** | Candidates: `plugins/python3-development/skills/implementation-manager/scripts/task_schema.py` (alongside existing task_format.py) or a new shared location. Decision for planning phase.
@@ -148,7 +148,7 @@ Running `implementation_manager.py status . <slug>` on any task file produced by
 | Prior work — task file splitter | plugins/python3-development/scripts/split_task_file.py |
 | Prior work — format migrator | plugins/python3-development/scripts/migrate_task_format.py |
 | Prior work — existing parser tests | plugins/python3-development/skills/implementation-manager/scripts/test_task_parsing.py |
-| Spec — canonical field definitions | .claude/docs/TASK_FILE_FORMAT.md |
+| Spec — canonical field definitions | plugins/development-harness/docs/TASK_FILE_FORMAT.md |
 | Example — broken format file | plan/tasks-1-backlog-state-reconciliation.md |
 | Related item — dead code cleanup waiting on this | #441 (Dead code cleanup: remove legacy markdown parser) |
 | Related item — SAM artifact schema validation | #88 (SAM: Artifact Schema Validation) |
@@ -158,7 +158,7 @@ Running `implementation_manager.py status . <slug>` on any task file produced by
 
 <div><sub>2026-03-14T22:42:35Z</sub>
 
-- Depends on: None — all format inventories and field definitions are already available in the codebase and `.claude/docs/TASK_FILE_FORMAT.md`.
+- Depends on: None — all format inventories and field definitions are already available in the codebase and `plugins/development-harness/docs/TASK_FILE_FORMAT.md`.
 - Blocks: #441 (Dead code cleanup: remove legacy markdown parser and fenced YAML recovery from implementation_manager) — that cleanup requires a stable replacement to exist first.
 - Blocks: Any SAM feature whose plan file uses the global-manifest + markdown-sections format produced by swarm-task-planner (e.g., #714 backlog-state-reconciliation).
 </div>
@@ -167,7 +167,7 @@ Running `implementation_manager.py status . <slug>` on any task file produced by
 
 <div><sub>2026-03-14T22:42:44Z</sub>
 
-Medium — The canonical schema is fully documented in `.claude/docs/TASK_FILE_FORMAT.md`. Three format readers need to be implemented (global-manifest + markdown sections, per-task YAML frontmatter, legacy `## Task N:` markdown). The main complexity is correctly extracting task metadata from the global-manifest + markdown-sections variant (tasks listed in the manifest, bodies in `### TN:` sections). The writers and query functions are straightforward once the Pydantic models are defined. Migrating the five existing scripts to import from the shared module is mechanical. Tests for all three format paths already have a starting point in `test_task_parsing.py`.
+Medium — The canonical schema is fully documented in `plugins/development-harness/docs/TASK_FILE_FORMAT.md`. Three format readers need to be implemented (global-manifest + markdown sections, per-task YAML frontmatter, legacy `## Task N:` markdown). The main complexity is correctly extracting task metadata from the global-manifest + markdown-sections variant (tasks listed in the manifest, bodies in `### TN:` sections). The writers and query functions are straightforward once the Pydantic models are defined. Migrating the five existing scripts to import from the shared module is mechanical. Tests for all three format paths already have a starting point in `test_task_parsing.py`.
 </div>
 
 ### Decision

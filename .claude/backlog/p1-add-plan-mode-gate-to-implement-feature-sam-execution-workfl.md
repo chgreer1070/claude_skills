@@ -79,7 +79,7 @@ Rationale: The item describes a safety mechanism that should exist but doesn't �
 - `.claude/rules/local-workflow.md::Phase 2a: Task Execution` — step 3 "Claim the task" will no longer be the first action when `plan_review: true`; sequence must be updated.
 - `.claude/rules/local-workflow.md::Hook Script: task_status_hook.py` — Event Handling table documents SubagentStop as unconditionally marking COMPLETE; conditional behavior for plan-only sub-agents must be noted.
 - `.claude/rules/local-workflow.md::Data Flow Diagram` — does not show plan-approval branch; diagram needs a plan-mode fork node.
-- `.claude/docs/TASK_FILE_FORMAT.md` — Task schema field table does not list `plan_review`; must be added with type, default, and semantics.
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — Task schema field table does not list `plan_review`; must be added with type, default, and semantics.
 - `plugins/python3-development/skills/implementation-manager/SKILL.md` — Hook Configuration table and "How It Works" section describe unconditional SubagentStop → COMPLETE; conditional behavior for plan-mode not covered.
 
 ### Configuration / CI
@@ -117,7 +117,7 @@ Rationale: The item describes a safety mechanism that should exist but doesn't �
 | `packages/sam_schema/tests/test_readers/test_manifest_reader.py` | Tests manifest/YAML reader | Test update required — verify `plan_review` field parsed from YAML |
 | `packages/sam_schema/tests/test_writers/test_yaml_writer.py` | Tests YAML serialization | Test update required — verify `plan-review` serialization alias |
 | `.claude/rules/local-workflow.md` | Authoritative SAM workflow doc | Content update required — add plan-mode branch throughout |
-| `.claude/docs/TASK_FILE_FORMAT.md` | Task field reference | Content update required — document `plan_review` field |
+| `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | Task field reference | Content update required — document `plan_review` field |
 | `plugins/python3-development/agents/swarm-task-planner.md` | Generates task YAML | Agent instruction update — teach when to emit `plan_review: true` |
 | `.claude/skills/work-backlog-item/references/step-procedures.md` | Instructs user to invoke `implement-feature` | Low-priority content update — mention `--plan-first` for high-risk tasks |
 | `.claude/skills/swarm-patterns/SKILL.md` | Pattern 5 documents plan approval via swarm primitives | Not affected — this is a different mechanism (TeamCreate/SendMessage), not SAM |
@@ -257,7 +257,7 @@ The `task_status_hook.py` SubagentStop handler does not mark a plan-only sub-age
 | File | Change |
 |------|--------|
 | `.claude/rules/local-workflow.md` | Update Execution Loop, Phase 2a, Hook Event Handling table, Data Flow Diagram |
-| `.claude/docs/TASK_FILE_FORMAT.md` | Add `plan_review` field to Task schema field table |
+| `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | Add `plan_review` field to Task schema field table |
 | `plugins/python3-development/skills/implementation-manager/SKILL.md` | Update Hook Configuration table for conditional SubagentStop behavior |
 
 **Agent instruction changes required** (1 file):
@@ -310,7 +310,7 @@ Rationale:
 | YAML serializer | `packages/sam_schema/sam_schema/writers/yaml_writer.py` — serialization alias conventions |
 | Test patterns | `packages/sam_schema/tests/test_models.py`, `test_readers/`, `test_writers/` — existing field and round-trip test patterns |
 | Workflow doc | `.claude/rules/local-workflow.md` — authoritative Phase 2 Execution section and Data Flow Diagram |
-| Schema doc | `.claude/docs/TASK_FILE_FORMAT.md` — Task field reference table |
+| Schema doc | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — Task field reference table |
 | Agent instruction | `plugins/python3-development/agents/swarm-task-planner.md` — CLEAR task writing section |
 | Research source | `./research/coding-agents/1code.md` — "Plan mode before agent mode" pattern (item origin) |
 </div>

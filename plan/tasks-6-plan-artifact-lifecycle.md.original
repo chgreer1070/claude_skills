@@ -65,7 +65,7 @@ This file does not yet exist. The implementer creates it. Its full required cont
 
 The file must contain exactly nine sections in this order: Purpose and Scope, Artifact Classification, Rules for Human-Decision Artifacts, Rules for Generated Artifacts, Divergence Detection, Divergence Classification, Divergence Recording, Divergence Reporting, Backward Compatibility.
 
-Cross-references in this file point to: `.claude/rules/local-workflow.md`, `.claude/docs/TASK_FILE_FORMAT.md`, `.claude/skills/start-task/SKILL.md`, and `plugins/python3-development/agents/context-refinement.md`. All four paths must be verified with the `Read` tool before use. The relative paths from `.claude/docs/plan-artifact-lifecycle.md` to these files are `./rules/local-workflow.md`, `./TASK_FILE_FORMAT.md`, `./skills/start-task/SKILL.md`, and `./../plugins/python3-development/agents/context-refinement.md`. Verify existence before writing.
+Cross-references in this file point to: `.claude/rules/local-workflow.md`, `plugins/development-harness/docs/TASK_FILE_FORMAT.md`, `.claude/skills/start-task/SKILL.md`, and `plugins/python3-development/agents/context-refinement.md`. All four paths must be verified with the `Read` tool before use. The relative paths from `.claude/docs/plan-artifact-lifecycle.md` to these files are `./rules/local-workflow.md`, `./TASK_FILE_FORMAT.md`, `./skills/start-task/SKILL.md`, and `./../plugins/python3-development/agents/context-refinement.md`. Verify existence before writing.
 
 The divergence note format block in this document defines the format agents use in task files:
 
@@ -166,9 +166,9 @@ DIVERGENCE_REQUIRING_REVIEW:
      - Task: [task file path]
 ```
 
-### Critical File: `.claude/docs/TASK_FILE_FORMAT.md` (T6)
+### Critical File: `plugins/development-harness/docs/TASK_FILE_FORMAT.md` (T6)
 
-This file exists at `/home/user/claude_skills/.claude/docs/TASK_FILE_FORMAT.md`. Read it before editing.
+This file exists at `/home/user/claude_skills/plugins/development-harness/docs/TASK_FILE_FORMAT.md`. Read it before editing.
 
 Three locations need changes:
 
@@ -260,7 +260,7 @@ After T5 is deployed, the expanded `context-refinement` agent will locate plan a
 | `start-task/SKILL.md` | `/home/user/claude_skills/.claude/skills/start-task/SKILL.md` | T3 | New Step 5a between steps 4 and 5; original step 5 becomes step 6 |
 | `complete-implementation/SKILL.md` | `/home/user/claude_skills/.claude/skills/complete-implementation/SKILL.md` | T4 | Phase 6 text replacement; new Post-Phase-6 section |
 | `context-refinement.md` | `/home/user/claude_skills/plugins/python3-development/agents/context-refinement.md` | T5 | Mission update, policy reference, Steps 5-8, updated output format |
-| `TASK_FILE_FORMAT.md` | `/home/user/claude_skills/.claude/docs/TASK_FILE_FORMAT.md` | T6 | Optional Fields table row, JSON schema property, template comment |
+| `TASK_FILE_FORMAT.md` | `/home/user/claude_skills/plugins/development-harness/docs/TASK_FILE_FORMAT.md` | T6 | Optional Fields table row, JSON schema property, template comment |
 
 #### Files Explicitly Unchanged
 
@@ -281,7 +281,7 @@ After all six tasks complete, verify:
 1. `.claude/docs/plan-artifact-lifecycle.md` exists with all nine required sections
 2. `Grep(pattern="freshness check", path=".claude/skills/complete-implementation/SKILL.md")` returns a match
 3. `Grep(pattern="DIVERGENCE_REQUIRING_REVIEW", path="plugins/python3-development/agents/context-refinement.md")` returns a match
-4. `Grep(pattern="divergence-notes", path=".claude/docs/TASK_FILE_FORMAT.md")` returns matches in table, schema, and template
+4. `Grep(pattern="divergence-notes", path="plugins/development-harness/docs/TASK_FILE_FORMAT.md")` returns matches in table, schema, and template
 5. `Grep(pattern="plan-artifact-lifecycle.md", path=".claude/rules/local-workflow.md")` returns a match
 6. All linter runs passed (each task ran `uv run prek run --files <modified-file>` with exit 0)
 7. `uv run plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py validate . plugin-linter` exits 0
@@ -331,7 +331,7 @@ lifecycle policy with all nine required sections as specified in the architectur
   primary source: sections "Policy Document: Required Sections",
   "Artifact Classification Taxonomy", "Resolved Design Questions", "Divergence Recording",
   "Extended Context-Refinement Agent", "Backward Compatibility"
-- [.claude/docs/TASK_FILE_FORMAT.md](../.claude/docs/TASK_FILE_FORMAT.md) — to reference
+- [plugins/development-harness/docs/TASK_FILE_FORMAT.md](../plugins/development-harness/docs/TASK_FILE_FORMAT.md) — to reference
   correctly in cross-references section
 - [.claude/skills/start-task/SKILL.md](../.claude/skills/start-task/SKILL.md) — to confirm
   correct path for cross-reference
@@ -1173,11 +1173,11 @@ section "Task File Format Extension".
 ## Objective
 
 Add `divergence-notes` as an optional integer field to the Optional Fields table and the
-JSON Schema `properties` block in `.claude/docs/TASK_FILE_FORMAT.md`.
+JSON Schema `properties` block in `plugins/development-harness/docs/TASK_FILE_FORMAT.md`.
 
 ## Required Inputs
 
-- [.claude/docs/TASK_FILE_FORMAT.md](../.claude/docs/TASK_FILE_FORMAT.md) — file to modify;
+- [plugins/development-harness/docs/TASK_FILE_FORMAT.md](../plugins/development-harness/docs/TASK_FILE_FORMAT.md) — file to modify;
   read before editing; note current Optional Fields table structure and JSON schema
   properties block
 
@@ -1231,7 +1231,7 @@ JSON Schema `properties` block in `.claude/docs/TASK_FILE_FORMAT.md`.
 
 ## Expected Outputs
 
-- File modified: `/home/user/claude_skills/.claude/docs/TASK_FILE_FORMAT.md`
+- File modified: `/home/user/claude_skills/plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 
 ## Acceptance Criteria
 
@@ -1244,19 +1244,19 @@ JSON Schema `properties` block in `.claude/docs/TASK_FILE_FORMAT.md`.
    `uv run plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py
    validate . plugin-linter` succeeds (existing task files without `divergence-notes`
    still validate — the field is optional with default 0)
-5. `uv run prek run --files .claude/docs/TASK_FILE_FORMAT.md` exits 0
+5. `uv run prek run --files plugins/development-harness/docs/TASK_FILE_FORMAT.md` exits 0
 
 ## Verification Steps
 
-1. `Grep(pattern="divergence-notes", path=".claude/docs/TASK_FILE_FORMAT.md",
+1. `Grep(pattern="divergence-notes", path="plugins/development-harness/docs/TASK_FILE_FORMAT.md",
    output_mode="content", -C=2)` — confirm field appears in table, schema, and template
-2. `Grep(pattern="\"minimum\": 0", path=".claude/docs/TASK_FILE_FORMAT.md",
+2. `Grep(pattern="\"minimum\": 0", path="plugins/development-harness/docs/TASK_FILE_FORMAT.md",
    output_mode="content")` — confirm JSON schema minimum constraint
 3. Run backward-compatibility check:
    `uv run plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py
    validate . plugin-linter`
    — expect exit 0 with no schema errors
-4. `uv run prek run --files .claude/docs/TASK_FILE_FORMAT.md`
+4. `uv run prek run --files plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 
 ## Handoff
 
@@ -1281,7 +1281,7 @@ Convergence point: T1 + T2 + T3 + T4 + T5 + T6 outputs
    returns a match
 4. `Grep(pattern="DIVERGENCE_REQUIRING_REVIEW",
    path="plugins/python3-development/agents/context-refinement.md")` returns a match
-5. `Grep(pattern="divergence-notes", path=".claude/docs/TASK_FILE_FORMAT.md")` returns
+5. `Grep(pattern="divergence-notes", path="plugins/development-harness/docs/TASK_FILE_FORMAT.md")` returns
    matches in table, schema, and template
 6. All linter runs passed (T1 through T6 each ran
    `uv run prek run --files <modified-file>` with exit 0)

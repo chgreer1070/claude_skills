@@ -13,7 +13,7 @@ parallelize-with:
 started: '2026-03-15T13:01:19Z'
 completed: '2026-03-15T12:00:00Z'
 description: |-
-  TASK_FILE_FORMAT.md at `.claude/docs/TASK_FILE_FORMAT.md` has 47 references across the codebase and serves as the canonical entry point for task file structure. Per architecture spec section 13, it must be rewritten to describe the `sam` CLI as the canonical interface. The current document describes YAML frontmatter format and regex-based parsing problems.
+  TASK_FILE_FORMAT.md at `plugins/development-harness/docs/TASK_FILE_FORMAT.md` has 47 references across the codebase and serves as the canonical entry point for task file structure. Per architecture spec section 13, it must be rewritten to describe the `sam` CLI as the canonical interface. The current document describes YAML frontmatter format and regex-based parsing problems.
 
   This task was merged from documentation rewrite needs to avoid edit conflicts. The document structure follows architecture spec section 13 exactly.
 objective: |-
@@ -38,7 +38,7 @@ constraints: |-
   - All code fences must have language specifiers
   - All file references use `[text](./path)` markdown link format
 expected-outputs: |-
-  - `.claude/docs/TASK_FILE_FORMAT.md` (rewritten)
+  - `plugins/development-harness/docs/TASK_FILE_FORMAT.md` (rewritten)
 acceptance-criteria: |-
   1. Document follows the structure from architecture spec section 13 (AC13)
   2. Authorized Writers table matches architecture spec section 13 table
@@ -47,7 +47,7 @@ acceptance-criteria: |-
   5. No inline schema definitions -- all reference JSON Schema files
 verification-steps: |-
   1. Verify document structure matches architecture spec section 13 headings
-  2. Run `uv run prek run --files .claude/docs/TASK_FILE_FORMAT.md`
+  2. Run `uv run prek run --files plugins/development-harness/docs/TASK_FILE_FORMAT.md`
   3. Verify all 9 sam commands mentioned with usage examples
   4. Verify Authorized Writers table matches spec
 handoff: |-

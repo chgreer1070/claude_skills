@@ -64,7 +64,7 @@ When `acceptance-criteria-structured` is non-empty, `swarm-task-planner` also ge
 
 ### Task File Format
 
-Each task in the plan file follows the format documented in [.claude/docs/TASK_FILE_FORMAT.md](./../docs/TASK_FILE_FORMAT.md). Key fields per task:
+Each task in the plan file follows the format documented in [plugins/development-harness/docs/TASK_FILE_FORMAT.md](./../docs/TASK_FILE_FORMAT.md). Key fields per task:
 
 - `**Status**`: NOT STARTED | IN PROGRESS | COMPLETE | BLOCKED
 - `**Dependencies**`: Task references (e.g., "Task 1.1, Task 1.2")
@@ -344,6 +344,52 @@ When MCP is unavailable, use the `uv run sam` CLI with equivalent commands:
 | `uv run sam read P{N}` | `sam_read(plan="P{N}")` |
 | `uv run sam claim P{N} {task_id}` | `sam_claim(plan="P{N}", task="T{M}")` |
 | `uv run sam update P{N} --context "..."` | `sam_update(plan="P{N}", context="...")` |
+
+---
+
+## Artifact Manifest
+
+Plan artifacts are registered in a structured manifest stored in the GitHub Issue body. The manifest is the discovery mechanism — consumers query it via MCP to find artifacts for an issue.
+
+### MCP Tools (on backlog server)
+
+| Tool | Purpose |
+|------|---------|
+| `artifact_register` | Register or update an artifact entry (issue_number, type, path, status, agent) |
+| `artifact_list` | List all artifacts for an issue, optionally filtered by type |
+| `artifact_get` | Get metadata for a specific artifact type on an issue |
+| `artifact_read` | Read artifact file content from root worktree path (with path safety validation) |
+
+### Artifact Types
+
+| Type | Created By | Example Path |
+|------|-----------|-------------|
+| `feature-context` | feature-researcher | `plan/feature-context-{slug}.md` |
+| `architect` | python-cli-design-spec | `plan/architect-{slug}.md` |
+| `task-plan` | swarm-task-planner / sam_create | `plan/P{NNN}-{slug}.yaml` |
+| `codebase-analysis` | codebase-analyzer | `plan/codebase/{FOCUS}.md` |
+| `T0-baseline` | t0-baseline-capture | `plan/T0-baseline-{slug}.yaml` |
+| `TN-verification` | tn-verification-gate | `plan/TN-verification-{slug}.yaml` |
+
+### Registration Flow
+
+Producer agents register artifacts after creation via `artifact_register`. Auto-registration is built into:
+- `sam_create` — registers task-plan artifact when issue field is present
+- `backlog_update(plan=...)` — registers task-plan artifact when item has a GitHub issue
+
+### Consumer Discovery Flow
+
+Consumer agents (including worktree-isolated agents) discover artifacts via:
+
+```text
+1. artifact_list(issue_number=N) → list of artifact entries
+2. artifact_read(issue_number=N, artifact_type="architect") → file content
+3. Fallback: if artifact_list returns empty, use filesystem path conventions
+```
+
+### Worktree Safety
+
+Worktree-isolated agents MUST use `artifact_read` (MCP) instead of filesystem access for plan files. Plan artifacts are in the root worktree — uncommitted files are not visible in isolated worktrees.
 
 ---
 

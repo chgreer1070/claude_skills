@@ -115,7 +115,7 @@ Every issue filed from a session observation should answer: 'What scenario expos
 **Goal**: Add process quality discipline to the SAM pipeline so different issue types receive proportional analytical treatment (issue classification, root-cause analysis, scenario-as-target verification).
 
 **Conditions**:
-1. SAM Task Template (TASK_FILE_FORMAT.md) exists and is modifiable | AVAILABLE — file at .claude/docs/TASK_FILE_FORMAT.md
+1. SAM Task Template (TASK_FILE_FORMAT.md) exists and is modifiable | AVAILABLE — file at plugins/development-harness/docs/TASK_FILE_FORMAT.md
 2. Grooming skill (groom-backlog-item/SKILL.md) exists and is modifiable | AVAILABLE — skill loaded in this session
 3. Completion gates (complete-implementation/SKILL.md, verify/SKILL.md) exist | AVAILABLE — skills in .claude/skills/
 4. Feature verifier agent (feature-verifier.md) exists | AVAILABLE — agent at plugins/python3-development/agents/feature-verifier.md
@@ -196,7 +196,7 @@ Four artifact modifications implementing issue classification and proportional r
 | Agent | @dh:feature-verifier |
 | Agent | @development-harness:feature-verifier |
 | Prior work | `.claude/rules/local-workflow.md` (SAM pipeline architecture) |
-| Prior work | `.claude/docs/TASK_FILE_FORMAT.md` (task metadata schema) |
+| Prior work | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` (task metadata schema) |
 | Reference | 5 Whys — FlowFuse (https://flowfuse.com/blog/2025/12/five-whys-root-cause-analysis-definition-examples/), accessed 2026-03-01 |
 | Reference | 6 Sigma DMAIC — GoLeanSixSigma.com (https://goleansixsigma.com/dmaic-five-basic-phases-of-lean-six-sigma/), accessed 2026-03-01 |
 

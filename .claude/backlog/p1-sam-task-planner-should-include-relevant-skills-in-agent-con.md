@@ -125,7 +125,7 @@ Two touch points:
 | Agent | plugins/development-harness/agents/swarm-task-planner.md |
 | Skill | .claude/skills/start-task/SKILL.md |
 | Skill | .claude/skills/implement-feature/SKILL.md |
-| Doc | .claude/docs/TASK_FILE_FORMAT.md |
+| Doc | plugins/development-harness/docs/TASK_FILE_FORMAT.md |
 | Example | plan/tasks-12-backlog-mcp-scenarios.md (issue #328) |
 
 ### Effort

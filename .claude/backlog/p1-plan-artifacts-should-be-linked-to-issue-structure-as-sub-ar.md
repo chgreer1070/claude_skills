@@ -1,6 +1,6 @@
 ---
 name: Plan artifacts should be linked to issue structure as sub-artifacts
-description: 'Plan artifacts (feature-context-{slug}.md, architect-{slug}.md) are standalone files in plan/ with no formal link to the GitHub Issue structure. They should be linked as sub-artifacts of the parent issue, making the issue the single entry point for all related artifacts. This could mean: (1) storing plan artifacts under a path derived from the issue number, (2) adding artifact manifest to the issue body, or (3) attaching plan file paths as issue metadata.'
+description: 'Plan artifacts (feature-context, architect specs, task plans) must be linked to their parent GitHub Issue as sub-artifacts, making the issue the single entry point. Two critical constraints: (1) artifacts must always live in the root worktree path, never inside isolated worktree agent paths; (2) when a backend is available (GitHub now, GitLab/Linear/Supabase later), it is the central database — local files are cache only. Implementation: structured Artifact Manifest section in GitHub Issue body, producer agents register artifacts via MCP, consumer agents discover via MCP, backend abstraction layer for multi-provider support.'
 metadata:
   topic: plan-artifacts-should-be-linked-to-issue-structure-as-sub-ar
   source: 'User vision statement 2026-03-21 — divergence #3 from canonical issue lifecycle'
@@ -9,8 +9,9 @@ metadata:
   type: Feature
   status: needs-grooming
   issue: '#965'
-  last_synced: '2026-03-21T23:23:47Z'
+  last_synced: '2026-03-21T23:53:25Z'
   groomed: '2026-03-21'
+  plan: plan/P965-artifact-manifest.yaml
 ---
 
 ## Story
@@ -143,7 +144,7 @@ Plan artifacts (feature-context-{slug}.md, architect-{slug}.md) are standalone f
 - `.claude/rules/local-workflow.md` § Phase 1 — documents artifact naming convention
 - `plugins/development-harness/docs/plan-artifact-lifecycle.md` — describes mutability policy
 - `plugins/development-harness/docs/workflow-architecture-diagram.md` — data flow diagram showing plan/ paths
-- `.claude/docs/TASK_FILE_FORMAT.md` — task file format specification
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — task file format specification
 
 **Risk by implementation approach**:
 - **Approach 3a (path-derived)**: HIGH RISK — requires refactoring SAM MCP addressing (sam_status, sam_ready, sam_read all hardcode P{NNN} plan identifiers). Breaking change to public MCP interface. Affects all downstream consumers.
@@ -227,6 +228,7 @@ To observe the current state:
 ### Scope
 
 <div><sub>2026-03-21T23:22:12Z</sub>
+<details><summary>struck: 2026-03-21T23:52:56Z — User provided critical architectural constraints about worktrees and backend-first design</summary>
 
 **Reframed from original description**:
 
@@ -259,6 +261,65 @@ Complete the existing **partial artifact linking** system by:
 - Building a discovery MCP tool or extending existing tools
 - Adding validation checks to prevent silent linkage loss
 - Updating 17 affected systems (producers, consumers, orchestrators, documentation)
+</details>
+</div>
+
+<div><sub>2026-03-21T23:52:56Z</sub>
+
+### Research
+
+<div><sub>2026-03-21T23:53:25Z</sub>
+
+## Research
+
+Industry patterns researched across Linear, Jira, Asana, and Monday.com (2026-03-21):
+
+**Linear**: Resources section as manifest — each issue aggregates embedded documents, external links, and related items. Documents are first-class entities. MCP accesses artifacts through issue relationships.
+
+**Jira**: Remote links separate ownership from reference. Artifact lives in authoritative system, issue maintains structured reference (URL + title + relationship type). Multiple issues can reference same artifact. Bidirectional inward/outward semantics.
+
+**Monday**: Column-based metadata — relationships are first-class column types with queryable schemas. Connect Boards create bidirectional cross-item references.
+
+**Asana** (cautionary): Embedding model creates redundancy, no back-references, dependencies and attachments orthogonal. Avoid this pattern.
+
+**Selected approach**: Combine Linear's manifest concept (issue body as single entry point) with Jira's reference separation (artifacts stay in plan/, issue holds structured references) and Monday's structured metadata (type, path, status per artifact).
+
+Full research files: /tmp/research-linear-artifacts.md, /tmp/research-jira-asana-monday-artifacts.md
+</div>
+
+
+## Scope
+
+**Reframed from original description based on fact-checking and user architectural requirements.**
+
+NOT "link standalone artifacts to issues" — artifacts are already partially linked via backlog `plan` field and headers.
+
+The actual scope has two dimensions:
+
+### Dimension 1: Worktree Safety
+Plan artifacts MUST always live in the root worktree (main repo path). They must NEVER be created or modified inside a worktree agent's isolated path. When `Agent(isolation: "worktree")` runs, it gets a separate git copy — uncommitted files in `plan/` are invisible. Agents in worktrees must access plan artifacts via the backend (GitHub API), not the local filesystem.
+
+### Dimension 2: Backend-First Architecture
+When a backend is available (GitHub now, GitLab/Linear/Supabase later), it is the central database and tracker — not local files. Plan artifacts should be stored/referenced via backend features:
+- GitHub Issues body sections and comments for artifact content
+- GitHub Projects V2 fields for structured metadata
+- GitHub sub-issues for task decomposition
+- GitHub issue links for artifact relationships
+
+Local `plan/` files become a cache/working copy, not the source of truth. The backlog MCP already follows this pattern (GitHub Issues = source of truth, `.claude/backlog/` = local cache).
+
+### What's IN scope
+- Artifact manifest in GitHub Issue body (structured section listing all artifacts with type, path/URL, status)
+- Producer agents register artifacts in the manifest when creating them (via backlog MCP or GitHub API)
+- Consumer agents discover artifacts via MCP call that reads the manifest from GitHub
+- Root-worktree-only constraint enforced in producer agents and SAM tools
+- Backend abstraction layer so the same interface works with GitHub, GitLab, Linear, Supabase
+
+### What's OUT of scope
+- Migrating existing plan files (backward compatibility maintained)
+- Changing SAM P{N} addressing scheme
+- Modifying worktree agent isolation mechanism itself
+- Full implementation of GitLab/Linear/Supabase backends (design the abstraction, implement GitHub only)
 </div>
 
 ### Expected Behavior
@@ -386,7 +447,7 @@ Option C — Create dedicated artifact discovery tool in a new MCP server or as 
 - `.claude/rules/local-workflow.md` — artifact naming convention, Phase 1 output paths, Phase 2 execution, Phase 3 quality gates
 - `plugins/development-harness/docs/plan-artifact-lifecycle.md` — mutability policy for all artifact types
 - `plugins/development-harness/docs/workflow-architecture-diagram.md` — data flow diagram showing plan/ directory and artifact paths
-- `.claude/docs/TASK_FILE_FORMAT.md` — task file format specification, Context Manifest section
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — task file format specification, Context Manifest section
 
 **Configuration Files — May Need Updates**:
 - `.pre-commit-config.yaml` — if new artifact types require validation steps (optional)
@@ -406,7 +467,7 @@ Option C — Create dedicated artifact discovery tool in a new MCP server or as 
 - `.claude/rules/local-workflow.md` — canonical workflow definition; Phase 1 (Planning), Phase 2 (Execution), Phase 3 (Quality Gates); artifact naming and paths
 - `plugins/development-harness/docs/plan-artifact-lifecycle.md` — artifact mutability policy; human-decision vs. generated artifacts; divergence annotation rules
 - `plugins/development-harness/docs/workflow-architecture-diagram.md` — data flow showing producers, consumers, orchestrators, and artifact paths
-- `.claude/docs/TASK_FILE_FORMAT.md` — task file YAML/markdown format; Context Manifest section specification
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — task file YAML/markdown format; Context Manifest section specification
 
 **MCP Server Documentation**:
 - SAM MCP interface: `packages/sam_schema/` — tool definitions for sam_status, sam_ready, sam_read, sam_claim, sam_state; P{NNN} plan addressing
@@ -578,6 +639,7 @@ Proceed with approach 3b (manifest in issue body). Estimated effort: **5-7 days 
 </div>
 
 
+
 ## Impact Radius
 
 ### Code — Producers (create plan artifacts)
@@ -603,7 +665,7 @@ Proceed with approach 3b (manifest in issue body). Estimated effort: **5-7 days 
 - `.claude/rules/local-workflow.md` — documents artifact naming convention (plan/feature-context-{slug}.md, plan/architect-{slug}.md, plan/tasks-{N}-{slug}.md)
 - `plugins/development-harness/docs/plan-artifact-lifecycle.md` — mutability policy for plan artifacts
 - `plugins/development-harness/docs/workflow-architecture-diagram.md` — data flow showing plan/ paths
-- `.claude/docs/TASK_FILE_FORMAT.md` — task file format documentation
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — task file format documentation
 
 ### Configuration / CI
 - None identified — plan/ is not referenced in CI workflows

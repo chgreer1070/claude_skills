@@ -194,15 +194,15 @@ tasks:
   started: '2026-03-06T05:55:20Z'
   completed: '2026-03-06T05:55:20Z'
   description: |-
-    `.claude/docs/TASK_FILE_FORMAT.md` lines 175-186 contain an "Authorized Writers" section listing four scripts in a simple table. This table does not distinguish per-field ownership, does not list the `start-task` skill as a writer, and incorrectly describes `implementation_manager.py` as read-only (which changes with task 1.1).
+    `plugins/development-harness/docs/TASK_FILE_FORMAT.md` lines 175-186 contain an "Authorized Writers" section listing four scripts in a simple table. This table does not distinguish per-field ownership, does not list the `start-task` skill as a writer, and incorrectly describes `implementation_manager.py` as read-only (which changes with task 1.1).
 
     The architect spec at `plan/architect-enforce-single-authority-task-state.md`, section "TASK_FILE_FORMAT.md Authorized Writers Table", defines the full replacement including the per-field ownership table, Field Ownership Rules prose, and updated Scripts table.
 
     Both task 2.1 and 2.2 depend on task 1.1 being complete so the documentation accurately reflects the new claim-task command.
   objective: |-
-    Replace the entire "Authorized Writers" section in `.claude/docs/TASK_FILE_FORMAT.md` with the per-field ownership table, Field Ownership Rules, and Scripts table from the architect spec. Leave all other sections (Problem Statement, Format Specification, Field Definitions, Anti-Pattern: Fenced YAML Frontmatter) unchanged.
+    Replace the entire "Authorized Writers" section in `plugins/development-harness/docs/TASK_FILE_FORMAT.md` with the per-field ownership table, Field Ownership Rules, and Scripts table from the architect spec. Leave all other sections (Problem Statement, Format Specification, Field Definitions, Anti-Pattern: Fenced YAML Frontmatter) unchanged.
   requirements: |-
-    1. Read `.claude/docs/TASK_FILE_FORMAT.md` in full before editing.
+    1. Read `plugins/development-harness/docs/TASK_FILE_FORMAT.md` in full before editing.
     2. Locate the `## Authorized Writers` section (starting at the line "Only designated scripts should write...").
     3. Replace the entire section — from the opening prose through the closing row of the scripts table — with the content from the architect spec. The replacement covers:
        - Updated opening prose (explaining per-field ownership and failure modes prevented)
@@ -217,21 +217,21 @@ tasks:
     - Do not reorder, add, or remove any section other than the Authorized Writers replacement.
     - The `### Anti-Pattern: Fenced YAML Frontmatter` subsection (which may currently be a child of `## Authorized Writers`) must be preserved and positioned immediately after the replacement content.
   expected-outputs: |-
-    - `.claude/docs/TASK_FILE_FORMAT.md` — modified with the Authorized Writers section replaced
+    - `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — modified with the Authorized Writers section replaced
   acceptance-criteria: |-
-    1. Reading `.claude/docs/TASK_FILE_FORMAT.md` shows a per-field ownership table with at least 9 rows covering all lifecycle fields.
+    1. Reading `plugins/development-harness/docs/TASK_FILE_FORMAT.md` shows a per-field ownership table with at least 9 rows covering all lifecycle fields.
     2. The phrase "implementation_manager.py Read-only status queries" does not appear (old table row is gone).
     3. The phrase "status: in-progress" appears in the table with "implementation_manager.py claim-task" as the authorized writer.
     4. `### Field Ownership Rules` subsection exists with 5 numbered rules.
     5. `### Scripts` subsection exists with a table including `implementation_manager.py`, `task_status_hook.py`, `swarm-task-planner`, `split_task_file.py`, and `migrate_task_format.py`.
     6. The `### Anti-Pattern: Fenced YAML Frontmatter` section is present and unchanged.
-    7. `uv run prek run --files .claude/docs/TASK_FILE_FORMAT.md` exits 0.
+    7. `uv run prek run --files plugins/development-harness/docs/TASK_FILE_FORMAT.md` exits 0.
   verification-steps: |-
-    1. Read `.claude/docs/TASK_FILE_FORMAT.md` in full before editing.
+    1. Read `plugins/development-harness/docs/TASK_FILE_FORMAT.md` in full before editing.
     2. Apply the replacement using the Edit tool.
     3. Read the modified file and confirm the per-field table exists with all required rows.
     4. Confirm `### Anti-Pattern: Fenced YAML Frontmatter` is still present after the edit.
-    5. Run `uv run prek run --files .claude/docs/TASK_FILE_FORMAT.md`.
+    5. Run `uv run prek run --files plugins/development-harness/docs/TASK_FILE_FORMAT.md`.
   handoff: |-
     Report: confirmation that Authorized Writers section is replaced and all other sections unchanged; linting result.
 - id: '3.1'
@@ -307,7 +307,7 @@ tasks:
          plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
          plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py \
          .claude/skills/start-task/SKILL.md \
-         .claude/docs/TASK_FILE_FORMAT.md
+         plugins/development-harness/docs/TASK_FILE_FORMAT.md
        ```
 
     8. Run an existing command to verify no regression:

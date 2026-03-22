@@ -96,7 +96,7 @@ Without this feature, the pipeline normalizes shallow fixes for deep problems an
 
 #### Pattern 5: Task File Metadata Schema (YAML Frontmatter)
 
-- **Location**: `.claude/docs/TASK_FILE_FORMAT.md:127-151` (field definitions), lines `262-354` (JSON schema)
+- **Location**: `plugins/development-harness/docs/TASK_FILE_FORMAT.md:127-151` (field definitions), lines `262-354` (JSON schema)
 - **Relevance**: The task file format already supports optional fields and has a JSON schema for validation. Adding `issue-classification`, `scenario-target`, and `analysis-method` fields would follow the existing extensibility pattern. The schema explicitly states (line 914): "All parsers MUST ignore unknown fields to maintain forward compatibility. New fields added in future versions will be optional and will not break existing task files."
 - **Reusable**: The field definition table format, the JSON schema extension pattern, and the "Possible Future Fields" appendix (line 896-910) provide the exact template for adding new fields.
 
@@ -140,9 +140,9 @@ Without this feature, the pipeline normalizes shallow fixes for deep problems an
 
 ### Code References
 
-- `.claude/docs/TASK_FILE_FORMAT.md:127-151` -- current required and optional fields for task metadata
-- `.claude/docs/TASK_FILE_FORMAT.md:262-354` -- JSON schema for task validation
-- `.claude/docs/TASK_FILE_FORMAT.md:896-914` -- "Possible Future Fields" appendix showing extensibility intent
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:127-151` -- current required and optional fields for task metadata
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:262-354` -- JSON schema for task validation
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:896-914` -- "Possible Future Fields" appendix showing extensibility intent
 - `.claude/skills/groom-backlog-item/SKILL.md:29-102` -- validity check and pre-groom gate
 - `.claude/skills/groom-backlog-item/SKILL.md:109-157` -- fact-check and RT-ICA steps (insertion point for classification)
 - `.claude/skills/groom-backlog-item/SKILL.md:159-188` -- groomer agent spawning (would need classification context passed)

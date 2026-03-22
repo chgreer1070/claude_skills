@@ -37,7 +37,7 @@ flowchart TD
     LW -->|links to| WAD[".claude/docs/workflow-architecture-diagram.md<br>NEW: data shapes, state lifecycle,<br>publisher-consumer map, hook triggers"]
     WAD -->|reflects| SAM["SAM CLI + MCP tools<br>(sam_schema, backlog_core)"]
     WAD -->|reflects| Hooks["task_status_hook.py<br>SubagentStop + PostToolUse"]
-    WAD -->|reflects| TFF[".claude/docs/TASK_FILE_FORMAT.md<br>Canonical task/plan schema"]
+    WAD -->|reflects| TFF["plugins/development-harness/docs/TASK_FILE_FORMAT.md<br>Canonical task/plan schema"]
 ```
 
 **Document sections (6 deliverable sections + 1 table of contents)**
@@ -134,7 +134,7 @@ markdown link standards.
 ## 5. Data Architecture
 
 This section defines exact field shapes for every data structure the diagram file must document.
-Sources: `.claude/docs/TASK_FILE_FORMAT.md` (canonical), `backlog_core/models.py`,
+Sources: `plugins/development-harness/docs/TASK_FILE_FORMAT.md` (canonical), `backlog_core/models.py`,
 `backlog_core/server.py`.
 
 ### 5.1 Pipeline Overview Node Inventory
@@ -368,7 +368,7 @@ This is a documentation task. There are no code components to test.
    Section 1.
 
 3. **Data shapes match source** — every field in Section 2 must exist in one of:
-   - `.claude/docs/TASK_FILE_FORMAT.md` (Task and Plan schemas)
+   - `plugins/development-harness/docs/TASK_FILE_FORMAT.md` (Task and Plan schemas)
    - `plugins/development-harness/backlog_core/server.py` (backlog MCP tool signatures)
    - `plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py`
      (hook behavior)

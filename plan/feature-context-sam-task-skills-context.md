@@ -27,7 +27,7 @@ This matters concretely for test-writing tasks. When a task requires writing pyt
 
 ### Task YAML Schema (TASK_FILE_FORMAT.md)
 
-The schema at `.claude/docs/TASK_FILE_FORMAT.md` defines these optional fields:
+The schema at `plugins/development-harness/docs/TASK_FILE_FORMAT.md` defines these optional fields:
 
 ```yaml
 agent: string        # Agent responsible for task
@@ -200,7 +200,7 @@ The `/start-task` skill should read the `skills` field from the task metadata an
 
 | File | Change Type | Description |
 |------|------------|-------------|
-| `.claude/docs/TASK_FILE_FORMAT.md` | Schema extension | Add `skills` field to JSON schema and field definitions table |
+| `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | Schema extension | Add `skills` field to JSON schema and field definitions table |
 | `plugins/python3-development/agents/swarm-task-planner.md` | Template update | Add `skills:` to task frontmatter template, add skills mapping table, add auto-detection logic |
 | `plugins/development-harness/agents/swarm-task-planner.md` | Template update | Same changes as python3-development version |
 | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` | Data model + parsing | Add `skills` field to Task, TaskDict, TaskData; parse from frontmatter; include in output |
@@ -292,7 +292,7 @@ All claims in this document are based on direct file reads performed during disc
 
 | Claim | Source File | Lines |
 |-------|------------|-------|
-| No `skills` field in JSON schema | `.claude/docs/TASK_FILE_FORMAT.md` | 264-345 |
+| No `skills` field in JSON schema | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | 264-345 |
 | Task dataclass lacks `skills` | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` | 89-113 |
 | swarm-task-planner template lacks `skills` | `plugins/python3-development/agents/swarm-task-planner.md` | 250-263 |
 | swarm-task-planner (dev-harness) template lacks `skills` | `plugins/development-harness/agents/swarm-task-planner.md` | 249-262 |

@@ -109,7 +109,7 @@ The sam_schema module already provides:
 - `packages/sam_schema/sam_schema/core/query.py:177-202` -- `claim_task()` (NOT exposed via CLI/MCP)
 - `packages/sam_schema/sam_schema/core/addressing.py:41-85` -- `resolve_plan_address()` (resolves `tasks-{N}-{slug}` patterns)
 - `packages/sam_schema/sam_schema/writers/yaml_writer.py:242-289` -- `write_plan()` (single file or directory output)
-- `.claude/docs/TASK_FILE_FORMAT.md:179-235` -- Authorized Writers table (field ownership rules)
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:179-235` -- Authorized Writers table (field ownership rules)
 
 ---
 

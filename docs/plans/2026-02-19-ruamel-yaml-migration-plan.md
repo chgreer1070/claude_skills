@@ -640,7 +640,7 @@ git commit -m "docs(plugin-creator): update auto-fix descriptions for new quotin
 ## Task 14: Update Project Convention Docs (6 files)
 
 **Files:**
-- Modify: `.claude/docs/TASK_FILE_FORMAT.md`
+- Modify: `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 - Modify: `plugins/plugin-creator/references/ARCHITECTURE.md`
 - Modify: `plugins/plugin-creator/references/USAGE.md`
 - Modify: `plugins/plugin-creator/skills/add-doc-updater/references/doc-updater-template.md`

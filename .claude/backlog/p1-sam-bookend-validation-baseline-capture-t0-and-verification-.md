@@ -39,7 +39,7 @@ Goal: SAM plans automatically capture pre-implementation baseline (T0) and post-
 Conditions:
 1. Current swarm-task-planner agent workflow is documented | Status: AVAILABLE | File: plugins/python3-development/agents/swarm-task-planner.md
 2. Current feature-verifier agent workflow is documented | Status: AVAILABLE | File: plugins/python3-development/agents/feature-verifier.md
-3. SAM task file format is documented | Status: AVAILABLE | File: .claude/docs/TASK_FILE_FORMAT.md
+3. SAM task file format is documented | Status: AVAILABLE | File: plugins/development-harness/docs/TASK_FILE_FORMAT.md
 4. Plan schema supports acceptance_criteria field | Status: MISSING | Current schema has no structured acceptance_criteria with check_command/expected fields
 5. T0 agent definition exists | Status: MISSING | No agent for baseline capture exists
 6. TN agent definition exists | Status: MISSING | No agent for verification gate exists
@@ -161,7 +161,7 @@ The target state has four observable components:
 |------|------|
 | Prior work — task schema | `packages/sam_schema/sam_schema/core/models.py` — `Task` model with `acceptance_criteria` as plain markdown string; needs structured `AcceptanceCriterion` extension |
 | Prior work — schema package | `packages/sam_schema/` — full Pydantic schema module from #715; YAML readers, writers, CLI, MCP server |
-| Prior work — task format spec | `.claude/docs/TASK_FILE_FORMAT.md` — canonical field definitions |
+| Prior work — task format spec | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — canonical field definitions |
 | Agent | `@dh:swarm-task-planner` — `plugins/development-harness/agents/swarm-task-planner.md` — produces plan tasks; must be updated to auto-generate T0 and TN |
 | Agent | `@dh:feature-verifier` — `plugins/development-harness/agents/feature-verifier.md` — current post-completion structural verifier; TN is its behavioral complement inside the plan |
 | Workflow doc | `.claude/rules/local-workflow.md` — SAM workflow end-to-end; T0 inserts before implementation tasks, TN inserts after |

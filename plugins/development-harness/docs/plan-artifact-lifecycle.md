@@ -202,6 +202,57 @@ If no `DIVERGENCE_REQUIRING_REVIEW` block is present, the feature proceeds norma
 
 ---
 
+## Artifact Manifest
+
+The artifact manifest is a structured registry for generated artifacts. It provides a single discovery point for all plan artifacts associated with a feature, replacing ad-hoc filesystem scanning with explicit registration.
+
+### Storage
+
+The manifest is stored in the GitHub Issue body between HTML comment delimiters:
+
+```html
+<!-- ARTIFACT_MANIFEST_START -->
+```yaml
+artifacts:
+  - type: feature-context
+    path: plan/feature-context-my-feature.md
+    status: current
+    created_at: "2026-03-15T00:00:00Z"
+    agent: feature-researcher
+  - type: architect-spec
+    path: plan/architect-my-feature.md
+    status: current
+    created_at: "2026-03-15T01:00:00Z"
+    agent: python-cli-design-spec
+  - type: task-plan
+    path: plan/P719-my-feature.yaml
+    status: current
+    created_at: "2026-03-15T02:00:00Z"
+    agent: swarm-task-planner
+```
+<!-- ARTIFACT_MANIFEST_END -->
+```
+
+Each entry records the artifact `type`, filesystem `path`, `status` (current, superseded, or stale), `created_at` timestamp, and the `agent` that produced it.
+
+### Source of Truth
+
+GitHub is the source of truth for the manifest. Local plan files under `plan/` are the content cache — they hold the artifact content itself, but the manifest in the issue body is the authoritative registry of what artifacts exist, their types, and their status.
+
+### Producer Registration
+
+Producer agents register artifacts via the `artifact_register` MCP tool after writing a plan artifact to disk. Registration adds an entry to the manifest in the GitHub Issue body. This ensures that every generated artifact is discoverable without filesystem scanning.
+
+### Consumer Discovery
+
+Consumer agents discover artifacts via the `artifact_list` MCP tool, which reads the manifest from the GitHub Issue body and returns the list of registered artifacts. For content access, consumers use `artifact_read`, which retrieves the artifact content by path.
+
+### Worktree-Isolated Agents
+
+Agents running in worktree isolation (`Agent(isolation: "worktree")`) cannot access plan artifacts via the filesystem because their working tree is a separate checkout. These agents use `artifact_read` to access artifact content via MCP instead of filesystem reads, ensuring they receive the same content as agents in the main worktree.
+
+---
+
 ## Backward Compatibility
 
 This policy applies forward-only. Existing plan artifacts are not retroactively modified.

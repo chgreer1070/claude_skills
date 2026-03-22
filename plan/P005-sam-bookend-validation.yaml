@@ -435,7 +435,7 @@ tasks:
     - Use markdown links with `./` prefix for file references
   expected-outputs: |-
     - `.claude/rules/local-workflow.md` (modified)
-    - `.claude/docs/TASK_FILE_FORMAT.md` (modified)
+    - `plugins/development-harness/docs/TASK_FILE_FORMAT.md` (modified)
     - `.claude/skills/implement-feature/SKILL.md` (modified)
     - `.claude/skills/complete-implementation/SKILL.md` (modified)
     - `plugins/python3-development/agents/feature-verifier.md` (modified)
@@ -450,7 +450,7 @@ tasks:
     1. Grep for `t0-baseline-capture` across all five files — must appear in relevant locations
     2. Grep for `tn-verification-gate` across all five files — must appear in relevant locations
     3. Grep for `is-bookend` in `TASK_FILE_FORMAT.md`
-    4. `uv run prek run --files .claude/rules/local-workflow.md .claude/docs/TASK_FILE_FORMAT.md`
+    4. `uv run prek run --files .claude/rules/local-workflow.md plugins/development-harness/docs/TASK_FILE_FORMAT.md`
     5. `uv run prek run --files .claude/skills/implement-feature/SKILL.md .claude/skills/complete-implementation/SKILL.md`
 
     - Key claims to verify:

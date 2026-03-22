@@ -24,7 +24,7 @@ skills:
 
 ### 1.2 JSON Schema Addition
 
-Add to the `properties` object in the JSON schema at [.claude/docs/TASK_FILE_FORMAT.md](../TASK_FILE_FORMAT.md) (inside the `properties` block, after `parallelize-with`):
+Add to the `properties` object in the JSON schema at [plugins/development-harness/docs/TASK_FILE_FORMAT.md](../TASK_FILE_FORMAT.md) (inside the `properties` block, after `parallelize-with`):
 
 ```json
 "skills": {
@@ -413,7 +413,7 @@ No changes needed. `split_task_file.py` preserves all frontmatter fields. `migra
 
 | # | File | Change Type | Section Modified |
 |---|------|-------------|------------------|
-| 1 | `.claude/docs/TASK_FILE_FORMAT.md` | Schema extension | JSON Schema `properties`, Optional Fields table, Template, Appendix |
+| 1 | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | Schema extension | JSON Schema `properties`, Optional Fields table, Template, Appendix |
 | 2 | `plugins/python3-development/agents/swarm-task-planner.md` | Agent prompt update | Add Skills Mapping Table section, update task YAML template, add validation step 10 |
 | 3 | `plugins/development-harness/agents/swarm-task-planner.md` | Agent prompt update | Same as #2 (uses `role:` instead of `agent:`) |
 | 4 | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` | Data model + parsing | `Task` dataclass, `TaskDict`, `to_dict()`, `parse_task_from_frontmatter()`, `ready_tasks()` output |

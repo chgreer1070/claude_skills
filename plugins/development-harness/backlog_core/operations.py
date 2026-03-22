@@ -20,6 +20,8 @@ from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject
 
 from . import models as _models
+from .artifact_provider import GitHubArtifactProvider
+from .artifact_registry import ArtifactRegistry
 from .entry_blocks import (
     ENTRY_RE,
     generate_diff,
@@ -54,6 +56,8 @@ from .models import (  # noqa: F401 — DEFAULT_REPO intentionally NOT imported 
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     MIN_FRONTMATTER_PARTS,
     VALID_CLOSE_REASONS,
+    ArtifactEntry,
+    ArtifactType,
     BacklogError,
     BacklogItem,
     DuplicateItemError,
@@ -277,6 +281,41 @@ def _apply_plan_to_item(item: BacklogItem, plan: str, repo: str = "", output: Ou
                 out.warn(f"  WARNING: Could not post plan to issue {issue_ref}: {e}")
 
     return True
+
+
+def _auto_register_plan_artifact(item: BacklogItem, plan: str, repo: str = "", output: Output | None = None) -> None:
+    """Register *plan* as a task-plan artifact on the item's GitHub Issue.
+
+    Best-effort: logs a warning on any failure but never raises.  Called
+    after :func:`_apply_plan_to_item` when the backlog item has a linked
+    GitHub Issue.
+
+    Args:
+        item: Backlog item whose linked issue will receive the artifact entry.
+        plan: Repo-relative path to the plan file (e.g. ``"plan/tasks-1-foo.yaml"``).
+        repo: GitHub repository slug ``"owner/name"``.  Resolved via :func:`_repo`.
+        output: Optional output collector for warning messages.
+    """
+    out = output or Output()
+    issue_ref = item.issue
+    if not issue_ref:
+        return
+    try:
+        issue_number = int(issue_ref.lstrip("#"))
+    except ValueError:
+        out.warn(f"  WARNING: Could not parse issue number from {issue_ref!r}; skipping artifact registration")
+        return
+
+    try:
+        provider = GitHubArtifactProvider(repo=_repo(repo))
+        registry = ArtifactRegistry()
+        manifest = provider.get_manifest(issue_number)
+        entry = ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, path=plan)
+        updated_manifest = registry.register(manifest, entry)
+        provider.set_manifest(issue_number, updated_manifest)
+        out.info(f"  Artifact registered: task-plan {plan} on issue #{issue_number}")
+    except Exception as exc:  # noqa: BLE001
+        out.warn(f"  WARNING: Artifact registration failed for {plan} on issue #{issue_number}: {exc}")
 
 
 def _resolve_groomed_content(
@@ -1823,6 +1862,7 @@ def update_item(
         _apply_plan_to_item(item, plan, repo, output=out)
         out.info(f"  Plan: {plan}")
         result["plan"] = plan
+        _auto_register_plan_artifact(item, plan, repo, output=out)
 
     if create_issue and not item.issue and item.section in {"P0", "P1"}:
         issue_num = _create_issue_and_update_item(item, repo, output=out)

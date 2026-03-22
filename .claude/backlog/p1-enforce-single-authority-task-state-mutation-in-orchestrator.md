@@ -28,7 +28,7 @@ metadata:
 - `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` — CLI tool (read-only today)
 - `plugins/python3-development/skills/implementation-manager/scripts/task_format.py` — shared YAML utilities
 - `.claude/skills/start-task/SKILL.md` — instructs agent to directly edit task files
-- `.claude/docs/TASK_FILE_FORMAT.md` — Authorized Writers section partially documents ownership
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — Authorized Writers section partially documents ownership
 
 **Dependencies**: None external.
 

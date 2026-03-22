@@ -45,7 +45,7 @@ Create a comprehensive workflow architecture diagram that maps the full backlog 
 - `plugins/development-harness/backlog_core/server.py` — MCP tool signatures: `backlog_add`, `backlog_list`, `backlog_groom`, `backlog_update`, `backlog_view`, `backlog_sync`, `backlog_close`, `backlog_resolve`, `backlog_get_sam_tasks`, `backlog_get_ready_sam_tasks`
 - `plugins/development-harness/backlog_core/operations.py` — core operation implementations
 - `plugins/development-harness/backlog_core/github.py` — GitHub API integration
-- `.claude/docs/TASK_FILE_FORMAT.md` — task YAML frontmatter schema fields
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — task YAML frontmatter schema fields
 
 **DERIVABLE** (requires reading code to extract):
 - Exact input/output shapes for each MCP tool (derivable from server.py signatures + return dicts)
@@ -84,7 +84,7 @@ Files that need updating when the diagram is created or updated:
 - `plugins/development-harness/backlog_core/operations.py` — operation implementations
 - `plugins/development-harness/backlog_core/github.py` — GitHub sync logic
 - `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` — hook triggers and data flow
-- `.claude/docs/TASK_FILE_FORMAT.md` — task YAML schema
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` — task YAML schema
 - `plugins/development-harness/agents/swarm-task-planner.md` — task file generation
 - `plugins/python3-development/agents/t0-baseline-capture.md` — T0 baseline YAML schema
 - `plugins/python3-development/agents/tn-verification-gate.md` — TN verification YAML schema
@@ -192,7 +192,7 @@ No code changes. Output is one new documentation file plus one link update in `l
 - `task_status_hook.py` hook event handling — stable; no known pending changes
 
 **Upstream reference:**
-- `.claude/docs/TASK_FILE_FORMAT.md` must exist and be current (verify before starting)
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md` must exist and be current (verify before starting)
 </div>
 
 ### Files
@@ -210,7 +210,7 @@ No code changes. Output is one new documentation file plus one link update in `l
 - `plugins/development-harness/backlog_core/server.py`
 - `plugins/development-harness/backlog_core/operations.py`
 - `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py`
-- `.claude/docs/TASK_FILE_FORMAT.md`
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 - `plugins/development-harness/agents/swarm-task-planner.md`
 - `plugins/python3-development/agents/t0-baseline-capture.md`
 - `plugins/python3-development/agents/tn-verification-gate.md`

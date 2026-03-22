@@ -55,6 +55,25 @@ $ARGUMENTS
 
    Use the address form `P{N}/T{M}` where `N` is the plan number and `M` is the task number from the `--task` argument.
 
+1a. **Discover plan artifacts via manifest** (when issue number is known):
+
+   If the `TaskAssignment` JSON contains a `parent_issue_number` or the plan has an `issue` field, query the artifact manifest to discover available plan artifacts:
+
+   ```text
+   mcp__plugin_dh_backlog__artifact_list(issue_number=N)
+   ```
+
+   If the response contains artifacts (non-empty `artifacts` list), use `artifact_read` to fetch the architect spec and feature context content:
+
+   ```text
+   mcp__plugin_dh_backlog__artifact_read(issue_number=N, artifact_type="architect")
+   mcp__plugin_dh_backlog__artifact_read(issue_number=N, artifact_type="feature-context")
+   ```
+
+   Use the returned content as context for implementation instead of reading filesystem paths directly. This is especially important for worktree-isolated agents that cannot access uncommitted plan files from the root worktree.
+
+   **Fallback**: If `artifact_list` returns an empty manifest (no `artifacts` entries) or an error, fall back to filesystem path conventions (`plan/architect-{slug}.md`, `plan/feature-context-{slug}.md`). This ensures backward compatibility with issues that predate the artifact manifest system.
+
 2. Select the task:
    - If `--task` provided, use that ID
    - Else pick the first task where status is `not-started` and all dependencies are resolved (check `task.dependencies` in the TaskAssignment)

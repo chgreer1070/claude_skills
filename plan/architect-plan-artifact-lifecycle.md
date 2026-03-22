@@ -144,7 +144,7 @@ Human review of divergence findings (async, non-blocking)
 |   SKILL.md                              |  <-- Expand Phase 6 description
 | plugins/python3-development/agents/     |
 |   context-refinement.md                 |  <-- Expand scope to plan artifacts
-| .claude/docs/TASK_FILE_FORMAT.md        |  <-- Document divergence-note field
+| plugins/development-harness/docs/TASK_FILE_FORMAT.md        |  <-- Document divergence-note field
 +-----------------------------------------+
 
 +-----------------------------------------+
@@ -308,7 +308,7 @@ The agent does NOT record a divergence note for:
 
 ### Task File Format Extension
 
-The `divergence-notes` field is added to the YAML frontmatter optional fields in [.claude/docs/TASK_FILE_FORMAT.md](./../.claude/docs/TASK_FILE_FORMAT.md).
+The `divergence-notes` field is added to the YAML frontmatter optional fields in [plugins/development-harness/docs/TASK_FILE_FORMAT.md](./../plugins/development-harness/docs/TASK_FILE_FORMAT.md).
 
 **New optional field**:
 
@@ -503,7 +503,7 @@ This is the canonical policy document. Its structure and content are specified b
 The policy document references:
 
 - [.claude/rules/local-workflow.md](./../.claude/rules/local-workflow.md) -- for SAM workflow context
-- [.claude/docs/TASK_FILE_FORMAT.md](./../.claude/docs/TASK_FILE_FORMAT.md) -- for task file schema
+- [plugins/development-harness/docs/TASK_FILE_FORMAT.md](./../plugins/development-harness/docs/TASK_FILE_FORMAT.md) -- for task file schema
 - [.claude/skills/start-task/SKILL.md](./../.claude/skills/start-task/SKILL.md) -- for divergence recording trigger
 - [plugins/python3-development/agents/context-refinement.md](./../plugins/python3-development/agents/context-refinement.md) -- for freshness check agent
 
@@ -658,7 +658,7 @@ Since this feature produces documentation and workflow policy changes (not code)
 | `.claude/skills/start-task/SKILL.md` | Add step 5a (divergence recording) |
 | `.claude/skills/complete-implementation/SKILL.md` | Update Phase 6 description, add post-Phase-6 divergence surfacing |
 | `plugins/python3-development/agents/context-refinement.md` | Add steps 5-8, add DIVERGENCE_REQUIRING_REVIEW output block, add policy reference |
-| `.claude/docs/TASK_FILE_FORMAT.md` | Add `divergence-notes` to optional fields table and JSON schema |
+| `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | Add `divergence-notes` to optional fields table and JSON schema |
 
 ### Files Unchanged
 
@@ -679,7 +679,7 @@ Since this feature produces documentation and workflow policy changes (not code)
 - Feature context: [plan/feature-context-plan-artifact-lifecycle.md](./feature-context-plan-artifact-lifecycle.md)
 - Codebase analysis: [plan/codebase/plan-artifact-lifecycle.md](./codebase/plan-artifact-lifecycle.md)
 - SAM workflow: [.claude/rules/local-workflow.md](./../.claude/rules/local-workflow.md)
-- Task file format: [.claude/docs/TASK_FILE_FORMAT.md](./../.claude/docs/TASK_FILE_FORMAT.md)
+- Task file format: [plugins/development-harness/docs/TASK_FILE_FORMAT.md](./../plugins/development-harness/docs/TASK_FILE_FORMAT.md)
 - Context-refinement agent: [plugins/python3-development/agents/context-refinement.md](./../plugins/python3-development/agents/context-refinement.md)
 - Start-task skill: [.claude/skills/start-task/SKILL.md](./../.claude/skills/start-task/SKILL.md)
 - Complete-implementation skill: [.claude/skills/complete-implementation/SKILL.md](./../.claude/skills/complete-implementation/SKILL.md)

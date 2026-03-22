@@ -117,7 +117,7 @@ The SAM workflow creates plan artifacts in Phases 1-4 (`/add-new-feature`) and t
 - `.claude/skills/complete-implementation/SKILL.md:52-53` -- Phase 6 context-refinement invocation
 - `.claude/rules/local-workflow.md:30-37` -- Artifact table in planning phase
 - `.claude/rules/local-workflow.md:209-222` -- Quality gate phase sequence
-- `.claude/docs/TASK_FILE_FORMAT.md:129-153` -- YAML frontmatter field definitions (no lifecycle fields)
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md:129-153` -- YAML frontmatter field definitions (no lifecycle fields)
 - `plan/feature-context-process-quality-discipline.md:3-8` -- Existing metadata header pattern
 - `.claude/backlog/completed-sam-artifact-versioning-strategy.md:1-11` -- Prior versioning strategy work
 

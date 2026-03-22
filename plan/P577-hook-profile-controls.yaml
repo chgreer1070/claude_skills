@@ -149,7 +149,7 @@ tasks:
        - Document the hook ID format: task-status:post-tool-use and task-status:subagent-stop
        - Note that disabled hooks exit 0 (Claude Code treats non-zero hook exit as error)
 
-    3. .claude/docs/TASK_FILE_FORMAT.md (if this file contains hook or environment variable documentation)
+    3. plugins/development-harness/docs/TASK_FILE_FORMAT.md (if this file contains hook or environment variable documentation)
        - Add or update the environment variable reference to include both CLAUDE_SKILLS_HOOK_PROFILE and CLAUDE_SKILLS_DISABLED_HOOKS
 
     Content constraints:
@@ -169,7 +169,7 @@ tasks:
 
     ## Verification Steps
 
-    1. Grep for env var names in updated docs: run grep -r 'CLAUDE_SKILLS_HOOK_PROFILE' .claude/rules/local-workflow.md .claude/docs/TASK_FILE_FORMAT.md plugins/development-harness/skills/implementation-manager/SKILL.md — each file must return at least one match; run the same check for CLAUDE_SKILLS_DISABLED_HOOKS
+    1. Grep for env var names in updated docs: run grep -r 'CLAUDE_SKILLS_HOOK_PROFILE' .claude/rules/local-workflow.md plugins/development-harness/docs/TASK_FILE_FORMAT.md plugins/development-harness/skills/implementation-manager/SKILL.md — each file must return at least one match; run the same check for CLAUDE_SKILLS_DISABLED_HOOKS
     2. Grep for hook IDs: run grep -r 'task-status:post-tool-use' across all updated doc files — at least one match per file that documents the disabled hooks feature
     3. Run markdownlint on all modified doc files: uv run prek run --files .claude/rules/local-workflow.md plugins/development-harness/skills/implementation-manager/SKILL.md — no lint errors
     4. Verify no stale references: grep for 'SKILL.md' combined with 'edit' or 'modify' in proximity within the updated sections — confirm docs no longer describe manual SKILL.md editing as the hook control mechanism

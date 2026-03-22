@@ -422,7 +422,7 @@ Must return empty (no matches).
 ## References
 
 - [Feature context document](./feature-context-merge-same-file-tasks.md)
-- [TASK_FILE_FORMAT.md](../../../.claude/docs/TASK_FILE_FORMAT.md) — schema reference (no changes)
+- [TASK_FILE_FORMAT.md](../../../plugins/development-harness/docs/TASK_FILE_FORMAT.md) — schema reference (no changes)
 - [swarm-task-planner (python3-development)](./../../plugins/python3-development/agents/swarm-task-planner.md)
 - [swarm-task-planner (development-harness)](./../../plugins/development-harness/agents/swarm-task-planner.md)
 - [plan-validator (python3-development)](./../../plugins/python3-development/agents/plan-validator.md)

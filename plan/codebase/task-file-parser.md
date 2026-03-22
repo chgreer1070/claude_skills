@@ -8,7 +8,7 @@
 - `plugins/python3-development/scripts/split_task_file.py`
 - `plugins/python3-development/agents/swarm-task-planner.md`
 - `plugins/development-harness/agents/swarm-task-planner.md`
-- `.claude/docs/TASK_FILE_FORMAT.md`
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 
 ---
 
@@ -217,7 +217,7 @@ Body sections are collected into a list and then paired with tasks by index posi
 
 ### What is missing
 
-1. **No schema validation against `TASK_FILE_FORMAT.md`'s JSON schema.** The spec at `.claude/docs/TASK_FILE_FORMAT.md:596-619` includes `jsonschema` validation code as a design proposal, but `implementation_manager.py` does not import or use `jsonschema`. The `validate` command is a post-hoc structural check, not schema enforcement.
+1. **No schema validation against `TASK_FILE_FORMAT.md`'s JSON schema.** The spec at `plugins/development-harness/docs/TASK_FILE_FORMAT.md:596-619` includes `jsonschema` validation code as a design proposal, but `implementation_manager.py` does not import or use `jsonschema`. The `validate` command is a post-hoc structural check, not schema enforcement.
 
 2. **No detection of fenced-YAML input.** If `swarm-task-planner` produces output with ` ```yaml\n---\n...\n---\n``` ` wrapping (see Section 6), `has_yaml_frontmatter()` returns `False`, the file silently falls to legacy markdown parsing, and `parse_task_content()` returns zero tasks (no `## Task` headers match). The caller receives an empty list with no error.
 
@@ -344,7 +344,7 @@ task_format.py
   └─ (no local imports)
 ```
 
-`task_format.py` is the foundation. Nothing in the parsing stack imports `jsonschema`. The format spec's schema validation code (`.claude/docs/TASK_FILE_FORMAT.md:596-619`) was never implemented.
+`task_format.py` is the foundation. Nothing in the parsing stack imports `jsonschema`. The format spec's schema validation code (`plugins/development-harness/docs/TASK_FILE_FORMAT.md:596-619`) was never implemented.
 
 ---
 
@@ -356,7 +356,7 @@ task_format.py
 
 **Fenced YAML detection/recovery**: Add a pre-processing step in `parse_task_content()` (`implementation_manager.py:645`) before `has_yaml_frontmatter()` is called. Strip leading ` ```yaml\n ` and trailing ` ``` ` if present.
 
-**Schema validation**: Add a `validate_task_frontmatter()` function to `task_format.py` using `jsonschema` (already in spec at `.claude/docs/TASK_FILE_FORMAT.md:593-619`). Call from `parse_task_from_frontmatter()` before returning the `Task`.
+**Schema validation**: Add a `validate_task_frontmatter()` function to `task_format.py` using `jsonschema` (already in spec at `plugins/development-harness/docs/TASK_FILE_FORMAT.md:593-619`). Call from `parse_task_from_frontmatter()` before returning the `Task`.
 
 **Warning on YAML fallback**: Replace the silent `except (ValueError, TypeError): pass` in `parse_task_content()` (`implementation_manager.py:665-667`) with a stderr warning before falling through.
 

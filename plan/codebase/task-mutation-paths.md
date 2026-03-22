@@ -13,7 +13,7 @@
 3. `plugins/python3-development/skills/implementation-manager/scripts/task_format.py`
 4. `.claude/skills/start-task/SKILL.md`
 5. `.claude/skills/implement-feature/SKILL.md`
-6. `.claude/docs/TASK_FILE_FORMAT.md`
+6. `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 
 Additional write-path files discovered:
 
@@ -184,7 +184,7 @@ The skill instructs the orchestrator to iterate `ready-tasks` output and delegat
 
 ---
 
-### 6. `.claude/docs/TASK_FILE_FORMAT.md`
+### 6. `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 
 **Role:** Specification document. Defines the authorized writers table and field schema. Not executable.
 
@@ -287,7 +287,7 @@ This is a TOCTOU (time-of-check/time-of-use) window. Duration of the window = ti
 
 - Consumers of the spec do not know the agent itself is a write path.
 - No policy governs when the agent may vs. must not write (e.g., "only write `started` if field is absent").
-- File: `.claude/docs/TASK_FILE_FORMAT.md:176–186`
+- File: `plugins/development-harness/docs/TASK_FILE_FORMAT.md:176–186`
 
 ### Gap 6: No atomic claim operation
 

@@ -8,7 +8,7 @@
 
 - [Feature Context](./feature-context-process-quality-discipline.md)
 - [Codebase Analysis](./codebase/sam-pipeline-quality.md)
-- [Task File Format Spec](../.claude/docs/TASK_FILE_FORMAT.md)
+- [Task File Format Spec](../plugins/development-harness/docs/TASK_FILE_FORMAT.md)
 - [Groomed Backlog Item](../.claude/backlog/p1-add-ux-impact-assessment-to-sam-task-template-grooming-and-c.md)
 
 ---
@@ -113,7 +113,7 @@ Both `plugins/python3-development/agents/feature-verifier.md` and `plugins/devel
 
 New fields are optional. Existing task files and backlog items work without them. Classification happens when items are next groomed. No migration script or batch classification.
 
-**Rationale**: Forward-only is the simplest approach and matches the existing YAML schema extensibility guarantee: "All parsers MUST ignore unknown fields to maintain forward compatibility. New fields added in future versions will be optional and will not break existing task files." (SOURCE: [TASK_FILE_FORMAT.md:914](../.claude/docs/TASK_FILE_FORMAT.md))
+**Rationale**: Forward-only is the simplest approach and matches the existing YAML schema extensibility guarantee: "All parsers MUST ignore unknown fields to maintain forward compatibility. New fields added in future versions will be optional and will not break existing task files." (SOURCE: [TASK_FILE_FORMAT.md:914](../plugins/development-harness/docs/TASK_FILE_FORMAT.md))
 
 ---
 
@@ -158,7 +158,7 @@ All changes are to AI instruction documents (markdown files). No Python code is 
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `.claude/docs/TASK_FILE_FORMAT.md` | EXTEND | Add 3 optional fields to schema |
+| `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | EXTEND | Add 3 optional fields to schema |
 | `.claude/docs/backlog-item-groomed-schema.md` | EXTEND | Add 2 new groomed sections |
 | `.claude/skills/groom-backlog-item/SKILL.md` | EXTEND | Add classification step + root-cause step |
 | `.claude/skills/complete-implementation/SKILL.md` | EXTEND | Enhance Phase 2 description |
@@ -172,7 +172,7 @@ All changes are to AI instruction documents (markdown files). No Python code is 
 
 ### New Task Metadata Fields
 
-Add to `.claude/docs/TASK_FILE_FORMAT.md` in the **Optional Fields** table (after `skills` row, line ~150) and in the **JSON Schema** (line ~352).
+Add to `plugins/development-harness/docs/TASK_FILE_FORMAT.md` in the **Optional Fields** table (after `skills` row, line ~150) and in the **JSON Schema** (line ~352).
 
 #### Field: `issue-classification`
 
@@ -238,7 +238,7 @@ The mapping is a DEFAULT. The groomer may override if context warrants (e.g., a 
 
 ### JSON Schema Extension
 
-Add to the `properties` object in the JSON Schema at `.claude/docs/TASK_FILE_FORMAT.md:270-353`:
+Add to the `properties` object in the JSON Schema at `plugins/development-harness/docs/TASK_FILE_FORMAT.md:270-353`:
 
 ```json
 "issue-classification": {
@@ -773,7 +773,7 @@ VERIFICATION PHASE
 
 Each entry specifies the exact file, section, and type of change.
 
-### 1. `.claude/docs/TASK_FILE_FORMAT.md`
+### 1. `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 
 | Location | Change |
 |----------|--------|
@@ -932,7 +932,7 @@ This feature modifies AI instruction documents, not code. Testing is behavioral 
 
 - [Feature Context Document](./feature-context-process-quality-discipline.md) -- Feature discovery with 8 similar patterns, 5 use scenarios, 9 gaps, 7 questions
 - [Codebase Analysis](./codebase/sam-pipeline-quality.md) -- 22 patterns across 13 files in the SAM pipeline
-- [Task File Format Spec v2.0](../.claude/docs/TASK_FILE_FORMAT.md) -- Current task metadata schema
+- [Task File Format Spec v2.0](../plugins/development-harness/docs/TASK_FILE_FORMAT.md) -- Current task metadata schema
 - [Backlog Item Groomed Schema](../.claude/docs/backlog-item-groomed-schema.md) -- Groomed content structure
 - [Grooming Skill](../.claude/skills/groom-backlog-item/SKILL.md) -- Current grooming workflow
 - [Complete Implementation Skill](../.claude/skills/complete-implementation/SKILL.md) -- Current completion gates

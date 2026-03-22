@@ -1,0 +1,558 @@
+feature: artifact-manifest
+version: '1.0'
+description: ''
+goal: |-
+  Implement backend-first artifact manifest system linking plan artifacts to GitHub Issues with worktree safety and multi-provider abstraction
+issue: '965'
+tasks:
+- id: T1
+  title: Implement ArtifactEntry and ArtifactManifest Pydantic models
+  status: complete
+  agent: python3-development:python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  - fastmcp-creator
+  body: "Add Pydantic models to backlog_core/models.py for the artifact manifest system.\n\
+    \nModels to implement (see architect spec section 5.1 for exact field definitions):\n\
+    - ArtifactType(StrEnum): 6 values matching the artifact taxonomy\n- ArtifactStatus(StrEnum):
+    4 lifecycle states\n- ArtifactEntry(BaseModel): single artifact reference with
+    AliasChoices for kebab-case/snake_case interop\n- ArtifactManifest(BaseModel):
+    complete manifest for one GitHub Issue\n- RegisterResult(BaseModel): response
+    shape for artifact_register tool\n- ArtifactContent(BaseModel): response shape
+    for artifact_read tool\n\nReference files:\n- plan/architect-artifact-manifest.md
+    section 5.1 (exact model definitions)\n- plan/feature-context-artifact-manifest.md
+    section Artifact Taxonomy\n- plugins/development-harness/backlog_core/models.py
+    (existing models to extend)\n"
+  acceptance-criteria: |
+    - ArtifactType StrEnum defines all 6 artifact categories: feature-context, architect, task-plan, T0-baseline, TN-verification, codebase-analysis
+    - ArtifactStatus StrEnum defines 4 lifecycle states: draft, current, superseded, archived
+    - ArtifactEntry Pydantic model has fields: artifact_type, path, status, created_at, agent with AliasChoices for kebab/snake case
+    - ArtifactManifest Pydantic model has fields: issue_number, artifacts (list[ArtifactEntry]), last_updated
+    - RegisterResult and ArtifactContent response models defined
+    - All models pass basedpyright type checking with no errors
+  verification-steps: |
+    - uv run python -c 'from backlog_core.models import ArtifactType, ArtifactStatus, ArtifactEntry, ArtifactManifest, RegisterResult, ArtifactContent'
+    - uv run python -c 'from backlog_core.models import ArtifactEntry; e = ArtifactEntry.model_validate({"type": "architect", "path": "plan/architect-foo.md"}); assert e.artifact_type == "architect"'
+    - uv run ty check plugins/development-harness/backlog_core/models.py
+  started: '2026-03-22T00:54:53.152333+00:00'
+- id: T2
+  title: Implement ArtifactBackend Protocol and GitHubArtifactProvider
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T1
+  priority: 2
+  complexity: high
+  skills:
+  - python3-development
+  - fastmcp-creator
+  body: "Create backlog_core/artifact_provider.py with the backend abstraction and
+    GitHub implementation.\n\nArtifactBackend Protocol (3 methods):\n- get_manifest(issue_number:
+    int) -> ArtifactManifest\n- set_manifest(issue_number: int, manifest: ArtifactManifest)
+    -> None\n- read_artifact_content(path: str) -> str\n\nGitHubArtifactProvider implementation:\n\
+    - Constructor takes repo: str and root_worktree: Path\n- Reuses existing PyGithub
+    connection from backlog_core.github (same GITHUB_TOKEN)\n- get_manifest: GraphQL
+    query for issue body, parse manifest section between <!-- artifact-manifest:begin
+    --> and <!-- artifact-manifest:end --> delimiters\n- set_manifest: render manifest
+    as markdown table, replace section in issue body via GraphQL mutation\n- read_artifact_content:
+    resolve path against root_worktree, validate path is under repo root and starts
+    with plan/, read and return file content\n\nReference files:\n- plan/architect-artifact-manifest.md
+    section 4.2 (provider design)\n- plan/architect-artifact-manifest.md section 5.2-5.3
+    (manifest section format and parsing)\n- plugins/development-harness/backlog_core/github.py
+    (existing GraphQL helpers to reuse)\n"
+  acceptance-criteria: |
+    - ArtifactBackend Protocol class defines 3 methods: get_manifest, set_manifest, read_artifact_content
+    - GitHubArtifactProvider implements ArtifactBackend Protocol using existing backlog_core.github GraphQL helpers
+    - get_manifest parses the artifact manifest section from GitHub Issue body markdown using begin/end HTML comment delimiters
+    - set_manifest renders the manifest as a markdown table and replaces the section in the issue body via GraphQL mutation
+    - read_artifact_content reads file content from root worktree path with path traversal prevention (must be under repo root and within plan/)
+    - Missing manifest section in issue body returns empty ArtifactManifest (not an error)
+  verification-steps: |
+    - uv run python -c 'from backlog_core.artifact_provider import ArtifactBackend, GitHubArtifactProvider'
+    - uv run ty check plugins/development-harness/backlog_core/artifact_provider.py
+    - uv run ruff check plugins/development-harness/backlog_core/artifact_provider.py
+  started: '2026-03-22T00:57:31.616314+00:00'
+- id: T3
+  title: Implement ArtifactRegistry business logic
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T1
+  - T2
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  body: "Create backlog_core/artifact_registry.py with pure business logic for manifest
+    operations.\n\nArtifactRegistry class (stateless, no I/O):\n- register(manifest,
+    entry) -> ArtifactManifest: upsert by (type, path). If both match, update status/agent/timestamp.
+    If only type matches but path differs, add new row.\n- remove(manifest, artifact_type,
+    path) -> ArtifactManifest\n- get_by_type(manifest, artifact_type) -> list[ArtifactEntry]\n\
+    - update_status(manifest, artifact_type, path, status) -> ArtifactManifest\n\n\
+    Module-level functions:\n- parse_manifest_section(issue_body: str) -> ArtifactManifest:
+    extract between <!-- artifact-manifest:begin/end --> delimiters, parse markdown
+    table rows\n- render_manifest_section(manifest: ArtifactManifest) -> str: produce
+    heading + delimiters + markdown table\n- replace_manifest_in_body(issue_body:
+    str, rendered_section: str) -> str: replace section in-place or append\n\nReference
+    files:\n- plan/architect-artifact-manifest.md section 4.1 (registry design)\n\
+    - plan/architect-artifact-manifest.md section 5.2-5.3 (manifest format and parsing
+    rules)\n"
+  acceptance-criteria: |
+    - ArtifactRegistry class implements register, remove, get_by_type, update_status methods operating on ArtifactManifest objects
+    - parse_manifest_section function extracts ArtifactManifest from issue body markdown
+    - render_manifest_section function produces the full markdown section with heading, delimiters, and table
+    - replace_manifest_in_body function replaces existing section in-place or appends if absent
+    - register method performs idempotent upsert: matching on (type, path) updates existing entry, different path adds new entry
+    - Registry is stateless — all methods accept and return ArtifactManifest objects without internal state
+  verification-steps: |
+    - uv run python -c 'from backlog_core.artifact_registry import ArtifactRegistry, parse_manifest_section, render_manifest_section, replace_manifest_in_body'
+    - uv run ty check plugins/development-harness/backlog_core/artifact_registry.py
+    - uv run ruff check plugins/development-harness/backlog_core/artifact_registry.py
+  started: '2026-03-22T01:01:28.094236+00:00'
+- id: T4
+  title: Add MCP tools to backlog server
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T3
+  priority: 3
+  complexity: high
+  skills:
+  - python3-development
+  - fastmcp-creator
+  body: "Add 4 new MCP tools to the existing backlog MCP server in backlog_core/server.py.\n\
+    \nTools to add (see architect spec section 4.3 for exact signatures):\n- artifact_register:
+    upsert an artifact entry. Wire through ArtifactRegistry.register + GitHubArtifactProvider.get_manifest/set_manifest\n\
+    - artifact_list: return all artifacts for an issue, optionally filtered by type\n\
+    - artifact_get: return metadata for a specific artifact type on an issue\n- artifact_read:
+    return file content by reading from root worktree path. Validate path safety (under
+    repo root, within plan/)\n\nInitialize GitHubArtifactProvider during server startup
+    using the same repo and project-dir config as existing backlog tools.\n\nReference
+    files:\n- plan/architect-artifact-manifest.md section 4.3 (MCP tool signatures
+    and semantics)\n- plugins/development-harness/backlog_core/server.py (existing
+    server to extend)\n"
+  acceptance-criteria: |
+    - artifact_register MCP tool accepts issue_number, artifact_type, path, status, agent and returns {registered: bool, artifact_count: int, action: str}
+    - artifact_list MCP tool accepts issue_number and optional artifact_type filter, returns {artifacts: [...], count: int}
+    - artifact_get MCP tool accepts issue_number and artifact_type, returns metadata for matching artifacts
+    - artifact_read MCP tool accepts issue_number and artifact_type, reads file content from root worktree, returns {type, path, content, status}
+    - All 4 tools are registered on the existing backlog MCP server (not a new server)
+    - Tools use artifact_ prefix in tool names for namespace separation from existing backlog tools
+  verification-steps: |
+    - uv run python -c 'from backlog_core.server import mcp; tools = [t.name for t in mcp._tool_manager.tools.values()]; assert "artifact_register" in tools'
+    - uv run ty check plugins/development-harness/backlog_core/server.py
+    - uv run ruff check plugins/development-harness/backlog_core/server.py
+  started: '2026-03-22T01:05:03.110001+00:00'
+- id: T5
+  title: Write tests for core artifact manifest implementation
+  status: complete
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T4
+  priority: 3
+  complexity: high
+  skills:
+  - fastmcp-python-tests
+  - python3-development
+  body: "Write comprehensive tests for the artifact manifest system.\n\nTest files
+    to create:\n- plugins/development-harness/tests_backlog/test_artifact_registry.py\n\
+    - plugins/development-harness/tests_backlog/test_artifact_provider.py\n\nCritical
+    test scenarios from architect spec section 7.3:\n1. Roundtrip fidelity: parse
+    manifest section -> render -> parse again = identical\n2. Idempotent registration:
+    register same artifact twice -> exactly one entry\n3. Multiple artifacts of same
+    type: two codebase-analysis with different paths -> both appear\n4. Empty issue
+    body: register into issue with no body -> manifest section created\n5. Existing
+    body without manifest: register -> section appended, existing content preserved\n\
+    6. Path traversal rejection: artifact_read with ../../../etc/passwd -> rejected\n\
+    7. Non-plan path rejection: artifact_read with src/main.py -> rejected\n8. Cache
+    miss: artifact_read for registered artifact whose local file is missing -> error\n\
+    9. Status transition: update artifact from current to superseded -> manifest reflects\n\
+    \nReference files:\n- plan/architect-artifact-manifest.md section 7 (testing architecture)\n\
+    - plugins/development-harness/tests_backlog/ (existing test directory structure)\n"
+  acceptance-criteria: |
+    - Unit tests for ArtifactEntry/ArtifactManifest model validation including AliasChoices kebab/snake case
+    - Unit tests for ArtifactRegistry: register idempotency, multiple same-type artifacts, remove, update_status, get_by_type
+    - Unit tests for parse_manifest_section/render_manifest_section roundtrip fidelity
+    - Unit tests for replace_manifest_in_body: existing section replacement, append when absent, preserve surrounding content
+    - Unit tests for GitHubArtifactProvider with mocked GraphQL responses
+    - Integration tests for all 4 MCP tools using FastMCP in-memory test client
+    - Security tests: path traversal rejection, non-plan path rejection in artifact_read
+    - Coverage target: 80% minimum for backlog_core/artifact_registry.py and artifact_provider.py
+  verification-steps: |
+    - uv run pytest plugins/development-harness/tests_backlog/test_artifact_registry.py -v
+    - uv run pytest plugins/development-harness/tests_backlog/test_artifact_provider.py -v
+    - uv run pytest plugins/development-harness/tests_backlog/ -v --tb=short -q 2>&1 | tail -5
+  started: '2026-03-22T01:09:43.912916+00:00'
+- id: T6
+  title: Update add-new-feature skill to register artifacts
+  status: complete
+  agent: general-purpose
+  dependencies:
+  - T4
+  priority: 3
+  complexity: medium
+  skills:
+  - plugin-creator:skill-creator
+  body: "Update the /add-new-feature skill SKILL.md to include artifact registration
+    in each producer phase delegation prompt.\n\nChanges per phase:\n- Phase 1 (feature-researcher):
+    after agent writes plan/feature-context-{slug}.md, delegation prompt includes
+    artifact_register call for feature-context\n- Phase 2 (codebase-analyzer, when
+    used): after agent writes plan/codebase/{FOCUS}.md, register as codebase-analysis\n\
+    - Phase 3 (python-cli-design-spec): after agent writes plan/architect-{slug}.md,
+    register as architect\n- Phase 4 (swarm-task-planner): after agent writes plan
+    file, register as task-plan\n\nReference files:\n- plan/architect-artifact-manifest.md
+    Appendix A (producer registration points)\n- .claude/skills/add-new-feature/SKILL.md
+    (skill to modify)\n"
+  acceptance-criteria: |
+    - Phase 1 delegation prompt for feature-researcher includes artifact_register call for feature-context artifact after file write
+    - Phase 3 delegation prompt for python-cli-design-spec includes artifact_register call for architect artifact after file write
+    - Phase 4 delegation prompt for swarm-task-planner includes artifact_register call for task-plan artifact after file write
+    - Phase 2 delegation prompt for codebase-analyzer (when used) includes artifact_register call for codebase-analysis artifact
+    - Registration calls use the issue number from the feature GitHub Issue
+    - SKILL.md passes skilllint validation after modification
+  verification-steps: |
+    - grep -c 'artifact_register' .claude/skills/add-new-feature/SKILL.md returns 3 or more
+    - uvx skilllint@latest check .claude/skills/add-new-feature/
+    - Invoke /add-new-feature skill and verify no extra prompts or broken steps introduced
+  context-notes: |
+    ## Expanded Scope (Validator Gap Fix)
+
+    T6 must also cover artifact registration for bookend task producers:
+    - t0-baseline-capture agent: register T0-baseline-{slug}.yaml as secondary artifact after creation
+    - tn-verification-gate agent: register TN-verification-{slug}.yaml as secondary artifact after creation
+    - codebase-analyzer agent: register plan/codebase/{FOCUS}.md as secondary artifact when created
+
+    These are all orchestrated by add-new-feature (or implement-feature for bookend tasks), so registration calls go in the orchestration skill instructions.
+  started: '2026-03-22T01:09:37.537190+00:00'
+- id: T7
+  title: Add auto-registration to sam_create
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T4
+  priority: 3
+  complexity: low
+  skills:
+  - python3-development
+  - fastmcp-creator
+  body: "Extend the sam_create MCP tool in sam_schema/server.py to auto-register the
+    new plan file as an artifact.\n\nIntegration point (see architect spec section
+    4.4, integration point 1):\n- After sam_create successfully writes the plan file,
+    check if the plan has an issue field\n- If issue is present, call artifact_register
+    to register the plan as type \"task-plan\"\n- Use the actual output path (plan/P{NNN}-{slug}.yaml)
+    as the artifact path\n- Registration failure should log a warning but not fail
+    the sam_create operation\n\nReference files:\n- plan/architect-artifact-manifest.md
+    section 4.4 (SAM bridge integration)\n- plugins/development-harness/sam_schema/server.py
+    (server to extend)\n"
+  acceptance-criteria: |
+    - sam_create MCP tool auto-registers the newly created plan file as a task-plan artifact when the issue field is present in the plan
+    - Auto-registration is skipped when no issue field is present (no error)
+    - Auto-registration failure does not block plan creation (best-effort, logs warning)
+    - The registered path matches the actual file path produced by sam_create (plan/P{NNN}-{slug}.yaml)
+  verification-steps: |
+    - uv run python -c 'from sam_schema.server import sam_create'
+    - uv run ty check plugins/development-harness/sam_schema/server.py
+    - uv run ruff check plugins/development-harness/sam_schema/server.py
+  started: '2026-03-22T01:09:41.637457+00:00'
+- id: T8
+  title: Add auto-registration to backlog_update plan parameter
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T4
+  priority: 3
+  complexity: low
+  skills:
+  - python3-development
+  body: "Extend backlog_update in backlog_core/operations.py to auto-register plan
+    artifacts.\n\nIntegration point (see architect spec section 4.4, integration point
+    3):\n- When backlog_update receives plan= parameter with a non-empty path\n- Look
+    up the backlog item issue_number\n- If issue_number exists, call artifact_register(issue_number,
+    \"task-plan\", plan_path)\n- Registration failure should log a warning but not
+    fail the backlog_update operation\n\nReference files:\n- plan/architect-artifact-manifest.md
+    section 4.4 (integration point 3)\n- plugins/development-harness/backlog_core/operations.py
+    (operations to extend)\n"
+  acceptance-criteria: |
+    - When backlog_update receives a plan parameter and the backlog item has a GitHub issue number, the plan is auto-registered as a task-plan artifact
+    - Auto-registration is skipped when the backlog item has no issue number
+    - Auto-registration failure does not block the backlog_update operation (best-effort, logs warning)
+    - Existing backlog_update behavior is preserved for all other parameters
+  verification-steps: |
+    - uv run ty check plugins/development-harness/backlog_core/operations.py
+    - uv run ruff check plugins/development-harness/backlog_core/operations.py
+    - uv run pytest plugins/development-harness/tests_backlog/ -k 'backlog_update' -v --tb=short
+  context-notes: |
+    ## Expanded Scope (Validator Gap Fix)
+
+    T8 must also update work-backlog-item skill:
+    - When work-backlog-item links a plan via backlog_update(plan=...), the auto-registration in backlog_update handles artifact manifest update
+    - work-backlog-item Step 7 already calls backlog_update with plan= parameter — no additional code needed if T8 implements auto-registration correctly
+    - Verify: work-backlog-item flow triggers artifact registration when linking plans
+  started: '2026-03-22T01:09:34.576431+00:00'
+- id: T9
+  title: Update work-milestone skill for artifact discovery
+  status: complete
+  agent: general-purpose
+  dependencies:
+  - T6
+  priority: 4
+  complexity: medium
+  skills:
+  - plugin-creator:skill-creator
+  body: "Update the /work-milestone skill SKILL.md so worktree-isolated agents discover
+    plan artifacts via MCP instead of filesystem paths.\n\nChanges:\n- Worktree agent
+    delegation prompts include the issue number for the feature\n- Agents instructed
+    to call artifact_list(issue_number=N) to discover available artifacts\n- Agents
+    instructed to call artifact_read(issue_number=N, artifact_type=\"architect\")
+    to read artifact content\n- Explicit instruction: do NOT access plan/ files via
+    filesystem from worktree — use MCP tools only\n- Fallback instruction: if artifact_list
+    returns empty (pre-manifest issue), fall back to filesystem paths\n\nReference
+    files:\n- plan/architect-artifact-manifest.md section 4.5 (worktree content access)\n\
+    - plan/architect-artifact-manifest.md Appendix B (consumer discovery points)\n\
+    - plugins/development-harness/skills/work-milestone/SKILL.md (skill to modify)\n"
+  acceptance-criteria: |
+    - Worktree agent delegation prompts include instructions to use artifact_list and artifact_read MCP tools for plan artifact discovery
+    - Issue number is passed to worktree agents so they can query artifacts by issue
+    - Worktree agents are instructed to never access plan/ files via filesystem (use MCP exclusively)
+    - SKILL.md passes skilllint validation after modification
+  verification-steps: |
+    - grep 'artifact_list\|artifact_read' plugins/development-harness/skills/work-milestone/SKILL.md
+    - uvx skilllint@latest check plugins/development-harness/skills/work-milestone/
+    - grep 'artifact' plugins/development-harness/skills/work-milestone/SKILL.md
+  started: '2026-03-22T01:14:27.832364+00:00'
+- id: T10
+  title: Update start-task and implement-feature skills for artifact discovery
+  status: complete
+  agent: general-purpose
+  dependencies:
+  - T4
+  priority: 4
+  complexity: medium
+  skills:
+  - plugin-creator:skill-creator
+  body: "Update /start-task and /implement-feature skills to use artifact manifest
+    for discovery and registration.\n\nstart-task changes:\n- When issue number is
+    known, call artifact_list(issue_number=N) to discover available artifacts\n- Use
+    artifact_read to fetch architect spec and feature context content\n- Fall back
+    to filesystem path if artifact_list returns empty (backward compatibility)\n\n\
+    implement-feature changes:\n- Include artifact_register instructions in T0 bookend
+    task delegation (register T0-baseline artifact)\n- Include artifact_register instructions
+    in TN bookend task delegation (register TN-verification artifact)\n\nReference
+    files:\n- plan/architect-artifact-manifest.md Appendix A and B (producer/consumer
+    points)\n- .claude/skills/start-task/SKILL.md (skill to modify)\n- .claude/skills/implement-feature/SKILL.md
+    (skill to modify)\n"
+  acceptance-criteria: |
+    - start-task SKILL.md includes artifact_list call for discovering architect spec and feature context when issue number is known
+    - implement-feature SKILL.md includes artifact_register instructions for T0-baseline and TN-verification bookend tasks
+    - Consumer skills fall back to filesystem path conventions when artifact_list returns empty manifest
+    - Both SKILL.md files pass skilllint validation after modification
+  verification-steps: |
+    - grep 'artifact' .claude/skills/start-task/SKILL.md
+    - grep 'artifact' .claude/skills/implement-feature/SKILL.md
+    - uvx skilllint@latest check .claude/skills/start-task/
+    - uvx skilllint@latest check .claude/skills/implement-feature/
+  context-notes: |
+    ## Expanded Scope (Validator Gap Fix)
+
+    T10 must also update complete-implementation skill:
+    - complete-implementation reads task files for quality gates (Phase 1: code-reviewer, Phase 2: feature-verifier)
+    - When issue number is known, complete-implementation should use artifact_list to discover all plan artifacts
+    - This enables the feature-verifier to check completeness against the artifact manifest
+    - Update SKILL.md with artifact discovery instructions for the quality gate phases
+  started: '2026-03-22T01:09:45.707945+00:00'
+- id: T11
+  title: Update workflow and lifecycle documentation
+  status: complete
+  agent: general-purpose
+  dependencies:
+  - T6
+  - T9
+  - T10
+  priority: 5
+  complexity: medium
+  body: "Update workflow documentation to reflect the artifact manifest system.\n\n\
+    Files to update:\n1. .claude/rules/local-workflow.md:\n   - Add Artifact Manifest
+    section documenting the 4 MCP tools\n   - Update Phase 1 to include artifact registration
+    in agent delegation\n   - Update Phase 2 to include bookend task registration\n\
+    \   - Update consumer discovery pattern (artifact_list before filesystem)\n\n\
+    2. .claude/docs/plan-artifact-lifecycle.md:\n   - Document the artifact manifest
+    as the structured registry for generated artifacts\n   - Explain relationship
+    between manifest (registry) and plan files (content)\n\n3. plugins/development-harness/docs/workflow-architecture-diagram.md:\n\
+    \   - Add artifact registration arrows in the data flow diagram\n   - Add artifact
+    discovery arrows for consumer agents\n   - Add worktree agent MCP access pattern\n\
+    \nReference files:\n- plan/architect-artifact-manifest.md (full architecture spec)\n\
+    - plan/feature-context-artifact-manifest.md (problem statement and desired outcomes)\n"
+  acceptance-criteria: |
+    - local-workflow.md documents the artifact manifest system: MCP tools, registration flow, consumer discovery pattern
+    - plan-artifact-lifecycle.md updated with artifact manifest as the structured registry mechanism
+    - workflow-architecture-diagram.md updated with artifact registration and discovery data flows
+    - Documentation accurately reflects the implemented system (no aspirational content)
+  verification-steps: |
+    - grep 'artifact_register\|artifact_list\|artifact_read\|Artifact Manifest' .claude/rules/local-workflow.md
+    - grep 'artifact_register\|Artifact Manifest' .claude/docs/plan-artifact-lifecycle.md
+    - uv run prek run --files .claude/rules/local-workflow.md
+  context-notes: |
+    ## Expanded Scope (Validator Gap Fix)
+
+    T11 must also update TASK_FILE_FORMAT.md:
+    - Document the artifact manifest relationship to task files
+    - Note that task-plan artifacts are registered in the manifest with type "task-plan"
+    - Reference the new MCP tools (artifact_register, artifact_list, artifact_get, artifact_read)
+
+    Deferred systems (intentionally not covered in this plan):
+    - SAM MCP reading: SAM reads plans by P{N} via filesystem; artifact_read on backlog MCP handles content access for worktree agents. SAM does not need artifact awareness for v1.
+    - task_status_hook.py: Updates timestamps only. Does not need artifact awareness for v1. Hook reads task files directly; artifact registry is for discovery, not for direct file access.
+  started: '2026-03-22T01:17:05.187400+00:00'
+context: |-
+  ## Context Manifest
+
+  ### How This Currently Works: Plan Artifact System and Discovery
+
+  The current SAM (Structured Agent-Managed) workflow produces 3–6 artifacts per feature: feature-context docs, architect specs, task plans, T0/TN baselines, and optional codebase analysis. These artifacts are local files stored in the `plan/` directory at the repository root, following naming conventions like `plan/feature-context-{slug}.md`, `plan/architect-{slug}.md`, and `plan/tasks-{N}-{slug}.yaml`.
+
+  The workflow has no centralized inventory of what artifacts exist for a given GitHub Issue. Discovery is ad-hoc: agents rely on filesystem globbing by slug name, naming conventions, or explicit paths passed in delegation prompts. When a `/work-milestone` skill dispatches an agent into an isolated git worktree, that agent cannot access uncommitted plan files from the root worktree because the worktree has a different working directory. Plan artifacts are invisible to worktree-isolated agents unless they have been committed to the branch the worktree checks out.
+
+  GitHub Issues (via the `issue` field in task plan frontmatter) have a one-way link to plan files through the SAM task number, but the reverse link—finding all artifacts for a given issue—requires scanning the filesystem or querying GitHub for task sub-issues and back-dereferencing to their plan numbers. There is no single authoritative registry stored on GitHub showing which artifacts belong to which issue.
+
+  The artifact manifest system solves this by making the GitHub Issue body the source of truth for artifact inventory: a structured Artifact Manifest section lists all plan artifacts (type, path, status, creation timestamp, producing agent) for that feature. Producer agents (feature-researcher, python-cli-design-spec, swarm-task-planner, t0-baseline-capture, tn-verification-gate, codebase-analyzer) register artifacts after writing them; consumer agents (start-task, code-reviewer, feature-verifier, context-refinement, and worktree-isolated agents) discover artifacts by querying the manifest via MCP tools.
+
+  This architecture inverts the current model: local files are the cache, GitHub Issues are the registry. Worktree-isolated agents can now query the manifest without filesystem access because the MCP tools read from GitHub, not the local disk.
+
+  ### For Implementation: Integration Points and Provider Abstraction
+
+  The implementation extends the existing `backlog_core` package (located in `plugins/development-harness/backlog_core/`) with three new modules:
+
+  1. **`backlog_core/models.py` (T1 — Pydantic models)**: Adds ArtifactType and ArtifactStatus enums, plus ArtifactEntry and ArtifactManifest models using Pydantic's AliasChoices for kebab-case/snake_case field interop. RegisterResult and ArtifactContent response models define shapes for MCP tool outputs.
+
+  2. **`backlog_core/artifact_provider.py` (T2 — Backend protocol and GitHub provider)**: Defines an ArtifactBackend Protocol with three methods (get_manifest, set_manifest, read_artifact_content) for backend abstraction. GitHubArtifactProvider implements this protocol using the existing PyGithub + GraphQL helpers in `backlog_core.github` for querying and mutating issue bodies. The manifest is stored as a markdown section delimited by HTML comments `<!-- artifact-manifest:begin/end -->` within the issue body. Path traversal prevention ensures artifact_read cannot escape the repository root or access outside `plan/`.
+
+  3. **`backlog_core/artifact_registry.py` (T3 — Business logic)**: A stateless ArtifactRegistry class with four core methods: register (idempotent upsert by type+path), remove, get_by_type, and update_status. Module-level functions parse_manifest_section and render_manifest_section convert between issue body markdown and ArtifactManifest objects. replace_manifest_in_body updates or appends the manifest section in an issue body.
+
+  These modules are then exposed as four MCP tools on the existing backlog MCP server (T4 — `backlog_core/server.py`): artifact_register (upsert an entry), artifact_list (query all artifacts for an issue, optionally filtered by type), artifact_get (retrieve metadata for a specific type), and artifact_read (fetch file content from root worktree).
+
+  Integration points T7–T10 wire the new artifact tools into existing workflows: sam_create auto-registers task-plan artifacts when a plan has an issue field; backlog_update auto-registers when the plan parameter is set; /add-new-feature skill includes artifact_register calls in each producer phase delegation prompt; /work-milestone, /start-task, and /implement-feature skills use artifact_list and artifact_read for discovery and registration.
+
+  ### Technical Reference Details
+
+  #### Models and Enums (T1)
+
+  All models use Pydantic 2.x BaseModel with AliasChoices for kebab/snake case compatibility:
+
+  - **ArtifactType** StrEnum: feature-context, architect, task-plan, T0-baseline, TN-verification, codebase-analysis
+  - **ArtifactStatus** StrEnum: draft, current, superseded, archived
+  - **ArtifactEntry** fields: artifact_type (aliased to both "artifact-type" and "artifact_type"), path, status, created_at (timestamp), agent
+  - **ArtifactManifest** fields: issue_number (int), artifacts (list[ArtifactEntry]), last_updated (timestamp)
+  - **RegisterResult** response: registered (bool), artifact_count (int), action (str: "added" | "updated")
+  - **ArtifactContent** response: artifact_type, path, content (str), status
+
+  Type checking via basedpyright; no errors allowed.
+
+  #### Backend Protocol and GitHub Provider (T2)
+
+  **ArtifactBackend Protocol** (abstract):
+  ```python
+  @runtime_checkable
+  class ArtifactBackend(Protocol):
+      def get_manifest(self, issue_number: int) -> ArtifactManifest: ...
+      def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None: ...
+      def read_artifact_content(self, path: str) -> str: ...
+  ```
+
+  **GitHubArtifactProvider** initialization takes repo (str, format: "owner/name") and root_worktree (Path). Reuses existing backlog_core.github.GraphQLHelper for issue body queries/mutations. Missing manifest sections return empty ArtifactManifest (not an error). Path validation: must be under repo root and start with "plan/".
+
+  Manifest section delimiters in issue body:
+  ```
+  <!-- artifact-manifest:begin -->
+  | Type | Path | Status |
+  | ... | ... | ... |
+  <!-- artifact-manifest:end -->
+  ```
+
+  #### Registry Business Logic (T3)
+
+  ArtifactRegistry is entirely stateless. The register method implements idempotent upsert: if an entry with matching type and path exists, update its status/agent/timestamp; if only type matches but paths differ, add a new row. remove, update_status, and get_by_type operate on passed-in Manifest objects. parse_manifest_section extracts markdown table rows from the delimited section; render_manifest_section produces the full markdown including heading and delimiters; replace_manifest_in_body replaces an existing section in-place or appends if absent, preserving surrounding content.
+
+  #### MCP Tools (T4)
+
+  Four new tools added to existing backlog MCP server (not a new server):
+
+  - **artifact_register** (issue_number: int, artifact_type: str, path: str, status: str = "current", agent: str = ""): Returns RegisterResult
+  - **artifact_list** (issue_number: int, artifact_type: str | None = None): Returns {artifacts: list[dict], count: int}
+  - **artifact_get** (issue_number: int, artifact_type: str): Returns {artifacts: list[dict]} or error if type not found
+  - **artifact_read** (issue_number: int, artifact_type: str): Returns ArtifactContent with file content read from root worktree
+
+  All tools use artifact_ prefix for namespace clarity.
+
+  #### File Locations
+
+  **Core implementation modules**:
+  - `plugins/development-harness/backlog_core/models.py` (T1 — extend existing)
+  - `plugins/development-harness/backlog_core/artifact_provider.py` (T2 — new)
+  - `plugins/development-harness/backlog_core/artifact_registry.py` (T3 — new)
+  - `plugins/development-harness/backlog_core/server.py` (T4 — extend existing)
+
+  **Tests**:
+  - `plugins/development-harness/tests_backlog/test_artifact_registry.py` (T5)
+  - `plugins/development-harness/tests_backlog/test_artifact_provider.py` (T5)
+
+  **Skill modifications**:
+  - `.claude/skills/add-new-feature/SKILL.md` (T6 — add artifact_register to phase delegations)
+  - `plugins/development-harness/skills/work-milestone/SKILL.md` (T9 — add artifact_list/artifact_read instructions)
+  - `.claude/skills/start-task/SKILL.md` (T10 — add artifact discovery)
+  - `.claude/skills/implement-feature/SKILL.md` (T10 — add T0/TN registration)
+
+  **SAM integration**:
+  - `plugins/development-harness/sam_schema/server.py` (T7 — extend sam_create for auto-registration)
+  - `plugins/development-harness/backlog_core/operations.py` (T8 — extend backlog_update for auto-registration)
+
+  **Documentation updates**:
+  - `.claude/rules/local-workflow.md` (T11 — add Artifact Manifest section and update Phase 1/2 descriptions)
+  - `.claude/docs/plan-artifact-lifecycle.md` (T11 — document manifest as registry)
+  - `plugins/development-harness/docs/workflow-architecture-diagram.md` (T11 — add artifact registration/discovery arrows)
+
+  #### Configuration and Runtime
+
+  All tools use the same GitHub authentication (GITHUB_TOKEN, PyGithub client) as existing backlog tools. No new environment variables required. Backward compatibility: existing plan artifacts and workflows continue to function. The manifest is additive—agents can register artifacts at their own pace; consumers with artifact_list returning empty manifest fall back to filesystem paths.
+
+  #### MCP Tools and Related Systems
+
+  The implementation depends on:
+  - FastMCP 3.x server framework (existing — backlog MCP server already uses it)
+  - PyGithub GraphQL client (existing in backlog_core.github)
+  - Pydantic 2.x (project standard)
+  - SAM MCP server hooks for auto-registration at plan creation (T7)
+  - Backlog MCP server operation hooks for auto-registration at backlog_update (T8)
+
+  #### External References and GitHub Issue
+
+  GitHub Issue #965 documents the problem space, desired outcomes, constraints, and artifact taxonomy. The feature-context, architect spec, and codebase analysis artifacts provide additional context on design decisions and industry research (Linear, Jira, Monday.com patterns for artifact management).
+
+  Plan artifacts referenced by this task:
+  - `plan/feature-context-artifact-manifest.md` — problem space, desired outcomes, personas, constraints
+  - `plan/architect-artifact-manifest.md` — full architecture spec, C4 diagrams, data flows, component interfaces
+  - `plan/codebase/artifact-manifest-patterns.md` — current artifact creation patterns, storage structure, naming conventions, integration points
+
+discovered-during-implementation: |-
+  ## Date: 2026-03-22
+
+  ### Manifest Section Format Validation: Silent Row Skipping
+
+  The implementation enforces a strict 5-column markdown table format within HTML comment delimiters (artifact-manifest:begin/end). If rows have fewer than 5 columns, they are silently skipped without warning. This graceful-degradation approach means a malformed manifest loses entries silently—a subtle bug where an agent thinks a manifest is empty when it contains unparseable rows.
+
+  ### ArtifactEntry Alias Choices: Confusing Validation Messages
+
+  The T1 models use Pydantic's AliasChoices for kebab-case and snake_case interop. During validation errors, both alias names appear in error messages, which can confuse end users who may not understand why both forms are mentioned.
+
+  ### Test Coverage Gap: No Worktree Safety Integration Tests
+
+  T5 tests verify parse/render/replace logic but lack integration tests for artifact_read path traversal prevention when called from a worktree agent with an alternative root_worktree parameter. The implementation is straightforward (direct path comparison against root), but future worktree-isolation issues will need this coverage.
+
+  ### Skill Tool Availability Assumption: Silent Failure Mode
+
+  T6 (add-new-feature skill) and T9/T10 (other skill updates) assume artifact_register and artifact_list MCP tools are available when agents call them. No validation or retry logic was added. If the backlog MCP plugin fails to load in a sub-agent context, registrations silently fail (logged as warning). This creates a silent failure mode where agents trust the tool exists but may silently fail to register artifacts.
+
+  ### SAM Auto-Registration Adoption Dependency
+
+  T7 (sam_create auto-registration) only registers task-plan artifacts when a plan has an issue field. Plans created without an issue field are invisible to the artifact discovery system. Adoption of the manifest system depends on workflow discipline—orchestrators must remember to set the issue field at plan creation time.

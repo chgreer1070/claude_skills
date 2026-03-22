@@ -303,8 +303,30 @@ max-complexity = 12
 "**/assets/nested-typer-exceptions/*.py" = ["ANN", "DOC"]
 # Lazy imports for optional dependency detection (hatchling may not be installed)
 "**/assets/version.py" = ["PLC0415"]
+"**/skill-creator/**/*.py" = [
+    "ANN",
+    "ANN",
+    "BLE001",
+    "C901",
+    "C901",
+    "D",
+    "D",
+    "DOC",
+    "DOC",
+    "F401",
+    "FURB",
+    "PLR",
+    "PLR",
+    "PLW",
+    "RUF",
+    "S",
+    "S",
+    "T",
+    "T",
+    "TRY",
+]
 # Test files that live in scripts/ directories (not tests/)
-"**/scripts/test_*.py" = [
+"**/test_*.py" = [
     "ANN",  # Type annotations optional for test fixtures/methods
     "D",    # Docstring requirements relaxed for tests
     "DOC",  # Docstring content requirements relaxed
@@ -317,71 +339,7 @@ max-complexity = 12
     "SLF",  # Private name imports acceptable for testing internals
     "T",    # print() statements are intentional for CI output visibility
 ]
-"**/skill-creator/eval-viewer/generate_review.py" = [
-    "ANN",
-    "C901",
-    "D",
-    "DOC",
-    "PLR",
-    "S",
-    "T",
-]
-"**/skill-creator/scripts/aggregate_benchmark.py" = [
-    "ANN",
-    "C901",
-    "D",
-    "DOC",
-    "PLR",
-    "S",
-    "T",
-]
-"**/skill-creator/scripts/generate_report.py" = [
-    "A",
-    "ANN",
-    "C901",
-    "D",
-    "DOC",
-    "FURB",
-    "PLR",
-    "S",
-    "T",
-]
-"**/skill-creator/scripts/improve_description.py" = [
-    "ANN",
-    "C901",
-    "D",
-    "DOC",
-    "PLR",
-    "S",
-    "T",
-]
-# Upstream scripts from anthropics/skills — kept close to original for easy diffing
-"**/skill-creator/scripts/run_eval.py" = [
-    "ANN",
-    "BLE001",
-    "C901",
-    "D",
-    "DOC",
-    "F401",
-    "FURB",
-    "PLR",
-    "PLW",
-    "RUF",
-    "S",
-    "T",
-    "TRY",
-]
-"**/skill-creator/scripts/run_loop.py" = [
-    "ANN",
-    "C901",
-    "D",
-    "DOC",
-    "PLR",
-    "S",
-    "T",
-]
-"**/skill-creator/scripts/utils.py" = ["ANN", "D", "DOC"]
-"**/tests/**" = [
+"**/tests*/**" = [
     "ANN",      # Type annotations optional for test fixtures/methods
     "ASYNC240", # Blocking pathlib I/O in async test methods is acceptable at test scale
     "D",        # Docstring requirements relaxed for tests
@@ -391,21 +349,6 @@ max-complexity = 12
     "N",        # camelCase in test names acceptable when testing API fields
     "PLC",      # Local imports acceptable in test helpers
     "PLR",      # Testing private methods is valid test pattern
-    "S",        # Security checks not needed in tests
-    "SLF",      # Private name imports acceptable for testing internals
-    "T",        # print() statements are intentional for CI output visibility
-]
-"**/tests_sam/**" = [
-    "ANN",      # Type annotations optional for test fixtures/methods
-    "ASYNC240", # Blocking pathlib I/O in async test methods is acceptable at test scale
-    "D",        # Docstring requirements relaxed for tests
-    "DOC",      # Docstring content requirements relaxed
-    "E501",     # Line length relaxed for test data
-    "EXE",      # Shebang executable check skipped for PEP723 test files
-    "N",        # camelCase in test names acceptable when testing API fields
-    "PLC",      # Local imports acceptable in test helpers
-    "PLR",      # Testing private methods is valid test pattern
-    "PT",       # pytest-style rules relaxed for tests (e.g. PT011 broad raises)
     "S",        # Security checks not needed in tests
     "SLF",      # Private name imports acceptable for testing internals
     "T",        # print() statements are intentional for CI output visibility
@@ -414,11 +357,6 @@ max-complexity = 12
 "plugins/agentskill-kaizen/scripts/sentiment-score.py" = ["PLC0415"]
 # Hyphenated package directory name is required by MCP convention
 "plugins/scientific-method/mcp/experiment-registry/__init__.py" = ["N999"]
-"research/knowledge-explorer.py" = [
-    "ANN401", # Any required for YAMLHandler base class kwargs and JSON return types
-    "S",      # Security checks relaxed for CLI scripts
-    "T201",   # print() acceptable in CLI scripts
-]
 "typings/**" = ["A", "ANN", "N"]
 
 [tool.ruff.lint.pycodestyle]

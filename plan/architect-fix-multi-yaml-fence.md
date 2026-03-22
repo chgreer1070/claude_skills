@@ -233,7 +233,7 @@ However, as a defensive measure, the implementation SHOULD add a `_depth` parame
 
 ### File Modified
 
-[TASK_FILE_FORMAT.md](../.claude/docs/TASK_FILE_FORMAT.md)
+[TASK_FILE_FORMAT.md](../plugins/development-harness/docs/TASK_FILE_FORMAT.md)
 
 ### Content to Add
 
@@ -435,7 +435,7 @@ No new external dependencies. `detect_fenced_yaml` uses `re` (already imported i
 | T3 | Implement `detect_fenced_yaml()` in `task_format.py` and add to `__all__` | `task_format.py` | None |
 | T4 | Modify `parse_task_content()` to call `detect_fenced_yaml`, add stderr warnings, fix silent fallthrough | `implementation_manager.py` | T3 |
 | T5 | Write unit tests for `detect_fenced_yaml` and integration tests for `parse_task_content` with fenced input | Test file(s) | T3, T4 |
-| T6 | Add "Authorized Writers" section and anti-pattern example to `TASK_FILE_FORMAT.md` | `.claude/docs/TASK_FILE_FORMAT.md` | None |
+| T6 | Add "Authorized Writers" section and anti-pattern example to `TASK_FILE_FORMAT.md` | `plugins/development-harness/docs/TASK_FILE_FORMAT.md` | None |
 
 Tasks T1, T2, T3, and T6 can run in parallel. T4 depends on T3. T5 depends on T3 and T4.
 
@@ -445,7 +445,7 @@ Tasks T1, T2, T3, and T6 can run in parallel. T4 depends on T3. T5 depends on T3
 
 - [Feature context](./feature-context-fix-multi-yaml-fence.md) -- discovery research and gap analysis
 - [Codebase analysis](./codebase/task-file-parser.md) -- parser architecture and code references
-- [Task File Format spec](../.claude/docs/TASK_FILE_FORMAT.md) -- format specification and schema
+- [Task File Format spec](../plugins/development-harness/docs/TASK_FILE_FORMAT.md) -- format specification and schema
 - [task_format.py](../plugins/python3-development/skills/implementation-manager/scripts/task_format.py) -- source: frontmatter detection and parsing
 - [implementation_manager.py](../plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py) -- source: `parse_task_content` at line 645
 - [swarm-task-planner (python3-development)](../plugins/python3-development/agents/swarm-task-planner.md) -- agent template with fenced YAML
