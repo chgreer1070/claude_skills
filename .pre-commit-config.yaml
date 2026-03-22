@@ -54,7 +54,7 @@ repos:
         name: Detect destroyed symlinks
         description: fails if symlinks were converted to plain files (run after repair-symlinks)
       - id: trailing-whitespace
-        exclude: \.lock$
+        exclude: (\.lock$|.*requirements\.txt|plans?/.*|.claude/backlog/.*|.claude/reports/.*)$
       - id: check-yaml
         args: [--unsafe] # Allow Python tags in mkdocs.yml
       - id: check-json
@@ -70,7 +70,7 @@ repos:
 
   # TOML sorting and formatting
   - repo: https://github.com/bitflight-devops/pyproject-fmt
-    rev: v1.1.2
+    rev: v1.1.5
     hooks:
       - id: pypfmt
         name: Sort and format pyproject.toml with pypfmt
@@ -78,7 +78,7 @@ repos:
 
   # Python formatting and linting
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.1
+    rev: v0.15.7
     hooks:
       - id: ruff
         name: Lint Python with ruff
@@ -87,12 +87,12 @@ repos:
         name: Format Python with ruff
   # JavaScript/TypeScript formatting and linting with Biome
   - repo: https://github.com/biomejs/pre-commit
-    rev: "v2.3.13"
+    rev: v2.4.8
     hooks:
       - id: biome-check
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.19.1
+    rev: v0.22.0
     hooks:
       - id: markdownlint-cli2
         exclude: ^(plan/|\.claude/backlog/|\.claude/BACKLOG\.md)
