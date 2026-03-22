@@ -271,7 +271,10 @@ Disabled hooks take precedence over profile. Unknown IDs are silently ignored fo
 
 ## Phase 3: Quality Gates (`/complete-implementation`)
 
-Invoked automatically by `/implement-feature` when all tasks show COMPLETE. Runs six validation phases.
+Invoked automatically by `/implement-feature` when all tasks show COMPLETE, or invoked manually with an issue number for non-SAM fixes. Accepts two input formats:
+
+- **Plan file path** (`plan/P{NNN}-{slug}.yaml`) — routes to the full 6-phase SAM quality gate flow (existing behavior)
+- **Issue number** (`#N`, bare number `N`, or GitHub issue URL) — routes to a proportional 3-phase quality gate flow for fixes that bypass the SAM planning pipeline
 
 ### Pre-Phase 1: TN Verification Check
 
@@ -316,6 +319,48 @@ If the response contains artifacts, pass the manifest to quality gate agents (Ph
 
 **Fallback**: If `artifact_list` returns an empty manifest or an error, quality gate agents use filesystem path conventions. This ensures backward compatibility with issues that predate the artifact manifest system.
 
+### Issue Number Mode (Proportional Gates)
+
+When the input is an issue number (`#N`, bare number, or GitHub URL) instead of a plan file path, the skill runs a proportional 3-phase quality gate flow instead of the full 6-phase SAM flow.
+
+**Input Format Detection:**
+
+```mermaid
+flowchart TD
+    Input(["Parse input"]) --> Q{Input format?}
+    Q -->|"starts with plan/ OR contains .yaml OR contains /"| FilePath["FILE PATH → Resolve Plan Address<br>(existing 6-phase flow)"]
+    Q -->|"starts with #"| IssueHash["Strip # → extract issue_number<br>→ Resolve Issue"]
+    Q -->|"matches ^[0-9]+$"| IssueBare["Bare number<br>→ Resolve Issue"]
+    Q -->|"contains /issues/"| IssueURL["Extract number from URL<br>→ Resolve Issue"]
+    Q -->|"other"| Error["ERROR — unrecognized input format"]
+```
+
+**Resolve Issue:**
+
+1. Fetch issue via `mcp__plugin_dh_backlog__backlog_view(selector="#{issue_number}")`
+2. If the response contains a non-empty `plan` field → auto-redirect to the SAM 6-phase path using that plan file
+3. If no linked plan → proceed to proportional gates
+
+**Proportional Gate Phases:**
+
+| PQG Task | Phase | Agent | Dependencies |
+|----------|-------|-------|-------------|
+| T1 | Code Review | code-reviewer | none |
+| T2 | Test Verification | task-worker | T1 |
+| T3 | Acceptance Criteria Check | task-worker | T2 |
+
+**Proportional Gate Flow:**
+
+1. Discover modified files: `git log --all --grep="#N" --format=%H` → `git diff-tree --no-commit-id --name-only -r {sha}`. Fallback: `git diff main...HEAD --name-only`
+2. Extract acceptance criteria from issue body (search for `## Acceptance Criteria` header, `**Acceptance Criteria**:` marker, or `- [ ]` checkboxes). If none found, Phase 3 passes trivially.
+3. Create PQG plan: call `build_proportional_quality_gate_plan()` from `sam_schema.core.quality_gates`, then `sam_create(slug="pqg-issue-{N}", ...)`
+4. Dispatch through the same SAM loop (`sam_ready`/`sam_claim`/`start-task`)
+5. **Completion gate**: all 3 tasks must be COMPLETE — no skip whitelist (unlike the 6-phase flow where T5 may be skipped)
+6. Apply `status:verified` label via `mcp__plugin_dh_backlog__backlog_update(selector="#{N}", verified=True)`
+7. **No recursive follow-up handling** — proportional gates do not generate follow-up task files
+
+---
+
 ### Pre-Phase 1b: Process Accumulated Concerns
 
 Check the backlog item for a `## Concerns` section accumulated during `/implement-feature`:
@@ -340,7 +385,7 @@ Quality gate phases are mechanically enforced via SAM tasks. The 6 phases are mo
 ```mermaid
 flowchart TD
     Pre["Pre-phases (TN check, artifact discovery, concerns)<br>Remain as prose — ADR-005"] --> Create{"Existing QG plan<br>for this slug?"}
-    Create -->|"No"| Gen["build_quality_gate_plan() → YAML<br>sam_create() → plan/QG{NNN}-qg-{slug}.yaml"]
+    Create -->|"No"| Gen["build_quality_gate_plan() or<br>build_proportional_quality_gate_plan() → YAML<br>sam_create() → plan/QG{NNN}-qg-{slug}.yaml<br>or plan/PQG-pqg-issue-{N}.yaml"]
     Create -->|"Yes, incomplete tasks"| Resume["Resume: sam_ready(plan='QG{N}')"]
     Create -->|"Yes, all terminal"| Gate["Skip to Completion Gate"]
     Gen --> Loop["SAM Dispatch Loop<br>sam_ready → sam_claim → start-task → hook marks complete"]

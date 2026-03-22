@@ -1,14 +1,19 @@
 """Quality gate plan generator for the complete-implementation workflow.
 
-Produces a YAML string for a 6-task quality-gate plan (QG prefix) that is
-passed to ``sam_create`` by the ``complete-implementation`` skill.
+Produces YAML strings for quality-gate plans passed to ``sam_create`` by
+the ``complete-implementation`` skill:
 
-The function is pure — no file I/O, no MCP calls, no side effects.
+- ``build_quality_gate_plan``: 6-task plan (QG prefix) for SAM-planned features.
+- ``build_proportional_quality_gate_plan``: 3-task plan (PQG prefix) for
+  issue-only fixes that bypass the SAM planning pipeline.
+
+Both functions are pure — no file I/O, no MCP calls, no side effects.
 """
 
 from __future__ import annotations
 
 import io
+import pathlib
 from typing import Any
 
 from ruamel.yaml import YAML
@@ -146,6 +151,191 @@ def build_quality_gate_plan(
     tasks: list[dict[str, Any]] = []
     for defn in _PHASE_DEFINITIONS:
         body_text = _phase_body(defn["phase"], impl_plan_address)
+        task: dict[str, Any] = {
+            "id": defn["id"],
+            "title": defn["title"],
+            "status": "not-started",
+            "agent": defn["agent"],
+            "dependencies": list(defn["dependencies"]),
+            "priority": 1,
+            "complexity": defn["complexity"],
+            "body": LiteralScalarString(body_text),
+        }
+        tasks.append(task)
+
+    plan_data["tasks"] = tasks
+
+    yaml = _make_yaml()
+    stream = io.StringIO()
+    yaml.dump(plan_data, stream)
+    return stream.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# Proportional quality-gate definitions (3-task plan for issue-only fixes)
+# ---------------------------------------------------------------------------
+
+# Phase index constant — avoids PLR2004 magic-number lint errors
+_PROPORTIONAL_PHASE_TEST_VERIFY = 2
+
+_PROPORTIONAL_PHASE_DEFINITIONS: list[dict[str, Any]] = [
+    {
+        "id": "T1",
+        "title": "Code Review",
+        "agent": "code-reviewer",
+        "dependencies": [],
+        "complexity": "medium",
+        "phase": 1,
+    },
+    {
+        "id": "T2",
+        "title": "Test Verification",
+        "agent": "task-worker",
+        "dependencies": ["T1"],
+        "complexity": "low",
+        "phase": 2,
+    },
+    {
+        "id": "T3",
+        "title": "Acceptance Criteria Check",
+        "agent": "task-worker",
+        "dependencies": ["T2"],
+        "complexity": "low",
+        "phase": 3,
+    },
+]
+
+
+def _proportional_phase_body(
+    phase: int, issue_number: str, modified_files: list[str], acceptance_criteria: str | None
+) -> str:
+    """Build the task body markdown for a proportional quality-gate phase.
+
+    Args:
+        phase: Phase number (1-3).
+        issue_number: GitHub issue number, e.g. ``"42"``.
+        modified_files: List of file paths changed by the fix, e.g.
+            ``["src/foo.py", "src/bar.py"]``.
+        acceptance_criteria: Raw acceptance criteria text extracted from the
+            issue body, or ``None`` if none were found.
+
+    Returns:
+        Markdown string describing what this phase agent should do.
+    """
+    if phase == 1:
+        lines = [
+            "## Proportional Gate Phase 1: Code Review",
+            "",
+            f"Review the changes made for issue #{issue_number}.",
+            "",
+        ]
+        if modified_files:
+            lines += ["**Modified files:**", ""]
+            lines += [f"- `{f}`" for f in modified_files]
+        else:
+            lines += ["No specific modified files identified. Review all uncommitted changes."]
+        lines += [
+            "",
+            "Check for correctness, style, and potential regressions.",
+            "Mark this task complete when code review is finished.",
+        ]
+        return "\n".join(lines) + "\n"
+
+    if phase == _PROPORTIONAL_PHASE_TEST_VERIFY:
+        lines = [
+            "## Proportional Gate Phase 2: Test Verification",
+            "",
+            f"Run tests to verify the fix for issue #{issue_number} does not introduce regressions.",
+            "",
+        ]
+        test_files = _derive_test_files(modified_files)
+        if test_files:
+            lines += ["**Test commands:**", ""]
+            lines += [f"- `uv run pytest {f}`" for f in test_files]
+        else:
+            lines += ["**Test command:**", "", "- `uv run pytest`"]
+        lines += ["", "Mark this task complete when all tests pass."]
+        return "\n".join(lines) + "\n"
+
+    # phase == 3
+    lines = [
+        "## Proportional Gate Phase 3: Acceptance Criteria Check",
+        "",
+        f"Verify that issue #{issue_number} acceptance criteria are satisfied.",
+        "",
+    ]
+    if acceptance_criteria:
+        lines += ["**Acceptance criteria:**", "", acceptance_criteria, ""]
+        lines += ["Confirm each criterion above is met before marking this task complete."]
+    else:
+        lines += ["No acceptance criteria found in issue body. This phase passes trivially."]
+    lines += ["", "Mark this task complete when verification is done."]
+    return "\n".join(lines) + "\n"
+
+
+def _derive_test_files(modified_files: list[str]) -> list[str]:
+    """Derive test file paths from a list of source file paths.
+
+    Maps ``src/foo/bar.py`` → ``tests/test_bar.py`` and
+    ``packages/foo/bar.py`` → ``tests/test_bar.py``.  Only returns paths
+    that follow the ``*.py`` extension convention; non-Python files are
+    ignored.
+
+    Args:
+        modified_files: List of modified source file paths.
+
+    Returns:
+        Deduplicated list of inferred test file paths (may be empty).
+    """
+    test_files: list[str] = []
+    seen: set[str] = set()
+    for path in modified_files:
+        p = pathlib.Path(path)
+        if p.suffix != ".py":
+            continue
+        # Skip files that are already test files
+        candidate = path if p.name.startswith("test_") else f"tests/test_{p.stem}.py"
+        if candidate not in seen:
+            seen.add(candidate)
+            test_files.append(candidate)
+    return test_files
+
+
+def build_proportional_quality_gate_plan(
+    slug: str, issue: str, modified_files: list[str], acceptance_criteria: str | None
+) -> str:
+    """Generate YAML for a 3-task proportional quality-gate plan.
+
+    Used by ``complete-implementation`` when the input is a GitHub issue
+    number without a linked SAM plan.  The returned string is intended to
+    be passed directly to ``sam_create`` as the ``tasks_yaml`` argument.
+    No file I/O is performed.
+
+    Args:
+        slug: Feature slug used as the plan ``feature`` identifier,
+            e.g. ``"issue-42"``.
+        issue: GitHub issue number as a string, e.g. ``"42"``.
+        modified_files: List of file paths modified by the fix, used to
+            scope code review and derive test commands.
+        acceptance_criteria: Raw acceptance criteria text extracted from
+            the issue body, or ``None`` if none were found.
+
+    Returns:
+        YAML string containing plan-level metadata and 3 task definitions.
+        The string is valid YAML parseable by ``ruamel.yaml`` and validates
+        against the ``Plan`` model.
+    """
+    plan_data: dict[str, Any] = {
+        "feature": slug,
+        "version": "1.0",
+        "goal": f"Proportional quality gate verification for issue #{issue}",
+        "issue": issue,
+        "tasks": [],
+    }
+
+    tasks: list[dict[str, Any]] = []
+    for defn in _PROPORTIONAL_PHASE_DEFINITIONS:
+        body_text = _proportional_phase_body(defn["phase"], issue, modified_files, acceptance_criteria)
         task: dict[str, Any] = {
             "id": defn["id"],
             "title": defn["title"],

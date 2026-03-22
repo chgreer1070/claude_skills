@@ -19,7 +19,11 @@ from typing import Any
 import pytest
 from ruamel.yaml import YAML
 from sam_schema.core.models import Plan, Task, TaskStatus
-from sam_schema.core.quality_gates import build_quality_gate_plan
+from sam_schema.core.quality_gates import (
+    _proportional_phase_body,
+    build_proportional_quality_gate_plan,
+    build_quality_gate_plan,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -610,3 +614,642 @@ class TestPydanticRoundtrip:
         # Arrange / Act / Assert
         assert plan_model.goal is not None
         assert "P003" in plan_model.goal
+
+
+# ===========================================================================
+# Proportional quality-gate plan tests
+# build_proportional_quality_gate_plan() and _proportional_phase_body()
+# ===========================================================================
+
+# Expected values for the 3-task proportional plan
+_PROP_TASK_IDS = ["T1", "T2", "T3"]
+_PROP_TITLES = ["Code Review", "Test Verification", "Acceptance Criteria Check"]
+_PROP_AGENTS = ["code-reviewer", "task-worker", "task-worker"]
+_PROP_DEPS: list[list[str]] = [[], ["T1"], ["T2"]]
+
+
+# ---------------------------------------------------------------------------
+# Fixtures for proportional tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def prop_basic_yaml() -> str:
+    """Generate a proportional plan YAML with all parameters populated.
+
+    Returns:
+        YAML string from build_proportional_quality_gate_plan.
+    """
+    return build_proportional_quality_gate_plan(
+        slug="issue-42",
+        issue="42",
+        modified_files=["src/foo.py", "src/bar.py"],
+        acceptance_criteria="The fix resolves the regression.",
+    )
+
+
+@pytest.fixture
+def prop_plan_model(prop_basic_yaml: str) -> Plan:
+    """Roundtrip the proportional plan YAML through the Plan Pydantic model.
+
+    Returns:
+        Validated Plan instance.
+    """
+    data = _parse_yaml(prop_basic_yaml)
+    return Plan.model_validate(data)
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_proportional_quality_gate_plan — YAML validity
+# ---------------------------------------------------------------------------
+
+
+class TestProportionalYamlValidity:
+    """Tests: build_proportional_quality_gate_plan returns well-formed parseable YAML.
+
+    Strategy: Parse the output with ruamel.yaml; assert on top-level structure.
+    Why: Malformed YAML causes sam_create to fail silently at plan creation time.
+    """
+
+    def test_output_is_parseable_yaml(self, prop_basic_yaml: str) -> None:
+        """Test that build_proportional_quality_gate_plan returns valid YAML.
+
+        Tests: YAML parseability of the returned string.
+        How: Parse with ruamel.yaml; assert result is a dict with no exception.
+        Why: sam_create passes this string directly to YAML deserialisation.
+        """
+        # Arrange
+        yaml_string = prop_basic_yaml
+
+        # Act
+        result = _parse_yaml(yaml_string)
+
+        # Assert
+        assert isinstance(result, dict)
+
+    def test_output_has_feature_key(self, prop_basic_yaml: str) -> None:
+        """Test that the proportional plan YAML contains the 'feature' field.
+
+        Tests: Plan-level 'feature' field presence.
+        How: Parse YAML and assert 'feature' key exists.
+        Why: SAM Plan model requires 'feature' as a mandatory field.
+        """
+        # Arrange / Act
+        data = _parse_yaml(prop_basic_yaml)
+
+        # Assert
+        assert "feature" in data
+
+    def test_output_has_tasks_key(self, prop_basic_yaml: str) -> None:
+        """Test that the proportional plan YAML contains a 'tasks' list.
+
+        Tests: Plan-level 'tasks' field presence and type.
+        How: Parse YAML and assert 'tasks' key is a list.
+        Why: Without a tasks list sam_ready returns empty and no phases execute.
+        """
+        # Arrange / Act
+        data = _parse_yaml(prop_basic_yaml)
+
+        # Assert
+        assert isinstance(data.get("tasks"), list)
+
+    def test_output_has_goal_key(self, prop_basic_yaml: str) -> None:
+        """Test that the proportional plan YAML contains a 'goal' field.
+
+        Tests: Plan-level 'goal' field presence.
+        How: Parse YAML and assert 'goal' key exists.
+        Why: sam_status displays the goal for operator orientation.
+        """
+        # Arrange / Act
+        data = _parse_yaml(prop_basic_yaml)
+
+        # Assert
+        assert "goal" in data
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_proportional_quality_gate_plan — task count and IDs
+# ---------------------------------------------------------------------------
+
+
+class TestProportionalTaskCountAndIds:
+    """Tests: Exactly 3 tasks are generated with correct IDs and titles.
+
+    Strategy: Parse YAML and inspect task-level fields.
+    Why: Missing tasks silently skip quality-gate phases; wrong IDs break the chain.
+    """
+
+    def test_generates_three_tasks(self, prop_basic_yaml: str) -> None:
+        """Test that exactly 3 tasks are present in the proportional plan.
+
+        Tests: Task count in proportional plan.
+        How: Parse YAML, count tasks list entries.
+        Why: Proportional gates have exactly 3 phases. Fewer means missing verification.
+        """
+        # Arrange / Act
+        tasks = _tasks_from_yaml(prop_basic_yaml)
+
+        # Assert
+        assert len(tasks) == 3
+
+    @pytest.mark.parametrize(("index", "expected_id"), list(enumerate(_PROP_TASK_IDS)))
+    def test_task_ids_are_correct(self, prop_basic_yaml: str, index: int, expected_id: str) -> None:
+        """Test that each proportional task has the expected ID (T1 through T3).
+
+        Tests: Task IDs in order.
+        How: Parse YAML, extract task at index, assert 'id' matches.
+        Why: SAM dependency resolution uses task IDs; wrong IDs break the chain.
+        """
+        # Arrange / Act
+        tasks = _tasks_from_yaml(prop_basic_yaml)
+
+        # Assert
+        assert tasks[index]["id"] == expected_id
+
+    @pytest.mark.parametrize(("index", "expected_title"), list(enumerate(_PROP_TITLES)))
+    def test_task_titles_are_correct(self, prop_basic_yaml: str, index: int, expected_title: str) -> None:
+        """Test that each proportional task has the expected human-readable title.
+
+        Tests: Task titles in order.
+        How: Parse YAML, extract task at index, assert 'title' matches.
+        Why: Titles appear in sam_status output; wrong titles confuse operators.
+        """
+        # Arrange / Act
+        tasks = _tasks_from_yaml(prop_basic_yaml)
+
+        # Assert
+        assert tasks[index]["title"] == expected_title
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_proportional_quality_gate_plan — dependency chain
+# ---------------------------------------------------------------------------
+
+
+class TestProportionalDependencyChain:
+    """Tests: Tasks form a strict linear chain T1 -> T2 -> T3.
+
+    Strategy: Parse YAML, check 'dependencies' per task.
+    Why: Wrong dependency chains allow phases to run simultaneously, defeating enforcement.
+    """
+
+    def test_t1_has_no_dependencies(self, prop_basic_yaml: str) -> None:
+        """Test that T1 (Code Review) has an empty dependencies list.
+
+        Tests: T1 dependency field in proportional plan.
+        How: Parse YAML, check T1 dependencies == [].
+        Why: T1 must be the chain entry point; a dependency would block the whole plan.
+        """
+        # Arrange / Act
+        tasks = _tasks_from_yaml(prop_basic_yaml)
+
+        # Assert
+        assert tasks[0]["dependencies"] == []
+
+    def test_t2_depends_on_t1(self, prop_basic_yaml: str) -> None:
+        """Test that T2 (Test Verification) depends on T1.
+
+        Tests: T2 dependency field.
+        How: Parse YAML, assert tasks[1]['dependencies'] == ['T1'].
+        Why: T2 must not start until code review completes.
+        """
+        # Arrange / Act
+        tasks = _tasks_from_yaml(prop_basic_yaml)
+
+        # Assert
+        assert tasks[1]["dependencies"] == ["T1"]
+
+    def test_t3_depends_on_t2(self, prop_basic_yaml: str) -> None:
+        """Test that T3 (Acceptance Criteria Check) depends on T2.
+
+        Tests: T3 dependency field.
+        How: Parse YAML, assert tasks[2]['dependencies'] == ['T2'].
+        Why: AC check must not start until tests pass.
+        """
+        # Arrange / Act
+        tasks = _tasks_from_yaml(prop_basic_yaml)
+
+        # Assert
+        assert tasks[2]["dependencies"] == ["T2"]
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_proportional_quality_gate_plan — issue field
+# ---------------------------------------------------------------------------
+
+
+class TestProportionalIssueField:
+    """Tests: The 'issue' field is always set in the proportional plan.
+
+    Strategy: Call function and inspect the parsed plan-level 'issue' key.
+    Why: sam_create uses the issue field for artifact registration.
+         Unlike build_quality_gate_plan, the proportional variant always requires an issue.
+    """
+
+    def test_issue_field_populated(self, prop_basic_yaml: str) -> None:
+        """Test that the plan-level 'issue' field contains the supplied issue number.
+
+        Tests: Issue field presence and value.
+        How: Parse YAML, assert 'issue' key equals '42'.
+        Why: Proportional plans always originate from a GitHub issue — field is mandatory.
+        """
+        # Arrange / Act
+        data = _parse_yaml(prop_basic_yaml)
+
+        # Assert
+        assert data.get("issue") == "42"
+
+    def test_different_issue_number_in_field(self) -> None:
+        """Test that a different issue number appears verbatim in the 'issue' field.
+
+        Tests: Issue field parametrisation — ensures no hard-coding.
+        How: Call with issue='999', parse, assert 'issue' == '999'.
+        Why: Catches accidental hard-coded values from copy-paste errors.
+        """
+        # Arrange
+        yaml_string = build_proportional_quality_gate_plan(
+            slug="issue-999", issue="999", modified_files=[], acceptance_criteria=None
+        )
+
+        # Act
+        data = _parse_yaml(yaml_string)
+
+        # Assert
+        assert data.get("issue") == "999"
+
+    def test_goal_contains_issue_number(self, prop_basic_yaml: str) -> None:
+        """Test that the plan-level 'goal' field references the issue number.
+
+        Tests: Issue number embedded in goal string.
+        How: Parse YAML, assert '#42' in goal value.
+        Why: Goal string surfaces in sam_status — operators need the issue reference.
+        """
+        # Arrange / Act
+        data = _parse_yaml(prop_basic_yaml)
+
+        # Assert
+        assert "#42" in data.get("goal", "")
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_proportional_quality_gate_plan — initial task status
+# ---------------------------------------------------------------------------
+
+
+class TestProportionalInitialTaskStatus:
+    """Tests: All 3 tasks start with status 'not-started'.
+
+    Strategy: Parse YAML, check 'status' field per task.
+    Why: sam_ready only returns tasks with status 'not-started'.
+    A task pre-marked complete would be silently skipped by the dispatch loop.
+    """
+
+    @pytest.mark.parametrize("task_index", range(3))
+    def test_all_tasks_start_not_started(self, prop_basic_yaml: str, task_index: int) -> None:
+        """Test that every task has status 'not-started' in the proportional plan.
+
+        Tests: Initial status field for all 3 tasks.
+        How: Parse YAML, assert 'status' == 'not-started' at each index.
+        Why: Prevents tasks from being silently skipped on first dispatch.
+        """
+        # Arrange / Act
+        tasks = _tasks_from_yaml(prop_basic_yaml)
+
+        # Assert
+        assert tasks[task_index]["status"] == "not-started"
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_proportional_quality_gate_plan — no acceptance criteria
+# ---------------------------------------------------------------------------
+
+
+class TestProportionalNoAcceptanceCriteria:
+    """Tests: When AC is None, T3 body indicates the phase passes trivially.
+
+    Strategy: Call with acceptance_criteria=None, inspect T3 body.
+    Why: The proportional gate must not crash on issues without AC sections.
+    """
+
+    def test_no_ac_t3_body_contains_passes_trivially(self) -> None:
+        """Test that T3 body says 'passes trivially' when acceptance_criteria is None.
+
+        Tests: T3 body content with no acceptance criteria.
+        How: Call with AC=None, parse, inspect body of T3.
+        Why: The plan spec requires this phrasing for no-AC cases.
+        """
+        # Arrange
+        yaml_string = build_proportional_quality_gate_plan(
+            slug="issue-55", issue="55", modified_files=["src/utils.py"], acceptance_criteria=None
+        )
+
+        # Act
+        tasks = _tasks_from_yaml(yaml_string)
+        t3_body: str = tasks[2]["body"]
+
+        # Assert
+        assert "passes trivially" in t3_body
+
+    def test_no_ac_t3_body_omits_ac_header(self) -> None:
+        """Test that T3 body has no '**Acceptance criteria:**' header when AC is None.
+
+        Tests: T3 body excludes AC header text when AC=None.
+        How: Call with AC=None, parse, confirm header absent from body.
+        Why: Avoids emitting an empty AC section that misleads the task-worker agent.
+        """
+        # Arrange
+        yaml_string = build_proportional_quality_gate_plan(
+            slug="issue-55", issue="55", modified_files=[], acceptance_criteria=None
+        )
+
+        # Act
+        tasks = _tasks_from_yaml(yaml_string)
+        t3_body: str = tasks[2]["body"]
+
+        # Assert
+        assert "**Acceptance criteria:**" not in t3_body
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_proportional_quality_gate_plan — empty modified files
+# ---------------------------------------------------------------------------
+
+
+class TestProportionalEmptyModifiedFiles:
+    """Tests: When modified_files=[], T1 and T2 bodies contain appropriate fallback text.
+
+    Strategy: Call with files=[], inspect T1 and T2 bodies.
+    Why: File discovery may return nothing; the plan must still be actionable.
+    """
+
+    def test_empty_files_t1_body_omits_file_list_header(self) -> None:
+        """Test that T1 body lacks '**Modified files:**' when modified_files is empty.
+
+        Tests: T1 body content with no modified files.
+        How: Call with files=[], parse, confirm '**Modified files:**' absent from T1.
+        Why: An empty bullet list section would be confusing to the code-reviewer.
+        """
+        # Arrange
+        yaml_string = build_proportional_quality_gate_plan(
+            slug="issue-77", issue="77", modified_files=[], acceptance_criteria=None
+        )
+
+        # Act
+        tasks = _tasks_from_yaml(yaml_string)
+        t1_body: str = tasks[0]["body"]
+
+        # Assert
+        assert "**Modified files:**" not in t1_body
+
+    def test_empty_files_t2_body_runs_full_test_suite(self) -> None:
+        """Test that T2 body instructs running the full test suite when no files found.
+
+        Tests: T2 body fallback when no test files can be derived.
+        How: Call with files=[], parse, assert 'uv run pytest' present without a path arg.
+        Why: Running the full suite is the safe fallback when modified files are unknown.
+        """
+        # Arrange
+        yaml_string = build_proportional_quality_gate_plan(
+            slug="issue-77", issue="77", modified_files=[], acceptance_criteria=None
+        )
+
+        # Act
+        tasks = _tasks_from_yaml(yaml_string)
+        t2_body: str = tasks[1]["body"]
+
+        # Assert
+        assert "uv run pytest" in t2_body
+
+
+# ---------------------------------------------------------------------------
+# Tests: build_proportional_quality_gate_plan — Pydantic roundtrip
+# ---------------------------------------------------------------------------
+
+
+class TestProportionalPydanticRoundtrip:
+    """Tests: Proportional plan YAML roundtrips through Plan/Task models without errors.
+
+    Strategy: Parse YAML then call Plan.model_validate on the result.
+    Why: If sam_schema internal tooling cannot validate the plan, the QG loop breaks.
+    """
+
+    def test_yaml_roundtrips_through_plan_model(self, prop_plan_model: Plan) -> None:
+        """Test that the proportional YAML validates as a Plan model instance.
+
+        Tests: Plan.model_validate succeeds without raising ValidationError.
+        How: Use the prop_plan_model fixture. Assert result is a Plan instance.
+        Why: sam_read calls Plan.model_validate on every plan file it reads.
+        """
+        # Arrange / Act / Assert
+        assert isinstance(prop_plan_model, Plan)
+
+    def test_plan_has_three_task_instances(self, prop_plan_model: Plan) -> None:
+        """Test that the validated Plan contains 3 Task model instances.
+
+        Tests: tasks list length and element types after Pydantic validation.
+        How: Access prop_plan_model.tasks, assert length and element type.
+        Why: Ensures Pydantic does not silently drop tasks with unknown fields.
+        """
+        # Arrange / Act / Assert
+        assert len(prop_plan_model.tasks) == 3
+        assert all(isinstance(t, Task) for t in prop_plan_model.tasks)
+
+    def test_plan_tasks_have_not_started_status(self, prop_plan_model: Plan) -> None:
+        """Test that all Task instances carry NOT_STARTED status after model validation.
+
+        Tests: TaskStatus enum value on validated Task objects.
+        How: Iterate prop_plan_model.tasks, assert status == TaskStatus.NOT_STARTED.
+        Why: Confirms the status string-to-enum mapping works correctly in models.py.
+        """
+        # Arrange / Act / Assert
+        for task in prop_plan_model.tasks:
+            assert task.status == TaskStatus.NOT_STARTED
+
+    def test_plan_issue_preserved_after_roundtrip(self, prop_plan_model: Plan) -> None:
+        """Test that the issue field survives Plan.model_validate as a string.
+
+        Tests: Plan.issue field after roundtrip.
+        How: Assert prop_plan_model.issue == '42'.
+        Why: Confirms coerce_issue_to_str validator works on proportional plan data.
+        """
+        # Arrange / Act / Assert
+        assert prop_plan_model.issue == "42"
+
+    def test_plan_dependency_chain_preserved_after_roundtrip(self, prop_plan_model: Plan) -> None:
+        """Test that dependency lists survive Plan.model_validate correctly.
+
+        Tests: Task.dependencies field integrity after Plan.model_validate.
+        How: Compare task.dependencies for each of the 3 tasks against expected chains.
+        Why: Ensures field_validator transforms do not corrupt dependency strings.
+        """
+        # Arrange / Act
+        for task, expected_deps in zip(prop_plan_model.tasks, _PROP_DEPS, strict=False):
+            # Assert
+            assert task.dependencies == expected_deps
+
+
+# ===========================================================================
+# _proportional_phase_body() unit tests
+# ===========================================================================
+
+
+class TestProportionalPhaseBodyPhase1:
+    """Tests: _proportional_phase_body(phase=1) produces the correct Code Review body.
+
+    Strategy: Call the function directly and assert on string content.
+    Why: The phase body drives what the code-reviewer agent does.
+    Incorrect bodies give agents wrong scope.
+    """
+
+    def test_phase1_body_contains_issue_number(self) -> None:
+        """Test that the phase 1 body references the issue number.
+
+        Tests: Issue number presence in phase 1 body.
+        How: Call _proportional_phase_body(1, '42', files, None), assert '#42' in result.
+        Why: The code-reviewer needs to know which issue scopes the review.
+        """
+        # Arrange
+        files = ["src/foo.py", "src/bar.py"]
+
+        # Act
+        body = _proportional_phase_body(1, "42", files, None)
+
+        # Assert
+        assert "#42" in body
+
+    def test_phase1_body_contains_file_paths(self) -> None:
+        """Test that the phase 1 body lists each modified file path.
+
+        Tests: File path listing in phase 1 body.
+        How: Call with specific files, assert each path appears in body text.
+        Why: The code-reviewer uses this list to scope review to changed files.
+        """
+        # Arrange
+        files = ["src/auth.py", "tests/test_auth.py"]
+
+        # Act
+        body = _proportional_phase_body(1, "77", files, None)
+
+        # Assert
+        assert "src/auth.py" in body
+        assert "tests/test_auth.py" in body
+
+    def test_phase1_body_with_no_files_omits_file_list_header(self) -> None:
+        """Test that phase 1 body lacks '**Modified files:**' header when files=[].
+
+        Tests: Phase 1 body with empty file list.
+        How: Call with files=[], assert '**Modified files:**' not in body.
+        Why: An empty bullet list under the header would mislead the agent.
+        """
+        # Arrange / Act
+        body = _proportional_phase_body(1, "99", [], None)
+
+        # Assert
+        assert "**Modified files:**" not in body
+
+
+class TestProportionalPhaseBodyPhase2:
+    """Tests: _proportional_phase_body(phase=2) produces the correct Test Verification body.
+
+    Strategy: Call directly and assert on string content.
+    Why: The phase body drives what commands the task-worker agent executes.
+    """
+
+    def test_phase2_body_contains_uv_run_pytest(self) -> None:
+        """Test that the phase 2 body includes a pytest command.
+
+        Tests: 'uv run pytest' presence in phase 2 body.
+        How: Call _proportional_phase_body(2, issue, files, None), assert command in body.
+        Why: The task-worker agent executes the command from the body verbatim.
+        """
+        # Arrange
+        files = ["src/models.py"]
+
+        # Act
+        body = _proportional_phase_body(2, "42", files, None)
+
+        # Assert
+        assert "uv run pytest" in body
+
+    def test_phase2_body_with_files_contains_derived_test_path(self) -> None:
+        """Test that the phase 2 body references a derived test file path.
+
+        Tests: Derived test file path in phase 2 body when source files are given.
+        How: Call with src/models.py, assert 'tests/test_models.py' in body.
+        Why: Scoped pytest commands are faster and more precise than the full suite.
+        """
+        # Arrange
+        files = ["src/models.py"]
+
+        # Act
+        body = _proportional_phase_body(2, "42", files, None)
+
+        # Assert
+        assert "tests/test_models.py" in body
+
+    def test_phase2_body_contains_issue_number(self) -> None:
+        """Test that the phase 2 body references the issue number.
+
+        Tests: Issue number presence in phase 2 body.
+        How: Call _proportional_phase_body(2, '88', [], None), assert '#88' in result.
+        Why: Task-worker agent output should be traceable to the originating issue.
+        """
+        # Arrange / Act
+        body = _proportional_phase_body(2, "88", [], None)
+
+        # Assert
+        assert "#88" in body
+
+
+class TestProportionalPhaseBodyPhase3:
+    """Tests: _proportional_phase_body(phase=3) produces the correct AC Check body.
+
+    Strategy: Call directly with and without AC text; assert on body content.
+    Why: The phase body drives what the task-worker verifies against acceptance criteria.
+    """
+
+    def test_phase3_with_ac_body_contains_ac_text(self) -> None:
+        """Test that the phase 3 body embeds the acceptance criteria text.
+
+        Tests: AC text embedding in phase 3 body.
+        How: Call with specific AC text, assert that text appears verbatim in body.
+        Why: The task-worker agent reads this text to perform the AC verification.
+        """
+        # Arrange
+        ac_text = "The fix must resolve the login regression."
+
+        # Act
+        body = _proportional_phase_body(3, "42", [], ac_text)
+
+        # Assert
+        assert ac_text in body
+
+    def test_phase3_without_ac_body_contains_passes_trivially(self) -> None:
+        """Test that the phase 3 body says 'passes trivially' when AC is None.
+
+        Tests: Trivial-pass phrasing in phase 3 body when acceptance_criteria=None.
+        How: Call with acceptance_criteria=None, assert 'passes trivially' in body.
+        Why: The plan spec requires this exact phrasing for no-AC cases.
+        """
+        # Arrange / Act
+        body = _proportional_phase_body(3, "42", [], None)
+
+        # Assert
+        assert "passes trivially" in body
+
+    def test_phase3_with_ac_body_contains_confirmation_instruction(self) -> None:
+        """Test that phase 3 body includes a 'Confirm each criterion' instruction.
+
+        Tests: Task-worker confirmation instruction when AC is supplied.
+        How: Call with AC text, assert 'Confirm each criterion' in body.
+        Why: Without an explicit instruction the agent may mark the task complete
+        without verifying each criterion individually.
+        """
+        # Arrange
+        ac_text = "Users can log out from all devices."
+
+        # Act
+        body = _proportional_phase_body(3, "42", [], ac_text)
+
+        # Assert
+        assert "Confirm each criterion" in body
