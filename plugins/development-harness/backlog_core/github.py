@@ -192,7 +192,7 @@ query GetIssue($owner: String!, $repo: String!, $number: Int!) {
 _ISSUES_LIST_QUERY = """
 query ListIssues(
   $owner: String!, $repo: String!, $states: [IssueState!],
-  $labels: [String!], $milestoneNumber: String, $since: String, $first: Int!, $after: String
+  $labels: [String!], $milestoneNumber: String, $since: DateTime, $first: Int!, $after: String
 ) {
   repository(owner: $owner, name: $repo) {
     issues(
