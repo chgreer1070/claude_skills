@@ -3,14 +3,13 @@ name: 'SAM: Timeout/Stall Detection'
 description: Define mechanism to detect when an agent is stuck or has stalled. Include timeout thresholds per stage, health check patterns, and recovery actions.
 metadata:
   topic: sam-timeoutstall-detection
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #87'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#87'
-  plan: ''
-  last_synced: '2026-03-21T03:46:51Z'
+  last_synced: '2026-03-22T15:10:53Z'
 ---
 
 ## Story

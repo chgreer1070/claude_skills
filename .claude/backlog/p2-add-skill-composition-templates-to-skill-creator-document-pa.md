@@ -1,15 +1,15 @@
 ---
 name: Add skill composition templates to skill-creator — document patterns for combining multiple skills in compound workflows
-description: "## Current state\n\nThe skill-creator skill (plugins/plugin-creator/skills/skill-creator/SKILL.md) documents how to create individual skills but contains no guidance on composing multiple skills into compound workflows. No file in the repository provides skill composition templates or multi-skill workflow examples. Agents creating or using skills have no reference for how to chain skill invocations across domains (e.g., research-curator + backlog + implement-feature as a compound pipeline).\n\nGrep for \"skill-composition\", \"cross-domain\", and \"compound workflow\" across .claude/ returned zero results. The external-pattern-integrator skill handles integrating external patterns into local skills but does not address composing local skills together."
+description: "## Current state\n\nThe skill-creator skill (plugins/plugin-creator/skills/skill-creator/SKILL.md) documents how to create individual skills but contains no guidance on composing multiple skills into compound workflows. No file in the repository provides skill composition templates or multi-skill workflow examples. Agents creating or using skills have no reference for how to chain skill invocations across domains (e.g., research-curator + backlog + implement-feature as a compound pipeline).\n\nGrep for 'skill-composition', 'cross-domain', and 'compound workflow' across .claude/ returned zero results. The external-pattern-integrator skill handles integrating external patterns into local skills but does not address composing local skills together."
 metadata:
   topic: add-skill-composition-templates-to-skill-creator-document-pa
-  source: 'Research entry: ./research/skill-generation-tools/claude-scientific-skills.md — pattern: Bundled cross-domain examples showing multi-step workflow composition across skill domains'
-  added: '2026-03-16'
+  source: 'GitHub Issue #750'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#750'
-  last_synced: '2026-03-21T03:45:21Z'
+  last_synced: '2026-03-22T15:09:16Z'
 ---
 
 ## Story

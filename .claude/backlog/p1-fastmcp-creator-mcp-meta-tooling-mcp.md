@@ -4,12 +4,12 @@ description: 'Wrap `connections.py`, `evaluation.py`, and `get_environment.py` a
 metadata:
   topic: fastmcp-creator-mcp-meta-tooling-mcp
   source: 'GitHub Issue #260'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#260'
-  last_synced: '2026-03-21T03:46:23Z'
+  last_synced: '2026-03-22T15:10:22Z'
 ---
 
 ## Story

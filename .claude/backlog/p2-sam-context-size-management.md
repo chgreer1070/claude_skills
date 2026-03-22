@@ -3,13 +3,13 @@ name: 'SAM: Context Size Management'
 description: Define explicit guidance for measuring and managing context size per agent. What's the target token budget? How to detect context pressure?
 metadata:
   topic: sam-context-size-management
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #111'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#111'
-  last_synced: '2026-03-21T03:46:39Z'
+  last_synced: '2026-03-22T15:10:39Z'
 ---
 
 ## Story

@@ -3,15 +3,13 @@ name: Enhance session-historian script with Agent SDK navigation and current ses
 description: <div><sub>2026-03-11T15:47:18Z</sub>
 metadata:
   topic: enhance-session-historian-script-with-agent-sdk-navigation-a
-  source: User request — session 2026-03-11
-  added: '2026-03-11'
+  source: 'GitHub Issue #599'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: in-progress
   issue: '#599'
-  last_synced: '2026-03-21T03:45:28Z'
-  groomed: '2026-03-11'
-  plan: plan/tasks-6-session-historian-enhance.md
+  last_synced: '2026-03-22T15:09:24Z'
 ---
 
 ## Fact-Check

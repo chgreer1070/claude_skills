@@ -4,12 +4,12 @@ description: Explore how SAM handles documentation-only tasks, configuration cha
 metadata:
   topic: sam-non-code-workflow-guidance
   source: 'GitHub Issue #125'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: IDEA
   type: Feature
   status: needs-grooming
   issue: '#125'
-  last_synced: '2026-03-21T03:46:28Z'
+  last_synced: '2026-03-22T15:10:28Z'
 ---
 
 ## Story

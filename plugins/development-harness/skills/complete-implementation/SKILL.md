@@ -1,6 +1,6 @@
 ---
 name: complete-implementation
-argument-hint: <task-file-path>
+argument-hint: <task-file-path-or-issue-number>
 user-invocable: true
 description: "Holistic completion workflow after a feature's tasks are marked COMPLETE: code review, feature verification, integration check, documentation drift audit/update, and context refinement. Creates follow-up task files when issues are found."
 compatibility: Python 3.11+
@@ -21,6 +21,222 @@ You MUST validate that the implemented feature meets its goals and quality gates
 <task_file>
 $ARGUMENTS
 </task_file>
+
+---
+
+## Input Format Detection
+
+Parse `$ARGUMENTS` to determine the input type before proceeding:
+
+```mermaid
+flowchart TD
+    Input["Read $ARGUMENTS"] --> Q1{"starts with 'plan/'<br>OR contains '.yaml'<br>OR contains '/'?"}
+    Q1 -->|Yes| FilePath["FILE PATH format<br>→ proceed to 'Resolve Plan Address'<br>(existing flow, unchanged)"]
+    Q1 -->|No| Q2{"starts with '#'?"}
+    Q2 -->|Yes| IssueHash["Strip '#' → issue_number<br>→ proceed to 'Resolve Issue'"]
+    Q2 -->|No| Q3{"matches ^[0-9]+$ ?"}
+    Q3 -->|Yes| IssueBare["issue_number = input<br>→ proceed to 'Resolve Issue'"]
+    Q3 -->|No| Q4{"contains '/issues/'?"}
+    Q4 -->|Yes| IssueURL["Extract number from URL path<br>→ proceed to 'Resolve Issue'"]
+    Q4 -->|No| Err["ERROR: Unrecognized input format.<br>Expected: plan file path, #N, bare number, or GitHub URL."]
+```
+
+---
+
+## Resolve Issue
+
+Entered when input is an issue number (`#N`, bare `N`, or GitHub URL). Skip this section when input is a file path.
+
+**Step 1 -- Fetch issue data**:
+
+```text
+mcp__plugin_dh_backlog__backlog_view(selector="#{issue_number}")
+```
+
+If the response contains an `error` key:
+
+```text
+ERROR: Issue #{issue_number} not found. Verify the issue number and try again.
+```
+
+Stop.
+
+**Step 2 -- Check for linked plan**:
+
+Read the `plan` field from the response.
+
+```mermaid
+flowchart TD
+    Plan{plan field<br>present and non-empty?}
+    Plan -->|Yes| AutoResolve["Extract plan file path from plan field<br>→ proceed to 'Resolve Plan Address'<br>(existing 6-phase flow)"]
+    Plan -->|No| PropFlow["→ proceed to 'Proportional Quality Gates'"]
+```
+
+When auto-resolving to the SAM path, output:
+
+```text
+Issue #{issue_number} has linked plan: {plan_path}
+Proceeding with full 6-phase quality gates.
+```
+
+**Step 3 -- Extract context for proportional gates**:
+
+From the `backlog_view` response, extract and store:
+
+- `issue_number`: int
+- `title`: str
+- `body`: str (full issue body text)
+- `labels`: list[str]
+
+These values are used by the Proportional Quality Gates section below.
+
+---
+
+## Proportional Quality Gates
+
+Entered only when the issue has no linked plan. Skip this section when input is a file path or when the issue has a linked plan (auto-resolved to SAM path).
+
+**Step 1 -- Discover modified files**:
+
+```bash
+git log --all --grep="#${issue_number}" --format=%H
+```
+
+For each commit SHA returned:
+
+```bash
+git diff-tree --no-commit-id --name-only -r {sha}
+```
+
+Deduplicate the file list. If no commits reference the issue number, fall back to:
+
+```bash
+git diff --name-only main...HEAD
+```
+
+Store the deduplicated file list as `modified_files`.
+
+If `modified_files` is empty after both strategies:
+
+```text
+WARNING: No modified files found for issue #{issue_number}.
+Code review and test verification will run against the full working tree.
+```
+
+**Step 2 -- Extract acceptance criteria from issue body**:
+
+Parse the `body` field for an acceptance criteria section. Search for these markers (case-insensitive, in order):
+
+1. `## Acceptance Criteria` header -- extract all content until next `##` header
+2. `**Acceptance Criteria**:` bold marker -- extract all content until next bold marker or `##` header
+3. Lines starting with `- [ ]` (unchecked checkboxes) -- collect all such lines
+
+Store as `acceptance_criteria` (string or None). If none found, set to None.
+
+**Step 3 -- Build proportional quality gate plan**:
+
+Call the pure function:
+
+```python
+tasks_yaml = build_proportional_quality_gate_plan(
+    slug=f"issue-{issue_number}",
+    issue=str(issue_number),
+    modified_files=modified_files,
+    acceptance_criteria=acceptance_criteria,
+)
+```
+
+Create the SAM plan:
+
+```text
+mcp__plugin_dh_sam__sam_create(
+    slug="pqg-issue-{issue_number}",
+    goal="Proportional quality gate verification for issue #{issue_number}",
+    tasks_yaml="{tasks_yaml}",
+    issue="{issue_number}"
+)
+```
+
+The `pqg-` prefix (proportional quality gate) distinguishes from the `qg-` prefix used by full SAM gates. Store the returned plan address as `{PQG}` for use throughout the dispatch loop.
+
+**Step 4 -- SAM dispatch loop**:
+
+Use the same SAM Dispatch Loop as the existing 6-phase flow (see "SAM Dispatch Loop (Phases 1-6)" section). The loop operates identically — 3 tasks instead of 6 is the only structural difference.
+
+**Phase-specific post-dispatch actions for proportional gates**:
+
+```mermaid
+flowchart TD
+    Done{Which task<br>just completed?}
+    Done -->|"T1 Code Review"| T1Post["No follow-up extraction<br>(proportional gates do not<br>generate follow-ups)"]
+    Done -->|"T2 Test Verification"| T2Post["Check test results in agent output<br>If failures: log but do not block<br>(completion gate handles pass/fail)"]
+    Done -->|"T3 Acceptance Check"| T3Post["No post-dispatch action"]
+    T1Post --> Continue["Continue loop"]
+    T2Post --> Continue
+    T3Post --> Continue
+```
+
+**Step 5 -- Completion verification gate**:
+
+After the dispatch loop exits, verify all 3 phases reached terminal status:
+
+```text
+mcp__plugin_dh_sam__sam_status(plan="{PQG}")
+```
+
+All 3 tasks must have `status == 'complete'`. No skip whitelist — all 3 tasks are required.
+
+```mermaid
+flowchart TD
+    Status["sam_status(plan='{PQG}')"] --> Iter["Iterate over all 3 tasks"]
+    Iter --> Check{For each task:<br>check status}
+    Check -->|"status == 'complete'"| PassTask["Task passes"]
+    Check -->|"any other status"| FailTask["FAIL"]
+    PassTask --> AllPassed{All 3 tasks<br>passed?}
+    AllPassed -->|Yes| Proceed["Proceed to Step 6"]
+    AllPassed -->|No| Stop["STOP — report failures, do NOT apply label"]
+    FailTask --> AllPassed
+```
+
+On verification failure:
+
+```text
+COMPLETION BLOCKED — Proportional Quality Gate Incomplete
+
+Failed tasks:
+  {task_id} ({phase_name}): status={status}
+  [repeat for each failing task]
+
+To resume: re-run /complete-implementation #{issue_number}
+BLOCKED tasks will be reset to NOT_STARTED automatically.
+```
+
+Stop. Do not apply the `status:verified` label.
+
+**Step 6 -- Apply status:verified label**:
+
+On verification success:
+
+```text
+mcp__plugin_dh_backlog__backlog_update(selector="#{issue_number}", verified=True)
+```
+
+On failure, output:
+
+```text
+COMPLETION BLOCKED — status:verified label could not be applied.
+
+Error: {error}
+Issue: #{issue_number}
+
+Fix the error (check GitHub token, repo access), then re-run /complete-implementation #{issue_number}.
+```
+
+Stop. Do not proceed to the Final Step commit.
+
+**Step 7 -- No recursive follow-up handling**:
+
+The issue-only path does not produce follow-up task files. Skip directly to "Final Step: Commit and Push Remaining Changes".
 
 ---
 

@@ -23,7 +23,7 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 **Configuration fields:**
 
 - `model`: sonnet | opus | haiku | inherit (default: inherit)
-- `tools`: comma-separated string — never YAML arrays. Use `Agent(type1, type2)` to restrict subagent spawning
+- `tools`: comma-separated string — never YAML arrays. Use `Agent(type1, type2)` to restrict subagent spawning. MCP tools must use exact registered names — no wildcards (e.g., `mcp__Ref__*` fails silently), case-sensitive (e.g., `mcp__Ref__` not `mcp__ref__`). Agents with unresolvable MCP tool names hallucinate success. Verified 2026-03-22.
 - `disallowedTools`: comma-separated denylist — removed from inherited/specified tools
 - `permissionMode`: default | acceptEdits | dontAsk | bypassPermissions | plan
 - `skills`: comma-separated string — injected into context at startup (NOT inherited from parent)

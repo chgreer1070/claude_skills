@@ -14,7 +14,7 @@ Backlog MCP reference: use `backlog_list_milestones` and `backlog_create_milesto
 ## Arguments
 
 - **Empty** — guided intake via `AskUserQuestion`
-- **`quick {title}`** — use remainder as title, ask only for due date and description
+- **`quick {title}`** — use remainder as title, ask only for description
 
 ## Workflow
 
@@ -24,13 +24,12 @@ Backlog MCP reference: use `backlog_list_milestones` and `backlog_create_milesto
 
 ```text
 Q1: Milestone title?  (e.g. "v1.1 — Milestone Workflow", "2026-Q1 Grooming")
-Q2: Due date? (YYYY-MM-DD, or skip)
-Q3: Description? (one sentence, or skip)
+Q2: Description? (one sentence, or skip)
 ```
 
-**Quick mode** (`quick {title}`) — ask only Q2 and Q3.
+**Quick mode** (`quick {title}`) — ask only Q2 (description).
 
-Title is required. Due date and description are optional.
+Title is required. Description is optional. Due date is never prompted — only set if the user explicitly provides it in arguments (e.g., `quick {title} --due 2026-04-30`).
 
 ### Step 2: Duplicate Check
 
@@ -39,6 +38,46 @@ Call `backlog_list_milestones(state="open")` and scan the returned list for any 
 If an open milestone with the same title already exists, report it and ask: "Use existing or create new?" via `AskUserQuestion`.
 
 If user chooses existing: print its number and stop.
+
+### Step 2.5: Wave Ordering (when items are known)
+
+When a milestone is being created alongside a set of known backlog items (not just a blank milestone), plan the execution order before creating the milestone. Use `mcp__sequential_thinking__sequentialthinking` to structure the analysis.
+
+```mermaid
+flowchart TD
+    Start(["Items known for this milestone?"]) --> Q{"Items provided<br>or identified?"}
+    Q -->|"No — blank milestone"| Skip["Skip to Step 3"]
+    Q -->|"Yes — items listed"| Dep["Dependency Mapping"]
+    Dep --> Classify["Classify into waves"]
+    Classify --> Restart["Identify restart points"]
+    Restart --> Record["Record wave plan in description"]
+    Record --> Step3["Proceed to Step 3"]
+```
+
+**Dependency Mapping** — for each item, answer:
+1. What does this item need to exist before it can be built?
+2. What does this item enable once it exists?
+
+**Classify into waves** — group items by dependency tier:
+- Wave 0: Items with no dependencies on other milestone items (foundation)
+- Wave N+1: Items whose dependencies are all satisfied by Waves 0–N
+- Items within the same wave must be independent (no shared file writes, no mutual dependencies) — they run in parallel
+
+**Identify restart points** — a restart is needed between waves when:
+- A wave produces tooling that subsequent waves should use (e.g., verification infrastructure, discovery store, feedback routing)
+- Skipping the restart means the next wave doesn't benefit from the previous wave's output
+- Not every wave boundary needs a restart — only where new capabilities must be active
+
+**Record in description** — append the wave plan to the milestone description so `/group-items-to-milestone` and `/groom-milestone` can reference it:
+
+```text
+Wave 0 (Foundation): #N1, #N2
+  🔄 RESTART — [what becomes active]
+Wave 1 (Category): #N3, #N4, #N5
+  🔄 RESTART — [what becomes active]
+Wave 2 (Category): #N6, #N7
+...
+```
 
 ### Step 3: Create Milestone
 

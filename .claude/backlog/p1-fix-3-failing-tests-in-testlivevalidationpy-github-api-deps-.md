@@ -3,13 +3,13 @@ name: Fix 3 failing tests in test_live_validation.py (GitHub API deps + KeyError
 description: "test_live_validation.py has 3 tests failing due to GitHub API dependencies and cascading `KeyError: 'item_title'`. Tests need proper mocking or fixture updates to work without live GitHub access."
 metadata:
   topic: fix-3-failing-tests-in-testlivevalidationpy-github-api-deps-
-  source: 'PR #561 code review — pre-existing issue'
-  added: '2026-03-10'
+  source: 'GitHub Issue #564'
+  added: '2026-03-22'
   priority: P1
   type: Bug
   status: needs-grooming
   issue: '#564'
-  last_synced: '2026-03-21T03:45:30Z'
+  last_synced: '2026-03-22T15:09:25Z'
 ---
 
 ## Story

@@ -3,13 +3,13 @@ name: Pre-activation skill security auditor for marketplace skills
 description: "## Current state\n\n`plugin_validator.py` validates structural concerns: YAML frontmatter schema, token complexity, internal link validity, plugin.json compliance, and progressive disclosure structure. It does not scan skill content for security risks such as command injection patterns in scripts, data exfiltration vectors in hook commands, prompt injection in SKILL.md body text, or privilege escalation via `allowed-tools` overgrants. No security-focused validation exists anywhere in the plugin-creator pipeline."
 metadata:
   topic: pre-activation-skill-security-auditor-for-marketplace-skills
-  source: 'Research entry: ./research/skill-generation-tools/claude-code-skills-alirezarezvani.md -- pattern: skill-security-auditor scanning before activation'
-  added: '2026-03-10'
+  source: 'GitHub Issue #559'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#559'
-  last_synced: '2026-03-21T03:45:31Z'
+  last_synced: '2026-03-22T15:09:26Z'
 ---
 
 ## Story

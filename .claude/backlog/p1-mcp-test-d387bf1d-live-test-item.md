@@ -4,12 +4,12 @@ description: Live validation test item
 metadata:
   topic: mcp-test-d387bf1d-live-test-item
   source: 'GitHub Issue #765'
-  added: '2026-03-21'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#765'
-  last_synced: '2026-03-21T03:45:20Z'
+  last_synced: '2026-03-22T15:09:15Z'
 ---
 
 ## Story

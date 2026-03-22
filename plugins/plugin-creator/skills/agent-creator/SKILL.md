@@ -438,6 +438,8 @@ mcpServers:
     cwd: path/to/server
 ```
 
+> **MCP tool name requirements** — Each MCP tool must be listed by its exact registered name with correct casing. Wildcards (e.g., `mcp__myserver__*`) do not resolve and silently fail. Case is sensitive (e.g., `mcp__Ref__` not `mcp__ref__`). Agents with unresolvable tool names receive no MCP tools and hallucinate success. Verified via controlled experiment 2026-03-22.
+
 ### With MCP Server (reference to .mcp.json)
 
 ```yaml

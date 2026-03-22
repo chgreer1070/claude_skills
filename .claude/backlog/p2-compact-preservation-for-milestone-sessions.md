@@ -3,13 +3,13 @@ name: Compact preservation for milestone sessions
 description: Save active milestone number, current wave, dispatch plan path, and active team member IDs before context compaction. Restore by pointing to dispatch plan file on session resume. Enables long /work-milestone sessions to survive compaction. Pattern sourced from Citadel pre-compact.js.
 metadata:
   topic: compact-preservation-for-milestone-sessions
-  source: Citadel assessment .claude/reports/citadel-assessment-20260320.md
-  added: '2026-03-21'
+  source: 'GitHub Issue #931'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#931'
-  last_synced: '2026-03-21T03:45:04Z'
+  last_synced: '2026-03-22T15:08:58Z'
 ---
 
 ## Story

@@ -1,7 +1,7 @@
 ---
 name: swarm-task-planner
 description: Creates dependency-based task plans for parallel AI agent execution. Transforms architecture docs and PRDs into priority-ordered tasks with acceptance criteria, sync checkpoints, and quality gates. Uses CLEAR+CoVe task design standards.
-tools: Read, Write, Edit, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*, mcp__plugin_dh_sam__sam_create
+tools: Read, Write, Edit, Glob, Grep, TodoWrite, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking, mcp__plugin_dh_sam__sam_create
 model: opus
 user-invocable: true
 disable-model-invocation: false

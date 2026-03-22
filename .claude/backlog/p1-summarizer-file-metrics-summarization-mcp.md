@@ -4,12 +4,12 @@ description: 'Wrap `file_metrics.py` as MCP tools. Agents could request file com
 metadata:
   topic: summarizer-file-metrics-summarization-mcp
   source: 'GitHub Issue #258'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#258'
-  last_synced: '2026-03-21T03:46:24Z'
+  last_synced: '2026-03-22T15:10:24Z'
 ---
 
 ## Story

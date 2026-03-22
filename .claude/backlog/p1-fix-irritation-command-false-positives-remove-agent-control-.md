@@ -3,15 +3,13 @@ name: Fix irritation command false positives — remove agent-control words from
 description: <div><sub>2026-03-11T19:47:34Z</sub>
 metadata:
   topic: fix-irritation-command-false-positives-remove-agent-control-
-  source: User feedback — 2026-03-11
-  added: '2026-03-11'
+  source: 'GitHub Issue #610'
+  added: '2026-03-22'
   priority: P1
   type: Bug
   status: in-progress
   issue: '#610'
-  groomed: '2026-03-11'
-  last_synced: '2026-03-21T03:45:27Z'
-  plan: plan/tasks-5-irritation-llm-fix.md
+  last_synced: '2026-03-22T15:09:22Z'
 ---
 
 ## Fact-Check

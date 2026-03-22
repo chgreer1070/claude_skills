@@ -4,12 +4,12 @@ description: Explore patterns for integrating with issue trackers (GitHub Issues
 metadata:
   topic: sam-external-system-integration-patterns
   source: 'GitHub Issue #122'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: IDEA
   type: Feature
   status: needs-grooming
   issue: '#122'
-  last_synced: '2026-03-21T03:46:31Z'
+  last_synced: '2026-03-22T15:10:31Z'
 ---
 
 ## Story

@@ -3,13 +3,13 @@ name: 'prompt-optimization: Fix unreachable reference files and raw JSX/MDX mark
 description: Two reference files are unreachable (not linked from SKILL.md or any other file). Contains raw Anthropic JSX/MDX markup that should be converted to standard markdown for compatibility with Claude Code's markdown rendering.
 metadata:
   topic: prompt-optimization-fix-unreachable-reference-files-and-raw-
-  source: Plugin code review session 2026-02-21
-  added: '2026-02-21'
+  source: 'GitHub Issue #99'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#99'
-  last_synced: '2026-03-21T03:46:44Z'
+  last_synced: '2026-03-22T15:10:45Z'
 ---
 
 ## Story

@@ -3,15 +3,13 @@ name: Local backlog files should be structured data (YAML) not markdown document
 description: Local backlog files (.claude/backlog/*.md) are currently markdown documents. They should be structured data (YAML or JSON) acting as a sync cache for GitHub Issues, not a document format. GitHub is canonical — local files are write caches that push upstream ASAP. The structured format would make parsing reliable, eliminate markdown formatting issues, and align with the principle that local structure mirrors issue structure.
 metadata:
   topic: local-backlog-files-should-be-structured-data-yaml-not-markd
-  source: 'User vision statement 2026-03-21 — divergence #2 from canonical issue lifecycle'
-  added: '2026-03-21'
+  source: 'GitHub Issue #964'
+  added: '2026-03-22'
   priority: P1
   type: Refactor
-  status: needs-grooming
+  status: in-progress
   issue: '#964'
-  last_synced: '2026-03-21T22:33:36Z'
-  groomed: '2026-03-21'
-  plan: plan/P964-backlog-yaml-migration.yaml
+  last_synced: '2026-03-22T15:08:49Z'
 ---
 
 ## Story

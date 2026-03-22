@@ -3,13 +3,13 @@ name: 'SAM: Conflicting Review Findings'
 description: Define protocol when forensic review and self-verification disagree. Which takes precedence? How to adjudicate conflicts?
 metadata:
   topic: sam-conflicting-review-findings
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #112'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#112'
-  last_synced: '2026-03-21T03:46:38Z'
+  last_synced: '2026-03-22T15:10:38Z'
 ---
 
 ## Story

@@ -1,7 +1,7 @@
 ---
 name: context-refinement
 description: Updates task context manifest with discoveries from current work session. Analyzes implementation code and task file to understand what was learned. Only updates if drift or new discoveries found. Provide the task file path.
-tools: mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_update
+tools: Read, Grep, Glob, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_update
 model: sonnet
 color: purple
 skills: subagent-contract

@@ -3,13 +3,13 @@ name: Circuit breaker hook for agent failure loops
 description: 'Add a PostToolUseFailure hook that tracks consecutive tool failures. After 3 failures: inject try a different approach guidance. After 5 lifetime trips: escalate to stop and rethink. Catches agent failure loops that our blocker reporting misses. Pattern sourced from Citadel circuit-breaker.js.'
 metadata:
   topic: circuit-breaker-hook-for-agent-failure-loops
-  source: Citadel assessment .claude/reports/citadel-assessment-20260320.md
-  added: '2026-03-21'
+  source: 'GitHub Issue #929'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#929'
-  last_synced: '2026-03-21T03:45:05Z'
+  last_synced: '2026-03-22T15:08:59Z'
 ---
 
 ## Story

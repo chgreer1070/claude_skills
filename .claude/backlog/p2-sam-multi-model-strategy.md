@@ -3,13 +3,13 @@ name: 'SAM: Multi-Model Strategy'
 description: Define guidance for using different models for different agent types. E.g., cheaper/faster models for simple verification, stronger models for planning.
 metadata:
   topic: sam-multi-model-strategy
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #108'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#108'
-  last_synced: '2026-03-21T03:46:41Z'
+  last_synced: '2026-03-22T15:10:42Z'
 ---
 
 ## Story

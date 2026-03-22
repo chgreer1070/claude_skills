@@ -204,6 +204,8 @@ VALIDATE NECESSITY:
 → For each tool: "Would the agent fail without this tool?" If no, remove it.
 ```
 
+**MCP tool name requirements** — When listing MCP tools in the `tools` field, each must use its exact registered name with correct casing. Wildcards (e.g., `mcp__Ref__*`) do not resolve and silently fail — the agent receives no MCP tools and hallucinate success. Case is sensitive: `mcp__Ref__ref_search_documentation` works; `mcp__ref__ref_search_documentation` fails with zero tool calls. Verify exact names from the running MCP server registration before including them. Verified via controlled experiment 2026-03-22.
+
 ---
 
 ## Output Format Specification

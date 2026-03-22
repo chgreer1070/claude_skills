@@ -4,12 +4,12 @@ description: Explore how to migrate existing projects to SAM. Incremental adopti
 metadata:
   topic: sam-migration-strategy-guide
   source: 'GitHub Issue #123'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: IDEA
   type: Feature
   status: needs-grooming
   issue: '#123'
-  last_synced: '2026-03-21T03:46:30Z'
+  last_synced: '2026-03-22T15:10:30Z'
 ---
 
 ## Story

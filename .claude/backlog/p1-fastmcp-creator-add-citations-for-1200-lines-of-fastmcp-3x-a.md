@@ -3,14 +3,13 @@ name: 'fastmcp-creator: Add citations for 1200+ lines of FastMCP 3.x API documen
 description: The plugin contains over 1200 lines of FastMCP 3.x API documentation derived from a release candidate version, with no source citations. Per CLAUDE.md citation requirements, all factual claims must have cited sources. Auth API claims verified but citations still needed for all documentation.
 metadata:
   topic: fastmcp-creator-add-citations-for-1200-lines-of-fastmcp-3x-a
-  source: Plugin code review session 2026-02-21
-  added: '2026-02-21'
+  source: 'GitHub Issue #84'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
-  plan: ''
   issue: '#84'
-  last_synced: '2026-03-21T03:46:54Z'
+  last_synced: '2026-03-22T15:10:55Z'
 ---
 
 ## Story

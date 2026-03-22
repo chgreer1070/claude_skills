@@ -3,14 +3,13 @@ name: 'SAM: Human Escalation Criteria'
 description: Define explicit triggers for escalating to human at each stage (not just Discovery). When should agents block and ask vs attempt repair vs fail?
 metadata:
   topic: sam-human-escalation-criteria
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #86'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#86'
-  plan: ''
-  last_synced: '2026-03-21T03:46:52Z'
+  last_synced: '2026-03-22T15:10:53Z'
 ---
 
 ## Story

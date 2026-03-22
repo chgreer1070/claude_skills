@@ -3,15 +3,13 @@ name: Add automated citation verification to research-curator validate mode
 description: <div><sub>2026-03-19T02:20:14Z</sub>
 metadata:
   topic: add-automated-citation-verification-to-research-curator-vali
-  source: 'Research entry: ./research/agent-frameworks/AutoResearchClaw.md -- pattern: 4-layer citation verification'
-  added: '2026-03-19'
+  source: 'GitHub Issue #845'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: in-progress
   issue: '#845'
-  last_synced: '2026-03-21T03:45:12Z'
-  groomed: '2026-03-19'
-  plan: plan/tasks-6-verify-citations-validate-mode.md
+  last_synced: '2026-03-22T15:09:06Z'
 ---
 
 ## RT-ICA

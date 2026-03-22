@@ -4,12 +4,12 @@ description: 'The workflow architecture diagram (.claude/docs/workflow-architect
 metadata:
   topic: dynamic-workflow-diagram-tooling-miroobsidian-integration
   source: 'GitHub Issue #961'
-  added: '2026-03-21'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#961'
-  last_synced: '2026-03-21T15:59:56Z'
+  last_synced: '2026-03-22T15:08:51Z'
 ---
 
 ## Story

@@ -3,14 +3,13 @@ name: 'conventional-commits: Fix CHANGELOG references to nonexistent files'
 description: CHANGELOG references files that do not exist in the repository. Additionally, related skills referenced in the plugin do not exist. All dead references need to be either created or removed.
 metadata:
   topic: conventional-commits-fix-changelog-references-to-nonexistent
-  source: Plugin code review session 2026-02-21
-  added: '2026-02-21'
+  source: 'GitHub Issue #94'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
-  groomed: '2026-02-23'
   issue: '#94'
-  last_synced: '2026-03-21T03:46:47Z'
+  last_synced: '2026-03-22T15:10:47Z'
 ---
 
 ## Story
