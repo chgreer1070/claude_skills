@@ -1,165 +1,187 @@
 ---
 name: kage-bunshin
-description: 'Spawn a separate Claude Code CLI session from the current session with full MCP server and skill inheritance, and communicate with it over a shared channel. Use when you need a peer Claude session (not a subagent or teammate), when testing skill behavior from outside the Agent tool, when running a long-lived Claude process alongside the current session, or when building inter-session communication bridges. Two methods: stream-json over named pipes (bidirectional, real-time) and sequential resume (simpler, atomic). Triggers on "spawn claude session", "launch separate claude", "peer session", "inter-session communication", "shadow clone".'
+description: 'Spawn and manage persistent Claude Code CLI sessions with bidirectional communication via tmux and stream-json. Provides spawn, send, read, status, list, and kill subcommands for orchestrating parallel peer sessions. Uses built-in --worktree and --tmux flags. Triggers on "spawn claude session", "launch separate claude", "peer session", "inter-session communication", "shadow clone", "kage bunshin".'
 ---
 
-# Kage Bunshin — Spawn Peer Claude CLI Sessions
+# Kage Bunshin — Persistent Peer Claude Sessions
 
-Spawn a separate `claude` CLI process with identical capabilities (MCP servers, skills, plugins, agents) and communicate with it via a shared channel. This is NOT a subagent or teammate — it is an independent CLI process.
+Spawn independent `claude` CLI processes with full bidirectional communication. Each session runs in tmux with stream-json I/O, allowing the orchestrator to send messages, read responses, monitor status, and steer work mid-flight.
 
-## Spawn Script
+This is NOT a subagent or teammate — it is an independent CLI process with its own context window, inheriting all MCP servers, skills, plugins, and agents from the project directory.
 
-Use `scripts/spawn.py` to handle worktree creation, `.venv`/`node_modules` symlinking, lock file writing, and process launch in one command:
+## Session Manager Script
+
+All operations go through `${CLAUDE_SKILL_DIR}/scripts/spawn.py`:
+
+```text
+spawn.py spawn  --name X [--worktree] [--model MODEL] [--max-budget N] "prompt"
+spawn.py send   --name X "message"
+spawn.py read   --name X [--wait SECONDS] [--follow]
+spawn.py status --name X
+spawn.py list
+spawn.py kill   --name X
+```
+
+## Quick Start
 
 ```bash
-# Spawn in current directory (no worktree)
-./scripts/spawn.py "Load /dh:groom-backlog-item #42"
+SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
 
-# Spawn in an isolated worktree
-./scripts/spawn.py --worktree --branch main \
-  --name "work-item-42" --model sonnet \
+# 1. Spawn a session
+$SPAWN spawn --name worker-42 --model haiku \
   "Load /dh:work-backlog-item #42. Execute the full work flow."
 
-# With budget cap
-./scripts/spawn.py --worktree --max-budget 5.00 \
-  "Load /dh:work-backlog-item #42"
+# 2. Check on it
+$SPAWN status --name worker-42
+
+# 3. Read latest response (poll up to 60s if nothing yet)
+$SPAWN read --name worker-42 --wait 60
+
+# 4. Steer mid-flight
+$SPAWN send --name worker-42 \
+  "Stop current work. Prioritize the auth module instead."
+
+# 5. Monitor in real-time
+$SPAWN read --name worker-42 --follow
+
+# 6. Clean up when done
+$SPAWN kill --name worker-42
 ```
 
-Output (JSON to stdout — parse with jq or python):
+## Subcommand Reference
 
-```json
-{
-  "pid": 12345,
-  "name": "work-item-42",
-  "worktree": "/path/to/.worktrees/kb-work-item-42",
-  "result_file": "/tmp/kage-bunshin/work-item-42-result.json",
-  "error_file": "/tmp/kage-bunshin/work-item-42-err.log",
-  "model": "sonnet",
-  "lock_file": "/path/to/.worktrees/kb-work-item-42/.claude/kage-bunshin.lock"
-}
+### spawn
+
+Launch a new persistent claude session inside a tmux window.
+
+```bash
+$SPAWN spawn --name my-session --model haiku "Your initial prompt"
+$SPAWN spawn --name my-session --worktree --max-budget 5.00 "Your prompt"
 ```
-
-The script exits immediately after spawning. The caller manages PIDs and reads result files.
-
-**What the script handles automatically with `--worktree`:**
-
-- `git worktree add .worktrees/kb-{name}` from the specified branch
-- Symlinks `.venv` → repo root `.venv` (avoids duplicating the virtualenv)
-- Symlinks `node_modules` → repo root `node_modules`
-- Writes `.claude/kage-bunshin.lock` with session metadata
-- Launches `claude -p` with `cwd` set to the worktree
-
-## When to Use Each Method
 
 ```mermaid
 flowchart TD
-    Start(["Need a peer Claude session"]) --> Q1{"Concurrent bidirectional<br>communication needed?"}
-    Q1 -->|"Yes — send messages while<br>the other session runs"| A["Method A: Stream-JSON + Named Pipe<br>Real-time, multi-turn, single persistent session"]
-    Q1 -->|"No — sequential request/response<br>is sufficient"| B["Method B: Sequential Resume<br>Atomic calls, session state preserved across invocations"]
+    Start(["spawn called"]) --> Verify["Verify claude and tmux in PATH"]
+    Verify --> Check{"Session name<br>already in registry?"}
+    Check -->|"Alive"| Fail["Exit 1: kill it first"]
+    Check -->|"Dead entry"| Clean["Remove stale entry"]
+    Check -->|"Not found"| Create
+    Clean --> Create["Create FIFO at state dir"]
+    Create --> Tmux["Launch tmux session kb-{name}<br>cat fifo | claude -p --stream-json ... >> output.jsonl"]
+    Tmux --> Prompt["Write initial prompt to FIFO"]
+    Prompt --> Hold["Background tail -f /dev/null > fifo<br>to keep write end open"]
+    Hold --> Register["Save to registry.json"]
+    Register --> Print["Print JSON record to stdout"]
 ```
 
-## Method A: Stream-JSON over Named Pipe (Primary)
+**Flags:**
 
-Bidirectional, multi-turn, real-time communication with a persistent Claude session.
+- `--name` — Session name (auto-derived from first 30 chars of prompt if omitted)
+- `--worktree` — Uses claude's built-in `--worktree` flag for git worktree isolation
+- `--model` — Model for the spawned session (default: sonnet)
+- `--max-budget` — Maximum USD spend cap
 
-### Setup
+**Output** (JSON to stdout):
+
+```json
+{
+  "name": "worker-42",
+  "tmux_session": "kb-worker-42",
+  "model": "sonnet",
+  "spawned_at": "2026-03-22T01:30:00+00:00",
+  "worktree": false,
+  "fifo_path": "~/.dh/projects/{slug}/kage-bunshin/worker-42-input.fifo",
+  "output_path": "~/.dh/projects/{slug}/kage-bunshin/worker-42-output.jsonl",
+  "error_path": "~/.dh/projects/{slug}/kage-bunshin/worker-42-err.log"
+}
+```
+
+**What --worktree does:** Passes `--worktree {name}` to the claude CLI, which uses the built-in worktree system. Configure `worktree.symlinkDirectories` in project settings to symlink `.venv`, `node_modules`, etc. — the script does not handle symlinking manually.
+
+### send
+
+Send a message to a running session via its input FIFO.
 
 ```bash
-# 1. Create named pipe and output file
-mkfifo /tmp/claude-channel.fifo
-touch /tmp/claude-output.jsonl
-
-# 2. Launch Claude in tmux with stream-json I/O
-tmux new-session -d -s claude-peer \
-  "claude -p \
-    --input-format stream-json \
-    --output-format stream-json \
-    --permission-mode auto \
-    --verbose \
-    < /tmp/claude-channel.fifo \
-    > /tmp/claude-output.jsonl \
-    2>/tmp/claude-peer-err.log"
+$SPAWN send --name worker-42 "Check the test results and report back"
 ```
 
-### Send Messages
+The message is written as a stream-json user message. The session processes it as a new conversation turn. Use this to steer, redirect, or provide additional context to a running session.
 
-Each message is a single-line JSON object written to the FIFO:
+### read
+
+Read responses from a session's output JSONL file.
 
 ```bash
-echo '{"type":"user","message":{"role":"user","content":"Your prompt here"}}' > /tmp/claude-channel.fifo
+# Latest response
+$SPAWN read --name worker-42
+
+# Poll for up to 60 seconds if no response yet
+$SPAWN read --name worker-42 --wait 60
+
+# Tail continuously (Ctrl-C to stop)
+$SPAWN read --name worker-42 --follow
 ```
 
-The FIFO blocks the writer until the reader consumes the data. Use a background subshell when sending multiple messages with delays:
+Extracts assistant message text and result events from the stream-json output. Result events include cost, turn count, and session metadata.
+
+### status
+
+Check session health and progress.
 
 ```bash
-(
-  echo '{"type":"user","message":{"role":"user","content":"First message"}}';
-  sleep 30;
-  echo '{"type":"user","message":{"role":"user","content":"Second message"}}';
-  sleep 30;
-) > /tmp/claude-channel.fifo &
+$SPAWN status --name worker-42
 ```
 
-### Read Responses
+Output (JSON):
 
-Responses are NDJSON in `/tmp/claude-output.jsonl`. Extract the assistant's text:
+```json
+{
+  "name": "worker-42",
+  "alive": true,
+  "model": "sonnet",
+  "spawned_at": "2026-03-22T01:30:00+00:00",
+  "age": "15m",
+  "worktree": false,
+  "tmux_session": "kb-worker-42",
+  "cost_usd": 0.42,
+  "turns": 8
+}
+```
+
+### list
+
+List all registered sessions with live/dead status.
 
 ```bash
-# Latest assistant message
-grep '"type":"assistant"' /tmp/claude-output.jsonl | tail -1 | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print(d['message']['content'][0]['text'])"
-
-# Latest result event
-grep '"type":"result"' /tmp/claude-output.jsonl | tail -1 | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result',''))"
+$SPAWN list
 ```
 
-### Cleanup
+Prints a columnar table: NAME, MODEL, STATUS (alive/dead), AGE, WORKTREE.
+
+### kill
+
+Terminate a session and clean up.
 
 ```bash
-tmux kill-session -t claude-peer 2>/dev/null
-rm -f /tmp/claude-channel.fifo /tmp/claude-output.jsonl /tmp/claude-peer-err.log
+$SPAWN kill --name worker-42
 ```
 
-### Verified Behavior (Experiment 2026-03-22)
+Kills the tmux session, removes the FIFO, and updates the registry. Output and error logs are preserved for post-mortem review.
 
-- The spawned session inherits all MCP servers, skills, plugins, and agents from the project directory
-- The `init` system event enumerates every available tool, MCP server, skill, and agent
-- Multi-turn works: multiple sequential messages on the same FIFO produce separate responses within one session
-- The `-p` flag with `--input-format stream-json` keeps stdin open across multiple messages — it does NOT exit after the first response
-- Session ID is in every output event (`.session_id` field)
+## Session State Directory
 
-## Method B: Sequential Resume (Fallback)
+All session state is stored under `~/.dh/projects/{slug}/kage-bunshin/`:
 
-Each interaction is a separate `claude -p` invocation that resumes the same session.
-
-### Usage
-
-```bash
-# 1. Generate a session UUID
-SESSION_UUID=$(uuidgen)
-
-# 2. First call — establishes the session
-claude -p "Your first prompt" \
-  --session-id "$SESSION_UUID" \
-  --output-format json \
-  --permission-mode auto 2>/dev/null | \
-  python3 -c "import sys,json; print(json.load(sys.stdin)['result'])"
-
-# 3. Subsequent calls — resume the session with full conversation memory
-claude -p "Your follow-up prompt" \
-  --resume "$SESSION_UUID" \
-  --output-format json \
-  --permission-mode auto 2>/dev/null | \
-  python3 -c "import sys,json; print(json.load(sys.stdin)['result'])"
+```text
+~/.dh/projects/{slug}/kage-bunshin/
+├── registry.json              # all active sessions
+├── {name}-input.fifo          # named pipe for sending messages
+├── {name}-output.jsonl        # stream-json responses
+└── {name}-err.log             # stderr
 ```
 
-### Verified Behavior (Experiment 2026-03-22)
-
-- Session state persists across invocations — the resumed session remembers prior conversation
-- Tested: set secret word "TANGERINE" in first call, recalled correctly in resumed second call
-- Each call blocks until the response is complete
-- Not concurrent — only one call runs at a time
+The `{slug}` is derived from the git repo root path by replacing `/` with `-` (leading hyphen is intentional). Override the base directory with `DH_STATE_HOME` environment variable.
 
 ## Capability Inheritance
 
@@ -180,93 +202,19 @@ Flags that break inheritance — do not use:
 - `--strict-mcp-config` — overrides inherited MCP servers
 - `--disable-slash-commands` — removes skill access
 
-## Useful Flags for Spawned Sessions
+## Worktree Settings
 
-```text
---permission-mode auto        Skip permission prompts (required for unattended operation)
---model sonnet                Override model selection
---name "my-peer"              Name the session for later --resume by name
---append-system-prompt "..."  Add custom instructions to the spawned session
---allowedTools "Read,Grep"    Restrict available tools
---max-turns 10                Limit agentic turns (prevents runaway)
---max-budget-usd 1.00         Spending cap
---no-session-persistence      Do not save session to disk
---verbose                     Include tool use events in stream-json output
---include-partial-messages    Include token-by-token streaming events
-```
-
-## Input Message Schema
+When using `--worktree`, configure these in your project or user settings to avoid duplicating heavy directories:
 
 ```json
 {
-  "type": "user",
-  "message": {
-    "role": "user",
-    "content": "Plain text prompt"
-  }
+  "worktree.symlinkDirectories": [".venv", "node_modules", ".cache"]
 }
 ```
 
-Multi-modal content (images):
+This replaces the manual symlinking that the old script did. The built-in `--worktree` flag handles git worktree creation and cleanup automatically.
 
-```json
-{
-  "type": "user",
-  "message": {
-    "role": "user",
-    "content": [
-      {"type": "text", "text": "Describe this image"},
-      {
-        "type": "image",
-        "source": {
-          "type": "base64",
-          "media_type": "image/png",
-          "data": "<base64-data>"
-        }
-      }
-    ]
-  }
-}
-```
-
-## Structured Output
-
-Force JSON schema validation on the spawned session's response:
-
-```bash
-claude -p "List 3 fruits" \
-  --output-format json \
-  --json-schema '{"type":"object","properties":{"fruits":{"type":"array","items":{"type":"string"}}},"required":["fruits"]}' \
-  --permission-mode auto 2>/dev/null
-```
-
-## Lock File Protocol
-
-Prevent recursive kage-bunshin spawning. A spawned session that itself tries to spawn kage-bunshins would create infinite recursion.
-
-```mermaid
-flowchart TD
-    SessionStart(["Kage-bunshin session starts"]) --> CheckLock{"Does .claude/kage-bunshin.lock<br>exist in working directory?"}
-    CheckLock -->|"No"| WriteLock["Write lock file:<br>.claude/kage-bunshin.lock"]
-    WriteLock --> Proceed["Proceed with full flow<br>CAN use Agent tool and TeamCreate"]
-    CheckLock -->|"Yes"| Refuse["REFUSE to spawn kage-bunshin<br>Log warning: recursive spawn prevented<br>Execute work directly without<br>further session spawning"]
-```
-
-Lock file is per-worktree (each worktree has its own `.claude/` directory). The parent orchestrator's working directory does NOT have a lock file — only spawned sessions write one.
-
-Lock file contents:
-
-```json
-{
-  "session_id": "uuid",
-  "parent_pid": 12345,
-  "spawned_at": "2026-03-22T01:30:00Z",
-  "item": "#42 — feature title",
-  "model": "sonnet"
-}
-```
-
-## Milestone Dispatch Pattern
+## Milestone Dispatch Patterns
 
 Used by `/groom-milestone` and `/work-milestone` to spawn parallel kage-bunshin workers.
 
@@ -275,72 +223,112 @@ Used by `/groom-milestone` and `/work-milestone` to spawn parallel kage-bunshin 
 Groom sessions run in the same project directory — grooming is read-heavy and writes go through the backlog MCP server (GitHub Issues are the source of truth), so no filesystem isolation is needed.
 
 ```bash
-SPAWN="./scripts/spawn.py"
-PIDS=()
+SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
 
 # Spawn one kage-bunshin per ungroomed item
 for ISSUE in "${UNGROOMED_ISSUES[@]}"; do
-  OUTPUT=$($SPAWN --no-session-persistence \
-    --name "groom-${ISSUE}" \
-    --model sonnet \
-    "Load /dh:groom-backlog-item #${ISSUE}. Execute the full grooming flow.")
-  PIDS+=($(echo "$OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['pid'])"))
+  $SPAWN spawn --name "groom-${ISSUE}" --model haiku \
+    "Load /dh:groom-backlog-item #${ISSUE}. Execute the full grooming flow."
 done
 
-# Wait for all groom sessions
-for PID in "${PIDS[@]}"; do
-  wait "$PID"
-done
+# Monitor all sessions
+$SPAWN list
+
+# Check specific session
+$SPAWN status --name "groom-42"
+
+# Read response when ready
+$SPAWN read --name "groom-42" --wait 120
 ```
 
 ### Work Dispatch (with worktree)
 
-Work sessions run in isolated git worktrees — each session modifies code and commits. The spawn script handles worktree creation, `.venv`/`node_modules` symlinking, and lock file writing.
+Work sessions run in isolated git worktrees — each session modifies code and commits.
 
 ```bash
-SPAWN="./scripts/spawn.py"
-PIDS=()
-SPAWN_INFO=()
+SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
 
-# Spawn one kage-bunshin per wave item
+# Spawn one kage-bunshin per wave item in isolated worktrees
 for ISSUE in "${WAVE_ISSUES[@]}"; do
-  OUTPUT=$($SPAWN --worktree \
-    --branch "${INTEGRATION_BRANCH}" \
+  $SPAWN spawn --worktree \
     --name "work-item-${ISSUE}" \
-    --model sonnet \
+    --model haiku \
     "Load /dh:work-backlog-item #${ISSUE}. Execute the full work flow. \
-     You are in a worktree on integration branch ${INTEGRATION_BRANCH}. \
-     Use MCP tools for plan artifact discovery.")
-  PIDS+=($(echo "$OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['pid'])"))
-  SPAWN_INFO+=("$OUTPUT")
+     Use MCP tools for plan artifact discovery."
 done
-```
 
-### Monitoring Completion
+# Monitor progress across all sessions
+$SPAWN list
 
-Read the result JSON after each PID exits:
+# Steer a session if needed
+$SPAWN send --name "work-item-42" \
+  "The auth module has a dependency on #43. Wait for it to complete before proceeding."
 
-```bash
-for i in "${!PIDS[@]}"; do
-  wait "${PIDS[$i]}"
-  EXIT_CODE=$?
-  INFO="${SPAWN_INFO[$i]}"
-  RESULT_FILE=$(echo "$INFO" | python3 -c "import sys,json; print(json.load(sys.stdin)['result_file'])")
+# Read results
+for ISSUE in "${WAVE_ISSUES[@]}"; do
+  $SPAWN read --name "work-item-${ISSUE}" --wait 300
+done
 
-  if [ $EXIT_CODE -eq 0 ] && [ -s "$RESULT_FILE" ]; then
-    echo "Item: $(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result','')[:200])" < "$RESULT_FILE")"
-  else
-    ERROR_FILE=$(echo "$INFO" | python3 -c "import sys,json; print(json.load(sys.stdin)['error_file'])")
-    echo "FAILED (exit ${EXIT_CODE}): $(cat "$ERROR_FILE" | tail -5)"
-  fi
+# Clean up after wave completes
+for ISSUE in "${WAVE_ISSUES[@]}"; do
+  $SPAWN kill --name "work-item-${ISSUE}"
 done
 ```
 
 ### Model Selection
 
-The `--model` flag controls the spawned session's orchestrator model only. Each sub-agent spawned inside the session uses its own model per its agent frontmatter definition.
+The `--model` flag controls the spawned session's orchestrator model. Each sub-agent spawned inside the session uses its own model per its agent frontmatter definition.
 
-Recommended: `--model sonnet` for spawned sessions. Haiku viability as orchestrator model is an open experiment (untested for orchestrating `/work-backlog-item` flows that involve skill loading, agent spawning, and result interpretation).
+Use `--model haiku` for coordinator sessions that dispatch work to sub-agents — haiku is fast and cheap as an orchestrator. The sub-agents inside each session run on their own models regardless.
+
+## Parallel Fleet Management
+
+Spawn and control 10-20 coordinators simultaneously. Each returns immediately — no blocking.
+
+```bash
+SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
+ITEMS=(10 11 12 13 14 15 16 17 18 19 20 21 22 23 24)
+
+# Spawn all coordinators at once
+for ITEM in "${ITEMS[@]}"; do
+  $SPAWN spawn --name "coord-${ITEM}" --model haiku \
+    "Load /dh:work-backlog-item #${ITEM}. Execute the full work flow."
+done
+
+# Dashboard — see everything at a glance
+$SPAWN list
+
+# Poll a specific coordinator
+$SPAWN status --name coord-12
+
+# Redirect a coordinator mid-flight
+$SPAWN send --name coord-14 \
+  "Deprioritize the UI work. Focus on the API contract first."
+
+# Read what a coordinator produced
+$SPAWN read --name coord-12 --wait 60
+
+# Monitor one in real-time
+$SPAWN read --name coord-15 --follow
+
+# Shut down the fleet
+for ITEM in "${ITEMS[@]}"; do
+  $SPAWN kill --name "coord-${ITEM}"
+done
+```
+
+### Fleet with Worktree Isolation
+
+When each coordinator modifies code, isolate them in worktrees:
+
+```bash
+for ITEM in "${ITEMS[@]}"; do
+  $SPAWN spawn --worktree --name "work-${ITEM}" --model haiku \
+    "Load /dh:work-backlog-item #${ITEM}. Execute the full work flow."
+done
+```
+
+Each coordinator gets its own git worktree via the built-in `--worktree` flag. Configure `worktree.symlinkDirectories` in settings to share `.venv` and `node_modules` across worktrees.
 
 ## Reference
 

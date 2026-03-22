@@ -215,6 +215,12 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 **Behavior to cover**: GitHubArtifactProvider.get_manifest, set_manifest, read_artifact_content; parse_manifest_section with edge cases (empty body, body with manifest, malformed rows); render_manifest_section; replace_manifest_in_body (replace vs append paths); path traversal rejection; roundtrip fidelity
 **Reason not written**: Subordinate-agent boundary — T5 is the dedicated test task for artifact_provider.py and artifact_registry.py. Tests are planned in plugins/development-harness/tests_backlog/test_artifact_provider.py.
 
+## Gap: test_gates.py — test_timeout_stderr_contains_timeout_duration assertion mismatch
+
+**Files**: `plugins/development-harness/tests/test_dispatch_schema/test_gates.py:762`
+**Behavior to cover**: `TestSubprocessTimeoutContract.test_timeout_stderr_contains_timeout_duration` asserts `"300.0s"` in stderr but production code emits `"300s"` (no decimal point). Either the test assertion or the production format string is wrong.
+**Reason not written**: Pre-existing failure confirmed before T03 changes. Not in scope for this task. Needs fix in either `test_gates.py` (update assertion to `"300s"`) or in the gates.py timeout message formatter (add `.0` to the format).
+
 ## Gap: artifact_migrate response shape
 
 **Files**: `plugins/development-harness/backlog_core/server.py`

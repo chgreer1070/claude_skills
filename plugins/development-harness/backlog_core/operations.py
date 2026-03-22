@@ -55,6 +55,7 @@ from .github import (
     issue_to_local_fields,
     resolve_github_issue,
     sync_groomed_to_github_issue,
+    sync_issues_graphql,
     try_get_github,
     update_task_status,
     view_enrich_from_github,
@@ -1814,6 +1815,18 @@ def sync_push_groomed_content(
             out.info(f"  [dry-run] Would update issue {issue_ref}: {it.title[:60]}")
         return {"pushed": 0, "dry_run": True, **out.to_dict()}
     repository = get_github(repo)
+    owner, repo_name = repository.full_name.split("/", 1)
+
+    # Bulk-fetch all issue nodes to avoid N+1 GraphQL queries
+    issue_numbers = []
+    for item in groomed_items:
+        num_str = item.issue.lstrip("#")
+        if num_str.isdigit():
+            issue_numbers.append(int(num_str))
+
+    # Fetch all open issues and build lookup dict
+    all_issues = sync_issues_graphql(repository, owner, repo_name, state="OPEN")
+    issue_lookup = {node["number"]: node for node in all_issues if node["number"] in issue_numbers}
 
     pushed = 0
     for item in groomed_items:
@@ -1826,8 +1839,11 @@ def sync_push_groomed_content(
         if body is None:
             continue
         try:
-            owner, repo_name = repository.full_name.split("/", 1)
-            issue_node = _fetch_issue_graphql(repository, owner, repo_name, int(num_str))
+            issue_num = int(num_str)
+            issue_node = issue_lookup.get(issue_num)
+            if issue_node is None:
+                out.warn(f"  WARNING: Issue #{num_str} not found in bulk fetch (may be closed)")
+                continue
             _update_issue_graphql(repository, issue_node["id"], body=body)
             out.info(f"  Updated issue #{num_str}: {item.title[:60]}")
             pushed += 1

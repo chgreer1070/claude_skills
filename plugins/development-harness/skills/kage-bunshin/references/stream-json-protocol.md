@@ -119,7 +119,7 @@ Single JSON object per invocation (not NDJSON):
 mkfifo /tmp/claude-exp1-pipe
 tmux new-session -d -s claude-exp1 \
   "claude -p --input-format stream-json --output-format stream-json \
-   --permission-mode auto --verbose \
+   --dangerously-skip-permissions --verbose \
    < /tmp/claude-exp1-pipe > /tmp/claude-exp1-output.jsonl 2>/tmp/claude-exp1-err.log"
 ```
 
@@ -158,7 +158,7 @@ SESSION_UUID=$(uuidgen)  # f2d60e2c-57c3-413a-b0bd-6f1f1b0668d3
 
 ```bash
 claude -p "Remember this secret word: TANGERINE. Respond with only: ACKNOWLEDGED" \
-  --session-id "$SESSION_UUID" --output-format json --permission-mode auto
+  --session-id "$SESSION_UUID" --output-format json --dangerously-skip-permissions
 ```
 
 Result: `ACKNOWLEDGED`
@@ -167,7 +167,7 @@ Result: `ACKNOWLEDGED`
 
 ```bash
 claude -p "What was the secret word I told you to remember?" \
-  --resume "$SESSION_UUID" --output-format json --permission-mode auto
+  --resume "$SESSION_UUID" --output-format json --dangerously-skip-permissions
 ```
 
 Result: `TANGERINE`

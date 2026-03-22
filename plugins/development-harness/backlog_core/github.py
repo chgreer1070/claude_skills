@@ -15,8 +15,10 @@ import logging
 import os
 import re
 import sys
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, TypedDict
 
+import dh_paths as _dh_paths
 from github import Auth, Github, GithubException
 
 from . import models as _models
@@ -44,6 +46,8 @@ from .parsing import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from github.Repository import Repository
 
 logger = logging.getLogger(__name__)
@@ -600,6 +604,81 @@ def _fetch_issues_graphql(
         cursor = str(page_info["endCursor"])
 
     return all_issues
+
+
+def sync_issues_graphql(
+    repo: Repository,
+    owner: str,
+    repo_name: str,
+    *,
+    state: str = "OPEN",
+    labels: list[str] | None = None,
+    milestone_number: int | None = None,
+    since: datetime | None = None,
+    callback: Callable[[IssueNode], None] | None = None,
+    track_timestamp: bool = False,
+) -> list[IssueNode]:
+    """Shared GraphQL sync primitive — fetch issues with optional filtering, callback, and timestamp tracking.
+
+    Wraps ``_fetch_issues_graphql`` with three optional behaviours:
+
+    - **since filter**: pass a ``datetime`` to restrict results to issues updated at or after
+      that time.  When ``track_timestamp=True`` and ``since`` is ``None``, the value is read
+      from the ``.last_sync`` file automatically.
+    - **per-issue callback**: when provided, ``callback`` is called with each ``IssueNode``
+      dict as it is processed.
+    - **timestamp tracking**: when ``track_timestamp=True``, reads ``.last_sync`` before the
+      fetch and writes the sync-start timestamp after a successful fetch so the next call can
+      run incrementally.
+
+    No new pagination logic is introduced — all pagination is delegated to
+    ``_fetch_issues_graphql`` / ``_graphql_request_paginated``.
+
+    Args:
+        repo: PyGithub Repository object.
+        owner: GitHub repository owner login.
+        repo_name: GitHub repository name without owner prefix.
+        state: Issue state filter — ``"OPEN"``, ``"CLOSED"``, or ``"OPEN,CLOSED"``.
+        labels: Optional list of label names to filter by.
+        milestone_number: Optional milestone number to filter by.
+        since: Optional lower-bound datetime.  Only issues updated at or after this time are
+            returned.  When ``track_timestamp=True`` and this is ``None``, the value is read
+            from the ``.last_sync`` file.
+        callback: Optional callable invoked with each ``IssueNode`` dict.  The full list is
+            still returned regardless of whether a callback is provided.
+        track_timestamp: When ``True``, reads the ``.last_sync`` file to populate ``since``
+            (if not already set) and writes the sync-start timestamp after a successful fetch.
+
+    Returns:
+        Full list of ``IssueNode`` dicts (may be empty).
+
+    Raises:
+        BacklogError: Propagated from ``_fetch_issues_graphql`` on GraphQL errors.
+    """
+    since_str: str | None = since.isoformat() if since is not None else None
+    last_sync_path = None
+    sync_start: str | None = None
+
+    if track_timestamp:
+        last_sync_path = _dh_paths.state_root() / ".last_sync"
+        # Record start BEFORE fetching to avoid missing issues updated during the fetch.
+        sync_start = datetime.now(UTC).isoformat()
+        if since_str is None and last_sync_path.exists():
+            since_str = last_sync_path.read_text(encoding="utf-8").strip() or None
+
+    issues = _fetch_issues_graphql(
+        repo, owner, repo_name, state=state, labels=labels, milestone_number=milestone_number, since=since_str
+    )
+
+    if callback is not None:
+        for issue_node in issues:
+            callback(issue_node)
+
+    if track_timestamp and last_sync_path is not None and sync_start is not None:
+        last_sync_path.parent.mkdir(parents=True, exist_ok=True)
+        last_sync_path.write_text(sync_start, encoding="utf-8")
+
+    return issues
 
 
 # ---------------------------------------------------------------------------
