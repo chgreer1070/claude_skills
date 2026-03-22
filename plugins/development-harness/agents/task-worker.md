@@ -87,6 +87,16 @@ NOTES: {design decisions, discoveries, out-of-scope work identified}
 
 Use STATUS: PARTIAL when some acceptance criteria are met and at least one is blocked. Use STATUS: FAILED only when no meaningful progress was made.
 
+## Agent Specialization via Profile
+
+The backlog MCP server exposes `profile_load` (agent_profile tool). When the dispatch manager includes a `profile` field in the task metadata or prompt, call:
+
+```text
+mcp__plugin_dh_backlog__profile_load(profile="{profile-name}")
+```
+
+This loads a named profile that overrides default behavior — tool restrictions, model hints, domain constraints. Load the profile immediately after Step 1 (load task), before loading skills. If `profile_load` fails or no profile is specified, continue without it; profile loading is non-fatal.
+
 ## Cross-References
 
 - Manager side: activate the `/dh:dispatch` skill for orchestration patterns

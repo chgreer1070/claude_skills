@@ -277,6 +277,8 @@ When discussing, extending, or adding backend providers for the development harn
 
 The development harness supports pluggable backends via Protocol-based abstractions. The current implementation uses GitHub. Future backends include GitLab, Linear, and Supabase. Each backend uses its platform's native primitives — see the reference doc for verified capabilities and official documentation URLs per platform.
 
+The backlog MCP server also exposes `profile_load` (agent_profile tool) for loading named agent profiles that specialize task-worker behavior at dispatch time. Profile definitions live in the backlog server configuration; see [docs/backend-providers.md](./docs/backend-providers.md) for the module boundary.
+
 ---
 
 ## References
