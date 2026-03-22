@@ -14,7 +14,7 @@ import sys
 import time as _time
 from datetime import UTC, datetime as _datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, cast
+from typing import TYPE_CHECKING, Annotated
 
 import dh_paths as _dh_paths
 import dispatch_schema as _ds
@@ -227,8 +227,8 @@ async def backlog_list(
         return {"error": str(e), **out.to_dict()}
 
     # "items" holds list[dict[str, str | bool]] per operations.list_items return type.
-    # cast() narrows from the heterogeneous value union (int | list[str] | list[dict[...]]).
-    all_items = cast("list[dict[str, str | bool]]", result.get("items", []))
+    # Assign with explicit annotation to narrow from the heterogeneous value union.
+    all_items: list[dict[str, str | bool]] = result.get("items", [])
 
     # Apply cross-field search filter when requested.
     if search is not None:
@@ -2072,10 +2072,7 @@ async def dispatch_wave_start(
     """
     item_records = [
         _DispatchItemRecord(
-            milestone=milestone,
-            wave_num=wave_num,
-            issue=int(cast("int | str", item["issue"])),
-            title=str(item.get("title", "")),
+            milestone=milestone, wave_num=wave_num, issue=int(str(item["issue"])), title=str(item.get("title", ""))
         )
         for item in items
     ]
