@@ -1,6 +1,6 @@
 ---
 name: groom-milestone
-description: "Groom a GitHub milestone for parallel execution. Batch-grooms ungroomed items, assesses scope gaps, analyzes cross-item dependencies via analyze_impact_radius_conflicts(), builds conflict groups, assigns items to execution waves, and writes a dispatch plan YAML via dispatch_schema. Use when preparing a milestone for /work-milestone execution. Args: {milestone-number}. Requires milestone to have items assigned via /group-items-to-milestone."
+description: "Groom a GitHub milestone for parallel execution. Batch-grooms ungroomed items, assesses scope gaps, analyzes cross-item dependencies (Impact Radius overlap), builds conflict groups, assigns items to execution waves, and writes a dispatch plan YAML. Calls dispatch_wave_start MCP tool per wave to register state. Use when preparing a milestone for /work-milestone execution. Args: {milestone-number}. Requires milestone to have items assigned via /group-items-to-milestone."
 argument-hint: '{milestone-number}'
 user-invocable: true
 ---
@@ -60,7 +60,7 @@ flowchart TD
     GroomUserQ -->|"Skip items"| DepAnalysis
     GroomUserQ -->|"Abort"| Abort(["ABORT — user decision"])
 
-    DepAnalysis["Step 5: Dependency Analysis<br>Action: Read Impact Radius from each groomed item.<br>Call analyze_impact_radius_conflicts() from dispatch_schema.<br>Output: dependency graph — which items<br>touch overlapping files/modules"]
+    DepAnalysis["Step 5: Dependency Analysis<br>Action: Read Impact Radius from each groomed item.<br>Compare file lists across all items to find overlaps.<br>Output: dependency graph — which items<br>touch overlapping files/modules"]
 
     DepAnalysis --> ConflictGroup["Step 6: Conflict Grouping<br>Action: Items with file overlap form a conflict group.<br>Items in the same conflict group MUST execute sequentially.<br>Items in different groups or with no overlap execute in parallel.<br>Output: conflict groups list"]
 
@@ -74,7 +74,7 @@ flowchart TD
 
     Prioritize["Step 8: Priority Ordering<br>Action: Order items by:<br>1. Dependency constraints (blocked-by first)<br>2. Priority label (P0 > P1 > P2)<br>3. Conflict group (parallel-safe first)<br>Output: ordered list with wave assignments"]
 
-    Prioritize --> WavePlan["Step 9: Build Dispatch Plan<br>Action: Assign items to waves via write_dispatch_plan().<br>Wave 1: all items with no dependencies and no conflict group overlap.<br>Wave 2: items unblocked after Wave 1. Continue until all items assigned.<br>Run validate_plan_integrity() before writing.<br>Output: plan/milestone-{N}-dispatch.yaml"]
+    Prioritize --> WavePlan["Step 9: Build Dispatch Plan<br>Action: Assign items to waves.<br>Wave 1: all items with no dependencies and no conflict group overlap.<br>Wave 2: items unblocked after Wave 1. Continue until all items assigned.<br>Verify wave ordering and dependency references before writing.<br>Call dispatch_wave_start per wave to register state.<br>Output: plan/milestone-{N}-dispatch.yaml"]
 
     WavePlan --> Report["Step 10: Report<br>Output: milestone summary with wave assignments,<br>conflict groups, estimated parallelism per wave,<br>and next command: /work-milestone {N}"]
 
@@ -88,15 +88,14 @@ flowchart TD
 - `backlog_groom(selector)` — trigger grooming for ungroomed items
 - `backlog_update(selector, ...)` — assign milestone, update item fields
 
-## Modules Used
+## MCP Tools — Dispatch (Backlog Server)
 
-The `dispatch_schema` module provides three functions called directly in this workflow:
+The backlog MCP server exposes these dispatch tools used at plan-write time:
 
-- `analyze_impact_radius_conflicts(items)` — Step 5: compares Impact Radius file lists across all items; returns overlap matrix and conflict group assignments
-- `write_dispatch_plan(milestone, conflict_groups, waves, quality_gates)` — Step 9: serializes the plan to `plan/milestone-{N}-dispatch.yaml`
-- `validate_plan_integrity(plan)` — Step 9: verifies wave ordering, dependency references, and conflict group consistency before writing
+- `dispatch_wave_start(milestone, wave_num, items)` — Step 9: registers each wave in the dispatch state database before writing the plan YAML; use to initialise state alongside the file artifact
+- `dispatch_wave_status(milestone, wave_num)` — available after `/work-milestone` launches; returns item-level progress with stale PID detection
 
-For the full YAML schema and field definitions, see [./references/dispatch-plan-schema.md](./references/dispatch-plan-schema.md).
+The dispatch plan YAML is written by the orchestrator using the schema defined in [./references/dispatch-plan-schema.md](./references/dispatch-plan-schema.md). The conflict analysis and wave assignment logic (Steps 5–9) runs in-session — it does not call external module functions.
 
 ## Error Handling
 
@@ -105,4 +104,4 @@ For the full YAML schema and field definitions, see [./references/dispatch-plan-
 - No items in milestone: report, suggest running `/group-items-to-milestone` first
 - Grooming agent fails for an item: log the error, continue grooming remaining items, report all failures at the end
 - Impact Radius missing after grooming: re-trigger groom for that item once; if still missing, flag as BLOCKED in the report
-- `validate_plan_integrity()` returns errors: fix ordering or dependency references before writing the plan file
+- Wave ordering or dependency reference errors found during plan build: fix before writing the plan file and calling `dispatch_wave_start`

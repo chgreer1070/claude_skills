@@ -228,6 +228,10 @@ Conflict resolution agent receives both branches' diffs and resolves in-place on
 | Tool | Purpose |
 |---|---|
 | `read_dispatch_plan` | Read `plan/milestone-{N}-dispatch.yaml` |
+| `dispatch_wave_start` | Register wave + items in dispatch state DB before spawning (Step 5) |
+| `dispatch_spawn` | Background MCP task that launches parallel kage-bunshin sessions for a wave (Step 5c) |
+| `dispatch_wave_status` | Poll wave progress and detect stale PIDs (Step 6) |
+| `dispatch_item_status` | Called by spawned sessions to record completion or failure |
 | `git worktree add` | Create isolated worktree per wave item |
 | `claude -p` (kage-bunshin) | Spawn independent orchestrator session per item — has Agent tool, TeamCreate, all MCP |
 | `backlog_view` | Read item description, AC, design decisions (used by spawned sessions) |

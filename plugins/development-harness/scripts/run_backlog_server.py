@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#   "fastmcp>=3.0.2",
+#   "fastmcp[tasks]>=3.0.2",
 #   "gitpython>=3.1.0",
 #   "pygithub>=2.8.1",
 #   "pydantic>=2.12.3",

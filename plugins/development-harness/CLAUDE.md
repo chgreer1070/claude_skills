@@ -99,7 +99,7 @@ Full conventions in [./skills/development-harness/references/artifact-convention
 
 Plan artifacts are registered in a structured manifest stored in the GitHub Issue body. The manifest is the discovery mechanism — consumers query it via MCP to find artifacts for an issue.
 
-**MCP tools (on backlog server):**
+**MCP tools (on backlog server) — Artifact Management:**
 
 - `artifact_register` — Register or update an artifact entry (issue_number, type, path, status, agent)
 - `artifact_list` — List all artifacts for an issue, optionally filtered by type
@@ -111,6 +111,19 @@ Plan artifacts are registered in a structured manifest stored in the GitHub Issu
 **Registration:** Producers call `artifact_register` after creation. Auto-registration is built into `sam_create` and `backlog_update(plan=...)`.
 
 **Consumer discovery:** Consumers (including worktree-isolated agents) call `artifact_list` then `artifact_read` instead of filesystem access — plan files are in the root worktree and not visible inside isolated worktrees.
+
+## Dispatch Orchestration System
+
+Wave-based parallel execution state for `/work-milestone`. State is persisted to SQLite at `~/.dh/projects/{project-slug}/dispatch-state.db` via the `dispatch_state.DispatchStateManager` class (imported by `server.py`).
+
+**MCP tools (on backlog server) — Dispatch Orchestration:**
+
+- `dispatch_wave_start(milestone, wave_num, items)` — Create a wave entry; initialise all items with `status=pending`. Call before spawning processes. Returns error if wave already exists.
+- `dispatch_item_status(milestone, issue, status, result, error, cost)` — Record completion or failure of one item. Looks up item by milestone+issue across all waves. Valid status: `complete`, `failed`, `skipped`.
+- `dispatch_wave_status(milestone, wave_num)` — Query wave progress with per-item detail and elapsed time. Checks stale PIDs (marks dead processes failed) before returning.
+- `dispatch_spawn(milestone, wave_num, ...)` — Background task tool (`task=True`) that calls `dispatch_wave_start` then spawns one `claude -p` kage-bunshin process per wave item. Used by `/work-milestone`.
+
+**Workflow:** `/groom-milestone` writes a dispatch plan YAML. `/work-milestone` calls `dispatch_wave_start` per wave, `dispatch_spawn` to launch sessions, and `dispatch_wave_status` to poll progress. Spawned sessions call `dispatch_item_status` on completion.
 
 ---
 

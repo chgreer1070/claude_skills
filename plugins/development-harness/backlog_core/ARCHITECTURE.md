@@ -30,12 +30,13 @@ from frontmatter_utils import dump_frontmatter, loads_frontmatter
 ## Module Dependency Graph
 
 ```text
-models.py      ← standalone, no imports from other mcp modules
-parsing.py     ← imports from models
-github.py      ← imports from models, parsing
-operations.py  ← imports from models, parsing, github
-server.py      ← imports from models, operations
-backlog.py     ← imports from operations (thin CLI wrapper)
+models.py          ← standalone, no imports from other mcp modules
+parsing.py         ← imports from models
+github.py          ← imports from models, parsing
+operations.py      ← imports from models, parsing, github
+dispatch_state.py  ← imports from models (DispatchItemRecord, DispatchWaveRecord); no MCP awareness
+server.py          ← imports from models, operations, dispatch_state
+backlog.py         ← imports from operations (thin CLI wrapper)
 ```
 
 ## Output Pattern
@@ -199,7 +200,10 @@ Also re-exports `loads_frontmatter` and `dump_frontmatter` from `frontmatter_uti
 
 **Pattern**: Each CLI subcommand becomes a `@mcp.tool()` decorated function that calls the corresponding operation and returns a dict.
 
-**Tools** (10 total):
+**Tools** (14 total):
+
+*Backlog management (10):*
+
 1. `backlog_add` — calls `operations.add_item()`
 2. `backlog_list` — calls `operations.list_items()`
 3. `backlog_view` — calls `operations.view_item()`
@@ -211,13 +215,44 @@ Also re-exports `loads_frontmatter` and `dump_frontmatter` from `frontmatter_uti
 9. `backlog_normalize` — calls `operations.normalize_items()`
 10. `backlog_pull` — calls `operations.pull_items()`
 
+*Dispatch orchestration (4):*
+
+11. `dispatch_wave_start(milestone, wave_num, items)` — creates a wave entry with item records; initialises all items with `status=pending`; returns error if wave already exists
+12. `dispatch_item_status(milestone, issue, status, result, error, cost)` — records completion or failure of a single dispatch item; looks up item by milestone+issue across all waves; valid status values: `complete`, `failed`, `skipped`
+13. `dispatch_wave_status(milestone, wave_num)` — queries current wave status with per-item detail; checks stale PIDs (marks dead processes failed) before returning
+14. `dispatch_spawn(milestone, wave_num, ...)` — background task (`@mcp.tool(task=True)`) that spawns parallel kage-bunshin sessions for a wave; calls `dispatch_wave_start` then launches one `claude -p` process per item
+
 **Key patterns**:
 - Use `Annotated[type, Field(...)]` for parameter validation
 - Catch `BacklogError` subclasses and convert to structured error responses
 - Return dicts with result data + output messages
+- Dispatch tools wrap `dispatch_state.DispatchStateManager` via `asyncio.to_thread()`
 - Use `if __name__ == "__main__": mcp.run()` for STDIO transport
 
-**Imports**: `from fastmcp import FastMCP`, `from .models import ...`, `from .operations import ...`
+**Imports**: `from fastmcp import FastMCP`, `from .models import ...`, `from .operations import ...`, `from .dispatch_state import DispatchStateManager`
+
+---
+
+## Module: dispatch_state.py
+
+**Responsibility**: SQLite-backed state persistence for dispatch orchestration. Standalone — no MCP or FastMCP imports.
+
+**Class**: `DispatchStateManager(db_path)`
+
+- `ensure_schema()` — creates `waves` and `items` tables if absent; idempotent
+- `create_wave(milestone, wave_num, items)` → `DispatchWaveRecord` — inserts wave row and all item rows; raises `sqlite3.IntegrityError` if wave already exists
+- `get_wave(milestone, wave_num)` → `DispatchWaveRecord | None`
+- `get_all_waves(milestone)` → `list[DispatchWaveRecord]`
+- `set_item_in_progress(milestone, wave_num, issue, pid)` — marks item in-progress, records PID
+- `set_item_complete(milestone, wave_num, issue, result, cost)` — marks item complete; triggers wave completion check
+- `set_item_failed(milestone, wave_num, issue, error)` — marks item failed; triggers wave completion check
+- `get_item(milestone, wave_num, issue)` → `DispatchItemRecord | None`
+- `get_wave_items(milestone, wave_num)` → `list[DispatchItemRecord]`
+- `check_stale_pids()` → `list[DispatchItemRecord]` — probes each in-progress PID with `os.kill(pid, 0)`; marks dead items failed; returns newly failed items
+
+**Storage**: SQLite at `~/.dh/projects/{project-slug}/dispatch-state.db`. `server.py` initialises the path; `dispatch_state.py` does not resolve it.
+
+**Imports from other modules**: `from .models import DispatchItemRecord, DispatchWaveRecord`
 
 ---
 
