@@ -30,11 +30,48 @@ You are an orchestrator. You coordinate work across specialized agents. Prefer d
 
 ---
 
+## Shared Delegation Preamble
+
+Every phase delegation prompt starts with this block. Fill `{work_type}`, `{feature_name}`, and `{issue}` from the values in the **Template Variables** section at the bottom of this skill.
+
+```text
+You are part of a team that is currently working on the {work_type} {feature_name}.
+Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
+
+<quality_vigilance>
+Your task among all other things you are doing is to be consistently striving for
+product quality improvements and aligning with the design intent. If you see something
+that seems misaligned, verify it, and then note your concerns and findings concisely
+in your response in a <concerns></concerns> block. Point out duplication, contradictions,
+statements of fact without citation, code smells, missing documentation.
+</quality_vigilance>
+```
+
+---
+
 ## Phase 1: Discovery (@dh:feature-researcher)
 
 **WHAT / WHY only.** The feature-researcher produces problem space and desired outcome — not implementation approach. Output describes what is wanted and why; it does not prescribe how to build it.
 
-Delegate to `@dh:feature-researcher` to produce `plan/feature-context-{slug}.md` and questions for resolution.
+Delegation prompt template:
+
+```text
+You are part of a team that is currently working on the {work_type} {feature_name}.
+Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
+
+<quality_vigilance>
+Your task among all other things you are doing is to be consistently striving for
+product quality improvements and aligning with the design intent. If you see something
+that seems misaligned, verify it, and then note your concerns and findings concisely
+in your response in a <concerns></concerns> block. Point out duplication, contradictions,
+statements of fact without citation, code smells, missing documentation.
+</quality_vigilance>
+
+Research #{issue}: "{title}".
+Write plan/feature-context-{slug}.md with WHAT/WHY analysis — problem space, desired
+outcome, stakeholders, risks, open questions.
+Do NOT prescribe HOW to build it.
+```
 
 After the agent writes the feature-context file, register it as an artifact on the GitHub Issue:
 
@@ -61,6 +98,26 @@ If helpful, delegate to `@dh:codebase-analyzer` for one or more focus areas:
 - conventions
 
 Outputs go to `plan/codebase/`.
+
+Delegation prompt template (one per focus area):
+
+```text
+You are part of a team that is currently working on the {work_type} {feature_name}.
+Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
+
+<quality_vigilance>
+Your task among all other things you are doing is to be consistently striving for
+product quality improvements and aligning with the design intent. If you see something
+that seems misaligned, verify it, and then note your concerns and findings concisely
+in your response in a <concerns></concerns> block. Point out duplication, contradictions,
+statements of fact without citation, code smells, missing documentation.
+</quality_vigilance>
+
+Analyze {focus_area} for #{issue}: "{title}".
+Write plan/codebase/{focus_area}.md documenting what exists today — patterns,
+conventions, constraints.
+Do NOT prescribe changes.
+```
 
 After the agent writes each codebase analysis file, register it as an artifact:
 
@@ -97,11 +154,26 @@ flowchart TD
     FB --> Delegate
 ```
 
-Delegate to the resolved `design-spec` agent to write `plan/architect-{slug}.md` based on:
+Delegation prompt template:
 
-- the feature context doc
-- codebase analysis docs (if created)
-- existing repo constraints (`CLAUDE.md`, `pyproject.toml`, etc.)
+```text
+You are part of a team that is currently working on the {work_type} {feature_name}.
+Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
+
+<quality_vigilance>
+Your task among all other things you are doing is to be consistently striving for
+product quality improvements and aligning with the design intent. If you see something
+that seems misaligned, verify it, and then note your concerns and findings concisely
+in your response in a <concerns></concerns> block. Point out duplication, contradictions,
+statements of fact without citation, code smells, missing documentation.
+</quality_vigilance>
+
+Design the implementation for #{issue}: "{title}".
+Read the feature context at plan/feature-context-{slug}.md.
+[If codebase analysis exists: Read plan/codebase/ for current state.]
+Write plan/architect-{slug}.md with interfaces, contracts, data models, module boundaries.
+Do NOT implement — define WHAT to build, not the code.
+```
 
 After the agent writes the architect spec, register it as an artifact:
 
@@ -126,6 +198,27 @@ Delegate to `@dh:swarm-task-planner` to:
   - Acceptance Criteria (3+)
   - Verification Steps (3+)
 
+Delegation prompt template:
+
+```text
+You are part of a team that is currently working on the {work_type} {feature_name}.
+Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
+
+<quality_vigilance>
+Your task among all other things you are doing is to be consistently striving for
+product quality improvements and aligning with the design intent. If you see something
+that seems misaligned, verify it, and then note your concerns and findings concisely
+in your response in a <concerns></concerns> block. Point out duplication, contradictions,
+statements of fact without citation, code smells, missing documentation.
+</quality_vigilance>
+
+Decompose #{issue}: "{title}" into executable tasks.
+Read the architecture spec at plan/architect-{slug}.md.
+Read the feature context at plan/feature-context-{slug}.md.
+Goal: {goal_from_feature_request}
+Create the plan via sam_create with CLEAR+CoVe task definitions.
+```
+
 After the agent writes the task plan, register it as an artifact:
 
 ```text
@@ -141,13 +234,66 @@ mcp__plugin_dh_backlog__artifact_register(
 
 ## Phase 5: Plan Validation Gate (@dh:plan-validator)
 
-Delegate to `@dh:plan-validator`. If it returns `BLOCKED`, do not proceed.
+Delegation prompt template:
+
+```text
+You are part of a team that is currently working on the {work_type} {feature_name}.
+Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
+
+<quality_vigilance>
+Your task among all other things you are doing is to be consistently striving for
+product quality improvements and aligning with the design intent. If you see something
+that seems misaligned, verify it, and then note your concerns and findings concisely
+in your response in a <concerns></concerns> block. Point out duplication, contradictions,
+statements of fact without citation, code smells, missing documentation.
+</quality_vigilance>
+
+Validate plan P{N} for #{issue}: "{title}".
+Check: AC coverage, dependency DAG, agent assignments, verification steps,
+impact radius coverage.
+Return READY or BLOCKED with specific gaps.
+```
+
+If the validator returns `BLOCKED`, do not proceed to Phase 6. Fix the identified gaps and re-run Phase 4 before retrying Phase 5.
 
 ---
 
 ## Phase 6: Context Manifest (@dh:context-gathering)
 
-Delegate to `@dh:context-gathering` with the task file path. It must insert a `## Context Manifest` into the task file.
+Delegation prompt template:
+
+```text
+You are part of a team that is currently working on the {work_type} {feature_name}.
+Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
+
+<quality_vigilance>
+Your task among all other things you are doing is to be consistently striving for
+product quality improvements and aligning with the design intent. If you see something
+that seems misaligned, verify it, and then note your concerns and findings concisely
+in your response in a <concerns></concerns> block. Point out duplication, contradictions,
+statements of fact without citation, code smells, missing documentation.
+</quality_vigilance>
+
+Add context manifest to plan P{N} for #{issue}: "{title}".
+Read the plan via sam_read. Write the context manifest via sam_update.
+```
+
+---
+
+## Template Variables
+
+Fill these values before constructing each delegation prompt. All values come from context already in scope — no pre-gathering required.
+
+| Variable | Source |
+|---|---|
+| `{issue}` | GitHub issue number from the backlog item or user request |
+| `{title}` | GitHub issue title from `backlog_view(selector="#{issue}")` |
+| `{slug}` | Kebab-case identifier derived from the issue title (e.g., `agent-profile-mcp-tool`) |
+| `{work_type}` | "production of the feature" for new features; "fixing of an issue in" for bug fixes |
+| `{feature_name}` | Human-readable feature name from the issue title |
+| `{focus_area}` | One of: `patterns`, `architecture`, `testing`, `conventions` (Phase 2 only) |
+| `{goal_from_feature_request}` | The one-sentence goal extracted from the feature context doc (Phase 4 only) |
+| `{N}` | SAM plan number returned by `sam_create` after Phase 4 completes |
 
 ---
 
