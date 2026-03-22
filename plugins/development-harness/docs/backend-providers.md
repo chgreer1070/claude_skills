@@ -13,11 +13,12 @@ The development harness uses three subsystems, all currently backed by GitHub an
 
 ### Issues/Backlog (backlog MCP)
 
-- **Source of truth**: GitHub Issues via PyGithub REST + GraphQL
+- **Source of truth**: GitHub Issues via GraphQL (bulk fetch) + PyGithub REST (single-item mutations)
 - **Local cache**: `~/.dh/projects/{slug}/backlog/` per-item markdown files (resolved via `dh_paths.backlog_dir()`)
 - **Implementation**: `backlog_core/` package, exposed as FastMCP 3.x server (`mcp__plugin_dh_backlog__*`)
 - **Operations**: CRUD on issues, label management, grooming, syncing, milestone/project management
 - **Sync direction**: GitHub Issues are canonical; local files are derived cache updated by `backlog_sync` and `backlog_pull`
+- **Bulk sync primitive**: `sync_issues_graphql` in `backlog_core/github.py` — GraphQL cursor-paginated fetch with optional `since` filter for incremental sync. Full sync ~12s for 245 issues; incremental sync ~0.7s. `create_milestone` and `create_label` remain REST-only (no GraphQL mutations — ADR-004).
 
 ### Plans/Tasks (SAM MCP)
 
@@ -54,7 +55,7 @@ All data below is sourced from verified research. See [research/task-management/
 
 ### GitHub (Current Backend)
 
-- **Issues API**: REST (PyGithub) + GraphQL, 65,536 char body limit
+- **Issues API**: GraphQL (bulk fetch via `sync_issues_graphql`) + REST/PyGithub (single-item CRUD, label/milestone creation), 65,536 char body limit
 - **Projects V2**: Project-level custom fields (5 types, 50 field max), GraphQL CRUD, text fields support exact match only
 - **Issue Fields**: Org-level typed fields (25 max), public preview since 2026-03-12, full GraphQL + REST API, searchable/filterable
 - **Sub-issues**: Native parent-child issue relationships
@@ -96,7 +97,7 @@ How each platform maps to the development harness core concepts:
 
 | Concept | GitHub | Linear | GitLab | Supabase |
 |---------|--------|--------|--------|----------|
-| Issues/Backlog | Issues (REST + GraphQL) | Issues (GraphQL) | Issues (REST + GraphQL) | `issues` table (REST + SQL) |
+| Issues/Backlog | Issues (GraphQL bulk via `sync_issues_graphql`; REST for mutations) | Issues (GraphQL) | Issues (REST + GraphQL) | `issues` table (REST + SQL) |
 | Plans/Tasks | Sub-issues linked from parent issue | Sub-issues linked from parent issue | Linked issues ("relates to") | `tasks` table with `plan_id` FK |
 | Artifact Manifest | Issue body section (HTML comment delimiters) | Attachments with metadata key-value pairs | Issue description section (HTML comment delimiters) | `artifact_manifests` table |
 | Sub-issues/Decomposition | Native sub-issues | Native sub-issues | Linked items + Epics (Premium) | `parent_id` self-referential FK |
@@ -127,7 +128,7 @@ Methods: `get_manifest`, `set_manifest`, `read_artifact_content`
 
 ### IssueBackend Protocol (to be created)
 
-Abstracts the backlog/issue operations currently hardcoded to GitHub in `backlog_core/github.py` and `backlog_core/operations.py`.
+Abstracts the backlog/issue operations currently hardcoded to GitHub in `backlog_core/github.py` and `backlog_core/operations.py`. The current GitHub implementation uses `sync_issues_graphql` as the bulk fetch primitive; the Protocol interface expresses this as `list_issues`.
 
 Expected methods (derived from current `backlog_core` operations):
 
@@ -177,6 +178,7 @@ sam MCP server
 
 ## References
 
+- [graphql-usage-guide.md](./graphql-usage-guide.md) -- `sync_issues_graphql` usage, parameters, anti-patterns, and performance data
 - [research/task-management/artifact-manifest-backend-providers.md](../../../research/task-management/artifact-manifest-backend-providers.md) -- cross-platform research with full citations
 - `~/.dh/projects/{slug}/plan/architect-artifact-manifest.md` -- architecture spec for ArtifactBackend Protocol (access via `artifact_read`)
 - `~/.dh/projects/{slug}/plan/feature-context-artifact-manifest.md` -- problem space and desired outcomes (access via `artifact_read`)

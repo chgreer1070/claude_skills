@@ -32,8 +32,7 @@ wins.
 
 ### Layer 2 — `~/.dh/projects/{slug}/backlog/*.md` (local cache for agent consumption)
 
-Per-item files exist to avoid GitHub API saturation during agent sessions. Agents read
-these files instead of hitting the API for every lookup. Path resolved via `dh_paths.backlog_dir()`.
+Per-item files exist to avoid GitHub API calls during agent sessions. Agents read these files instead of hitting the API for every lookup. Path resolved via `dh_paths.backlog_dir()`. Bulk refreshes use `sync_issues_graphql` (GraphQL cursor-paginated, ~12s full / ~0.7s incremental via `since` filter).
 
 - Named `{priority}-{slug}.md` — e.g., `p1-error-recovery.md`
 - Contain YAML frontmatter + body sections
@@ -290,7 +289,7 @@ uv run .claude/skills/backlog/scripts/backlog.py pull [--dry-run] [--force]
 
 **What happens** [VERIFY: exact pull behavior — inferred from docstring]:
 
-- Fetches current issue state from GitHub for each item with a `metadata.issue` field
+- Fetches current issue state from GitHub using `sync_issues_graphql` (GraphQL cursor-paginated; `since` filter used when `.last_sync` file exists for incremental pull)
 - Overwrites or merges local file body with current issue body
 - Updates `metadata.status` to match GitHub label state
 - `--dry-run`: shows what would change without writing
@@ -384,7 +383,7 @@ flowchart TD
 
 - **Push (local → GitHub)**: `backlog add`, `backlog sync`, `backlog groom`, `backlog update`,
   `backlog close`, `backlog resolve`
-- **Pull (GitHub → local)**: `backlog pull`
+- **Pull (GitHub → local)**: `backlog pull` — uses `sync_issues_graphql` (GraphQL); incremental when `.last_sync` exists, full scan otherwise
 - **Write-back on create**: `backlog add --create-issue` and `backlog sync` write `metadata.issue`
   back to the local file after creating the GH issue (bidirectional in a single operation)
 
