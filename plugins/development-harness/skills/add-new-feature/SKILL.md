@@ -24,6 +24,39 @@ $ARGUMENTS
 
 ---
 
+## Artifact Discovery (Pre-Phase)
+
+Before starting any phase, check whether the feature request references a GitHub Issue. If an issue number is present, discover existing artifacts registered on that issue.
+
+```mermaid
+flowchart TD
+    Start([Parse feature_request]) --> Q{Contains "GitHub Issue: #N"<br>or "Issue: #N" or "#N"?}
+    Q -->|Yes — issue number found| List["Call artifact_list(issue_number=N)<br>to discover registered artifacts"]
+    Q -->|No — no issue reference| Skip[Skip artifact discovery<br>Proceed normally]
+    List --> Found{Artifacts returned?}
+    Found -->|Yes| Store["Store artifact list as discovered_artifacts<br>Include paths and types in each<br>phase delegation prompt"]
+    Found -->|No or empty| Skip
+    Store --> Phase1([Proceed to Phase 1])
+    Skip --> Phase1
+```
+
+When `discovered_artifacts` is non-empty, append this block to each phase delegation prompt:
+
+```text
+<prior_artifacts>
+The following artifacts are already registered for this issue. Read any relevant
+ones via artifact_read(issue_number={issue}, artifact_type="{type}") before
+starting your work — they contain prior research and analysis that should
+inform your output.
+
+{for each artifact: "- {artifact_type}: {path}"}
+</prior_artifacts>
+```
+
+Research-type artifacts (`artifact_type="research"`) are especially valuable — they contain investigation findings gathered before planning began. Phase agents should read these first when present.
+
+---
+
 ## Orchestrator Discipline
 
 You are an orchestrator. You coordinate work across specialized agents. Prefer delegating discovery and analysis.
@@ -68,6 +101,9 @@ statements of fact without citation, code smells, missing documentation.
 </quality_vigilance>
 
 Research #{issue}: "{title}".
+If research artifacts exist for this issue, read them via
+artifact_read(issue_number={issue}, artifact_type="research") before starting
+discovery — they contain prior investigation findings that should be incorporated.
 Write plan/feature-context-{slug}.md with WHAT/WHY analysis — problem space, desired
 outcome, stakeholders, risks, open questions.
 Do NOT prescribe HOW to build it.
@@ -171,6 +207,9 @@ statements of fact without citation, code smells, missing documentation.
 Design the implementation for #{issue}: "{title}".
 Read the feature context at plan/feature-context-{slug}.md.
 [If codebase analysis exists: Read plan/codebase/ for current state.]
+If research artifacts exist for this issue, read them via
+artifact_read(issue_number={issue}, artifact_type="research") for prior research
+findings that should inform the architecture.
 Write plan/architect-{slug}.md with interfaces, contracts, data models, module boundaries.
 Do NOT implement — define WHAT to build, not the code.
 ```
