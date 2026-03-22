@@ -98,7 +98,8 @@ Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 mcp__plugin_dh_backlog__backlog_groom(
     selector="#{issue}",
     section="Concerns",
-    content="- [ ] {concern text} (reported by {agent_name} on {task_id})"
+    content="- [ ] {concern text} (reported by {agent_name} on {task_id})",
+    append=True
 )
 ```
 
