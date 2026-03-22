@@ -208,3 +208,9 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 **Files**: `plugins/development-harness/backlog_core/artifact_provider.py`
 **Behavior to cover**: GitHubArtifactProvider.get_manifest, set_manifest, read_artifact_content; parse_manifest_section with edge cases (empty body, body with manifest, malformed rows); render_manifest_section; replace_manifest_in_body (replace vs append paths); path traversal rejection; roundtrip fidelity
 **Reason not written**: Subordinate-agent boundary — T5 is the dedicated test task for artifact_provider.py and artifact_registry.py. Tests are planned in plugins/development-harness/tests_backlog/test_artifact_provider.py.
+
+## Gap: artifact_migrate response shape
+
+**Files**: `plugins/development-harness/backlog_core/server.py`
+**Behavior to cover**: `_migrate_discover_candidates` with `issue_filter` set — verify non-matching files are counted in `filtered_count` and absent from the returned candidate list. Also: `_migrate_live_run` and `_migrate_dry_run` response shapes — verify `details` contains only migrated/failed entries, `skipped` equals `filtered_count + no-issue count`, and `verify` field is present.
+**Reason not written**: No existing test suite for `backlog_core/server.py`. Setting up the full provider mock stack is out of scope for this single-function fix task.

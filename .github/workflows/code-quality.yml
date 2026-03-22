@@ -24,18 +24,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Lint with Ruff
         run: uv run prek run ruff --all-files
@@ -52,18 +41,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Run basedpyright
         run: uv run --with pep723-loader --with basedpyright pep723-loader basedpyright
@@ -78,18 +56,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -106,18 +73,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Run Biome
         run: uv run prek run biome-check --all-files
@@ -131,18 +87,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Run markdownlint-cli2
         run: uv run prek run markdownlint-cli2 --all-files
@@ -156,31 +101,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Run shellcheck
         run: uv run prek run shellcheck --all-files
 
       - name: Run shfmt
         run: uv run prek run shell-fmt-go --all-files
-
-  # =============================================================================
-  # Local hooks: frontmatter validation (blocking)
-  # validate_frontmatter.py was consolidated into skilllint
-  # (refactor: consolidate frontmatter validation into shared frontmatter_core module)
-  # Frontmatter is now validated by the validate-plugins job below.
-  # =============================================================================
 
   # =============================================================================
   # Local hooks: plugin validation (via prek)
@@ -192,18 +119,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Validate plugins
         run: uv run prek run skilllint --all-files
@@ -218,18 +134,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Check manifest sync
         run: uv run prek run auto-sync-manifests --all-files
@@ -248,22 +153,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
+      - uses: ./.github/actions/setup-python
 
       - name: Fetch PR base for diff scope
         if: github.event_name == 'pull_request'
         run: git fetch --depth=1 origin ${{ github.event.pull_request.base.sha }}
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
 
       - name: Run file hygiene hooks
         env:
@@ -287,18 +181,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Install dependencies
         run: uv sync --group dev

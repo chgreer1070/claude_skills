@@ -5,9 +5,9 @@ metadata:
   topic: add-appendtrue-parameter-to-backloggroom-mcp-tool-for-increm
   source: 'Session 2026-03-22: concerns tracking requires append-mode for backlog_groom section writes'
   added: '2026-03-22'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#980'
   last_synced: '2026-03-22T03:27:56Z'
 ---

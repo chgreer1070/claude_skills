@@ -1,13 +1,13 @@
 ---
 name: work-milestone
-description: "Execute a groomed milestone with parallel worktree agents. Use when running a milestone after /groom-milestone has produced a dispatch plan. Reads dispatch plan, creates integration branch, dispatches one Agent(isolation: worktree) per wave item with issue number and integration branch — agents self-discover task plans and AC via SAM MCP. Sequentially merges worktree branches, relays wave discoveries to subsequent waves, then lands integration branch to main. Args: {milestone-number}."
+description: "Execute a groomed milestone with parallel kage-bunshin sessions in isolated worktrees. Use when running a milestone after /groom-milestone has produced a dispatch plan. Reads dispatch plan, creates integration branch, spawns one kage-bunshin (independent claude -p process) per wave item in its own worktree — each session is a full orchestrator with Agent tool and TeamCreate. Sequentially merges worktree branches, relays wave discoveries to subsequent waves, then lands integration branch to main. Args: {milestone-number}."
 argument-hint: '{milestone-number}'
 user-invocable: true
 ---
 
 # /work-milestone
 
-Execute a groomed milestone. Reads the dispatch plan produced by `/groom-milestone`, creates an integration branch, dispatches parallel worktree agents per wave, sequentially merges their branches, and lands the integration branch to main when all waves complete.
+Execute a groomed milestone. Reads the dispatch plan produced by `/groom-milestone`, creates an integration branch, spawns parallel kage-bunshin sessions (independent `claude -p` processes) per wave — each in its own worktree with full orchestrator capabilities (Agent tool, TeamCreate, all MCP servers). Sequentially merges their branches and lands the integration branch to main when all waves complete.
 
 ## Entry Conditions
 
@@ -39,11 +39,23 @@ flowchart TD
     WaveLoop --> WaveItems{"Wave has items?"}
     WaveItems -->|"No waves remain"| Land
 
-    WaveItems -->|"Yes"| SpawnAgents["Step 5: Spawn Worktree Agents<br>For each item: Agent(isolation: worktree)<br>with issue number + integration branch.<br>Agent self-discovers task plan and AC via SAM MCP.<br>All items in wave launch in parallel via TeamCreate."]
+    WaveItems -->|"Yes"| CreateWorktrees["Step 5a: Create Worktrees<br>For each item in wave:<br>git worktree add worktrees/{slug}<br>from integration branch"]
 
-    SpawnAgents --> WaitReturn["Step 6: Wait for All Agents<br>Agent calls are synchronous.<br>Collect structured completion reports<br>from each agent output."]
+    CreateWorktrees --> WriteLocks["Step 5b: Write Lock Files<br>For each worktree:<br>Write .claude/kage-bunshin.lock<br>(prevents recursive spawning)"]
 
-    WaitReturn --> ParseResults["Step 6a: Parse Completion Reports<br>Extract STATUS, BRANCH, FILES_CHANGED,<br>COMMITS, NOTES from each agent."]
+    WriteLocks --> SpawnSessions["Step 5c: Spawn Kage-Bunshin Sessions<br>For each worktree: cd into it, then:<br>claude -p --model sonnet<br>--permission-mode auto --output-format json<br>'Load /dh:work-backlog-item #{issue}'<br>Each session is a FULL orchestrator —<br>has Agent tool, TeamCreate, all MCP.<br>All sessions launch as background processes."]
+
+    SpawnSessions --> WaitReturn["Step 6: Wait for All Sessions<br>Poll PIDs for exit.<br>Read result JSON from each<br>/tmp/kb-work-{issue}.json"]
+
+    WaitReturn --> CheckResults{"Step 6a: Any sessions failed?"}
+    CheckResults -->|"All succeeded"| ParseResults
+    CheckResults -->|"Some failed"| InvestigateFail{"Fixable?"}
+    InvestigateFail -->|"Yes"| FixRetry["Fix and re-spawn<br>failed item only"]
+    FixRetry --> WaitReturn
+    InvestigateFail -->|"No"| SkipFailed["Skip failed item<br>Log to output"]
+    SkipFailed --> ParseResults
+
+    ParseResults["Step 6b: Parse Completion Reports<br>Extract STATUS, BRANCH, FILES_CHANGED,<br>COMMITS, NOTES from each result JSON."]
 
     ParseResults --> MergeLoop["Step 6b: Merge Worktree Branches<br>Sequential merge into integration branch.<br>One at a time, in return order."]
 
@@ -83,116 +95,84 @@ flowchart TD
 
 ## Dispatch Step (Step 5 Detail)
 
-All items in a wave are independent by construction (guaranteed non-overlapping by the conflict group analysis in the dispatch plan). Use `TeamCreate` to launch them in parallel — teams are the standard mechanism for parallel wave dispatch.
+All items in a wave are independent by construction (guaranteed non-overlapping by the conflict group analysis in the dispatch plan). Each item gets its own worktree and its own kage-bunshin session — an independent `claude -p` process with full orchestrator capabilities.
 
-```text
-TeamCreate(team_name: "wave-{N}-{milestone-slug}")
+### Why Kage-Bunshin Instead of TeamCreate
+
+Teammates and subagents do NOT have the Agent tool. The `/work-backlog-item` flow is an orchestration skill that needs to spawn sub-agents (feature-researcher, codebase-analyzer, python-cli-architect, etc.). A teammate running `/work-backlog-item` is BLOCKED at the first agent delegation step.
+
+A kage-bunshin session is an independent `claude` CLI process — a full orchestrator that inherits all MCP servers, skills, plugins, and agents from the project directory. It CAN use Agent tool and TeamCreate internally.
+
+### Worktree + Session Setup Per Item
+
+Use the kage-bunshin spawn script — it handles worktree creation, `.venv`/`node_modules` symlinking, lock file writing, and process launch:
+
+```bash
+SPAWN="plugins/development-harness/skills/kage-bunshin/scripts/spawn.py"
+PIDS=()
+SPAWN_INFO=()
+
+for ISSUE in "${WAVE_ISSUES[@]}"; do
+  OUTPUT=$($SPAWN --worktree \
+    --branch "${INTEGRATION_BRANCH}" \
+    --name "work-item-${ISSUE}" \
+    --model sonnet \
+    "Load /dh:work-backlog-item #${ISSUE}. Execute the full work flow. \
+     You are in a worktree on integration branch ${INTEGRATION_BRANCH}. \
+     Use MCP tools for plan artifact discovery — plan/ files are in the root worktree. \
+     Prior wave context: ${DISCOVERY_RELAY}")
+  PIDS+=($(echo "$OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['pid'])"))
+  SPAWN_INFO+=("$OUTPUT")
+done
 ```
 
-Spawn one worktree agent per wave item as a teammate. Each teammate receives a minimal reference prompt (see template below) and operates autonomously. The orchestrator waits for all teammates to complete, then merges branches sequentially.
+### What the Spawned Session Gets
 
-The worktree isolation is orthogonal to team coordination: `Agent(isolation: "worktree")` provides filesystem isolation per item; `TeamCreate` provides the parallel dispatch and coordination mechanism. Both apply simultaneously.
-
-The orchestrator passes only references to the worktree agent. The agent self-discovers everything else.
-
-**What the orchestrator passes:**
+**Via the prompt:**
 
 - Issue number (from dispatch plan wave item)
 - Integration branch name (from dispatch plan)
 - Discovery relay content from prior waves (orchestrator-accumulated, empty for wave 1)
-- Quality gate commands (from dispatch plan `quality_gates.pre_merge`)
+- Instruction to use MCP for artifact discovery
 
-**What the agent discovers autonomously:**
+**Via capability inheritance (automatic):**
+
+- All MCP servers (backlog, SAM, artifact registry)
+- All skills (including `/dh:work-backlog-item` which it loads and executes)
+- All agent types (it CAN and WILL spawn sub-agents as needed)
+- Full tool access (Agent, TeamCreate, Read, Write, Edit, Bash, etc.)
+
+**Via self-discovery (the session does this itself):**
 
 - Groomed description and acceptance criteria — via `backlog_view(selector="#{issue}")`
-- Plan artifacts (architect spec, feature context, etc.) — via `artifact_list(issue_number={issue})` then `artifact_read(issue_number={issue}, artifact_type="architect")` for content
-- SAM task plan and task list — via `sam_read(plan="P{N}")` if a plan exists
+- Plan artifacts — via `artifact_list(issue_number={issue})` then `artifact_read(...)`
+- SAM task plan — via `sam_read(plan="P{N}")` if a plan exists
 - Skills to load — from `skills` field in SAM task metadata
 
-## Worktree Agent Prompt Template
+### Monitoring and Result Collection
 
-Each worktree agent receives a minimal reference prompt. The agent reads item data directly via MCP. The agent has no Agent tool — it cannot delegate to subagents. All work is executed directly.
+```bash
+# Wait for all sessions in the wave to exit
+for i in "${!PIDS[@]}"; do
+  wait "${PIDS[$i]}"
+  EXIT_CODE=$?
+  INFO="${SPAWN_INFO[$i]}"
+  RESULT_FILE=$(echo "$INFO" | python3 -c "import sys,json; print(json.load(sys.stdin)['result_file'])")
 
-```text
-## Your Task
-
-You are executing backlog item #{issue}: "{title}" inside an isolated git worktree
-on the integration branch `{integration_branch}`.
-
-You have NO Agent tool — you cannot delegate to subagents. Execute all work directly.
-Commit your changes frequently using conventional commits: `type(scope): description`.
-
-## Self-Discovery Steps
-
-Before starting work:
-
-1. Read the backlog item: `backlog_view(selector="#{issue}")` — extract description and acceptance criteria.
-2. Discover plan artifacts via MCP:
-   - Call `artifact_list(issue_number={issue})` to get all registered artifacts for this issue.
-   - If artifacts exist: call `artifact_read(issue_number={issue}, artifact_type="architect")` to read the architecture spec content. Repeat for `"feature-context"` or other types as needed.
-   - If `artifact_list` returns empty (pre-manifest issue with no registered artifacts): fall back to filesystem paths from the SAM plan or backlog item.
-3. Check for a SAM plan: `sam_status(plan="P{issue}")` or search `sam_list()` by title.
-   - If a plan exists: `sam_read(plan="P{plan_id}")` — extract task list, skills, and architect spec path.
-   - If no plan exists: work from acceptance criteria directly.
-4. Load all skills listed in the SAM task metadata:
-   - For each skill name found: `Skill(skill="{skill_name}")`
-   - If a skill fails to load, warn and continue.
-
-## Filesystem Restriction
-
-You are running in an isolated git worktree. Do NOT access `plan/` files via the filesystem — they may not exist in your worktree checkout. Use MCP tools exclusively for plan artifact discovery and content retrieval:
-- `artifact_list(issue_number={issue})` — discover what artifacts exist
-- `artifact_read(issue_number={issue}, artifact_type="...")` — read artifact content via the MCP server (which reads from the root worktree, not your checkout)
-
-## Quality Gates
-
-Before signaling completion, run these commands and fix any failures:
-{for each command in pre_merge_gates}
-- `{command}`
-{end for}
-
-## Prior Wave Context
-
-{discovery_relay_content — empty for wave 1}
-
-## Completion Protocol
-
-When all tasks are complete and quality gates pass:
-1. Ensure all changes are committed
-2. Output a structured completion report:
-
-   STATUS: COMPLETE
-   BRANCH: {your worktree branch name}
-   TASKS_COMPLETED: {count}
-   FILES_CHANGED: {list of files}
-   COMMITS: {list of commit hashes and messages}
-   NOTES: {any design decisions or deviations}
-
-If you encounter a blocker you cannot resolve:
-1. Complete as many tasks as possible
-2. Commit all completed work
-3. Output:
-
-   STATUS: PARTIAL
-   BRANCH: {your worktree branch name}
-   TASKS_COMPLETED: {count of completed}
-   TASKS_BLOCKED: {count and IDs of blocked tasks}
-   BLOCKER: {description of what blocked progress}
-   FILES_CHANGED: {list of files}
-   COMMITS: {list of commit hashes and messages}
+  if [ $EXIT_CODE -eq 0 ] && [ -s "$RESULT_FILE" ]; then
+    echo "$(python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result','')[:200])" < "$RESULT_FILE")"
+  else
+    ERROR_FILE=$(echo "$INFO" | python3 -c "import sys,json; print(json.load(sys.stdin)['error_file'])")
+    echo "FAILED (exit ${EXIT_CODE}): $(tail -5 "$ERROR_FILE")"
+  fi
+done
 ```
 
-### Template Variables
+### Model Selection
 
-| Variable | Source | How Orchestrator Obtains It |
-|---|---|---|
-| `issue` | Dispatch plan wave item | `wave.items[i].issue` |
-| `title` | Dispatch plan wave item | `wave.items[i].title` |
-| `integration_branch` | Dispatch plan | `milestone.integration_branch` |
-| `pre_merge_gates` | Dispatch plan | `quality_gates.pre_merge` commands |
-| `discovery_relay_content` | Orchestrator state | Collected from prior wave agent outputs |
+The `--model` flag on the kage-bunshin controls the spawned session's orchestrator model only. Sub-agents spawned inside that session use their own model per their agent frontmatter definition.
 
-All other data (description, AC, task list, skills, architect spec, plan artifacts) is discovered by the agent via MCP after spawning. The issue number is used both for `backlog_view` and for `artifact_list`/`artifact_read` queries.
+Recommended: `--model sonnet` for spawned sessions. Haiku viability as orchestrator is an open experiment.
 
 ## Agent Result Handling
 
@@ -248,13 +228,13 @@ Conflict resolution agent receives both branches' diffs and resolves in-place on
 | Tool | Purpose |
 |---|---|
 | `read_dispatch_plan` | Read `plan/milestone-{N}-dispatch.yaml` |
-| `TeamCreate` | Spawn parallel wave workers (standard parallel dispatch mechanism) |
-| `Agent(isolation: "worktree")` | Provide filesystem isolation per wave item (used inside TeamCreate) |
-| `backlog_view` | Read item description, AC, design decisions |
-| `artifact_list` | Discover plan artifacts registered for an issue |
-| `artifact_read` | Read plan artifact content from root worktree via MCP |
-| `sam_read` | Read SAM task plan for an item |
-| `sam_status` / `sam_list` | Check whether item has a SAM plan |
+| `git worktree add` | Create isolated worktree per wave item |
+| `claude -p` (kage-bunshin) | Spawn independent orchestrator session per item — has Agent tool, TeamCreate, all MCP |
+| `backlog_view` | Read item description, AC, design decisions (used by spawned sessions) |
+| `artifact_list` | Discover plan artifacts registered for an issue (used by spawned sessions) |
+| `artifact_read` | Read plan artifact content from root worktree via MCP (used by spawned sessions) |
+| `sam_read` | Read SAM task plan for an item (used by spawned sessions) |
+| `sam_status` / `sam_list` | Check whether item has a SAM plan (used by spawned sessions) |
 | `github_branches create` | Create integration branch |
 | `github_branches merge` | Merge worktree branch into integration branch |
 | `github_branches delete` | Delete integration branch after landing |
@@ -268,7 +248,8 @@ Conflict resolution agent receives both branches' diffs and resolves in-place on
 - **Backlog MCP unavailable**: PROCESS ERROR — report with exact error text
 - **SAM MCP unavailable**: PROCESS ERROR — report with exact error text
 - **Integration branch already exists**: check for stale branch (no commits in 7+ days) — offer to delete and recreate, or resume
-- **Agent returned PARTIAL status**: create backlog items for blocked tasks, add to milestone, continue with other agents
+- **Kage-bunshin session exited non-zero**: read error log, investigate if fixable, re-spawn if yes, skip item if no
+- **Kage-bunshin result contains PARTIAL status**: create backlog items for blocked tasks, add to milestone, continue with other items
 - **All quality gates fail on integration branch**: escalate to user before landing
 - **Main diverged during milestone work**: rebase integration branch onto main before landing
 

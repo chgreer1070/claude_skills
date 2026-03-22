@@ -11,6 +11,7 @@ metadata:
   issue: '#979'
   last_synced: '2026-03-22T01:56:35Z'
   groomed: '2026-03-22'
+  plan: plan/P979-agent-profile-mcp-tool.yaml
 ---
 
 ## RT-ICA

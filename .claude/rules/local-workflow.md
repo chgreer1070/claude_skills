@@ -115,7 +115,7 @@ Divergence between plan artifacts and implementation is detected during Phase 6 
 
 Loops through ready tasks, delegates each to its specified agent, and relies on hooks for status tracking.
 
-> **Worktree isolation variant**: For milestone-scoped execution where each task runs in an isolated git worktree (`Agent(isolation: "worktree")`), use the `/work-milestone` skill instead. See [plugins/development-harness/skills/work-milestone/SKILL.md](./../../plugins/development-harness/skills/work-milestone/SKILL.md).
+> **Worktree isolation variant**: For milestone-scoped execution where each item gets its own worktree and its own kage-bunshin session (independent `claude -p` process with full orchestrator capabilities), use the `/work-milestone` skill instead. See [plugins/development-harness/skills/work-milestone/SKILL.md](./../../plugins/development-harness/skills/work-milestone/SKILL.md).
 
 ### Hook Configuration
 
