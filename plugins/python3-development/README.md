@@ -74,8 +74,6 @@ Run these commands directly to trigger specific workflows:
 | Command | Purpose | Example |
 |---------|---------|---------|
 | `/python3-development:python3-bug` | Debug functional issues with logs and specs | `/python3-development:python3-bug "feature X not working"` |
-| `/python3-development:clear-cove-task-design` | Write and lint agent task files (CLEAR + CoVe) | `/python3-development:clear-cove-task-design [draft-task]` |
-| `/python3-development:generate-task` | Generate single worker task prompt | `/python3-development:generate-task "Implement login endpoint"` |
 | `/python3-development:use-command-template` | Create new skills from templates | `/python3-development:use-command-template "API client wrapper"` |
 
 ## Claude Improvements
@@ -117,7 +115,7 @@ Once installed, Claude automatically applies these improvements when working wit
 
 ### Specialized Skills
 
-The plugin includes 25 skills that guide Claude's behavior:
+The plugin includes 34 skills that guide Claude's behavior:
 
 | Skill | What It Does |
 |-------|--------------|
@@ -130,15 +128,24 @@ The plugin includes 25 skills that guide Claude's behavior:
 | `pre-commit` | Configure git hooks using pre-commit or prek |
 | `pypi-readme-creator` | Generate PyPI-compliant README files |
 | `toml-python` | Work with TOML using tomlkit (preserves formatting) |
-| `validation-protocol` | Scientific validation protocol for verifying fixes |
-| `implementation-manager` | Query and manage feature task status |
-| `planner-rt-ica` | Planning-phase input completeness analysis |
+| `stdlib-scripting` | Stdlib-only scripting for restricted environments |
+| `ty` | Astral ty type checker guidance |
+
+Testing skills use the `/python3-development:testing:skill-name` namespace:
+
+| Skill | What It Does |
+|-------|--------------|
+| `testing:comprehensive-test-review` | Audit test quality and coverage |
+| `testing:analyze-test-failures` | Investigate failing tests systematically |
+| `testing:test-failure-mindset` | Set balanced test investigation approach |
 
 And more specialized skills for code review, packaging, bug fixing, and feature development.
 
+> Task management and planning skills (`implementation-manager`, `planner-rt-ica`, `clear-cove-task-design`, `generate-task`, `validation-protocol`) were moved to the `development-harness` plugin. Use `/dh:` prefix for those skills.
+
 ### Specialized Agents
 
-The plugin provides 8 Python-specific agents:
+The plugin provides 6 Python-specific agents:
 
 | Agent | Specialization |
 |-------|----------------|
@@ -147,13 +154,11 @@ The plugin provides 8 Python-specific agents:
 | `python-pytest-architect` | Create and modernize test suites |
 | `python-code-reviewer` | Review Python code for quality and idioms |
 | `code-reviewer` | General code review with Python awareness |
-| `t0-baseline-capture` | Capture baseline metrics before implementation |
-| `tn-verification-gate` | Verify acceptance criteria post-implementation |
 | `semantic-code-search` | Semantic search over Python codebases |
 
 ### Shared Workflow Agents (development-harness)
 
-10 language-agnostic agents were moved to the `development-harness` plugin during the
+12 language-agnostic agents were moved to the `development-harness` plugin during the
 deduplication refactor. Invoke them with the `@dh:` prefix:
 
 | Agent | Specialization |
@@ -168,6 +173,8 @@ deduplication refactor. Invoke them with the `@dh:` prefix:
 | `@dh:doc-drift-auditor` | Audit documentation accuracy against code |
 | `@dh:swarm-task-planner` | Decompose features into structured task plans |
 | `@dh:ecosystem-researcher` | Research domain ecosystems and technology landscapes |
+| `@dh:t0-baseline-capture` | Capture baseline metrics before implementation |
+| `@dh:tn-verification-gate` | Verify acceptance criteria post-implementation |
 
 ## Installation
 

@@ -38,6 +38,12 @@ The canonical source files are in `plugins/development-harness/`.
 
 ---
 
+## Key References
+
+- Language manifest (library registry, modern patterns): `skills/python3-development/references/language-manifest.md`
+
+---
+
 ## Agents in This Plugin (Python-specific)
 
 - `@python3-development:python-cli-architect` — implements Python CLI features (Typer/Rich)
