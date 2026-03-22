@@ -27,7 +27,7 @@ from .models import AgentEntry
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["find_agent", "get_plugins_root", "scan_all_agents"]
+__all__ = ["_resolve_plugin_subdir", "find_agent", "get_plugins_root", "scan_all_agents"]
 
 _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+")
 
@@ -123,38 +123,46 @@ def get_plugins_root() -> Path:
     )
 
 
-def _resolve_agents_dir(plugin_dir: Path) -> Path | None:
-    """Return the ``agents/`` directory for *plugin_dir*, handling both layouts.
+def _resolve_plugin_subdir(plugin_dir: Path, subdir_name: str) -> Path | None:
+    """Return the path to *subdir_name* inside *plugin_dir*, handling both layouts.
 
     Repo layout::
 
         plugins/plugin-name/agents/         <- direct child
+        plugins/plugin-name/skills/         <- direct child
 
     Cache layout::
 
         cache/org/plugin-name/7.2.8/agents/ <- versioned subdir
+        cache/org/plugin-name/7.2.8/skills/ <- versioned subdir
 
-    When the direct ``agents/`` child does not exist, the function inspects
-    immediate children for semver-looking directories and returns the
-    ``agents/`` dir of the highest version.  Returns ``None`` when no
-    ``agents/`` directory can be found in either location.
+    When the direct child does not exist, the function inspects immediate
+    children for semver-looking directories and returns the *subdir_name*
+    directory of the highest version.  Returns ``None`` when *subdir_name*
+    cannot be found in either location.
 
     Args:
         plugin_dir: Directory that is either a plugin directory (repo layout)
             or a plugin-name directory whose children are version dirs (cache
             layout).
+        subdir_name: Name of the subdirectory to locate (e.g. ``"agents"`` or
+            ``"skills"``).
 
     Returns:
-        Absolute :class:`~pathlib.Path` to the ``agents/`` directory, or
-        ``None`` if no ``agents/`` directory is found.
+        Absolute :class:`~pathlib.Path` to the requested subdirectory, or
+        ``None`` if it is not found.
     """
-    direct = plugin_dir / "agents"
+    direct = plugin_dir / subdir_name
     if direct.is_dir():
         return direct
 
-    # Cache layout: look for semver-named child directories.
+    # Cache layout: look for semver-named child directories that contain subdir_name.
+    # Guard against plugin_dir not existing (e.g. context plugin with no skills/).
+    if not plugin_dir.is_dir():
+        return None
+
     version_dirs = [
-        d for d in plugin_dir.iterdir() if d.is_dir() and _looks_like_semver(d.name) and (d / "agents").is_dir()
+        d for d in plugin_dir.iterdir() if d.is_dir() and _looks_like_semver(d.name) and (d / subdir_name).is_dir()
     ]
     if not version_dirs:
         return None
@@ -167,7 +175,24 @@ def _resolve_agents_dir(plugin_dir: Path) -> Path | None:
             return (0,)
 
     best = max(version_dirs, key=_version_key)
-    return best / "agents"
+    return best / subdir_name
+
+
+def _resolve_agents_dir(plugin_dir: Path) -> Path | None:
+    """Return the ``agents/`` directory for *plugin_dir*, handling both layouts.
+
+    Delegates to :func:`_resolve_plugin_subdir` with ``subdir_name="agents"``.
+
+    Args:
+        plugin_dir: Directory that is either a plugin directory (repo layout)
+            or a plugin-name directory whose children are version dirs (cache
+            layout).
+
+    Returns:
+        Absolute :class:`~pathlib.Path` to the ``agents/`` directory, or
+        ``None`` if no ``agents/`` directory is found.
+    """
+    return _resolve_plugin_subdir(plugin_dir, "agents")
 
 
 def _agent_name_from_path(agent_path: Path, agents_dir: Path) -> str:

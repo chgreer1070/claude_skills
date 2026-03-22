@@ -28,7 +28,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from agent_profile.discovery import get_plugins_root
+from agent_profile.discovery import _resolve_plugin_subdir, get_plugins_root
 from agent_profile.models import ResolvedSkill
 from agent_profile.parser import parse_skill_frontmatter, read_skill_content
 
@@ -267,7 +267,14 @@ class SkillResolver:
         """
         # Colon-separated sub-path → slash-separated directory path.
         path_parts = skill_path.replace(":", "/")
-        skill_dir = self._plugins_root / plugin / "skills" / path_parts
+        plugin_dir = self._plugins_root / plugin
+        skills_dir = _resolve_plugin_subdir(plugin_dir, "skills")
+
+        if skills_dir is None:
+            warnings.append(f"Skill '{uri}': directory not found at {plugin_dir / 'skills'} — skipping.")
+            return None
+
+        skill_dir = skills_dir / path_parts
 
         if not skill_dir.is_dir():
             warnings.append(f"Skill '{uri}': directory not found at {skill_dir} — skipping.")
@@ -297,7 +304,14 @@ class SkillResolver:
             warnings.append(f"Skill '{uri}': path traversal attempt detected in domain path '{skill_path}' — skipping.")
             return None
 
-        skill_dir = self._plugins_root / context_plugin / "skills" / skill_path
+        plugin_dir = self._plugins_root / context_plugin
+        skills_dir = _resolve_plugin_subdir(plugin_dir, "skills")
+
+        if skills_dir is None:
+            warnings.append(f"Skill '{uri}': domain path directory not found at {plugin_dir / 'skills'} — skipping.")
+            return None
+
+        skill_dir = skills_dir / skill_path
 
         if not skill_dir.is_dir():
             warnings.append(f"Skill '{uri}': domain path directory not found at {skill_dir} — skipping.")
@@ -325,9 +339,12 @@ class SkillResolver:
             Skill directory :class:`~pathlib.Path` or ``None``.
         """
         # 1. Context plugin first.
-        context_dir = self._plugins_root / context_plugin / "skills" / skill_name
-        if context_dir.is_dir():
-            return context_dir
+        context_plugin_dir = self._plugins_root / context_plugin
+        context_skills_dir = _resolve_plugin_subdir(context_plugin_dir, "skills")
+        if context_skills_dir is not None:
+            context_dir = context_skills_dir / skill_name
+            if context_dir.is_dir():
+                return context_dir
 
         # 2. Global scan.
         matches: list[Path] = []
@@ -336,7 +353,10 @@ class SkillResolver:
                 continue
             if plugin_dir.name == context_plugin:
                 continue  # Already checked.
-            candidate = plugin_dir / "skills" / skill_name
+            skills_dir = _resolve_plugin_subdir(plugin_dir, "skills")
+            if skills_dir is None:
+                continue
+            candidate = skills_dir / skill_name
             if candidate.is_dir():
                 matches.append(candidate)
 
