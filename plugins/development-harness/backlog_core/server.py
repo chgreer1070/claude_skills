@@ -11,6 +11,7 @@ import sys
 from datetime import UTC, datetime as _datetime
 from typing import TYPE_CHECKING, Annotated, cast
 
+import dh_paths as _dh_paths
 import dispatch_schema as _ds
 import tiktoken
 from fastmcp import Context, FastMCP
@@ -1733,7 +1734,7 @@ def _migrate_discover_candidates(
     candidates: list[_MigrateCandidate] = []
     filtered = 0
 
-    plan_dir = repo_root / "plan"
+    plan_dir = _dh_paths.plan_dir(repo_root)
     if plan_dir.is_dir():
         plan_candidates, plan_filtered = _migrate_scan_plan_dir(plan_dir, repo_root, issue_filter, backlog_items)
         candidates.extend(plan_candidates)

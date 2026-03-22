@@ -16,6 +16,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, NotRequired, TypedDict
 
+import dh_paths as _dh_paths
 from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject
 
@@ -2322,7 +2323,7 @@ def _write_sam_task_cache(tasks: list[dict[str, object]], parent_issue_number: i
     feature_slug = _extract_feature_slug(tasks)
     if not feature_slug:
         return False
-    cache_dir = Path.home() / ".claude" / "context"
+    cache_dir = _dh_paths.context_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"sam-tasks-{feature_slug}.json"
     payload = {
@@ -2447,7 +2448,7 @@ def get_sam_tasks(parent_issue_number: int, refresh_cache: bool = True, output: 
     repo = try_get_github()
     if repo is None:
         # Offline fallback: scan cache directory for any matching cache file
-        cache_dir = Path.home() / ".claude" / "context"
+        cache_dir = _dh_paths.context_dir()
         cache_files = list(cache_dir.glob("sam-tasks-*.json")) if cache_dir.exists() else []
         # Try all cache files; find one that has the right parent_issue_number
         for cache_file in cache_files:
