@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 
 from .models import AgentEntry
@@ -27,6 +28,13 @@ from .models import AgentEntry
 logger = logging.getLogger(__name__)
 
 __all__ = ["find_agent", "get_plugins_root", "scan_all_agents"]
+
+_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+")
+
+
+def _looks_like_semver(name: str) -> bool:
+    """Return True if *name* looks like a semver version (e.g., '4.4.25')."""
+    return bool(_SEMVER_RE.match(name))
 
 
 def get_plugins_root() -> Path:
@@ -65,9 +73,13 @@ def get_plugins_root() -> Path:
         # In the repo, plugin_root IS the plugin dir (development-harness/)
         # and its parent (plugins/) directly contains sibling plugins.
         candidate = plugin_root.parent
-        # Check if candidate has sibling dirs with agents/ or skills/
+        # Check if candidate has sibling dirs that are real plugins (not
+        # version-number dirs like 4.4.25/ that also contain agents/).
         has_sibling_plugins = any(
-            d.is_dir() and d.name != plugin_root.name and ((d / "agents").is_dir() or (d / "skills").is_dir())
+            d.is_dir()
+            and d.name != plugin_root.name
+            and not _looks_like_semver(d.name)
+            and ((d / "agents").is_dir() or (d / "skills").is_dir())
             for d in candidate.iterdir()
             if d.is_dir()
         )
@@ -87,7 +99,10 @@ def get_plugins_root() -> Path:
         if (current / "agents").is_dir():
             candidate = current.parent
             has_sibling_plugins = any(
-                d.is_dir() and d.name != current.name and ((d / "agents").is_dir() or (d / "skills").is_dir())
+                d.is_dir()
+                and d.name != current.name
+                and not _looks_like_semver(d.name)
+                and ((d / "agents").is_dir() or (d / "skills").is_dir())
                 for d in candidate.iterdir()
                 if d.is_dir()
             )
