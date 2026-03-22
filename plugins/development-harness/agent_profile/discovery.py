@@ -59,17 +59,35 @@ def get_plugins_root() -> Path:
             found, which indicates an unexpected installation layout.
     """
     current = Path(__file__).resolve().parent
-    # Walk upward until we find a directory that contains agents/ — that is the
-    # development-harness plugin root.  Its parent is the plugins root.
+    # Walk upward until we find a directory that contains agents/ — that is
+    # either the plugin root (repo layout) or the version directory (cache
+    # layout).  We need the directory whose children are plugin directories.
+    #
+    # Repo:  plugins/development-harness/agents/  → parent = plugins/  ✓
+    # Cache: cache/org/development-harness/4.4.16/agents/ → parent = development-harness/
+    #        Need parent.parent = org/  ✓
+    #
+    # Strategy: after finding agents/, check if parent has sibling dirs that
+    # also contain agents/ or skills/.  If yes → parent is the plugins root.
+    # If no → we're in the cache version layout; go up two levels.
     while current != current.parent:
         if (current / "agents").is_dir():
-            plugins_root = current.parent
-            if not plugins_root.exists():
-                raise FileNotFoundError(
-                    f"Expected plugins/ root at {plugins_root} but it does not exist. "
-                    "Check the agent_profile package location."
-                )
-            return plugins_root
+            candidate = current.parent
+            # Check for sibling plugin directories at candidate level
+            has_sibling_plugins = any(
+                d.is_dir() and d.name != current.name and ((d / "agents").is_dir() or (d / "skills").is_dir())
+                for d in candidate.iterdir()
+                if d.is_dir()
+            )
+            if has_sibling_plugins:
+                return candidate
+            # No sibling plugins found — cache layout where current is a
+            # version dir inside the plugin-name dir.  Go up two levels:
+            # version/ → plugin-name/ → org/ (which has sibling plugins).
+            plugins_root = candidate.parent
+            if plugins_root.exists():
+                return plugins_root
+            return candidate
         current = current.parent
 
     raise FileNotFoundError(
