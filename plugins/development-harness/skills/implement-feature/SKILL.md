@@ -92,7 +92,19 @@ Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 > already declares skills via its frontmatter, task-level skills supplement them (they do not
 > replace agent-level skills). Loading the same skill twice is a no-op.
 
-4. Repeat until no tasks remain ready.
+4. After each agent returns, check its output for a `<concerns>` block. If present, append each concern to the backlog item as a checklist entry:
+
+```text
+mcp__plugin_dh_backlog__backlog_groom(
+    selector="#{issue}",
+    section="Concerns",
+    content="- [ ] {concern text} (reported by {agent_name} on {task_id})"
+)
+```
+
+Concerns accumulate across all task agents. They feed into the validation stage in `/complete-implementation` — each verified concern becomes a new backlog item.
+
+5. Repeat until no tasks remain ready.
 
 > **Hook behavior on SubagentStop**: When a sub-agent finishes, `task_status_hook.py` marks
 > the task complete in the local task file. After marking the task complete locally, the hook

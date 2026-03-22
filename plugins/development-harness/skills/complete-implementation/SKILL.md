@@ -86,6 +86,26 @@ If the response contains artifacts, pass the manifest to quality gate agents (Ph
 
 ---
 
+## Pre-Phase 1b: Process Accumulated Concerns
+
+Check the backlog item for a `## Concerns` section accumulated during `/implement-feature`:
+
+```text
+mcp__plugin_dh_backlog__backlog_view(selector="#{issue}")
+```
+
+If the item has a `## Concerns` section with unchecked items (`- [ ]`):
+
+1. For each concern, verify whether it is a real issue:
+   - Read the referenced file or run the referenced check
+   - If verified: check it off (`- [x]`) and create a new backlog item via `mcp__plugin_dh_backlog__backlog_add` with the concern as the description, source as "Quality vigilance concern from #{issue}"
+   - If not a real issue: check it off (`- [x] Not confirmed — {reason}`)
+2. Update the concerns section via `mcp__plugin_dh_backlog__backlog_groom(selector="#{issue}", section="Concerns", content="{updated checklist}")`
+
+If no concerns section exists, proceed to Phase 1.
+
+---
+
 ## Phase 1: Code Review
 
 ### Resolve Code-Reviewer Role
