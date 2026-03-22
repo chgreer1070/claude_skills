@@ -192,12 +192,12 @@ query GetIssue($owner: String!, $repo: String!, $number: Int!) {
 _ISSUES_LIST_QUERY = """
 query ListIssues(
   $owner: String!, $repo: String!, $states: [IssueState!],
-  $labels: [String!], $milestoneNumber: String, $first: Int!, $after: String
+  $labels: [String!], $milestoneNumber: String, $since: String, $first: Int!, $after: String
 ) {
   repository(owner: $owner, name: $repo) {
     issues(
       first: $first, after: $after,
-      filterBy: {states: $states, labels: $labels, milestoneNumber: $milestoneNumber},
+      filterBy: {states: $states, labels: $labels, milestoneNumber: $milestoneNumber, since: $since},
       orderBy: {field: UPDATED_AT, direction: DESC}
     ) {
       nodes {
@@ -546,6 +546,7 @@ def _fetch_issues_graphql(
     labels: list[str] | None = None,
     milestone_number: int | None = None,
     first: int = 100,
+    since: str | None = None,
 ) -> list[IssueNode]:
     """Fetch a list of issues via GraphQL with optional filters.
 
@@ -556,9 +557,13 @@ def _fetch_issues_graphql(
         owner: GitHub repository owner login.
         repo_name: GitHub repository name.
         state: Issue state filter — ``"OPEN"`` or ``"CLOSED"``. Defaults to ``"OPEN"``.
+            Pass a comma-joined value like ``"OPEN,CLOSED"`` or use a list via the
+            ``states`` variable when fetching both states in one call.
         labels: Optional list of label names to filter by.
         milestone_number: Optional milestone number to filter by.
         first: Page size (max 100 per GitHub GraphQL limits).
+        since: Optional ISO 8601 timestamp.  When provided, only issues updated
+            at or after this time are returned (GitHub GraphQL ``filterBy.since``).
 
     Returns:
         List of typed IssueNode dicts (may be empty).
@@ -568,14 +573,16 @@ def _fetch_issues_graphql(
     """
     all_issues: list[IssueNode] = []
     cursor: str | None = None
+    states: list[str] = [s.strip() for s in state.split(",")] if "," in state else [state]
 
     while True:
         variables: dict[str, object] = {
             "owner": owner,
             "repo": repo_name,
-            "states": [state],
+            "states": states,
             "labels": labels,
             "milestoneNumber": str(milestone_number) if milestone_number is not None else None,
+            "since": since,
             "first": first,
             "after": cursor,
         }

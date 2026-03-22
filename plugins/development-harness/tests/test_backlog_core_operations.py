@@ -1907,3 +1907,117 @@ class TestRefreshClosedIssueReconciliation:
 
         # Assert
         assert result["reconciled"] == 0
+
+
+# ---------------------------------------------------------------------------
+# refresh_local_cache_from_github — incremental sync (.last_sync)
+# ---------------------------------------------------------------------------
+
+
+class TestRefreshLocalCacheIncrementalSync:
+    """refresh_local_cache_from_github uses .last_sync for incremental fetches."""
+
+    def test_refresh_local_cache_skips_full_fetch_when_last_sync_exists(
+        self, mocker: MockerFixture, tmp_path: pytest.TempPathFactory
+    ) -> None:
+        """Incremental path passes since= when .last_sync timestamp file exists.
+
+        Tests: refresh_local_cache_from_github incremental sync path.
+        How: Write a .last_sync file via dh_paths.state_root(); patch
+             _fetch_issues_graphql; verify it is called with since=<timestamp>.
+        Why: Without incremental sync, every refresh fetches all issues regardless
+             of whether anything changed since the last run.
+        """
+        # Arrange
+        import dh_paths
+
+        state_dir = dh_paths.state_root()
+        state_dir.mkdir(parents=True, exist_ok=True)
+        ts = "2026-01-15T12:00:00+00:00"
+        (state_dir / ".last_sync").write_text(ts, encoding="utf-8")
+
+        mock_repo = mocker.MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        fetch_mock = mocker.patch("backlog_core.operations._fetch_issues_graphql", return_value=[])
+
+        # Act
+        ops.refresh_local_cache_from_github()
+
+        # Assert — incremental call uses since= and combined states
+        fetch_mock.assert_called_once()
+        _, kwargs = fetch_mock.call_args
+        assert kwargs.get("since") == ts
+
+    def test_refresh_local_cache_does_full_fetch_when_no_last_sync(self, mocker: MockerFixture) -> None:
+        """Full two-pass fetch is performed when no .last_sync file exists.
+
+        Tests: refresh_local_cache_from_github full-refresh fallback.
+        How: Ensure .last_sync does not exist; verify _fetch_issues_graphql
+             is called with since=None (full-fetch signature).
+        Why: First run or after cache wipe must fetch all issues.
+        """
+        # Arrange — autouse fixture sets DH_STATE_HOME; .last_sync absent by default
+        import dh_paths
+
+        last_sync_path = dh_paths.state_root() / ".last_sync"
+        assert not last_sync_path.exists(), "Precondition: .last_sync must not exist"
+
+        mock_repo = mocker.MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        calls: list[dict] = []
+
+        def _capture_fetch(repo_obj, owner, repo_name, state, labels=None, since=None, **kw):  # type: ignore[override]
+            calls.append({"state": state, "since": since})
+            return []
+
+        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_capture_fetch)
+        mocker.patch("backlog_core.operations._reconcile_closed_issues", return_value=0)
+
+        # Act
+        ops.refresh_local_cache_from_github()
+
+        # Assert — full path issues two separate state calls, both with since=None
+        assert len(calls) >= 1
+        for call in calls:
+            assert call["since"] is None
+
+    def test_refresh_local_cache_full_refresh_ignores_last_sync(self, mocker: MockerFixture) -> None:
+        """full_refresh=True bypasses .last_sync and performs a full two-pass fetch.
+
+        Tests: refresh_local_cache_from_github full_refresh=True flag.
+        How: Write a .last_sync file, call with full_refresh=True, verify
+             _fetch_issues_graphql is called with since=None.
+        Why: Operators must be able to force a complete resync regardless of
+             the cached timestamp.
+        """
+        # Arrange
+        import dh_paths
+
+        state_dir = dh_paths.state_root()
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / ".last_sync").write_text("2026-01-01T00:00:00+00:00", encoding="utf-8")
+
+        mock_repo = mocker.MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        calls: list[dict] = []
+
+        def _capture_fetch(repo_obj, owner, repo_name, state, labels=None, since=None, **kw):  # type: ignore[override]
+            calls.append({"state": state, "since": since})
+            return []
+
+        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_capture_fetch)
+        mocker.patch("backlog_core.operations._reconcile_closed_issues", return_value=0)
+
+        # Act
+        ops.refresh_local_cache_from_github(full_refresh=True)
+
+        # Assert — all calls must have since=None (full refresh ignores timestamp)
+        assert len(calls) >= 1
+        for call in calls:
+            assert call["since"] is None

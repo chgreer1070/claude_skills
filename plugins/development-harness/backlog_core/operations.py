@@ -1122,6 +1122,36 @@ def _build_issue_to_item_index(local_items: list[BacklogItem]) -> dict[int, Back
     return index
 
 
+def _reconcile_single_closed_issue(issue_node: IssueNode, issue_number: int, output: Output) -> int:
+    """Update a single closed issue's local cache file to status=closed.
+
+    Used by the incremental sync path where each closed issue is processed
+    individually as it arrives from the combined OPEN+CLOSED fetch.
+
+    Args:
+        issue_node: GraphQL issue node already known to be CLOSED.
+        issue_number: Issue number extracted from the node.
+        output: Output collector for info/warn messages.
+
+    Returns:
+        1 if the local item was updated, 0 otherwise.
+    """
+    # Skip PRs
+    if issue_node.get("isPullRequest"):
+        return 0
+    local_items = parse_backlog()
+    issue_to_item = _build_issue_to_item_index(local_items)
+    local_item = issue_to_item.get(issue_number)
+    if local_item is None:
+        return 0  # no local file — skip silently
+    filepath = Path(local_item.file_path)
+    if not filepath.exists():
+        return 0
+    update_item_metadata(filepath, {"metadata": {"status": "closed"}}, output=output)
+    output.info(f"  Reconciled #{issue_number} — updated local status to closed.")
+    return 1
+
+
 def _reconcile_closed_issues(repo_obj: Repository, open_issue_numbers: set[int], output: Output) -> int:
     """Fetch recently closed GitHub issues and update local cache files.
 
@@ -1179,16 +1209,106 @@ def _reconcile_closed_issues(repo_obj: Repository, open_issue_numbers: set[int],
     return reconciled
 
 
+def _sync_incremental(
+    repo_obj: Repository, owner: str, repo_name: str, label_names: list[str] | None, since: str, out: Output
+) -> tuple[int, int]:
+    """Perform a single-pass incremental sync for issues updated since *since*.
+
+    Args:
+        repo_obj: Authenticated PyGitHub Repository object.
+        owner: Repository owner login.
+        repo_name: Repository name without owner prefix.
+        label_names: Optional label filter.
+        since: ISO 8601 timestamp — only issues updated at or after this time.
+        out: Output collector.
+
+    Returns:
+        Tuple of (refreshed_count, reconciled_count).
+
+    Raises:
+        BacklogError: Propagated from ``_fetch_issues_graphql`` on GraphQL errors.
+    """
+    all_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="OPEN,CLOSED", labels=label_names, since=since)
+    count = 0
+    reconciled = 0
+    for issue_node in all_issues:
+        issue_number = issue_node.get("number", 0)
+        if issue_node.get("state", "OPEN") == "OPEN":
+            _write_issue_node_to_cache(issue_node, issue_number, out)
+            count += 1
+        else:
+            reconciled += _reconcile_single_closed_issue(issue_node, issue_number, out)
+    if count:
+        out.info(f"  Refreshed {count} issue(s) from GitHub into local cache.")
+    if reconciled:
+        out.info(f"  Reconciled {reconciled} externally closed issue(s).")
+    return count, reconciled
+
+
+def _sync_full(
+    repo_obj: Repository, owner: str, repo_name: str, label_names: list[str] | None, out: Output
+) -> tuple[int, int] | None:
+    """Perform a full two-pass sync (OPEN then CLOSED).
+
+    Args:
+        repo_obj: Authenticated PyGitHub Repository object.
+        owner: Repository owner login.
+        repo_name: Repository name without owner prefix.
+        label_names: Optional label filter.
+        out: Output collector.
+
+    Returns:
+        Tuple of (refreshed_count, reconciled_count), or ``None`` if the open
+        fetch fails (caller should propagate the failure).
+    """
+    try:
+        open_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="OPEN", labels=label_names)
+    except BacklogError as e:
+        out.warn(f"  WARNING: Could not fetch open issues: {e}")
+        return None
+
+    open_issue_numbers: set[int] = set()
+    count = 0
+    for issue_node in open_issues:
+        issue_number = issue_node.get("number", 0)
+        _write_issue_node_to_cache(issue_node, issue_number, out)
+        open_issue_numbers.add(issue_number)
+        count += 1
+    out.info(f"  Refreshed {count} issue(s) from GitHub into local cache.")
+
+    reconciled = _reconcile_closed_issues(repo_obj, open_issue_numbers, out)
+    if reconciled:
+        out.info(f"  Reconciled {reconciled} externally closed issue(s).")
+    return count, reconciled
+
+
 def refresh_local_cache_from_github(
-    repo: str = "", label: str | None = None, output: Output | None = None
+    repo: str = "", label: str | None = None, output: Output | None = None, full_refresh: bool = False
 ) -> dict[str, int | list[str]]:
     """Fetch open and recently closed GitHub Issues and update local cache files.
+
+    When a ``.last_sync`` timestamp file exists in the project state root and
+    ``full_refresh`` is ``False``, performs an incremental sync: fetches all
+    issues (OPEN and CLOSED) updated since the recorded timestamp in a single
+    GraphQL request.  This avoids redundant full-page fetches on subsequent
+    runs.
+
+    When no ``.last_sync`` file exists, or when ``full_refresh=True`` is
+    passed, falls back to the full two-pass fetch (OPEN then CLOSED).
 
     Open issues are fetched and written to local cache files via
     pull_single_issue.  Closed issues are cross-referenced against local
     files: items with matching issue numbers and non-terminal local status
     are updated to status=closed.  Open issues take precedence — if an
     issue appears in both result sets the open processing wins.
+
+    Args:
+        repo: GitHub repository slug (``owner/name``).  Defaults to the
+            value resolved by ``try_get_github``.
+        label: Optional label name to restrict the fetch.
+        output: Optional ``Output`` accumulator for messages.
+        full_refresh: When ``True``, ignore any cached ``.last_sync``
+            timestamp and perform a full two-pass fetch.
 
     Returns:
         Dict with count of refreshed (open) issues and count of reconciled
@@ -1201,30 +1321,34 @@ def refresh_local_cache_from_github(
         return {"refreshed": 0, "reconciled": 0, **out.to_dict()}
 
     owner, repo_name = repo_obj.full_name.split("/", 1)
-    label_names: list[str] | None = None
-    if label:
-        label_names = [label]
+    label_names: list[str] | None = [label] if label else None
 
-    # Pass 1: open issues (primary)
-    try:
-        open_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="OPEN", labels=label_names)
-    except BacklogError as e:
-        out.warn(f"  WARNING: Could not fetch open issues: {e}")
-        return {"refreshed": 0, "reconciled": 0, **out.to_dict()}
+    # Determine incremental vs full fetch
+    last_sync_path = _dh_paths.state_root() / ".last_sync"
+    since: str | None = None
+    if not full_refresh and last_sync_path.exists():
+        since = last_sync_path.read_text(encoding="utf-8").strip() or None
 
-    open_issue_numbers: set[int] = set()
-    count = 0
-    for issue_node in open_issues:
-        issue_number = issue_node.get("number", 0)
-        _write_issue_node_to_cache(issue_node, issue_number, out)
-        open_issue_numbers.add(issue_number)
-        count += 1
-    out.info(f"  Refreshed {count} issue(s) from GitHub into local cache.")
+    # Record sync start BEFORE fetching — avoids a race where issues updated
+    # between fetch completion and write would be missed on the next incremental run.
+    sync_start = datetime.now(UTC).isoformat()
 
-    # Pass 2: recently closed issues (reconciliation)
-    reconciled = _reconcile_closed_issues(repo_obj, open_issue_numbers, out)
-    if reconciled:
-        out.info(f"  Reconciled {reconciled} externally closed issue(s).")
+    if since is not None:
+        try:
+            count, reconciled = _sync_incremental(repo_obj, owner, repo_name, label_names, since, out)
+        except BacklogError as e:
+            out.warn(f"  WARNING: Could not fetch issues: {e}")
+            return {"refreshed": 0, "reconciled": 0, **out.to_dict()}
+    else:
+        result = _sync_full(repo_obj, owner, repo_name, label_names, out)
+        if result is None:
+            return {"refreshed": 0, "reconciled": 0, **out.to_dict()}
+        count, reconciled = result
+
+    # Persist sync timestamp so the next run can use incremental mode
+    last_sync_path.parent.mkdir(parents=True, exist_ok=True)
+    last_sync_path.write_text(sync_start, encoding="utf-8")
+
     return {"refreshed": count, "reconciled": reconciled, **out.to_dict()}
 
 
