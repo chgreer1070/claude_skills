@@ -18,10 +18,15 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from pathlib import Path
 from typing import Annotated, Any
 
+import backlog_core.models as _backlog_models
 import tiktoken
+from backlog_core.artifact_provider import GitHubArtifactProvider
+from backlog_core.artifact_registry import ArtifactRegistry as _ArtifactRegistry
+from backlog_core.models import ArtifactEntry, ArtifactStatus, ArtifactType
 from fastmcp import FastMCP
 from pydantic import Field
 from ruamel.yaml import YAML
@@ -38,6 +43,9 @@ from sam_schema.core.query import (
     update_plan_fields,
     update_status,
 )
+
+_log = logging.getLogger(__name__)
+_artifact_registry = _ArtifactRegistry()
 
 # Token budget for auto-pagination: 4400 tokens (cl100k_base encoding).
 _TOKEN_BUDGET: int = 4_400
@@ -330,6 +338,39 @@ def sam_list(
     )
 
 
+def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None:
+    """Register the newly created plan file as a task-plan artifact.
+
+    Best-effort: logs a warning on any failure but never raises.  Called after
+    ``sam_create`` writes the plan file when the plan has an associated GitHub
+    issue number.
+
+    Args:
+        issue_number: GitHub issue number to register the artifact against.
+        plan_path: Absolute or repo-relative path to the created plan file.
+    """
+    try:
+        repo = _backlog_models.DEFAULT_REPO
+        if not repo:
+            _log.warning("sam_create: skipping artifact registration — DEFAULT_REPO not set")
+            return
+        provider = GitHubArtifactProvider(
+            repo=repo,
+            root_worktree=_backlog_models._REPO_ROOT,  # noqa: SLF001
+        )
+        entry = ArtifactEntry(
+            artifact_type=ArtifactType.TASK_PLAN, path=str(plan_path), status=ArtifactStatus.CURRENT, agent="sam_create"
+        )
+        manifest = provider.get_manifest(issue_number)
+        updated_manifest = _artifact_registry.register(manifest, entry)
+        provider.set_manifest(issue_number, updated_manifest)
+        _log.info("sam_create: registered task-plan artifact %s for issue #%d", plan_path, issue_number)
+    except Exception:  # noqa: BLE001
+        _log.warning(
+            "sam_create: artifact registration failed for issue #%d (path=%s)", issue_number, plan_path, exc_info=True
+        )
+
+
 @mcp.tool
 def sam_create(
     slug: Annotated[str, Field(description="Short identifier for the plan (e.g., 'auth-system')")],
@@ -376,9 +417,15 @@ def sam_create(
             if stem.startswith("P") and "-" in stem:
                 with contextlib.suppress(ValueError):
                     plan_number = int(stem.split("-", 1)[0][1:])
-        return {"path": str(plan.source_path), "plan_number": plan_number, "task_count": len(plan.tasks)}
+        result = {"path": str(plan.source_path), "plan_number": plan_number, "task_count": len(plan.tasks)}
     except Exception as exc:  # noqa: BLE001
         return {"error": str(exc)}
+    else:
+        # Auto-register the new plan file as a task-plan artifact when the plan
+        # is linked to a GitHub issue.  Best-effort: failure does not block creation.
+        if issue is not None and plan.source_path is not None:
+            _try_register_task_plan_artifact(issue, plan.source_path)
+        return result
 
 
 @mcp.tool
