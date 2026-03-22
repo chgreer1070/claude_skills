@@ -1,186 +1,125 @@
 ---
 name: dispatch
-description: "Dispatch parallel agents via TeamCreate. Use when facing 2+ independent tasks, coordinating parallel work, spawning agent teams, debugging multiple failures, running parallel reviews, or any scenario where work can be split across independent workers. Teams are the standard mechanism for parallel work — reach for them liberally."
+description: Orchestrate parallel agent teams as a manager — not a micromanager. Use when coordinating 2+ independent workers, running SAM task waves, relaying discoveries between worker waves, handling blockers, or synthesizing team results. Covers both SAM structured dispatch (task file does the work) and ad-hoc dispatch (reference agent-orchestration for prompt template).
 user-invocable: true
 ---
 
-# Dispatch Parallel Agents
+# Dispatch — Orchestrator as Manager
 
-Teams are the standard mechanism for parallel work. When you have 2+ independent tasks, dispatch one agent per problem domain via TeamCreate. This keeps your context window clean and gets results faster.
+The orchestrator's job is experience sharing and team health, not prompt engineering.
+Workers are specialists. Trust them. Relay what they learn. Unblock them when stuck. Synthesize what they produce.
 
-For the full delegation quality framework — verification flowchart, ecosystem context rules, anti-pattern taxonomy — activate the `/agent-orchestration:agent-orchestration` skill.
+For the delegation prompt template and pre-send verification, activate the `/agent-orchestration:agent-orchestration` skill.
 
-## The Pattern
+## Two Dispatch Modes
 
 ```mermaid
 flowchart TD
-    Start(["2+ independent tasks identified"]) --> Create["1. TeamCreate<br>Name the team after the work"]
-    Create --> Tasks["2. TaskCreate per unit of work<br>For tracking and coordination"]
-    Tasks --> Spawn["3. Agent per task<br>team_name + name + prompt<br>All launch concurrently"]
-    Spawn --> Wait["4. Agents work and return<br>or send messages via SendMessage"]
-    Wait --> Review["5. Review results<br>Check for conflicts<br>Integrate changes"]
-    Review --> Cleanup["6. TeamDelete<br>Clean up when done"]
+    Start(["Work to dispatch"]) --> Q{"Is there a SAM task file<br>for this work?"}
+    Q -->|"Yes — SAM plan exists"| SAM["SAM Dispatch<br>Minimal prompt — task file has everything"]
+    Q -->|"No — ad-hoc work"| AdHoc["Ad-Hoc Dispatch<br>Use delegation template from<br>/agent-orchestration:agent-orchestration"]
+    SAM --> SAMPrompt["Agent prompt:<br>'You are working on P{N}/T{M}'<br>Agent loads task via sam_read —<br>acceptance criteria, context, verification steps all there"]
+    AdHoc --> AdHocPrompt["Write OBSERVATIONS + DEFINITION OF SUCCESS +<br>CONTEXT per agent-orchestration template"]
+    SAMPrompt --> Team["TeamCreate and spawn workers"]
+    AdHocPrompt --> Team
 ```
 
-## Step 1 — Create the Team
+## Manager Responsibilities
+
+### 1 — Set Up the Team
 
 ```text
-TeamCreate(team_name="descriptive-session-name")
+TeamCreate(team_name="feature-slug-wave-1")
 ```
 
-One team per parallel session. Name it after what you're doing.
+Name the team after the work and wave number. One team per parallel wave.
 
-## Step 2 — Create Tasks for Tracking
+### 2 — Spawn Workers
 
-```text
-TaskCreate(subject="Fix auth module failures")
-TaskCreate(subject="Fix database connection tests")
-TaskCreate(subject="Fix API validation errors")
-```
+Each worker gets exactly the context needed — no more.
 
-Tasks give you and the team visibility into what's being worked on.
-
-## Step 3 — Spawn Agents as Teammates
+**SAM dispatch (task file is the delegation):**
 
 ```text
 Agent(
-  team_name="debug-session",
-  name="auth-fixer",
-  prompt="Your ROLE_TYPE is sub-agent.
-
-OBSERVATIONS:
-- 3 tests failing in src/auth/auth.test.ts
-- Error: 'token expired' thrown before validation completes
-- Verbatim error output: {paste exact errors}
-
-DEFINITION OF SUCCESS:
-- All 3 tests in auth.test.ts pass
-- No new test failures introduced
-- Return: summary of root cause and changes made
-
-CONTEXT:
-- Location: src/auth/
-- Scope: auth module only — do not modify other modules
-- Skills to load: Skill(skill='python3-development')"
+  team_name="feature-slug-wave-1",
+  name="T42-worker",
+  prompt="Your ROLE_TYPE is sub-agent. You are working on P500/T42."
 )
 ```
 
-All agents in the same team launch concurrently.
+The agent calls `sam_read` to load the task. All acceptance criteria, verification steps, and context live in the task file.
 
-## Agent Prompt Structure
+**Ad-hoc dispatch:** follow the delegation template from `/agent-orchestration:agent-orchestration` — OBSERVATIONS, DEFINITION OF SUCCESS, CONTEXT.
 
-Every agent prompt uses four canonical sections from the delegation template:
+### 3 — Relay Discoveries Between Waves
 
-**OBSERVATIONS** — what you observed, not what you think is wrong. Verbatim error messages, file paths, command output already in your context. Use "observed", "measured", "reported" language only. This enables agents to apply the scientific method — forming their own hypotheses from facts rather than inheriting your guesses.
+Workers learn things during execution. Relay those discoveries to the next wave — this is experience sharing.
 
-**DEFINITION OF SUCCESS** — measurable outcome. What does DONE look like? Include verification method.
+```mermaid
+flowchart TD
+    Wave1(["Wave 1 workers complete"]) --> Collect["Collect discoveries:<br>- APIs that behaved unexpectedly<br>- Files that needed changes<br>- Constraints discovered during work<br>- Patterns found"]
+    Collect --> Q{"Are any discoveries<br>relevant to Wave 2 tasks?"}
+    Q -->|"Yes"| Inject["Inject as OBSERVATIONS into Wave 2 prompts<br>Label source: 'T42 worker reported: ...'"]
+    Q -->|"No"| Skip["Spawn Wave 2 with original task context"]
+    Inject --> Wave2(["Spawn Wave 2 workers"])
+    Skip --> Wave2
+```
 
-**CONTEXT** — where to look, what's in scope, what constraints exist. File paths you already know.
+Workers report what they observed — relay facts, not interpretations, to the next wave.
 
-**ECOSYSTEM CONTEXT** — session-specific facts the agent cannot find in CLAUDE.md: authenticated CLIs, session-specific access, non-obvious doc locations. Omit if nothing session-specific applies.
+### 4 — Handle Blockers
 
-### What NOT to include
+When a worker sends a blocker message:
 
-- Pre-gathered data the agent will collect itself (anti-pattern: running `ruff check` then pasting 244 errors)
-- Prescriptions for HOW to implement ("use sed to edit line 42")
-- Assumptions stated as facts ("the bug is in the parser") — state these as "Hypothesis to verify:"
-- Tool dictation ("use the MCP GitHub tool to fetch logs")
+```mermaid
+flowchart TD
+    Blocker(["Worker sends blocker"]) --> Classify{"What is blocking them?"}
+    Classify -->|"Missing information the orchestrator has"| Relay["SendMessage with the missing context<br>Worker resumes"]
+    Classify -->|"Conflict with another worker's changes"| Resolve["Read both workers' summaries<br>Decide which approach wins<br>SendMessage resolution to affected workers"]
+    Classify -->|"Scope question — out of task boundaries"| Bound["Confirm scope in task file via sam_read<br>SendMessage: stay within T{M} boundaries or<br>create a new task for the discovered work"]
+    Classify -->|"Hard blocker — cannot proceed"| Escalate["SendMessage shutdown<br>Capture blocker as backlog item<br>Adjust wave plan"]
+```
 
-The agent is a specialist with full tool access and an empty context window. Describe the ecosystem and the goal — let the agent determine the approach.
+### 5 — Synthesize Results
 
-## Pre-Send Verification (5 Checks)
+When all workers return:
 
-Before launching agents, verify each prompt:
+1. Read each agent summary — check STATUS: DONE or STATUS: BLOCKED
+2. Identify conflicts — two workers edited the same file or made incompatible changes
+3. Run verification (tests, linter) across the full changeset
+4. Relay synthesis findings to user or feed into next wave
 
-1. Uses observational language only — no "I think", "probably", "likely", "seems"
-2. Defines WHAT must work, not HOW to implement it
-3. Contains no pre-gathered data you collected by running commands now
-4. References file paths rather than transcribing file contents inline
-5. Describes the ecosystem — does not name a specific tool to use
+File pointer pattern: instruct workers to write findings to `.claude/reports/` and return the path. Read reports, not inline summaries, to keep orchestrator context lean.
 
-For the full verification flowchart with per-check remediation steps, activate `/agent-orchestration:agent-orchestration`.
-
-## Step 4 — Wait for Results
-
-Agents send messages when they complete or go idle. Do not poll. Work on other tasks or coordinate based on incoming messages.
-
-If an agent needs guidance, it sends a message via SendMessage. Respond via SendMessage back.
-
-## Step 5 — Review and Integrate
-
-When all agents return:
-
-1. Read each agent's summary
-2. Check for conflicts — did two agents edit the same file?
-3. Run verification (test suite, linter, build)
-4. Integrate all changes
-
-## Step 6 — Clean Up
+### 6 — Clean Up
 
 ```text
 TeamDelete()
 ```
 
-Shut down teammates first via SendMessage shutdown requests, then delete the team.
+Shut workers down via SendMessage before deleting the team.
 
 ## When to Dispatch
 
 **Dispatch when:**
 
-- 2+ test files failing with different root causes
-- Multiple subsystems to modify independently
+- 2+ tasks that can run without waiting on each other
 - Parallel reviews (security, performance, coverage)
-- Research tasks that don't depend on each other
-- Grooming multiple backlog items
-- Any work where each unit can proceed without waiting on others
+- Multiple SAM tasks in the same wave (check `sam_ready`)
+- Research tracks that don't depend on each other
 
-**Don't dispatch when:**
+**Explore first, then dispatch when:**
 
-- Failures are related — fixing one fixes others
-- Tasks share state — agents would edit the same files
-- You don't know what's broken yet — explore first, then dispatch
-- Sequential dependency — task B needs task A's output
+- The root cause is unknown — dispatching with wrong diagnosis wastes workers
+- Tasks share state — workers would conflict on the same files
 
 ## Common Mistakes
 
-**Too broad** — "Fix all the tests" gives the agent no focus. Scope to one file, one module, one subsystem.
+**Micromanaging** — "Use sed to edit line 42, then grep to verify." Workers are specialists. Describe what success looks like; let them determine how.
 
-**No observations** — "Fix the race condition" without error messages or file locations. Paste what you observed.
+**No discovery relay** — Wave 2 workers miss context Wave 1 workers discovered. Always check if Wave 1 output changes what Wave 2 needs to know.
 
-**Pre-gathering** — Reading files and running diagnostics before delegating. The agent does this — you save context by not doing it.
+**Ignoring blocker messages** — Workers go idle waiting for a response. Check messages between waves.
 
-**Assumption cascade** — "I think the issue is X, which probably means Y, so likely Z needs fixing." Each unverified assumption compounds. Replace with observed symptoms and let the agent investigate.
-
-**Prescribing solutions** — "Replace lines 127-138 with a helper function." Describe the problem and success criteria. The agent determines the approach.
-
-**No output format** — "Fix it" gives you no way to verify. Ask for a summary of root cause and changes.
-
-## Example — Debugging 6 Failures
-
-```text
-TeamCreate(team_name="debug-6-failures")
-
-TaskCreate(subject="Fix abort test failures")
-TaskCreate(subject="Fix batch completion failures")
-TaskCreate(subject="Fix race condition failures")
-
-Agent(team_name="debug-6-failures", name="abort-fixer",
-  prompt="Your ROLE_TYPE is sub-agent.
-  OBSERVATIONS: 3 failures in agent-tool-abort.test.ts — timing issues.
-  {paste verbatim error output}
-  DEFINITION OF SUCCESS: All 3 tests pass. Return summary of root cause and fix.")
-
-Agent(team_name="debug-6-failures", name="batch-fixer",
-  prompt="Your ROLE_TYPE is sub-agent.
-  OBSERVATIONS: 2 failures in batch-completion.test.ts — tools not executing.
-  {paste verbatim error output}
-  DEFINITION OF SUCCESS: All 2 tests pass. Return summary of root cause and fix.")
-
-Agent(team_name="debug-6-failures", name="race-fixer",
-  prompt="Your ROLE_TYPE is sub-agent.
-  OBSERVATIONS: 1 failure in tool-approval-race.test.ts — execution count = 0.
-  {paste verbatim error output}
-  DEFINITION OF SUCCESS: Test passes. Return summary of root cause and fix.")
-```
-
-Three problems solved in the time of one. Zero conflicts between agent changes.
+**Pre-gathering data** — Running diagnostics before delegating wastes orchestrator context. Workers gather their own data.
