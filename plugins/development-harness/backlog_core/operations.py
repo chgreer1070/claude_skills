@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import operator
 import re
 import sys
 from collections import defaultdict
@@ -18,7 +19,7 @@ from typing import TYPE_CHECKING, NotRequired, TypedDict
 
 import dh_paths as _dh_paths
 from dispatch_schema.core.models import ConflictGroup
-from github import GithubException, GithubObject
+from github import GithubException, GithubObject  # GithubObject used only by create_milestone (ADR-004)
 
 from . import models as _models
 from .artifact_provider import GitHubArtifactProvider
@@ -32,10 +33,14 @@ from .entry_blocks import (
 )
 from .github import (
     IssueNode,
+    _add_comment_graphql,
     _fetch_issue_graphql,
+    _fetch_issues_graphql,
+    _fetch_milestones_graphql,
     _graphql_request,
     _projects_v2_create_mutation,
     _projects_v2_list_query,
+    _update_issue_graphql,
     apply_status_in_progress,
     apply_status_verified,
     batch_fetch_statuses,
@@ -112,6 +117,42 @@ def _repo(repo: str) -> str:
         Resolved repository slug.
     """
     return repo or _models.DEFAULT_REPO
+
+
+# ---------------------------------------------------------------------------
+# TypedDicts for operations.py return shapes (ADR-002: not in models.py)
+# ---------------------------------------------------------------------------
+
+
+class BacklogListItem(TypedDict):
+    """A single backlog item as returned by list_items().
+
+    Used by server.py to remove cast() call sites (T05).
+    """
+
+    section: str
+    title: str
+    issue: str
+    plan: str
+    type: str
+    topic: str
+    file_path: NotRequired[str]
+    groomed: NotRequired[bool]
+    status: NotRequired[str]
+    milestone: NotRequired[str]
+
+
+class ListItemsResult(TypedDict):
+    """Full result shape returned by list_items().
+
+    Used by server.py to remove cast() call sites (T05).
+    """
+
+    items: list[BacklogListItem]
+    count: int
+    messages: list[str]
+    warnings: list[str]
+    errors: list[str]
 
 
 # ---------------------------------------------------------------------------
@@ -230,10 +271,11 @@ def _rename_item_title(item: BacklogItem, title: str, repo: str = "", output: Ou
         if repository is not None:
             try:
                 num = int(issue_ref.lstrip("#"))
-                gh_issue = repository.get_issue(num)
-                gh_issue.edit(title=title)
+                owner, repo_name = repository.full_name.split("/", 1)
+                issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
+                _update_issue_graphql(repository, issue_node["id"], title=title)
                 out.info(f"  GitHub issue {issue_ref} title updated to: {title}")
-            except GithubException as e:
+            except (GithubException, BacklogError) as e:
                 out.warn(f"  WARNING: Could not update issue {issue_ref} title: {e}")
 
     return True
@@ -275,10 +317,11 @@ def _apply_plan_to_item(item: BacklogItem, plan: str, repo: str = "", output: Ou
         if repository is not None:
             try:
                 num = int(issue_ref.lstrip("#"))
-                gh_issue = repository.get_issue(num)
-                gh_issue.create_comment(f"**Plan**: {plan}")
+                owner, repo_name = repository.full_name.split("/", 1)
+                issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
+                _add_comment_graphql(repository, issue_node["id"], f"**Plan**: {plan}")
                 out.info(f"  Plan comment posted to issue {issue_ref}")
-            except GithubException as e:
+            except (GithubException, BacklogError) as e:
                 out.warn(f"  WARNING: Could not post plan to issue {issue_ref}: {e}")
 
     return True
@@ -469,17 +512,21 @@ def _write_groomed_to_github(
     try:
         num = int(issue_ref.lstrip("#"))
         updated = sync_groomed_to_github_issue(repository, num, content, section_name, output=out)
-    except GithubException as e:
+    except (GithubException, BacklogError) as e:
         out.warn(f"  WARNING: Could not sync to GitHub: {e}")
         return False
     else:
         if updated:
             out.info(f"  Synced to GitHub issue {issue_ref}")
+            # Remove status:needs-grooming label via GraphQL fetch-then-update (ADR-003)
             try:
-                issue = repository.get_issue(num)
-                if any(label.name == "status:needs-grooming" for label in issue.labels):
-                    issue.remove_from_labels("status:needs-grooming")
-            except GithubException as e:
+                owner, repo_name = repository.full_name.split("/", 1)
+                issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
+                label_ids = [lbl["id"] for lbl in issue_node["labels"] if lbl["name"] != "status:needs-grooming"]
+                if len(label_ids) != len(issue_node["labels"]):
+                    # Label was present — update with it removed
+                    _update_issue_graphql(repository, issue_node["id"], label_ids=label_ids)
+            except (GithubException, BacklogError) as e:
                 out.warn(f"  WARNING: Could not update grooming label: {e}")
         else:
             out.info(f"  No changes to sync to GitHub issue {issue_ref}")
@@ -1096,20 +1143,38 @@ def _reconcile_closed_issues(repo_obj: Repository, open_issue_numbers: set[int],
     cutoff = _closed_issue_cutoff(local_items)
     issue_to_item = _build_issue_to_item_index(local_items)
 
+    owner, repo_name = repo_obj.full_name.split("/", 1)
+    try:
+        closed_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="CLOSED")
+    except BacklogError as e:
+        output.warn(f"  WARNING: Could not fetch closed issues: {e}")
+        return 0
+
     reconciled = 0
-    for issue in repo_obj.get_issues(state="closed", since=cutoff):
-        if issue.pull_request is not None:
+    for issue_node in closed_issues:
+        # Filter by cutoff — GraphQL has no since parameter; do it client-side
+        closed_at_str = issue_node.get("closedAt") or ""
+        if closed_at_str:
+            try:
+                closed_at = datetime.fromisoformat(closed_at_str)
+                if closed_at < cutoff.replace(tzinfo=UTC):
+                    continue
+            except ValueError:
+                pass
+        # Skip PRs — GraphQL issues endpoint excludes PRs, but guard anyway
+        if issue_node.get("isPullRequest"):
             continue
-        if issue.number in open_issue_numbers:
+        issue_number = issue_node.get("number", 0)
+        if issue_number in open_issue_numbers:
             continue  # open takes precedence
-        local_item = issue_to_item.get(issue.number)
+        local_item = issue_to_item.get(issue_number)
         if local_item is None:
             continue  # no local file — skip silently
         filepath = Path(local_item.file_path)
         if not filepath.exists():
             continue
         update_item_metadata(filepath, {"metadata": {"status": "closed"}}, output=output)
-        output.info(f"  Reconciled #{issue.number} — updated local status to closed.")
+        output.info(f"  Reconciled #{issue_number} — updated local status to closed.")
         reconciled += 1
     return reconciled
 
@@ -1135,22 +1200,24 @@ def refresh_local_cache_from_github(
         out.warn("  WARNING: GitHub unavailable — listing from local cache only")
         return {"refreshed": 0, "reconciled": 0, **out.to_dict()}
 
-    label_objs = []
+    owner, repo_name = repo_obj.full_name.split("/", 1)
+    label_names: list[str] | None = None
     if label:
-        try:
-            label_objs.append(repo_obj.get_label(label))
-        except GithubException:
-            out.warn(f"  WARNING: label '{label}' not found — listing all issues")
+        label_names = [label]
 
     # Pass 1: open issues (primary)
-    issues = repo_obj.get_issues(state="open", labels=label_objs or GithubObject.NotSet)
+    try:
+        open_issues = _fetch_issues_graphql(repo_obj, owner, repo_name, state="OPEN", labels=label_names)
+    except BacklogError as e:
+        out.warn(f"  WARNING: Could not fetch open issues: {e}")
+        return {"refreshed": 0, "reconciled": 0, **out.to_dict()}
+
     open_issue_numbers: set[int] = set()
     count = 0
-    for issue in issues:
-        if issue.pull_request is not None:
-            continue
-        pull_single_issue(repo_obj, issue.number, output=out)
-        open_issue_numbers.add(issue.number)
+    for issue_node in open_issues:
+        issue_number = issue_node.get("number", 0)
+        pull_single_issue(repo_obj, issue_number, output=out)
+        open_issue_numbers.add(issue_number)
         count += 1
     out.info(f"  Refreshed {count} issue(s) from GitHub into local cache.")
 
@@ -1635,11 +1702,12 @@ def sync_push_groomed_content(
         if body is None:
             continue
         try:
-            gh_issue = repository.get_issue(int(num_str))
-            gh_issue.edit(body=body)
+            owner, repo_name = repository.full_name.split("/", 1)
+            issue_node = _fetch_issue_graphql(repository, owner, repo_name, int(num_str))
+            _update_issue_graphql(repository, issue_node["id"], body=body)
             out.info(f"  Updated issue #{num_str}: {item.title[:60]}")
             pushed += 1
-        except GithubException as e:
+        except (GithubException, BacklogError) as e:
             out.warn(f"  WARNING: Could not update issue #{num_str}: {e}")
 
     return {"pushed": pushed, **out.to_dict()}
@@ -2069,11 +2137,12 @@ def strike_entry(
             try:
                 num = int(item.issue.lstrip("#"))
                 body = build_issue_body_from_file(item)
-                issue = repository.get_issue(num)
                 if body is not None:
-                    issue.edit(body=body)
+                    owner, repo_name = repository.full_name.split("/", 1)
+                    issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
+                    _update_issue_graphql(repository, issue_node["id"], body=body)
                 out.info(f"  Synced strike to GitHub issue {item.issue}")
-            except GithubException as e:
+            except (GithubException, BacklogError) as e:
                 out.warn(f"  WARNING: Could not sync to GitHub: {e}")
 
     return {"title": item.title, "entry_id": entry_id, "struck": True, **out.to_dict()}
@@ -2136,12 +2205,12 @@ def pull_single_issue(
 
     try:
         owner, repo_name = repo_obj.full_name.split("/", 1)
-        issue = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_num)
-    except (GithubException, BacklogError) as e:
+        issue_node = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_num)
+    except BacklogError as e:
         out.warn(f"  WARNING: Could not fetch issue #{issue_num}: {e}")
         return {"file_path": None, **out.to_dict()}
 
-    fields = issue_to_local_fields(issue)
+    fields = issue_to_local_fields(issue_node)
     # Strip conventional-commit prefix from title (e.g., "feat: Title" -> "Title")
     clean_title = _COMMIT_PREFIX_RE.sub("", fields.title).strip()
 
@@ -2705,17 +2774,20 @@ def list_milestones(
     if state not in valid_states:
         raise ValidationError(f"state must be one of {sorted(valid_states)!r}, got {state!r}")
     repository = get_github(repo)
+    owner, repo_name = repository.full_name.split("/", 1)
+    state_map = {"open": ["OPEN"], "closed": ["CLOSED"], "all": ["OPEN", "CLOSED"]}
+    ms_nodes = _fetch_milestones_graphql(repository, owner, repo_name, states=state_map[state])
     milestones: list[dict[str, object]] = [
         {
-            "number": ms.number,
-            "title": ms.title,
-            "state": ms.state,
-            "description": ms.description or "",
-            "due_on": ms.due_on.strftime("%Y-%m-%dT%H:%M:%SZ") if ms.due_on else None,
-            "open_issues": ms.open_issues,
-            "closed_issues": ms.closed_issues,
+            "number": ms["number"],
+            "title": ms["title"],
+            "state": ms["state"].lower(),
+            "description": ms["description"] or "",
+            "due_on": ms["dueOn"],
+            "open_issues": ms["openIssueCount"],
+            "closed_issues": ms["closedIssueCount"],
         }
-        for ms in repository.get_milestones(state=state)
+        for ms in ms_nodes
     ]
     return {"milestones": milestones, "count": len(milestones), **out.to_dict()}
 
@@ -2742,26 +2814,27 @@ def get_soonest_milestone(repo: str = "", output: Output | None = None) -> dict[
     """
     out = output or Output()
     repository = get_github(repo)
-    all_open = list(repository.get_milestones(state="open"))
+    owner, repo_name = repository.full_name.split("/", 1)
+    all_open = _fetch_milestones_graphql(repository, owner, repo_name, states=["OPEN"])
     if not all_open:
         return {"milestone": None, **out.to_dict()}
 
-    with_due = [ms for ms in all_open if ms.due_on is not None]
+    with_due = [ms for ms in all_open if ms["dueOn"] is not None]
     if with_due:
-        soonest = min(with_due, key=lambda ms: ms.due_on)
+        soonest = min(with_due, key=operator.itemgetter("dueOn"))
     else:
         out.warn("No open milestones have a due date; returning first by default ordering")
         soonest = all_open[0]
 
     return {
         "milestone": {
-            "number": soonest.number,
-            "title": soonest.title,
-            "state": soonest.state,
-            "description": soonest.description or "",
-            "due_on": soonest.due_on.strftime("%Y-%m-%dT%H:%M:%SZ") if soonest.due_on else None,
-            "open_issues": soonest.open_issues,
-            "closed_issues": soonest.closed_issues,
+            "number": soonest["number"],
+            "title": soonest["title"],
+            "state": soonest["state"].lower(),
+            "description": soonest["description"] or "",
+            "due_on": soonest["dueOn"],
+            "open_issues": soonest["openIssueCount"],
+            "closed_issues": soonest["closedIssueCount"],
         },
         **out.to_dict(),
     }
@@ -2836,51 +2909,70 @@ def create_milestone(
 _VALID_ISSUE_STATES: frozenset[str] = frozenset({"open", "closed", "all"})
 
 
-def _apply_milestone_filter(gh_repo: Repository, milestone: str | None, kwargs: dict[str, object], out: Output) -> None:
-    """Resolve milestone title to object and update kwargs in place."""
+def _resolve_milestone_number(gh_repo: Repository, milestone: str | None, out: Output) -> int | None:
+    """Resolve milestone title to its number via GraphQL.
+
+    Returns:
+        Milestone number if found, None otherwise.
+    """
     if not milestone:
-        return
-    for ms in gh_repo.get_milestones(state="all"):
-        if ms.title == milestone:
-            kwargs["milestone"] = ms
-            return
+        return None
+    owner, repo_name = gh_repo.full_name.split("/", 1)
+    ms_nodes = _fetch_milestones_graphql(gh_repo, owner, repo_name, states=["OPEN", "CLOSED"])
+    for ms in ms_nodes:
+        if ms["title"] == milestone:
+            return ms["number"]
     out.warn(f"  WARNING: milestone '{milestone}' not found — returning unfiltered results")
+    return None
 
 
-def _apply_label_filter(gh_repo: Repository, labels: str | None, kwargs: dict[str, object], out: Output) -> None:
-    """Resolve comma-separated label names to objects and update kwargs in place."""
+def _resolve_label_names(labels: str | None) -> list[str] | None:
+    """Parse comma-separated label names string into a list.
+
+    Returns:
+        List of label name strings, or None when no labels given.
+    """
     if not labels:
-        return
-    label_objs = []
-    for name in [n.strip() for n in labels.split(",") if n.strip()]:
-        try:
-            label_objs.append(gh_repo.get_label(name))
-        except GithubException:
-            out.warn(f"  WARNING: label '{name}' not found — skipping")
-    if label_objs:
-        kwargs["labels"] = label_objs
+        return None
+    names = [n.strip() for n in labels.split(",") if n.strip()]
+    return names or None
 
 
-def _collect_issues(gh_repo: Repository, kwargs: dict[str, object], limit: int) -> list[dict[str, object]]:
-    """Iterate issues and return serialized dicts up to limit, excluding PRs.
+def _collect_issues(
+    gh_repo: Repository, state: str, label_names: list[str] | None, milestone_number: int | None, limit: int
+) -> list[dict[str, object]]:
+    """Fetch issues via GraphQL and return serialized dicts up to limit.
 
     Returns:
         List of issue dicts with number, title, state, labels, assignees,
         milestone, created_at, and updated_at fields.
     """
+    owner, repo_name = gh_repo.full_name.split("/", 1)
+    if state == "all":
+        open_nodes = _fetch_issues_graphql(
+            gh_repo, owner, repo_name, state="OPEN", labels=label_names, milestone_number=milestone_number
+        )
+        closed_nodes = _fetch_issues_graphql(
+            gh_repo, owner, repo_name, state="CLOSED", labels=label_names, milestone_number=milestone_number
+        )
+        issue_nodes = open_nodes + closed_nodes
+    else:
+        graphql_state = "OPEN" if state == "open" else "CLOSED"
+        issue_nodes = _fetch_issues_graphql(
+            gh_repo, owner, repo_name, state=graphql_state, labels=label_names, milestone_number=milestone_number
+        )
+
     issue_list: list[dict[str, object]] = []
-    for issue in gh_repo.get_issues(**kwargs):  # type: ignore[arg-type]
-        if issue.pull_request is not None:
-            continue
+    for issue_node in issue_nodes:
         issue_list.append({
-            "number": issue.number,
-            "title": issue.title,
-            "state": issue.state,
-            "labels": [lb.name for lb in issue.labels],
-            "assignees": [a.login for a in issue.assignees],
-            "milestone": issue.milestone.title if issue.milestone else None,
-            "created_at": issue.created_at.strftime("%Y-%m-%dT%H:%M:%SZ") if issue.created_at else "",
-            "updated_at": issue.updated_at.strftime("%Y-%m-%dT%H:%M:%SZ") if issue.updated_at else "",
+            "number": issue_node["number"],
+            "title": issue_node["title"],
+            "state": issue_node["state"].lower(),
+            "labels": [lbl["name"] for lbl in issue_node.get("labels", [])],
+            "assignees": [a["login"] for a in issue_node.get("assignees", [])],
+            "milestone": ((ms := issue_node.get("milestone")) and ms["title"]) or None,
+            "created_at": issue_node.get("createdAt") or "",
+            "updated_at": issue_node.get("updatedAt") or "",
         })
         if len(issue_list) >= limit:
             break
@@ -2921,11 +3013,10 @@ def list_issues(
         raise ValidationError(f"Invalid state {state!r}: must be one of {sorted(_VALID_ISSUE_STATES)}")
     try:
         gh_repo = get_github(repo)
-        kwargs: dict[str, object] = {"state": state}
-        _apply_milestone_filter(gh_repo, milestone, kwargs, out)
-        _apply_label_filter(gh_repo, labels, kwargs, out)
-        issue_list = _collect_issues(gh_repo, kwargs, limit)
-    except GithubException as e:
+        milestone_number = _resolve_milestone_number(gh_repo, milestone, out)
+        label_names = _resolve_label_names(labels)
+        issue_list = _collect_issues(gh_repo, state, label_names, milestone_number, limit)
+    except (GithubException, BacklogError) as e:
         raise BacklogError(f"GitHub API error fetching issues: {e}") from e
     return {"issues": issue_list, "count": len(issue_list), **out.to_dict()}
 
@@ -2957,12 +3048,13 @@ def comment_issue(
         raise ValidationError("body must not be empty")
     try:
         gh_repo = get_github(repo)
-        issue = gh_repo.get_issue(issue_number)
-        comment = issue.create_comment(body)
+        owner, repo_name = gh_repo.full_name.split("/", 1)
+        issue_node = _fetch_issue_graphql(gh_repo, owner, repo_name, issue_number)
+        comment_node_id = _add_comment_graphql(gh_repo, issue_node["id"], body)
         out.info(f"  Comment added to issue #{issue_number}")
-    except GithubException as e:
+    except (GithubException, BacklogError) as e:
         raise BacklogError(f"GitHub API error adding comment: {e}") from e
-    return {"issue_number": issue_number, "comment_id": comment.id, "comment_url": comment.html_url, **out.to_dict()}
+    return {"issue_number": issue_number, "comment_id": comment_node_id, "comment_url": "", **out.to_dict()}
 
 
 # ---------------------------------------------------------------------------

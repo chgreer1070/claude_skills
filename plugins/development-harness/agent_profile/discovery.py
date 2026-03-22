@@ -47,7 +47,9 @@ def get_plugins_root() -> Path:
                plugins_root       = cache/org/                      (.parent.parent)
 
     Returns:
-        Absolute :class:`~pathlib.Path` whose children are plugin directories.
+        Absolute :class:`~pathlib.Path` to the directory whose children are the
+        individual plugin directories (e.g. ``python3-development/``,
+        ``plugin-creator/``, ``development-harness/``).
 
     Raises:
         FileNotFoundError: When the plugins root cannot be determined.
@@ -55,9 +57,15 @@ def get_plugins_root() -> Path:
     plugin_root_env = os.environ.get("CLAUDE_PLUGIN_ROOT")
     if plugin_root_env:
         plugin_root = Path(plugin_root_env).resolve()
+        # Detect layout: in the cache, plugin_root is a version directory
+        # (e.g., 4.4.19/) inside a plugin-name directory.  The parent of
+        # plugin_root is the plugin-name dir, which contains only version
+        # dirs — not sibling plugins.  Go up one more to reach the org dir.
+        #
+        # In the repo, plugin_root IS the plugin dir (development-harness/)
+        # and its parent (plugins/) directly contains sibling plugins.
         candidate = plugin_root.parent
         # Check if candidate has sibling dirs with agents/ or skills/
-        # (repo layout: candidate = plugins/, siblings = python3-development/ etc.)
         has_sibling_plugins = any(
             d.is_dir() and d.name != plugin_root.name and ((d / "agents").is_dir() or (d / "skills").is_dir())
             for d in candidate.iterdir()
@@ -84,8 +92,8 @@ def get_plugins_root() -> Path:
 
     raise FileNotFoundError(
         f"Could not locate the plugin root. "
-        f"Searched ancestors of {Path(__file__).resolve()} and "
-        "CLAUDE_PLUGIN_ROOT is not set."
+        f"Searched ancestors of {Path(__file__).resolve()} for 'agents/' subdirectory "
+        "and CLAUDE_PLUGIN_ROOT is not set."
     )
 
 

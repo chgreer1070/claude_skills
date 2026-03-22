@@ -11,7 +11,8 @@ subprocess, because hooks fire on every tool call and latency matters).
 Context File Mechanism:
 - The /start-task command writes task context to ~/.dh/projects/{slug}/context/active-task-{session_id}.json
 - PostToolUse hooks read from this file to know which task is active
-- SubagentStop parses the prompt directly (doesn't need context file)
+- SubagentStop extracts the sub-agent's session_id from agent_transcript_path, then looks up
+  active-task-{session_id}.json directly (targeted lookup, not glob-all)
 
 Usage:
     Called automatically via hooks configuration.
@@ -452,20 +453,45 @@ def sync_completion_to_github(task_file_path: Path, task_id: str, parent_issue_n
         print(f"[hook] GitHub sync failed: {e}", file=sys.stderr)
 
 
-def _glob_active_context_files() -> list[Path]:
-    """Return all active-task-*.json files in the DH context directory.
+def _extract_session_id_from_transcript(transcript_path: Path) -> str | None:
+    """Extract the sub-agent's session_id from the first parseable line of a JSONL transcript.
+
+    The transcript file contains newline-delimited JSON objects. Each line may have
+    a top-level ``session_id`` field that identifies the sub-agent's own session.
+    Reading only the first few lines avoids loading the entire (potentially large) file.
+
+    Args:
+        transcript_path: Path to the sub-agent's JSONL transcript file.
 
     Returns:
-        List of Path objects for found context files. Empty list if the
-        directory does not exist or no files match.
+        The session_id string if found, or None if the file is missing,
+        unreadable, or contains no parseable session_id in the first 10 lines.
     """
+    if not transcript_path.exists():
+        print(f"[hook] transcript not found: {transcript_path}", file=sys.stderr)
+        return None
+
     try:
-        context_dir = _dh_paths.context_dir()
-    except Exception:  # noqa: BLE001
-        return []
-    if not context_dir.exists():
-        return []
-    return list(context_dir.glob("active-task-*.json"))
+        with transcript_path.open(encoding="utf-8") as fh:
+            # Read at most 10 lines — session_id appears in the first message.
+            for _ in range(10):
+                line = fh.readline()
+                if not line:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record: dict[str, Any] = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                session_id = record.get("session_id")
+                if isinstance(session_id, str) and session_id:
+                    return session_id
+    except OSError as e:
+        print(f"[hook] could not read transcript {transcript_path}: {e}", file=sys.stderr)
+
+    return None
 
 
 def _read_context_file(context_file: Path) -> tuple[Path | None, str | None, int | None]:
@@ -496,18 +522,66 @@ def _read_context_file(context_file: Path) -> tuple[Path | None, str | None, int
     return Path(raw_path), task_id, parent_issue
 
 
+def _resolve_context_file_from_transcript(hook_input: dict[str, Any]) -> Path | None:
+    """Resolve the active-task context file for the agent that just stopped.
+
+    Reads ``agent_transcript_path`` from hook input, extracts the sub-agent's
+    session_id from the transcript, and returns the path to the matching
+    ``active-task-{session_id}.json`` context file. Returns None (with a stderr
+    warning) if any step fails or the context file does not exist.
+
+    Args:
+        hook_input: Parsed SubagentStop hook input from stdin.
+
+    Returns:
+        Path to the context file if found, or None.
+    """
+    transcript_path_raw = hook_input.get("agent_transcript_path", "")
+    if not transcript_path_raw:
+        print(
+            "[hook] SubagentStop: no agent_transcript_path in hook input — cannot correlate agent to task",
+            file=sys.stderr,
+        )
+        return None
+
+    sub_agent_session_id = _extract_session_id_from_transcript(Path(transcript_path_raw))
+    if not sub_agent_session_id:
+        print(
+            f"[hook] SubagentStop: could not extract session_id from transcript {transcript_path_raw} — skipping",
+            file=sys.stderr,
+        )
+        return None
+
+    try:
+        context_dir = _dh_paths.context_dir()
+    except Exception:  # noqa: BLE001
+        return None
+
+    context_file = context_dir / f"active-task-{sub_agent_session_id}.json"
+    if not context_file.exists():
+        print(
+            f"[hook] SubagentStop: no context file for session {sub_agent_session_id} — not a /start-task agent",
+            file=sys.stderr,
+        )
+        return None
+
+    return context_file
+
+
 def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = HookProfile.STANDARD) -> None:
     """Handle SubagentStop event - mark task COMPLETE with timestamp.
 
-    Discovers the active task by globbing for all active-task-*.json files in
-    the DH context directory. For each file, checks whether the task is
-    currently IN_PROGRESS; if so, marks it COMPLETE and deletes the context
-    file. Stale context files (crashed agents whose task is already COMPLETE)
-    are deleted without re-completing the task.
+    Discovers the active task by extracting the sub-agent's session_id from
+    ``agent_transcript_path`` in the hook input, then looking up the single
+    context file ``active-task-{session_id}.json``. This ensures only the task
+    belonging to the finished agent is marked complete — not all in-progress
+    tasks — which is critical for correct behaviour with parallel agents.
 
-    The SubagentStop hook input schema does NOT include a ``prompt`` field, so
-    prompt-parsing is not used as the primary discovery path. The context file
-    written by ``/start-task`` step 4 is the authoritative source.
+    Discovery steps:
+    1. Read ``agent_transcript_path`` from hook input.
+    2. Extract the sub-agent's session_id from the first parseable JSONL line.
+    3. Look up ``active-task-{session_id}.json`` directly (no glob).
+    4. If not found: log warning and exit 0 (not a /start-task sub-agent).
 
     Delegates all file writes to sam_schema.core.query.update_status
     (handles both .yaml and .md formats).
@@ -521,72 +595,62 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
     """
     cwd = Path(hook_input.get("cwd", "."))
 
-    context_files = _glob_active_context_files()
-
-    if not context_files:
-        # No active task context files — not a /start-task sub-agent.
+    context_file = _resolve_context_file_from_transcript(hook_input)
+    if context_file is None:
         sys.exit(0)
 
-    completed_any = False
+    task_file_path, task_id, parent_issue_number = _read_context_file(context_file)
 
-    for context_file in context_files:
-        task_file_path, task_id, parent_issue_number = _read_context_file(context_file)
-
-        if task_file_path is None or task_id is None:
-            # Unreadable or malformed context file — clean up.
-            with contextlib.suppress(OSError):
-                context_file.unlink()
-            continue
-
-        # Resolve task file path relative to cwd.
-        full_path = cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
-
-        if not full_path.exists():
-            # Task file gone — delete stale context file and move on.
-            with contextlib.suppress(OSError):
-                context_file.unlink()
-            continue
-
-        # Check current task status before marking complete.
-        try:
-            current_task = sam_get_task(full_path, task_id)
-        except (KeyError, FileNotFoundError, ValueError, OSError):
-            # Task not found in file — delete stale context file.
-            with contextlib.suppress(OSError):
-                context_file.unlink()
-            continue
-
-        if current_task.status == SamTaskStatus.COMPLETE:
-            # Already complete — just clean up the stale context file.
-            with contextlib.suppress(OSError):
-                context_file.unlink()
-            continue
-
-        # Strict mode: run pre-completion checks and emit warnings. Never blocks completion.
-        if profile == HookProfile.STRICT:
-            for warning in run_strict_pre_completion_checks(full_path, task_id, hook_input):
-                print(warning, file=sys.stderr)
-
-        try:
-            # Single code path for all formats: sam_schema handles .yaml and .md uniformly.
-            sam_update_status(full_path, task_id, SamTaskStatus.COMPLETE, timestamp_field="completed")
-        except (ValueError, KeyError, FileNotFoundError) as e:
-            print(str(e), file=sys.stderr)
-            sys.exit(2)
-
-        # Delete the context file now that the task is marked complete.
+    if task_file_path is None or task_id is None:
+        # Unreadable or malformed context file — clean up.
+        print(f"[hook] SubagentStop: malformed context file {context_file} — cleaning up", file=sys.stderr)
         with contextlib.suppress(OSError):
             context_file.unlink()
-
-        # Sync completion to GitHub — best-effort, never changes exit code.
-        sync_completion_to_github(full_path, task_id, parent_issue_number)
-
-        completed_any = True
-
-    if not completed_any:
-        # All context files were stale (already complete or missing task files).
-        # Exit silently — not a /start-task sub-agent with pending work.
         sys.exit(0)
+
+    # Resolve task file path relative to cwd.
+    full_path = cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
+
+    if not full_path.exists():
+        # Task file gone — delete stale context file.
+        print(f"[hook] SubagentStop: task file {full_path} not found — cleaning up context", file=sys.stderr)
+        with contextlib.suppress(OSError):
+            context_file.unlink()
+        sys.exit(0)
+
+    # Check current task status before marking complete.
+    try:
+        current_task = sam_get_task(full_path, task_id)
+    except (KeyError, FileNotFoundError, ValueError, OSError):
+        # Task not found in file — delete stale context file.
+        with contextlib.suppress(OSError):
+            context_file.unlink()
+        sys.exit(0)
+
+    if current_task.status == SamTaskStatus.COMPLETE:
+        # Already complete — just clean up the stale context file.
+        with contextlib.suppress(OSError):
+            context_file.unlink()
+        sys.exit(0)
+
+    # Strict mode: run pre-completion checks and emit warnings. Never blocks completion.
+    if profile == HookProfile.STRICT:
+        for warning in run_strict_pre_completion_checks(full_path, task_id, hook_input):
+            print(warning, file=sys.stderr)
+
+    try:
+        # Single code path for all formats: sam_schema handles .yaml and .md uniformly.
+        sam_update_status(full_path, task_id, SamTaskStatus.COMPLETE, timestamp_field="completed")
+    except (ValueError, KeyError, FileNotFoundError) as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(2)
+
+    # Delete the context file now that the task is marked complete.
+    with contextlib.suppress(OSError):
+        context_file.unlink()
+
+    # Sync completion to GitHub — best-effort, never changes exit code.
+    sync_completion_to_github(full_path, task_id, parent_issue_number)
 
 
 def handle_activity_update(hook_input: dict[str, Any]) -> None:

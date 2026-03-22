@@ -117,6 +117,14 @@ class CommentNode(TypedDict):
     url: str
 
 
+class IssueCommentNode(TypedDict):
+    """Comment node returned from issue comments listing query."""
+
+    id: str
+    body: str
+    url: str
+
+
 class MilestoneFullNode(TypedDict):
     """Milestone from GraphQL query with issue counts."""
 
@@ -294,6 +302,27 @@ mutation AddSubIssue($parentId: ID!, $childId: ID!) {
   addSubIssue(input: {issueId: $parentId, subIssueId: $childId}) {
     issue { id number }
     subIssue { id number }
+  }
+}
+"""
+
+_ISSUE_COMMENTS_QUERY = """
+query GetIssueComments($owner: String!, $repo: String!, $number: Int!, $first: Int!, $after: String) {
+  repository(owner: $owner, name: $repo) {
+    issue(number: $number) {
+      comments(first: $first, after: $after) {
+        nodes { id body url }
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}
+"""
+
+_UPDATE_COMMENT_MUTATION = """
+mutation UpdateIssueComment($id: ID!, $body: String!) {
+  updateIssueComment(input: {id: $id, body: $body}) {
+    issueComment { id body }
   }
 }
 """
@@ -658,6 +687,48 @@ def _add_comment_graphql(repo: Repository, issue_node_id: str, body: str) -> str
     data = _graphql_request(repo, _ADD_COMMENT_MUTATION, {"subjectId": issue_node_id, "body": body})
     comment_node = data.get("addComment", {}).get("commentEdge", {}).get("node", {})  # type: ignore[union-attr]
     return str(comment_node.get("id", ""))
+
+
+def _fetch_issue_comments_graphql(
+    repo: Repository, owner: str, repo_name: str, issue_number: int
+) -> list[IssueCommentNode]:
+    """Fetch all comments for an issue via GraphQL, handling pagination.
+
+    Args:
+        repo: PyGithub Repository object (provides requester transport).
+        owner: GitHub owner name.
+        repo_name: GitHub repository name.
+        issue_number: Issue number (positive integer).
+
+    Returns:
+        List of ``IssueCommentNode`` dicts with ``id``, ``body``, ``url`` fields.
+
+    Raises:
+        BacklogError: On GraphQL errors.
+    """
+    comments: list[IssueCommentNode] = []
+    cursor: str | None = None
+    while True:
+        variables: dict[str, object] = {
+            "owner": owner,
+            "repo": repo_name,
+            "number": issue_number,
+            "first": 100,
+            "after": cursor,
+        }
+        data = _graphql_request(repo, _ISSUE_COMMENTS_QUERY, variables)
+        issue_data = (data.get("repository") or {}).get("issue") or {}  # type: ignore[union-attr]
+        comments_data = issue_data.get("comments") or {}
+        nodes: list[dict[str, object]] = list(comments_data.get("nodes") or [])
+        comments.extend(
+            IssueCommentNode(id=str(node.get("id", "")), body=str(node.get("body", "")), url=str(node.get("url", "")))
+            for node in nodes
+        )
+        page_info: dict[str, object] = comments_data.get("pageInfo") or {}
+        if not page_info.get("hasNextPage"):
+            break
+        cursor = str(page_info.get("endCursor") or "")
+    return comments
 
 
 # ---------------------------------------------------------------------------
