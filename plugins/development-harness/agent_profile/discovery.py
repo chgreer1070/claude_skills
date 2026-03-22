@@ -29,25 +29,53 @@ __all__ = ["find_agent", "get_plugins_root", "scan_all_agents"]
 
 
 def get_plugins_root() -> Path:
-    """Return the absolute path to the ``plugins/`` root directory.
+    """Return the absolute path to the directory that contains all plugin directories.
 
-    Resolves relative to this module's location:
-    ``agent_profile/`` is inside ``plugins/development-harness/``, so
-    ``Path(__file__).resolve().parents[2]`` is ``plugins/``.
+    Walks up from this module's location to find the first ancestor that has an
+    ``agents/`` subdirectory — that ancestor is the plugin root for
+    ``development-harness``.  Its parent is the plugins root (the directory that
+    contains ``development-harness`` as well as sibling plugins such as
+    ``python3-development`` and ``plugin-creator``).
+
+    This strategy handles both the repository layout::
+
+        plugins/development-harness/agent_profile/discovery.py
+        ^-- plugins/ is parents[2]
+
+    and the versioned cache layout::
+
+        ~/.claude/plugins/cache/org/development-harness/{version}/agent_profile/discovery.py
+        ^-- {version}/ is parents[1]; development-harness/ is parents[2]; org/ is parents[3]
+
+    rather than hard-coding a fixed ``parents[N]`` index that breaks when an extra
+    version directory is present.
 
     Returns:
-        Absolute :class:`~pathlib.Path` to the ``plugins/`` directory.
+        Absolute :class:`~pathlib.Path` to the directory whose children are the
+        individual plugin directories.
 
     Raises:
-        FileNotFoundError: When the resolved path does not exist (indicates
-            the package was moved or the layout is unexpected).
+        FileNotFoundError: When no ancestor with an ``agents/`` subdirectory is
+            found, which indicates an unexpected installation layout.
     """
-    plugins_root = Path(__file__).resolve().parents[2]
-    if not plugins_root.exists():
-        raise FileNotFoundError(
-            f"Expected plugins/ root at {plugins_root} but it does not exist. Check the agent_profile package location."
-        )
-    return plugins_root
+    current = Path(__file__).resolve().parent
+    # Walk upward until we find a directory that contains agents/ — that is the
+    # development-harness plugin root.  Its parent is the plugins root.
+    while current != current.parent:
+        if (current / "agents").is_dir():
+            plugins_root = current.parent
+            if not plugins_root.exists():
+                raise FileNotFoundError(
+                    f"Expected plugins/ root at {plugins_root} but it does not exist. "
+                    "Check the agent_profile package location."
+                )
+            return plugins_root
+        current = current.parent
+
+    raise FileNotFoundError(
+        f"Could not locate the plugin root by searching ancestors of {Path(__file__).resolve()}. "
+        "No ancestor directory contains an 'agents/' subdirectory."
+    )
 
 
 def _agent_name_from_path(agent_path: Path, agents_dir: Path) -> str:
