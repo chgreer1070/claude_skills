@@ -202,3 +202,9 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 **Files**: `plugins/development-harness/backlog_core/models.py`
 **Behavior to cover**: `discover_repo()` priority chain (env var, gh CLI, git remote, error path), `_validate_repo_slug()` rejection, `RepoDiscoveryError` message format, `lru_cache` isolation via `cache_clear()`, `init()` repo override.
 **Reason not written**: T02 (assigned to python-pytest-architect) covers this — subordinate-agent boundary.
+
+## Gap: backlog_core/artifact_provider.py
+
+**Files**: `plugins/development-harness/backlog_core/artifact_provider.py`
+**Behavior to cover**: GitHubArtifactProvider.get_manifest, set_manifest, read_artifact_content; parse_manifest_section with edge cases (empty body, body with manifest, malformed rows); render_manifest_section; replace_manifest_in_body (replace vs append paths); path traversal rejection; roundtrip fidelity
+**Reason not written**: Subordinate-agent boundary — T5 is the dedicated test task for artifact_provider.py and artifact_registry.py. Tests are planned in plugins/development-harness/tests_backlog/test_artifact_provider.py.
