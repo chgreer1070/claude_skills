@@ -47,7 +47,7 @@ flowchart TD
 
     GroomGate{"Step 4: Groom Check<br>Any items with groomed=false?<br>Observable: groomed field in<br>backlog_list_issues response"}
 
-    GroomGate -->|"Ungroomed items exist"| BatchGroom["Step 4a: Batch Groom<br>Actor: Parallel grooming agents<br>Action: For each ungroomed item,<br>invoke /groom-backlog-item {title}<br>Concurrency: up to 3 parallel agents<br>Output: all items groomed with<br>Impact Radius populated"]
+    GroomGate -->|"Ungroomed items exist"| BatchGroom["Step 4a: Batch Groom<br>Actor: Parallel grooming agents via TeamCreate<br>Action: For each ungroomed item,<br>invoke /groom-backlog-item {title}<br>All items dispatched in parallel as teammates<br>Output: all items groomed with<br>Impact Radius populated"]
     GroomGate -->|"All groomed"| DepAnalysis
 
     BatchGroom --> DepAnalysis["Step 5: Dependency Analysis<br>Action: Read Impact Radius from each groomed item.<br>Call analyze_impact_radius_conflicts() from dispatch_schema.<br>Output: dependency graph — which items<br>touch overlapping files/modules"]

@@ -39,7 +39,7 @@ flowchart TD
     WaveLoop --> WaveItems{"Wave has items?"}
     WaveItems -->|"No waves remain"| Land
 
-    WaveItems -->|"Yes"| SpawnAgents["Step 5: Spawn Worktree Agents<br>For each item: Agent(isolation: worktree)<br>with issue number + integration branch.<br>Agent self-discovers task plan and AC via SAM MCP.<br>All items in wave launch in parallel."]
+    WaveItems -->|"Yes"| SpawnAgents["Step 5: Spawn Worktree Agents<br>For each item: Agent(isolation: worktree)<br>with issue number + integration branch.<br>Agent self-discovers task plan and AC via SAM MCP.<br>All items in wave launch in parallel via TeamCreate."]
 
     SpawnAgents --> WaitReturn["Step 6: Wait for All Agents<br>Agent calls are synchronous.<br>Collect structured completion reports<br>from each agent output."]
 
@@ -82,6 +82,16 @@ flowchart TD
 ```
 
 ## Dispatch Step (Step 5 Detail)
+
+All items in a wave are independent by construction (guaranteed non-overlapping by the conflict group analysis in the dispatch plan). Use `TeamCreate` to launch them in parallel — teams are the standard mechanism for parallel wave dispatch.
+
+```text
+TeamCreate(team_name: "wave-{N}-{milestone-slug}")
+```
+
+Spawn one worktree agent per wave item as a teammate. Each teammate receives a minimal reference prompt (see template below) and operates autonomously. The orchestrator waits for all teammates to complete, then merges branches sequentially.
+
+The worktree isolation is orthogonal to team coordination: `Agent(isolation: "worktree")` provides filesystem isolation per item; `TeamCreate` provides the parallel dispatch and coordination mechanism. Both apply simultaneously.
 
 The orchestrator passes only references to the worktree agent. The agent self-discovers everything else.
 
@@ -229,7 +239,8 @@ Conflict resolution agent receives both branches' diffs and resolves in-place on
 | Tool | Purpose |
 |---|---|
 | `read_dispatch_plan` | Read `plan/milestone-{N}-dispatch.yaml` |
-| `Agent(isolation: "worktree")` | Spawn parallel workers per wave |
+| `TeamCreate` | Spawn parallel wave workers (standard parallel dispatch mechanism) |
+| `Agent(isolation: "worktree")` | Provide filesystem isolation per wave item (used inside TeamCreate) |
 | `backlog_view` | Read item description, AC, design decisions |
 | `sam_read` | Read SAM task plan for an item |
 | `sam_status` / `sam_list` | Check whether item has a SAM plan |

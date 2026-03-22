@@ -60,7 +60,17 @@ If parent issue number is unknown, use the SAM MCP tool:
 mcp__plugin_dh_sam__sam_ready(plan="P{N}")
 ```
 
-3. For each ready task:
+3. For each ready task (or batch of ready tasks):
+
+When multiple tasks are simultaneously ready (non-zero `count` with 2+ tasks in the ready list), dispatch them in parallel using `TeamCreate`:
+
+```text
+TeamCreate(team_name: "impl-{slug}")
+```
+
+Spawn one teammate per ready task. When only one task is ready, a single Agent call is acceptable. `TeamCreate` is the standard parallel dispatch mechanism — use it whenever 2+ tasks are ready at the same time.
+
+For each task being dispatched:
 
 - Route to the agent named in the task's `agent` field (or resolved from `role`).
 - Check the task's `skills` list from the ready-tasks JSON output.
