@@ -661,6 +661,11 @@ class RegisterResult(BaseModel):
     )
     """``'added'`` for a new entry; ``'updated'`` when an existing entry was modified."""
 
+    content_stored: bool = Field(
+        default=False, description="True when artifact content was stored as a GitHub issue comment."
+    )
+    """True when artifact content was stored as a GitHub issue comment."""
+
 
 class ArtifactContent(BaseModel):
     """Response shape returned by the ``artifact_read`` MCP tool.

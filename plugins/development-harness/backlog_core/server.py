@@ -793,13 +793,24 @@ async def artifact_register(
         str,
         Field(
             description=(
-                "Artifact type: feature-context, architect, task-plan, T0-baseline, TN-verification, codebase-analysis"
+                "Artifact type: feature-context, architect, task-plan, T0-baseline, TN-verification, "
+                "codebase-analysis, research"
             )
         ),
     ],
     path: Annotated[str, Field(description="Relative path from repo root, e.g. plan/architect-foo.md")],
     status: Annotated[str, Field(description="Lifecycle status: draft, current, superseded, archived")] = "current",
     agent: Annotated[str, Field(description="Name of the producing agent")] = "",
+    content: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Optional artifact content to store as a GitHub issue comment. "
+                "When provided the content is stored in a collapsible comment identified by type+path. "
+                "When omitted only the manifest entry is registered (backward-compatible)."
+            )
+        ),
+    ] = None,
 ) -> dict:
     """Upsert an artifact entry in the manifest for a GitHub issue.
 
@@ -807,9 +818,22 @@ async def artifact_register(
     path already exists it is updated in-place (status, agent, timestamp).
     If only the type matches but the path differs, a new row is added.
 
+    Content upload follows three-tier resolution:
+
+    1. **Explicit content** — when *content* is provided, it is uploaded
+       directly to a structured GitHub issue comment so it can be retrieved
+       via ``artifact_read`` even from worktree-isolated agents.
+    2. **Auto-read from local file** — when *content* is ``None`` but a local
+       file exists at *path* (resolved against the root worktree), the file is
+       read automatically and uploaded as in tier 1.
+    3. **Manifest-only** — when *content* is ``None`` and no local file exists,
+       the manifest entry is registered without content storage.  A warning is
+       emitted so callers can detect the gap.
+
     Returns:
-        Dict with registered (bool), artifact_count (int), action (str), and
-        output messages/warnings. On error, dict contains an error key.
+        Dict with registered (bool), artifact_count (int), action (str),
+        content_stored (bool), and output messages/warnings. On error, dict
+        contains an error key.
     """
     out = Output()
     try:
@@ -831,7 +855,31 @@ async def artifact_register(
             # Determine action: "updated" if entry pre-existed, "added" otherwise.
             existed = any(e.artifact_type == artifact_type_enum and e.path == path for e in manifest.artifacts)
             action = "updated" if existed else "added"
-            return RegisterResult(registered=True, artifact_count=len(updated_manifest.artifacts), action=action)
+
+            # Content upload — three-way resolution:
+            # 1. Explicit content provided → use it directly.
+            # 2. No explicit content but local file exists → read and upload.
+            # 3. Neither → register manifest entry only; emit a warning.
+            upload_content: str | None = content
+            if upload_content is None:
+                upload_content = provider.read_local_artifact_content(path)
+                if upload_content is None:
+                    out.warn(
+                        f"No content provided and no local file found at {path!r}. "
+                        "Manifest entry registered without content storage."
+                    )
+
+            content_stored = False
+            if upload_content is not None:
+                provider.store_artifact_content(issue_number, artifact_type, path, upload_content)
+                content_stored = True
+
+            return RegisterResult(
+                registered=True,
+                artifact_count=len(updated_manifest.artifacts),
+                action=action,
+                content_stored=content_stored,
+            )
 
         result = await asyncio.to_thread(_run)
         return {**result.model_dump(), **out.to_dict()}
@@ -917,17 +965,21 @@ async def artifact_read(
 ) -> dict:
     """Read the file content for an artifact registered on a GitHub issue.
 
-    Resolves the artifact path against the root worktree (not the caller's
-    working directory). Designed for worktree-isolated agents that cannot
-    access plan files via the filesystem directly.
+    Content retrieval order:
 
-    Path safety: the provider validates that the resolved path is under the
-    repository root and within the plan/ directory.
+    1. GitHub issue comments — searches for a stored artifact content comment
+       matching the artifact type and path.  This succeeds even when the local
+       filesystem file does not exist (e.g. from a worktree-isolated agent).
+    2. Local filesystem fallback — when no GitHub comment is found, resolves
+       the artifact path against the root worktree.
+
+    Path safety (filesystem path): the provider validates that the resolved
+    path is under the repository root and within the plan/ directory.
 
     Returns:
         Dict with type (str), path (str), content (str), status (str), and
-        output messages/warnings. Returns error key on type-not-found or
-        path safety violation.
+        output messages/warnings. Returns error key on type-not-found, path
+        safety violation, or when content is not found via either source.
     """
     out = Output()
     try:
@@ -942,6 +994,15 @@ async def artifact_read(
             )
             # Use the first (most recent) entry.
             entry = entries[0]
+
+            # 1. Try GitHub comment storage first.
+            github_content = provider.read_artifact_content_from_github(issue_number, artifact_type, entry.path)
+            if github_content is not None:
+                return ArtifactContent(
+                    artifact_type=entry.artifact_type, path=entry.path, content=github_content, status=entry.status
+                )
+
+            # 2. Fall back to local filesystem.
             content = provider.read_artifact_content(entry.path)
             return ArtifactContent(
                 artifact_type=entry.artifact_type, path=entry.path, content=content, status=entry.status

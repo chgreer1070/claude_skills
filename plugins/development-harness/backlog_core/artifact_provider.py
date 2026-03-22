@@ -17,12 +17,24 @@ Manifest section format in issue body::
     | feature-context | plan/feature-context-foo.md | current | feature-researcher | 2026-03-21T10:00:00Z |
     <!-- artifact-manifest:end -->
 
+Artifact content comments in issue comments::
+
+    <!-- artifact-content:type=research:path=research/artifact.md -->
+    <details>
+    <summary>Artifact: research — research/artifact.md</summary>
+
+    {content here}
+
+    </details>
+    <!-- /artifact-content -->
+
 Parse/render helpers are consolidated in :mod:`backlog_core.artifact_registry`.
 This module imports them from there.
 """
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
@@ -41,6 +53,97 @@ __all__ = [
     "render_manifest_section",
     "replace_manifest_in_body",
 ]
+
+# ---------------------------------------------------------------------------
+# Artifact content comment constants
+# ---------------------------------------------------------------------------
+
+#: Maximum GitHub comment body size in characters.
+_GITHUB_COMMENT_MAX_CHARS = 65_536
+
+#: Regex matching the opening tag of an artifact content comment block.
+#: Captures ``type`` and ``path`` groups.
+_ARTIFACT_CONTENT_TAG_RE = re.compile(r"<!-- artifact-content:type=(?P<type>[^:]+):path=(?P<path>[^ >]+) -->")
+
+#: Closing tag for artifact content comment blocks.
+_ARTIFACT_CONTENT_END_TAG = "<!-- /artifact-content -->"
+
+#: Regex matching the complete artifact content block including delimiters.
+_ARTIFACT_CONTENT_BLOCK_RE = re.compile(
+    r"<!-- artifact-content:type=[^:]+:path=[^ >]+ -->.*?<!-- /artifact-content -->", re.DOTALL
+)
+
+# ---------------------------------------------------------------------------
+# Artifact content comment helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_artifact_content_comment(artifact_type: str, path: str, content: str) -> str:
+    """Build a structured GitHub comment body for storing artifact content.
+
+    The comment uses HTML comment delimiters for programmatic identification
+    and a ``<details>`` block to keep the issue visually uncluttered.
+
+    If *content* exceeds ``_GITHUB_COMMENT_MAX_CHARS`` it is truncated and a
+    warning notice is appended.
+
+    Args:
+        artifact_type: Artifact type string, e.g. ``"research"``.
+        path: Repo-relative path used as the comment identifier.
+        content: Full artifact content to embed.
+
+    Returns:
+        Complete comment body string ready for ``create_comment`` or
+        ``comment.edit()``.
+    """
+    opening_tag = f"<!-- artifact-content:type={artifact_type}:path={path} -->"
+    summary = f"Artifact: {artifact_type} — {path}"
+    # Build the wrapper without content to measure fixed overhead.
+
+    def _assemble(inner: str) -> str:
+        return (
+            f"{opening_tag}\n"
+            "<details>\n"
+            f"<summary>{summary}</summary>\n\n"
+            f"{inner}\n\n"
+            "</details>\n"
+            f"{_ARTIFACT_CONTENT_END_TAG}"
+        )
+
+    # Truncation notice added when content is cut — measure it first so the
+    # final assembled string stays within the GitHub limit.
+    notice = f"\n\n<!-- WARNING: content truncated — original length {len(content)} chars exceeded GitHub limit -->"
+    overhead = len(_assemble("")) + len(notice)
+    max_content = _GITHUB_COMMENT_MAX_CHARS - overhead
+
+    if len(content) > max_content:
+        return _assemble(content[:max_content] + notice)
+    return _assemble(content)
+
+
+def _extract_content_from_comment(comment_body: str) -> str:
+    """Extract the raw content from an artifact content comment body.
+
+    Parses the ``<details>`` block between the opening tag and closing
+    delimiter and returns the inner content (between the ``</summary>`` close
+    and the ``</details>`` open).
+
+    Args:
+        comment_body: Full GitHub comment body as returned by PyGithub.
+
+    Returns:
+        Extracted content string, or the full comment body when the expected
+        structure is not found.
+    """
+    # Find content between </summary> and </details>
+    summary_end = comment_body.find("</summary>")
+    details_end = comment_body.rfind("</details>")
+    if summary_end == -1 or details_end == -1:
+        return comment_body
+    # Skip the </summary> tag and surrounding blank lines.
+    raw = comment_body[summary_end + len("</summary>") : details_end]
+    return raw.strip()
+
 
 # ---------------------------------------------------------------------------
 # ArtifactBackend Protocol
@@ -100,6 +203,63 @@ class ArtifactBackend(Protocol):
             FileNotFoundError: When the file does not exist in the root
                 worktree (cache miss — the artifact is registered but not yet
                 committed or was deleted).
+        """
+        ...
+
+    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+        """Store artifact content as a GitHub issue comment.
+
+        Creates a structured collapsible comment identified by
+        ``artifact-content:type={artifact_type}:path={path}``.  When a
+        comment with the same type and path already exists it is edited
+        in-place rather than duplicated.
+
+        If *content* exceeds the GitHub comment size limit
+        (``_GITHUB_COMMENT_MAX_CHARS``), it is truncated and a warning
+        notice is appended.
+
+        Args:
+            issue_number: GitHub Issue number (positive integer).
+            artifact_type: Artifact type string, e.g. ``"research"``.
+            path: Repo-relative path used as the comment identifier.
+            content: Full artifact content to store.
+        """
+        ...
+
+    def read_artifact_content_from_github(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+        """Search issue comments for stored artifact content.
+
+        Scans the issue's comments for an artifact content block whose
+        ``type`` and ``path`` match the given arguments.
+
+        Args:
+            issue_number: GitHub Issue number (positive integer).
+            artifact_type: Artifact type string to match.
+            path: Repo-relative path to match.
+
+        Returns:
+            The stored content string when found, or ``None`` when no
+            matching comment exists.
+        """
+        ...
+
+    def read_local_artifact_content(self, path: str) -> str | None:
+        """Read artifact file content from the local filesystem without raising on missing file.
+
+        Applies the same path safety checks as :meth:`read_artifact_content`
+        but returns ``None`` when the file does not exist, rather than
+        raising ``FileNotFoundError``.  Used by ``artifact_register`` to
+        auto-upload local file content to GitHub when the caller does not
+        supply explicit content.
+
+        Args:
+            path: Repo-relative path to the artifact file.
+
+        Returns:
+            Raw UTF-8 file content, or ``None`` when the file does not exist.
+
+        Raises:
+            ValueError: When *path* fails the safety checks (path traversal).
         """
         ...
 
@@ -226,6 +386,90 @@ class GitHubArtifactProvider:
         self._validate_artifact_path(path)
         resolved = (self._root_worktree / path).resolve()
         return resolved.read_text(encoding="utf-8")
+
+    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+        """Store artifact content as a GitHub issue comment.
+
+        Creates or updates a collapsible comment identified by the
+        ``<!-- artifact-content:type=...:path=... -->`` markers.  If a
+        matching comment already exists it is edited in-place.
+
+        Content exceeding ``_GITHUB_COMMENT_MAX_CHARS`` is truncated with a
+        warning notice appended so the comment stays within GitHub's limit.
+
+        Args:
+            issue_number: GitHub Issue number (positive integer).
+            artifact_type: Artifact type string, e.g. ``"research"``.
+            path: Repo-relative path used as the comment identifier.
+            content: Full artifact content to store.
+        """
+        repo_obj = get_github(self._repo)
+        issue = repo_obj.get_issue(issue_number)
+        comment_body = _build_artifact_content_comment(artifact_type, path, content)
+
+        # Search for an existing comment to update in-place.
+        for comment in issue.get_comments():
+            tag_match = _ARTIFACT_CONTENT_TAG_RE.match(comment.body or "")
+            if tag_match and tag_match.group("type") == artifact_type and tag_match.group("path") == path:
+                comment.edit(comment_body)
+                return
+
+        issue.create_comment(comment_body)
+
+    def read_artifact_content_from_github(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+        """Search issue comments for stored artifact content.
+
+        Scans the issue's comments for an artifact content block whose
+        ``type`` and ``path`` match the given arguments.
+
+        Args:
+            issue_number: GitHub Issue number (positive integer).
+            artifact_type: Artifact type string to match.
+            path: Repo-relative path to match.
+
+        Returns:
+            The stored content string when found, or ``None`` when no
+            matching comment exists.
+        """
+        repo_obj = get_github(self._repo)
+        issue = repo_obj.get_issue(issue_number)
+
+        for comment in issue.get_comments():
+            body = comment.body or ""
+            tag_match = _ARTIFACT_CONTENT_TAG_RE.match(body)
+            if tag_match and tag_match.group("type") == artifact_type and tag_match.group("path") == path:
+                return _extract_content_from_comment(body)
+
+        return None
+
+    def read_local_artifact_content(self, path: str) -> str | None:
+        """Read artifact file content from the local filesystem.
+
+        Validates the path for traversal attacks, then returns the file
+        content or ``None`` when the file does not exist.  Does not require
+        the path to start with ``plan/`` — this method supports auto-upload
+        of any registered artifact whose local file is present.
+
+        Args:
+            path: Repo-relative path to the artifact file.
+
+        Returns:
+            Raw UTF-8 file content, or ``None`` when the file does not exist.
+
+        Raises:
+            ValueError: When *path* contains ``..`` components or resolves
+                outside the repository root.
+        """
+        # Traversal check only — no plan/ prefix restriction here since
+        # artifact types like "research" may live outside plan/.
+        candidate = (self._root_worktree / path).resolve()
+        try:
+            candidate.relative_to(self._root_worktree.resolve())
+        except ValueError:
+            raise ValueError(f"Path traversal detected: {path!r} resolves outside the repository root.") from None
+        if not candidate.exists():
+            return None
+        return candidate.read_text(encoding="utf-8")
 
     # ------------------------------------------------------------------
     # Path safety helpers
