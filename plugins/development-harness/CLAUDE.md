@@ -23,7 +23,7 @@ Language-agnostic development process harness that orchestrates feature developm
 
 ### SAM 7-Stage Pipeline
 
-The harness walks a feature request through seven stages, each producing a named artifact stored in `.planning/harness/`. Stages gate on artifact completion, not conversation state.
+The harness walks a feature request through seven stages, each producing a named artifact stored in `plan/`. Stages gate on artifact completion, not conversation state.
 
 1. **S1 Discovery** - Understand the feature, codebase, and constraints
 2. **S2 Planning + RT-ICA** - Generate a plan with information completeness analysis
@@ -75,22 +75,40 @@ The full resolution protocol is documented in [./skills/development-harness/refe
 
 ## State Management
 
-All artifacts are written to `.planning/harness/` using SAM naming conventions.
+All artifacts are written to `plan/` using SAM naming conventions.
 
 **Token pattern:** `ARTIFACT:{TYPE}({SCOPE_OR_ID})`
 
 **File layout example:**
 
-- `.planning/harness/discovery-auth-feature.md` - S1 output
-- `.planning/harness/plan-auth-feature.md` - S2 output
-- `.planning/harness/task-001-add-jwt-middleware.md` - S4 output per task
-- `.planning/harness/execution-001.md` - S5 output per task
-- `.planning/harness/review-auth-feature.md` - S6 output
-- `.planning/harness/verification-auth-feature.md` - S7 output
+- `plan/feature-context-{slug}.md` - S1 output
+- `plan/architect-{slug}.md` - architecture output
+- `plan/P{NNN}-{slug}.yaml` - task plan
+- `plan/T0-baseline-{slug}.yaml` - pre-implementation baseline
+- `plan/TN-verification-{slug}.yaml` - post-implementation verification
 
-This directory coexists with `.planning/gsd/` and other planning tools without conflict.
+This directory coexists with other planning tools without conflict.
 
 Full conventions in [./skills/development-harness/references/artifact-conventions.md](./skills/development-harness/references/artifact-conventions.md).
+
+---
+
+## Artifact Manifest System
+
+Plan artifacts are registered in a structured manifest stored in the GitHub Issue body. The manifest is the discovery mechanism — consumers query it via MCP to find artifacts for an issue.
+
+**MCP tools (on backlog server):**
+
+- `artifact_register` — Register or update an artifact entry (issue_number, type, path, status, agent)
+- `artifact_list` — List all artifacts for an issue, optionally filtered by type
+- `artifact_get` — Get metadata for a specific artifact type on an issue
+- `artifact_read` — Read artifact file content from root worktree path (with path safety validation)
+
+**Artifact types:** `feature-context`, `architect`, `task-plan`, `codebase-analysis`, `T0-baseline`, `TN-verification`
+
+**Registration:** Producers call `artifact_register` after creation. Auto-registration is built into `sam_create` and `backlog_update(plan=...)`.
+
+**Consumer discovery:** Consumers (including worktree-isolated agents) call `artifact_list` then `artifact_read` instead of filesystem access — plan files are in the root worktree and not visible inside isolated worktrees.
 
 ---
 
@@ -144,13 +162,13 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 **Workflow stages (7):**
 
-- `/dh:discovery` - S1 feature and codebase understanding
-- `/dh:planning` - S2 plan generation with RT-ICA
-- `/dh:context-integration` - S3 plan validation against codebase
-- `/dh:task-decomposition` - S4 break plan into executable tasks
-- `/dh:execution` - S5 implement tasks with language specialists
-- `/dh:forensic-review` - S6 verify task completion
-- `/dh:final-verification` - S7 certify feature completion
+- `/dh:workflows:discovery` - S1 feature and codebase understanding
+- `/dh:workflows:planning` - S2 plan generation with RT-ICA
+- `/dh:workflows:context-integration` - S3 plan validation against codebase
+- `/dh:workflows:task-decomposition` - S4 break plan into executable tasks
+- `/dh:workflows:execution` - S5 implement tasks with language specialists
+- `/dh:workflows:forensic-review` - S6 verify task completion
+- `/dh:workflows:final-verification` - S7 certify feature completion
 
 **Planning tools (4):**
 
@@ -177,13 +195,13 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 **Testing (3):**
 
-- `/dh:comprehensive-test-review` - Review test coverage and quality
-- `/dh:analyze-test-failures` - Diagnose and categorize test failures
-- `/dh:test-failure-mindset` - Systematic approach to understanding test failures
+- `/dh:testing:comprehensive-test-review` - Review test coverage and quality
+- `/dh:testing:analyze-test-failures` - Diagnose and categorize test failures
+- `/dh:testing:test-failure-mindset` - Systematic approach to understanding test failures
 
 **Other (4):**
 
-- `/dh:dispatch` - Dispatch tasks to agents
+- `/dh:dispatch` - Dispatch tasks to agents using teams-first parallel execution; prefer over implement-feature when milestone-scoped work needs concurrent agent dispatch
 - `/dh:dh-meta-docs` - Plugin meta-documentation
 - `/dh:interop` - Cross-plugin interoperability
 - `/dh:subagent-contract` - Subagent contract definitions
