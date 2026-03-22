@@ -361,3 +361,51 @@ def make_add_sub_issue_response(
             "subIssue": {"id": child_id, "number": child_number},
         }
     }
+
+
+def make_issue_comment_node(
+    comment_id: str = "IC_001", body: str = "comment body", url: str = "https://github.com/test/issues/1#issuecomment-1"
+) -> dict[str, Any]:
+    """Return an IssueCommentNode-shaped dict for comment listing responses.
+
+    Args:
+        comment_id: GraphQL node ID for the comment.
+        body: Comment body text.
+        url: HTML URL for the comment.
+
+    Returns:
+        Dict matching IssueCommentNode TypedDict shape.
+    """
+    return {"id": comment_id, "body": body, "url": url}
+
+
+def make_issue_comments_response(
+    comments: list[dict[str, Any]] | None = None, has_next: bool = False, end_cursor: str | None = None
+) -> dict[str, Any]:
+    """Wrap comment nodes in a GetIssueComments query response envelope.
+
+    Args:
+        comments: List of IssueCommentNode dicts. Defaults to empty list.
+        has_next: Whether pagination has more results.
+        end_cursor: Cursor for the next page (used when has_next=True).
+
+    Returns:
+        Full ``data`` dict as returned by _graphql_request for _ISSUE_COMMENTS_QUERY.
+    """
+    if comments is None:
+        comments = []
+    page_info: dict[str, Any] = {"hasNextPage": has_next, "endCursor": end_cursor}
+    return {"repository": {"issue": {"comments": {"nodes": comments, "pageInfo": page_info}}}}
+
+
+def make_update_comment_response(comment_id: str = "IC_001", body: str = "updated body") -> dict[str, Any]:
+    """Return an UpdateIssueComment mutation response envelope.
+
+    Args:
+        comment_id: GraphQL node ID of the updated comment.
+        body: Updated comment body.
+
+    Returns:
+        Full ``data`` dict as returned by _graphql_request for _UPDATE_COMMENT_MUTATION.
+    """
+    return {"updateIssueComment": {"issueComment": {"id": comment_id, "body": body}}}
