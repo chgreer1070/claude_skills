@@ -1594,72 +1594,92 @@ def _migrate_classify_plan_file(file_path: Path) -> ArtifactType | None:
 
 _MigrateCandidate = tuple[str, ArtifactType, int | None, str | None]
 
+#: Return type for candidate discovery — (actionable candidates, filtered-out count).
+_MigrateDiscoveryResult = tuple[list[_MigrateCandidate], int]
+
 
 def _migrate_make_candidate(
     rel: str, atype: ArtifactType, issue: int | None, issue_filter: int | None
-) -> _MigrateCandidate:
-    """Build a candidate tuple, setting skip_reason when appropriate.
+) -> _MigrateCandidate | None:
+    """Build a candidate tuple, returning ``None`` when the file is filtered out.
+
+    When ``issue_filter`` is set, candidates whose resolved issue does not
+    match are excluded entirely (counted as filtered by the caller) rather
+    than included as skipped entries.  This avoids building a 500-entry
+    skipped list when a specific issue is requested.
 
     Args:
         rel: Repo-relative path string.
         atype: Resolved artifact type.
         issue: Resolved issue number or ``None``.
-        issue_filter: When set, candidates not matching this issue are marked
-            as filtered.
+        issue_filter: When set, candidates not matching this issue are
+            excluded (returns ``None``).
 
     Returns:
-        ``(rel, atype, issue, skip_reason)`` tuple.
+        ``(rel, atype, issue, skip_reason)`` tuple, or ``None`` when filtered.
     """
+    if issue_filter is not None and (issue is None or issue != issue_filter):
+        return None
     if issue is None:
         return (rel, atype, issue, "no issue number found")
-    if issue_filter is not None and issue != issue_filter:
-        return (rel, atype, issue, f"filtered (issue={issue_filter})")
     return (rel, atype, issue, None)
 
 
 def _migrate_scan_codebase_dir(
     codebase_dir: Path, repo_root: Path, issue_filter: int | None, backlog_items: list[dict]
-) -> list[_MigrateCandidate]:
+) -> _MigrateDiscoveryResult:
     """Scan ``plan/codebase/`` for markdown codebase-analysis files.
 
     Args:
         codebase_dir: Absolute path to the ``plan/codebase/`` directory.
         repo_root: Absolute path to the repository root.
-        issue_filter: When set, non-matching candidates are marked filtered.
+        issue_filter: When set, non-matching files are counted but not
+            included in the returned candidate list.
         backlog_items: Pre-fetched backlog items for slug-based fallback.
 
     Returns:
-        List of candidate tuples for codebase-analysis files.
+        Tuple of ``(candidates, filtered_count)``.
     """
     results: list[_MigrateCandidate] = []
+    filtered = 0
     for child in codebase_dir.iterdir():
         if not (child.is_file() and _MIGRATE_CODEBASE_PATTERN.match(child.name)):
             continue
         rel = child.relative_to(repo_root).as_posix()
         issue = _migrate_resolve_issue(child, backlog_items)
-        results.append(_migrate_make_candidate(rel, ArtifactType.CODEBASE_ANALYSIS, issue, issue_filter))
-    return results
+        candidate = _migrate_make_candidate(rel, ArtifactType.CODEBASE_ANALYSIS, issue, issue_filter)
+        if candidate is None:
+            filtered += 1
+        else:
+            results.append(candidate)
+    return results, filtered
 
 
 def _migrate_scan_plan_dir(
     plan_dir: Path, repo_root: Path, issue_filter: int | None, backlog_items: list[dict]
-) -> list[_MigrateCandidate]:
+) -> _MigrateDiscoveryResult:
     """Scan ``plan/`` (excluding subdirectories other than ``codebase/``).
 
     Args:
         plan_dir: Absolute path to the ``plan/`` directory.
         repo_root: Absolute path to the repository root.
-        issue_filter: When set, non-matching candidates are marked filtered.
+        issue_filter: When set, non-matching files are counted but not
+            included in the returned candidate list.
         backlog_items: Pre-fetched backlog items for slug-based fallback.
 
     Returns:
-        List of candidate tuples for plan artifact files.
+        Tuple of ``(candidates, filtered_count)``.
     """
     results: list[_MigrateCandidate] = []
+    filtered = 0
     for file_path in plan_dir.iterdir():
         if file_path.is_dir():
             if file_path.name == "codebase":
-                results.extend(_migrate_scan_codebase_dir(file_path, repo_root, issue_filter, backlog_items))
+                sub_results, sub_filtered = _migrate_scan_codebase_dir(
+                    file_path, repo_root, issue_filter, backlog_items
+                )
+                results.extend(sub_results)
+                filtered += sub_filtered
             continue
         if not file_path.is_file():
             continue
@@ -1668,31 +1688,44 @@ def _migrate_scan_plan_dir(
             continue
         rel = file_path.relative_to(repo_root).as_posix()
         issue = _migrate_resolve_issue(file_path, backlog_items)
-        results.append(_migrate_make_candidate(rel, atype, issue, issue_filter))
-    return results
+        candidate = _migrate_make_candidate(rel, atype, issue, issue_filter)
+        if candidate is None:
+            filtered += 1
+        else:
+            results.append(candidate)
+    return results, filtered
 
 
 def _migrate_discover_candidates(
     repo_root: Path, issue_filter: int | None, backlog_items: list[dict]
-) -> list[_MigrateCandidate]:
+) -> _MigrateDiscoveryResult:
     """Scan plan/ and research/ for artifact files.
+
+    When ``issue_filter`` is set, only candidates linked to that issue are
+    returned — non-matching files are counted in ``filtered_count`` instead
+    of being included as skipped entries.  This prevents the caller from
+    building a 500+ entry skipped list when a specific issue is requested.
 
     Args:
         repo_root: Absolute path to the repository root.
         issue_filter: When set, only candidates linked to this issue number
-            are returned (others are kept but marked with a skip_reason).
+            are included in the returned list.
         backlog_items: Pre-fetched backlog items for slug-based fallback.
 
     Returns:
-        List of ``(rel_path, artifact_type, issue_number, skip_reason)``
-        tuples where ``skip_reason`` is ``None`` when the candidate should
-        be processed.
+        Tuple of ``(candidates, filtered_count)`` where ``candidates`` is a
+        list of ``(rel_path, artifact_type, issue_number, skip_reason)``
+        tuples and ``filtered_count`` is the number of files excluded by the
+        issue filter.
     """
     candidates: list[_MigrateCandidate] = []
+    filtered = 0
 
     plan_dir = repo_root / "plan"
     if plan_dir.is_dir():
-        candidates.extend(_migrate_scan_plan_dir(plan_dir, repo_root, issue_filter, backlog_items))
+        plan_candidates, plan_filtered = _migrate_scan_plan_dir(plan_dir, repo_root, issue_filter, backlog_items)
+        candidates.extend(plan_candidates)
+        filtered += plan_filtered
 
     research_dir = repo_root / "research"
     if research_dir.is_dir():
@@ -1701,9 +1734,13 @@ def _migrate_discover_candidates(
                 continue
             rel = file_path.relative_to(repo_root).as_posix()
             issue = _migrate_resolve_issue(file_path, backlog_items)
-            candidates.append(_migrate_make_candidate(rel, ArtifactType.RESEARCH, issue, issue_filter))
+            candidate = _migrate_make_candidate(rel, ArtifactType.RESEARCH, issue, issue_filter)
+            if candidate is None:
+                filtered += 1
+            else:
+                candidates.append(candidate)
 
-    return candidates
+    return candidates, filtered
 
 
 def _migrate_register_one(
@@ -1757,24 +1794,40 @@ def _migrate_dry_run(issue_number: int | None) -> dict:
         issue_number: Optional issue filter passed to candidate discovery.
 
     Returns:
-        Dict with ``dry_run``, ``would_register``, ``would_skip``, and
-        ``details`` keys.
+        Dict with ``dry_run``, ``would_register``, ``would_skip``,
+        ``details``, and ``verify`` keys.  ``details`` contains only entries
+        that would be registered or cannot be registered due to a missing
+        issue number — filtered entries are counted in ``would_skip`` but not
+        included individually.
     """
     repo_root = _models._REPO_ROOT  # noqa: SLF001
-    candidates = _migrate_discover_candidates(repo_root, issue_number, [])
+    candidates, filtered_count = _migrate_discover_candidates(repo_root, issue_number, [])
 
     details: list[dict] = []
     would_register = 0
-    would_skip = 0
+    would_skip = filtered_count  # filtered-out files count as skipped
     for rel_path, atype, issue, skip_reason in candidates:
         if skip_reason:
+            # Include no-issue entries in details so the caller knows which
+            # files could not be resolved — but do NOT include filter skips.
             details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": f"skip — {skip_reason}"})
             would_skip += 1
         else:
             details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": "would register"})
             would_register += 1
 
-    return {"dry_run": True, "would_register": would_register, "would_skip": would_skip, "details": details}
+    verify = (
+        f"Use artifact_list(issue_number={issue_number}) to verify registered entries"
+        if issue_number is not None
+        else "Use artifact_list(issue_number=<N>) per issue to verify registered entries"
+    )
+    return {
+        "dry_run": True,
+        "would_register": would_register,
+        "would_skip": would_skip,
+        "details": details,
+        "verify": verify,
+    }
 
 
 def _migrate_queue_manifest_only(
@@ -1824,7 +1877,10 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
         out: Output accumulator (warnings written here).
 
     Returns:
-        Dict with ``migrated``, ``skipped``, ``failed``, and ``details``.
+        Dict with ``migrated``, ``skipped``, ``failed``, ``details``, and
+        ``verify``.  ``details`` contains only migrated and failed entries —
+        skipped entries are counted in ``skipped`` but not listed individually
+        to keep the response compact.
     """
     repo_root = _models._REPO_ROOT  # noqa: SLF001
     provider = _get_artifact_provider()
@@ -1839,25 +1895,21 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
     except Exception:  # noqa: BLE001
         out.warn("Could not fetch backlog items for slug matching. Continuing without fallback.")
 
-    candidates = _migrate_discover_candidates(repo_root, issue_number, backlog_items)
+    candidates, filtered_count = _migrate_discover_candidates(repo_root, issue_number, backlog_items)
 
     if issue_number is not None:
         candidates = _migrate_queue_manifest_only(provider, issue_number, candidates, out)
 
     migrated = 0
-    skipped = 0
+    skipped = filtered_count  # files excluded by issue filter count as skipped
     failed = 0
     run_details: list[dict] = []
 
     for rel_path, atype, issue, skip_reason in candidates:
         if skip_reason:
+            # Count no-issue files as skipped; do NOT add to run_details to
+            # avoid a 500-entry skipped list in the response.
             skipped += 1
-            run_details.append({
-                "path": rel_path,
-                "type": str(atype),
-                "issue": issue,
-                "outcome": f"skipped — {skip_reason}",
-            })
             continue
 
         assert issue is not None  # skip_reason is None only when issue resolved  # noqa: S101
@@ -1869,7 +1921,13 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
             failed += 1
             run_details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": f"FAILED: {exc}"})
 
-    return {"migrated": migrated, "skipped": skipped, "failed": failed, "details": run_details}
+    verify = (
+        f"Use artifact_read(issue_number={issue_number}, artifact_type='<type>') "
+        f"or artifact_list(issue_number={issue_number}) to verify"
+        if issue_number is not None
+        else "Use artifact_list(issue_number=<N>) per issue to verify registered entries"
+    )
+    return {"migrated": migrated, "skipped": skipped, "failed": failed, "details": run_details, "verify": verify}
 
 
 # ---------------------------------------------------------------------------
