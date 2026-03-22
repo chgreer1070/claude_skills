@@ -9,8 +9,8 @@ metadata:
   type: Feature
   status: needs-grooming
   issue: '#965'
-  last_synced: '2026-03-21T23:53:25Z'
-  groomed: '2026-03-21'
+  last_synced: '2026-03-22T02:20:00Z'
+  groomed: '2026-03-22'
   plan: plan/P965-artifact-manifest.yaml
 ---
 
@@ -269,6 +269,61 @@ Complete the existing **partial artifact linking** system by:
 ### Research
 
 <div><sub>2026-03-21T23:53:25Z</sub>
+
+### Resources
+
+<div><sub>2026-03-22T02:17:46Z</sub>
+
+**Documentation References**:
+- `.claude/rules/local-workflow.md` — canonical workflow definition; Phase 1 (Planning), Phase 2 (Execution), Phase 3 (Quality Gates); artifact naming and paths
+- `plugins/development-harness/docs/plan-artifact-lifecycle.md` — artifact mutability policy; human-decision vs. generated artifacts; divergence annotation rules
+- `plugins/development-harness/docs/workflow-architecture-diagram.md` — data flow showing producers, consumers, orchestrators, and artifact paths
+- `plugins/development-harness/docs/artifact-manifest-backends.md` — ArtifactBackend Protocol reference; current GitHubArtifactProvider; future backend options (GitHub Issue Fields, Projects V2, Linear, GitLab, Supabase); provider implementation mapping
+- `.claude/docs/TASK_FILE_FORMAT.md` — task file YAML/markdown format; Context Manifest section specification
+
+**Research**:
+- `research/task-management/artifact-manifest-backend-providers.md` — cross-platform comparison of structured metadata capabilities; source citations and API limits for GitHub, Linear, GitLab, Supabase
+
+**MCP Server Documentation**:
+- SAM MCP interface: `packages/sam_schema/` — tool definitions for sam_status, sam_ready, sam_read, sam_claim, sam_state; P{NNN} plan addressing
+- Backlog MCP interface: `packages/backlog_core/` — tool definitions for backlog_list, backlog_view, backlog_update, backlog_groom, backlog_sync; metadata.plan field storage
+
+**Agent Specifications**:
+- Feature researcher: `plugins/development-harness/agents/feature-researcher.md` — output path, backlog item header
+- Python CLI design spec: `plugins/python3-development/agents/python-cli-design-spec.md` — output path, artifact header
+- Swarm task planner: `plugins/development-harness/agents/swarm-task-planner.md` — output path, P{NNN} naming convention, task file schema
+- Codebase analyzer: `plugins/development-harness/agents/codebase-analyzer.md` — optional output path
+- T0 baseline capture: `plugins/development-harness/agents/t0-baseline-capture.md` — acceptance criteria format, baseline file format
+- TN verification gate: `plugins/development-harness/agents/tn-verification-gate.md` — comparison logic, verdict classification, verification file format
+
+**Skill Specifications**:
+- Add-new-feature skill: `plugins/development-harness/skills/add-new-feature/SKILL.md` — orchestration sequence, agent delegation, artifact path outputs
+- Implement-feature skill: `plugins/development-harness/skills/implement-feature/SKILL.md` — execution loop, task dispatching, artifact path passing
+- Start-task skill: `plugins/development-harness/skills/start-task/SKILL.md` — task claiming via MCP, artifact reading
+- Complete-implementation skill: `plugins/development-harness/skills/complete-implementation/SKILL.md` — quality gate phases, artifact reading for code review
+
+**Example Artifact Files** (for reference):
+- `/home/ubuntulinuxqa2/repos/claude_skills/plan/feature-context-migrate-milestone-skills-gh-cli.md` — primary artifact with backlog item header
+- `/home/ubuntulinuxqa2/repos/claude_skills/plan/architect-migrate-milestone-skills-gh-cli.md` — primary artifact with issue reference
+- `/home/ubuntulinuxqa2/repos/claude_skills/plan/P964-backlog-yaml-migration-plan.yaml` — task plan file with P{NNN} naming
+
+**External References**:
+- GitHub custom issue fields: https://docs.github.com/en/issues/planning-and-tracking-with-issues/using-issues/managing-issue-fields-in-your-organization (for approach 3c)
+- GitHub API custom fields REST endpoint: `/rest/issues/issue-field-values` (approach 3c)
+- Backlog item view output from fact-checker: Issue #965 "Fact-Check Summary" section with evidence of current artifact linking state
+</div>
+
+<div><sub>2026-03-22T02:20:00Z</sub>
+
+## Resources
+
+- plugins/development-harness/docs/backend-providers.md — Backend provider reference for issues, plans, tasks, and artifacts across GitHub/Linear/GitLab/Supabase
+- research/task-management/artifact-manifest-backend-providers.md — Detailed cross-platform research with citations
+- plan/architect-artifact-manifest.md — Architecture spec for ArtifactBackend Protocol
+- plan/feature-context-artifact-manifest.md — Problem space and desired outcomes
+- plan/codebase/artifact-manifest-patterns.md — Existing codebase patterns
+</div>
+
 
 ## Research
 
