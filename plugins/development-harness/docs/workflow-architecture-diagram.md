@@ -1,10 +1,11 @@
 # Workflow Architecture Diagram
 
-> **Snapshot**: 2026-03-21T15:00:00Z (pre-SAM-consolidation-migration)
+> **Snapshot**: 2026-03-22T15:00:00Z (SAM-enforced quality gates)
 >
 > Sources: `plugins/development-harness/docs/TASK_FILE_FORMAT.md`, `backlog_core/server.py`, `backlog_core/models.py`,
-> `plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py`
-> Last verified: 2026-03-21
+> `plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py`,
+> `plugins/development-harness/skills/complete-implementation/SKILL.md`
+> Last verified: 2026-03-22
 
 **Table of Contents**
 
@@ -14,6 +15,7 @@
 - [4. SAM Task State Lifecycle](#4-sam-task-state-lifecycle)
 - [5. Cross-System Dependency Chain](#5-cross-system-dependency-chain)
 - [6. Hook Trigger Conditions](#6-hook-trigger-conditions)
+- [7. Quality Gate SAM Dispatch Flow](#7-quality-gate-sam-dispatch-flow)
 
 ---
 
@@ -73,18 +75,31 @@ flowchart TD
 
     subgraph QualityGates [Phase 3 — Quality Gates]
         S4["/complete-implementation"]
-        A9["code-reviewer"]
-        A10["feature-verifier"]
-        A11["integration-checker"]
-        A12["doc-drift-auditor"]
-        A13["service-docs-maintainer"]
-        A14["context-refinement"]
-        S4 -->|"§2.4"| A9
-        S4 --> A10
-        S4 --> A11
-        S4 --> A12
-        A12 --> A13
-        S4 --> A14
+        QGC["build_quality_gate_plan<br>sam_create QG{N} plan"]
+        QGF["plan/QG{NNN}-qg-{slug}.yaml"]
+        QGL["SAM dispatch loop<br>sam_ready / sam_claim / start-task"]
+        A9["T1 code-reviewer"]
+        A10["T2 feature-verifier"]
+        A11["T3 integration-checker"]
+        A12["T4 doc-drift-auditor"]
+        A13["T5 service-docs-maintainer<br>(SKIPPED if no drift)"]
+        A14["T6 context-refinement"]
+        VG["Completion Verification Gate<br>sam_status — all 6 tasks terminal?"]
+        LABEL["Apply status:verified label"]
+        S4 -->|"QG plan not found"| QGC
+        QGC --> QGF
+        QGF --> QGL
+        S4 -->|"QG plan found, resume"| QGL
+        QGL --> A9
+        A9 -->|"T1 complete"| A10
+        A10 -->|"T2 complete"| A11
+        A11 -->|"T3 complete"| A12
+        A12 -->|"T4 complete, drift found"| A13
+        A12 -->|"T4 complete, no drift"| A13
+        A13 -->|"T5 complete or skipped"| A14
+        A14 -->|"T6 complete"| VG
+        VG -->|"all tasks terminal"| LABEL
+        VG -->|"any task blocked or skipped<br>outside whitelist"| S4
     end
 
     subgraph ArtifactManifest [Artifact Manifest — GitHub Issue Body]
@@ -245,6 +260,7 @@ Exit code 1 when: already claimed, task not found, or `status != not-started`.
 | `~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml` | `swarm-task-planner` via `sam create` | `/implement-feature`, `sam ready`, `sam status`, all execution agents |
 | `~/.dh/projects/{slug}/plan/T0-baseline-{slug}.yaml` | `t0-baseline-capture` | `tn-verification-gate` |
 | `~/.dh/projects/{slug}/plan/TN-verification-{slug}.yaml` | `tn-verification-gate` | `/complete-implementation` Pre-Phase 1 check |
+| `~/.dh/projects/{slug}/plan/QG{NNN}-qg-{slug}.yaml` | `/complete-implementation` via `build_quality_gate_plan` + `sam_create` | SAM dispatch loop (T1–T6 quality gate tasks) |
 | `~/.dh/projects/{slug}/context/active-task-{sid}.json` | `/start-task` skill | `task_status_hook.py` PostToolUse handler |
 | `last-activity` field in task | `task_status_hook.py` PostToolUse handler | progress reporting |
 | `status: complete`, `completed` field | `task_status_hook.py` SubagentStop handler | `sam ready` readiness evaluation |
@@ -269,7 +285,7 @@ flowchart TD
     IP -->|"orchestrator<br>via sam state P{N}/T{M} skipped"| SK
 ```
 
-Readiness rule: a task is ready when `status == not-started` AND all dependency task IDs have `status == complete`.
+Readiness rule: a task is ready when `status == not-started` AND all dependency task IDs have terminal status. Terminal statuses: `complete`, `blocked`, `skipped`. SKIPPED counts as terminal for dependency evaluation — when T5 is skipped, T6 becomes ready.
 
 ---
 
@@ -307,7 +323,7 @@ Hook input arrives via stdin as JSON. The hook reads `hook_event_name` to route.
 ```text
 Trigger:    hook_event_name == "SubagentStop"
 Matcher:    (none — fires on every sub-agent completion)
-Context:    Declared on /implement-feature skill
+Context:    Declared on /implement-feature skill and /complete-implementation skill
 ```
 
 Processing sequence:
@@ -342,3 +358,55 @@ Processing sequence:
 Fields written: `last-activity: <ISO timestamp>`
 
 Guard: skipped silently when task status is already `complete`.
+
+---
+
+## 7. Quality Gate SAM Dispatch Flow
+
+The `/complete-implementation` skill enforces quality gates via a SAM-based dispatch loop. Each of the 6 phases is a task in a dedicated QG plan (prefix `QG{N}`). The dependency chain `T1 → T2 → T3 → T4 → T5 → T6` enforces ordered execution. No phase can start until the previous phase's task reaches terminal status.
+
+```mermaid
+flowchart TD
+    Start(["/complete-implementation<br>invoked"]) --> PrePhase["Pre-phases<br>TN verification, artifact discovery,<br>concern processing"]
+    PrePhase --> CheckQG{QG plan<br>exists?}
+    CheckQG -->|"No — first run"| GenYAML["build_quality_gate_plan<br>produces 6-task YAML"]
+    GenYAML --> CreatePlan["sam_create(slug='qg-{slug}',<br>tasks_yaml=..., issue=N)<br>→ QG{NNN}-qg-{slug}.yaml"]
+    CheckQG -->|"Yes — resume"| ResetBlocked["Reset BLOCKED tasks<br>to NOT_STARTED via sam_state"]
+    CreatePlan --> DispatchLoop
+    ResetBlocked --> DispatchLoop
+
+    subgraph DispatchLoop [SAM Dispatch Loop]
+        Ready["sam_ready(plan='QG{N}')"] --> AnyReady{Ready tasks?}
+        AnyReady -->|No| ExitLoop([Exit loop])
+        AnyReady -->|Yes| Claim["sam_claim(plan='QG{N}', task=T{M})"]
+        Claim --> ClaimedOK{claimed?}
+        ClaimedOK -->|No| Ready
+        ClaimedOK -->|Yes| Dispatch["Skill(skill='start-task',<br>args='plan/QG{NNN}-qg-{slug}.yaml --task T{M}')"]
+        Dispatch --> Hook["SubagentStop hook<br>sam_state → status: complete"]
+        Hook --> PostDispatch{Which task<br>completed?}
+        PostDispatch -->|T1| StoreFollowups["Store follow-up file paths<br>from ARTIFACTS output"]
+        PostDispatch -->|"T4 — no drift"| SkipT5["sam_state T5 → skipped"]
+        PostDispatch -->|"T4 — drift found"| T5Ready["T5 stays NOT_STARTED,<br>dispatched on next iteration"]
+        PostDispatch -->|T6| StoreDiv["Store DIVERGENCE_REQUIRING_REVIEW<br>if present in agent output"]
+        PostDispatch -->|T2, T3, T5| NextIter["Continue loop"]
+        StoreFollowups --> NextIter
+        SkipT5 --> NextIter
+        T5Ready --> NextIter
+        StoreDiv --> NextIter
+        NextIter --> Ready
+    end
+
+    ExitLoop --> VGate["Completion Verification Gate<br>sam_status(plan='QG{N}')"]
+    VGate --> VerifyAll{All 6 tasks<br>terminal?}
+    VerifyAll -->|"Any task not-started,<br>in-progress, or blocked"| BlockFail["STOP<br>COMPLETION BLOCKED —<br>Quality Gate Incomplete"]
+    VerifyAll -->|"Non-T5 task skipped"| BlockUnauth["STOP<br>Unauthorized skip detected"]
+    VerifyAll -->|"All tasks complete<br>or T5 skipped"| PostLoop["Recursive Follow-up Handling<br>→ Apply status:verified label<br>→ Final commit and push"]
+```
+
+### Skip Whitelist
+
+Only T5 (Documentation Update) may have `status: skipped`. Skipping is triggered by the orchestrator via `sam_state` immediately after T4 completes with no drift findings. All other tasks must reach `status: complete`.
+
+### QG Plan File Location
+
+The QG plan file is written by `sam_create` to `plan/QG{NNN}-qg-{slug}.yaml` (in the project plan directory). The `QG{N}` address is used in all subsequent `sam_ready`, `sam_claim`, `sam_state`, and `sam_status` calls for this quality gate run. The `QG{NNN}` number is auto-assigned by SAM (sequential, separate from implementation plan numbering `P{NNN}`).

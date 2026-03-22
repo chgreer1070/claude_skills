@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import pytest
 from ruamel.yaml import YAML
 from sam_schema.core.addressing import AddressingError, parse_address, resolve_plan_address
-from sam_schema.core.models import Plan, TaskStatus
+from sam_schema.core.models import Plan, Task, TaskStatus
 from sam_schema.core.quality_gates import build_quality_gate_plan
 from sam_schema.core.query import create_plan, get_plan_status, get_ready_tasks, get_task, load_plan, update_status
 from sam_schema.writers.yaml_writer import create_plan_file
@@ -104,7 +104,6 @@ def _create_qg_file_directly(plan_dir: Path, plan_number: int, slug: str = "my-f
     Returns:
         The Plan model with source_path pointing to the written QG file.
     """
-    from sam_schema.core.models import Task
 
     yaml_str = build_quality_gate_plan(slug=slug, issue=None, impl_plan_address="P001")
     parsed = _parse_yaml(yaml_str)
@@ -264,9 +263,13 @@ class TestQGPlanCreation:
         parsed = _parse_yaml(yaml_str)
         tasks_raw = parsed.get("tasks", [])
 
-        # Act
+        # Act — pass issue=990 so create_plan embeds it in the plan metadata
         plan_model = create_plan(
-            slug="test-feature", goal="Quality gate verification for P003", tasks=tasks_raw, plan_dir=plan_dir
+            slug="test-feature",
+            goal="Quality gate verification for P003",
+            tasks=tasks_raw,
+            plan_dir=plan_dir,
+            issue=990,
         )
         result = load_plan(plan_model.source_path)
 
@@ -291,19 +294,18 @@ class TestQGPlanAddressing:
         """resolve_plan_address can locate a QG-prefixed plan by number.
 
         Tests: QG plan address resolution via resolve_plan_address
-        How: Create a QG plan file and resolve with "QG{N}" address
+        How: Write a QG001-{slug}.yaml file directly, resolve with "QG1" address
         Why: The addressing layer must support multi-char QG prefix to route
              complete-implementation to the correct plan file
         """
         # Arrange
         plan_dir = tmp_path / "plan"
         plan_dir.mkdir()
-        plan = _create_qg_plan(plan_dir)
+        plan = _create_qg_file_directly(plan_dir, plan_number=1)
         assert plan.source_path is not None
-        plan_number = int(plan.source_path.stem.split("-")[0][1:])  # e.g. P001 -> 1
 
         # Act
-        resolved = resolve_plan_address(f"QG{plan_number}", plan_dir)
+        resolved = resolve_plan_address("QG1", plan_dir)
 
         # Assert
         assert resolved == plan.source_path

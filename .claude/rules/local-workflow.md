@@ -175,7 +175,7 @@ No changes to the execution loop are needed — existing `DependencyGraph.get_re
 A task is "ready" when:
 
 1. Status is `NOT STARTED`
-2. All dependency tasks have status `COMPLETE`
+2. All dependency tasks have a terminal status (`COMPLETE` or `SKIPPED`)
 
 Readiness evaluation is performed by the SAM MCP tool `mcp__plugin_dh_sam__sam_ready(plan="P{N}")` or the backlog MCP tool `backlog_get_ready_sam_tasks`. CLI fallback: `uv run sam ready P{N}`.
 
@@ -273,17 +273,248 @@ Disabled hooks take precedence over profile. Unknown IDs are silently ignored fo
 
 Invoked automatically by `/implement-feature` when all tasks show COMPLETE. Runs six validation phases.
 
-### Phase Sequence
+### Pre-Phase 1: TN Verification Check
+
+Before invoking Phase 1, check for a TN verification report produced by `tn-verification-gate`. Extract `{slug}` from the task file path (`plan/P{NNN}-{slug}.yaml`). Read `dh_paths.plan_dir() / "TN-verification-{slug}.yaml"`.
+
+The file contains a list of per-criterion `BookendVerification` records — one per `acceptance-criteria-structured` entry. There is no top-level `verdict` field. Aggregate the verdict by scanning all records: the overall result is FAIL if any record has `status: regressed`; otherwise PASS.
+
+```mermaid
+flowchart TD
+    Read["Read dh_paths.plan_dir() / TN-verification-{slug}.yaml"] --> Exists{File exists?}
+    Exists -->|No| Proceed["No structured criteria — proceed to Phase 1"]
+    Exists -->|Yes| Scan["Scan all per-criterion records<br>for status: regressed"]
+    Scan --> AnyRegressed{Any criterion<br>has status: regressed?}
+    AnyRegressed -->|No| Proceed
+    AnyRegressed -->|Yes| Stop["STOP — report regressions and block completion"]
+    Stop --> Report["Display each criterion with status: regressed<br>Show check_command, T0 stdout, TN stdout<br>Instruct: fix regressions before re-running"]
+```
+
+If any criterion has `status: regressed`, output this block and stop:
 
 ```text
-Phase 1: code-reviewer          -> Code review of implemented changes
-Phase 2: feature-verifier       -> Goal-backward feature verification
-Phase 3: integration-checker    -> Integration check
-Phase 4: doc-drift-auditor      -> Documentation drift audit (read-only)
-Phase 5: service-docs-maintainer -> Documentation update (if drift found)
-Phase 6: context-refinement     -> Update task file Context Manifest + plan artifact freshness check
-Final:   commit + push          -> Stage and commit all remaining modified files
+COMPLETION BLOCKED — TN Verification Failed
+
+Regressed criteria:
+  {criterion-id}: {description}
+    command: {check_command}
+    T0 result: exit {code}, stdout: {stdout}
+    TN result: exit {code}, stdout: {stdout}
+
+Fix the regressions, then re-run /complete-implementation.
 ```
+
+### Pre-Phase: Artifact Discovery
+
+When the parent story issue number is known (from the plan's `issue` field or the backlog item), query the artifact manifest to discover all plan artifacts for this feature:
+
+```text
+mcp__plugin_dh_backlog__artifact_list(issue_number=N)
+```
+
+If the response contains artifacts, pass the manifest to quality gate agents (Phases 1-6) so they can access plan artifacts via `artifact_read` instead of filesystem paths. This is critical for worktree-isolated agents.
+
+**Fallback**: If `artifact_list` returns an empty manifest or an error, quality gate agents use filesystem path conventions. This ensures backward compatibility with issues that predate the artifact manifest system.
+
+### Pre-Phase 1b: Process Accumulated Concerns
+
+Check the backlog item for a `## Concerns` section accumulated during `/implement-feature`:
+
+```text
+mcp__plugin_dh_backlog__backlog_view(selector="#{issue}")
+```
+
+If the item has a `## Concerns` section with unchecked items (`- [ ]`):
+
+1. For each concern, verify whether it is a real issue (read the referenced file or run the referenced check).
+2. If verified: check it off (`- [x]`) and create a new backlog item via `mcp__plugin_dh_backlog__backlog_add` with the concern as the description, source as "Quality vigilance concern from #{issue}".
+3. If not a real issue: check it off (`- [x] Not confirmed — {reason}`).
+4. Update the concerns section via `mcp__plugin_dh_backlog__backlog_groom(selector="#{issue}", section="Concerns", content="{updated checklist}")`.
+
+If no concerns section exists, proceed to Quality Gate Plan Creation.
+
+### SAM-Enforced Quality Gate Execution
+
+Quality gate phases are mechanically enforced via SAM tasks. The 6 phases are modeled as tasks in a separate QG plan (`QG{NNN}-qg-{slug}.yaml`), dispatched through the same `sam_ready`/`sam_claim`/`sam_state` loop used by `/implement-feature`. An agent cannot skip phases because `sam_ready` only surfaces the next phase when the previous one completes.
+
+```mermaid
+flowchart TD
+    Pre["Pre-phases (TN check, artifact discovery, concerns)<br>Remain as prose — ADR-005"] --> Create{"Existing QG plan<br>for this slug?"}
+    Create -->|"No"| Gen["build_quality_gate_plan() → YAML<br>sam_create() → plan/QG{NNN}-qg-{slug}.yaml"]
+    Create -->|"Yes, incomplete tasks"| Resume["Resume: sam_ready(plan='QG{N}')"]
+    Create -->|"Yes, all terminal"| Gate["Skip to Completion Gate"]
+    Gen --> Loop["SAM Dispatch Loop<br>sam_ready → sam_claim → start-task → hook marks complete"]
+    Resume --> Loop
+    Loop --> PostT4{"After T4:<br>drift found?"}
+    PostT4 -->|"No drift"| SkipT5["sam_state(T5, 'skipped')"]
+    PostT4 -->|"Drift found"| DispatchT5["Dispatch T5 normally"]
+    SkipT5 --> Loop
+    DispatchT5 --> Loop
+    Loop -->|"No ready tasks"| Gate["Completion Verification Gate<br>All 6 tasks terminal?<br>SKIPPED allowed only for T5"]
+    Gate -->|"PASS"| Label["Apply status:verified label"]
+    Gate -->|"FAIL"| Block["STOP — report incomplete phases"]
+```
+
+### Phase Task Mapping
+
+| QG Task | Phase | Agent | Dependencies |
+|---------|-------|-------|-------------|
+| T1 | Code Review | code-reviewer | none |
+| T2 | Feature Verification | feature-verifier | T1 |
+| T3 | Integration Check | integration-checker | T2 |
+| T4 | Documentation Drift Audit | doc-drift-auditor | T3 |
+| T5 | Documentation Update | service-docs-maintainer | T4 |
+| T6 | Context Refinement | context-refinement | T5 |
+
+The QG plan is created at runtime by `complete-implementation` using `build_quality_gate_plan()` from `sam_schema.core.quality_gates`. Each phase is dispatched via `Skill(skill="start-task", args="plan/QG{N}-qg-{slug}.yaml --task {task_id}")`.
+
+**Recovery (ADR-004, ADR-006)**: On re-run, already-COMPLETE phases are not re-dispatched (`sam_ready` skips them). BLOCKED tasks are reset to NOT_STARTED before re-entering the loop.
+
+### Quality Gate Plan Creation
+
+After the pre-phases complete, set up the SAM-enforced quality gate plan.
+
+**Step 1 — Check for existing QG plan:**
+
+```text
+mcp__plugin_dh_sam__sam_list(search="qg-{slug}")
+```
+
+```mermaid
+flowchart TD
+    List["sam_list(search='qg-{slug}')"] --> Found{QG plan found?}
+    Found -->|No| Create["Call build_quality_gate_plan,<br>then sam_create"]
+    Found -->|Yes| Check{All tasks terminal?}
+    Check -->|"Yes — COMPLETE or SKIPPED"| Skip["Skip to Completion Verification Gate"]
+    Check -->|"No — tasks remain"| Reset["Reset BLOCKED tasks to NOT_STARTED,<br>resume SAM dispatch loop"]
+    Create --> Loop["Enter SAM Dispatch Loop"]
+    Reset --> Loop
+```
+
+**Step 2 — Create QG plan (if not found):**
+
+```python
+tasks_yaml = build_quality_gate_plan(
+    slug="{slug}",
+    issue="{issue_number}",       # from plan's issue field, if known
+    impl_plan_address="P{N}",     # implementation plan address
+)
+```
+
+Then create the plan:
+
+```text
+mcp__plugin_dh_sam__sam_create(
+    slug="qg-{slug}",
+    goal="Quality gate enforcement for {slug}",
+    tasks_yaml="{tasks_yaml_string}",
+    issue="{issue_number}"
+)
+```
+
+The response contains the QG plan address (e.g., `QG003`). Store it as `{QG}` for use throughout the dispatch loop.
+
+**Step 3 — Reset BLOCKED tasks (on re-run):**
+
+If the QG plan already exists and has BLOCKED tasks, reset each to NOT_STARTED before entering the dispatch loop:
+
+```text
+For each task where status == "blocked":
+    mcp__plugin_dh_sam__sam_state(plan="{QG}", task="{task_id}", status="not-started")
+```
+
+### SAM Dispatch Loop Details (Phases 1-6)
+
+The dependency chain (T1 → T2 → T3 → T4 → T5 → T6) enforces ordered execution. Repeat until `sam_ready` returns an empty list:
+
+**1. Get next ready task:**
+
+```text
+mcp__plugin_dh_sam__sam_ready(plan="{QG}")
+```
+
+If the result is empty, exit the loop and proceed to Completion Verification Gate.
+
+**2. Claim the task:**
+
+```text
+mcp__plugin_dh_sam__sam_claim(plan="{QG}", task="{task_id}")
+```
+
+If `"claimed": false`, stop — another agent is running this phase.
+
+**3. Dispatch via start-task:**
+
+```text
+Skill(skill="start-task", args="plan/{QG}-qg-{slug}.yaml --task {task_id}")
+```
+
+The SubagentStop hook marks the task COMPLETE after the sub-agent finishes.
+
+**4. Phase-specific post-dispatch actions:**
+
+After each phase completes, run phase-specific processing before querying `sam_ready` again:
+
+```mermaid
+flowchart TD
+    Done{Which task<br>just completed?}
+    Done -->|T1 Code Review| T1Post["Extract follow-up task files<br>from code-reviewer ARTIFACTS output.<br>Store file paths for Recursive Follow-up Handling."]
+    Done -->|T4 Drift Audit| T4Post{Drift found<br>in T4 output?}
+    T4Post -->|No drift| SkipT5["sam_state(plan='{QG}', task='T5', status='skipped')"]
+    T4Post -->|Drift found| T5Ready["T5 remains NOT_STARTED — will be<br>dispatched on next loop iteration"]
+    Done -->|T6 Context Refinement| T6Post["Check T6 agent output for<br>DIVERGENCE_REQUIRING_REVIEW block.<br>If present, store for final output."]
+    Done -->|"T2, T3, T5"| Continue["No phase-specific action —<br>continue loop"]
+    T1Post --> Continue
+    SkipT5 --> Continue
+    T5Ready --> Continue
+    T6Post --> Continue
+```
+
+**Detecting drift in T4 output**: The doc-drift-auditor agent output contains a `## Findings` section. No drift is indicated by "No documentation drift detected" or an empty findings list. Presence of drift items (file paths, outdated sections) means drift was found.
+
+### Completion Verification Gate
+
+After the SAM dispatch loop exits (no ready tasks), verify all 6 phases reached terminal status before allowing label application.
+
+```text
+mcp__plugin_dh_sam__sam_status(plan="{QG}")
+```
+
+Examine each of the 6 tasks:
+
+```mermaid
+flowchart TD
+    Status["sam_status(plan='{QG}')"] --> Iter["Iterate over all 6 tasks"]
+    Iter --> Check{For each task:<br>check status}
+    Check -->|"status == 'complete'"| PassTask["Task passes"]
+    Check -->|"status == 'skipped' AND task_id == 'T5'"| PassTask
+    Check -->|"status == 'skipped' AND task_id != 'T5'"| FailUnauth["FAIL — unauthorized skip"]
+    Check -->|"status == 'not-started' OR 'in-progress'"| FailIncomplete["FAIL — incomplete phase"]
+    Check -->|"status == 'blocked'"| FailBlocked["FAIL — blocked phase"]
+    PassTask --> AllPassed{All 6 tasks<br>passed?}
+    AllPassed -->|Yes| Proceed["Proceed to Recursive Follow-up Handling"]
+    AllPassed -->|No| Stop["STOP — report failures, do NOT apply label"]
+    FailUnauth --> AllPassed
+    FailIncomplete --> AllPassed
+    FailBlocked --> AllPassed
+```
+
+**Skip whitelist**: ONLY T5 (Documentation Update) may have `status: skipped`. Any other task with `status: skipped` is an unauthorized skip — treat as a failure.
+
+**On verification failure**, output and stop:
+
+```text
+COMPLETION BLOCKED — Quality Gate Incomplete
+
+Failed tasks:
+  {task_id} ({phase_name}): status={status}
+  [repeat for each failing task]
+
+To resume: re-run /complete-implementation {task_file_path}
+BLOCKED tasks will be reset to NOT_STARTED automatically.
+```
+
+**On verification success**, proceed to Recursive Follow-up Handling.
 
 ### Agent File Locations
 
@@ -370,6 +601,7 @@ Plan artifacts are registered in a structured manifest stored in the GitHub Issu
 | `codebase-analysis` | codebase-analyzer | `plan/codebase/{FOCUS}.md` |
 | `T0-baseline` | t0-baseline-capture | `plan/T0-baseline-{slug}.yaml` |
 | `TN-verification` | tn-verification-gate | `plan/TN-verification-{slug}.yaml` |
+| `quality-gate` | complete-implementation / sam_create | `plan/QG{NNN}-qg-{slug}.yaml` |
 
 ### Registration Flow
 
