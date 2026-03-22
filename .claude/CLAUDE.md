@@ -372,6 +372,15 @@ Reference other skills using activation syntax:
 ✅ `For comprehensive Astral uv documentation, use the /uv skill.`
 ❌ `See /uv/SKILL.md for uv documentation`
 
+### Subdirectory Namespaces
+
+Subdirectories within `skills/` or `agents/` create colon-separated namespaces for grouping related components:
+
+- `skills/testing/analyze-test-failures/SKILL.md` → `/plugin:testing:analyze-test-failures`
+- `skills/workflows/discovery/SKILL.md` → `/dh:workflows:discovery`
+
+Each directory level becomes a colon-separated segment in the invocation path. This is intentional grouping — do not flatten subdirectory skills to the top level. When documenting or referencing skills in subdirectories, use the full colon-separated path.
+
 ---
 
 - Skill Documentation Verification: `.claude/rules/skill-documentation-verification.md`
