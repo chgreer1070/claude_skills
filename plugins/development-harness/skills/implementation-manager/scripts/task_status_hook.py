@@ -9,7 +9,7 @@ All task file I/O routes through sam_schema (ADR-001 exception: Python API, not 
 subprocess, because hooks fire on every tool call and latency matters).
 
 Context File Mechanism:
-- The /start-task command writes task context to .claude/context/active-task-{session_id}.json
+- The /start-task command writes task context to ~/.dh/projects/{slug}/context/active-task-{session_id}.json
 - PostToolUse hooks read from this file to know which task is active
 - SubagentStop parses the prompt directly (doesn't need context file)
 
@@ -32,6 +32,15 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+# dh_paths is at plugins/development-harness/dh_paths.py.
+# Hook script lives at plugins/development-harness/skills/implementation-manager/scripts/
+# parents[0]=scripts, [1]=implementation-manager, [2]=skills, [3]=development-harness
+_DH_PLUGIN_DIR = Path(__file__).resolve().parents[3]
+if str(_DH_PLUGIN_DIR) not in sys.path:
+    sys.path.insert(0, str(_DH_PLUGIN_DIR))
+
+import dh_paths as _dh_paths
 
 # sam_schema is the canonical task/plan schema package.
 # Installed as a workspace dependency in the project venv.
@@ -277,15 +286,19 @@ def extract_task_info_from_prompt(prompt: str) -> tuple[Path | None, str | None]
 def get_context_file_path(cwd: Path, session_id: str) -> Path:
     """Get the path to the active task context file.
 
+    Uses dh_paths.context_dir() which resolves to
+    ``~/.dh/projects/{slug}/context/`` (or DH_STATE_HOME override).
+    The ``cwd`` argument is accepted for call-site compatibility but is not
+    used — dh_paths detects the project root from git.
+
     Args:
-        cwd: Current working directory.
+        cwd: Current working directory (unused; kept for compatibility).
         session_id: Session ID from hook input.
 
     Returns:
-        Path to the context file.
+        Path to the context file under the DH state context directory.
     """
-    context_dir = cwd / ".claude" / "context"
-    return context_dir / f"active-task-{session_id}.json"
+    return _dh_paths.context_dir() / f"active-task-{session_id}.json"
 
 
 def read_task_context(cwd: Path, session_id: str) -> tuple[Path | None, str | None]:
