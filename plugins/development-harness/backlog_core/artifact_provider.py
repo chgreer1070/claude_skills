@@ -35,12 +35,20 @@ This module imports them from there.
 from __future__ import annotations
 
 import re
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
 from .github import _graphql_request, get_github
+
+# dh_paths lives one level above backlog_core (at plugin root).
+_plugin_root = Path(__file__).parent.parent
+if str(_plugin_root) not in sys.path:
+    sys.path.insert(0, str(_plugin_root))
+
+import dh_paths as _dh_paths
 
 if TYPE_CHECKING:
     from .models import ArtifactManifest
@@ -277,34 +285,35 @@ class GitHubArtifactProvider:
     No new credentials are required — the same ``GITHUB_TOKEN`` used by other
     backlog operations is reused.
 
-    Artifact file content is served directly from the local ``root_worktree``
-    filesystem path.  Worktree-isolated agents access content via the
-    ``artifact_read`` MCP tool rather than the filesystem.
+    Artifact file content is served from the DH state root
+    (``~/.dh/projects/{slug}/``).  Artifact paths stored in the manifest are
+    relative to this state root rather than the git project root.  Worktree-
+    isolated agents access content via the ``artifact_read`` MCP tool rather
+    than the filesystem.
 
     Args:
         repo: GitHub repository slug in ``owner/name`` format.
-        root_worktree: Absolute path to the root git worktree (the repository
-            checkout that has all committed and uncommitted plan files).
-            Defaults to ``Path.cwd()`` when not provided.
+        root_worktree: Absolute path to the state root directory.  Defaults
+            to ``dh_paths.state_root()`` when not provided.
 
     Example::
 
-        provider = GitHubArtifactProvider(repo="owner/myrepo", root_worktree=Path("/home/user/repos/myrepo"))
+        provider = GitHubArtifactProvider(repo="owner/myrepo")
         manifest = provider.get_manifest(965)
         print(manifest.artifacts)
     """
 
     def __init__(self, repo: str, root_worktree: Path | None = None) -> None:
-        """Initialise provider with GitHub repository slug and worktree path.
+        """Initialise provider with GitHub repository slug and state root path.
 
         Args:
             repo: ``owner/name`` repository slug.
-            root_worktree: Absolute path to the root git worktree.  When
-                ``None``, ``Path.cwd()`` is used (correct for in-repo
-                development where the server runs from the project root).
+            root_worktree: Absolute path to the DH state root for this project.
+                When ``None``, resolved via :func:`dh_paths.state_root` (the
+                ``~/.dh/projects/{slug}/`` directory).
         """
         self._repo = repo
-        self._root_worktree = root_worktree or Path.cwd()
+        self._root_worktree = root_worktree if root_worktree is not None else _dh_paths.state_root()
 
     # ------------------------------------------------------------------
     # ArtifactBackend implementation

@@ -52,7 +52,6 @@ from .github import (
     view_enrich_from_github,
 )
 from .models import (  # noqa: F401 — DEFAULT_REPO intentionally NOT imported (mutable module global)
-    BACKLOG_DIR,
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     MIN_FRONTMATTER_PARTS,
     VALID_CLOSE_REASONS,
@@ -666,8 +665,8 @@ def _pull_item_create_new(
     slug = title_to_slug(title)
     priority = item.priority or "P2"
     filename = f"{priority.lower()}-{slug}.md"
-    filepath = BACKLOG_DIR / filename
-    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    filepath = _models.BACKLOG_DIR / filename
+    _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
     if dry_run:
         out.info(f"  [dry-run] Would create {filename} from #{issue_num}: {title}")
         return True
@@ -877,7 +876,7 @@ def _check_for_duplicates(title: str, force: bool) -> None:
 
 
 def _resolve_filepath(priority: str, slug: str) -> Path:
-    """Return a collision-free Path inside BACKLOG_DIR for (priority, slug).
+    """Return a collision-free Path inside _models.BACKLOG_DIR for (priority, slug).
 
     Appends a numeric suffix when the base filename already exists.
 
@@ -888,13 +887,13 @@ def _resolve_filepath(priority: str, slug: str) -> Path:
     Returns:
         A Path that does not yet exist on disk.
     """
-    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
     base = f"{priority.lower()}-{slug}"
-    filepath = BACKLOG_DIR / f"{base}.md"
+    filepath = _models.BACKLOG_DIR / f"{base}.md"
     idx = 0
     while filepath.exists():
         idx += 1
-        filepath = BACKLOG_DIR / f"{base}-{idx}.md"
+        filepath = _models.BACKLOG_DIR / f"{base}-{idx}.md"
     return filepath
 
 
@@ -2090,10 +2089,10 @@ def normalize_items(dry_run: bool = False, output: Output | None = None) -> dict
         Dict with count of normalized items.
     """
     out = output or Output()
-    if not BACKLOG_DIR.exists():
-        raise BacklogError(f"{BACKLOG_DIR} not found")
+    if not _models.BACKLOG_DIR.exists():
+        raise BacklogError(f"{_models.BACKLOG_DIR} not found")
     pattern = re.compile(r"^(p0|p1|p2|ideas|completed)-[a-z0-9-]+\.md$", re.IGNORECASE)
-    files = sorted(f for f in BACKLOG_DIR.glob("*.md") if pattern.match(f.name))
+    files = sorted(f for f in _models.BACKLOG_DIR.glob("*.md") if pattern.match(f.name))
     if not files:
         out.info("No backlog item files found")
         return {"normalized": 0, **out.to_dict()}
@@ -2147,9 +2146,9 @@ def pull_single_issue(
     if filepath is None:
         slug = title_to_slug(clean_title)
         filename = f"{fields.priority.lower()}-{slug}.md"
-        filepath = BACKLOG_DIR / filename
+        filepath = _models.BACKLOG_DIR / filename
 
-    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
 
     diff_str = ""
     if filepath.exists():

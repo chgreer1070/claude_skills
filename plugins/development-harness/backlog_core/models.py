@@ -9,6 +9,7 @@ from __future__ import annotations
 import functools
 import os
 import re
+import sys
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypedDict
@@ -18,8 +19,15 @@ from pydantic import AliasChoices, BaseModel, Field
 from typing_extensions import TypedDict as ExtTypedDict
 
 # ---------------------------------------------------------------------------
-# Path constants
+# Path constants — via dh_paths
 # ---------------------------------------------------------------------------
+
+# Add plugin root to sys.path so dh_paths can be imported from sibling module.
+_plugin_root = Path(__file__).parent.parent
+if str(_plugin_root) not in sys.path:
+    sys.path.insert(0, str(_plugin_root))
+
+import dh_paths as _dh_paths
 
 
 def _resolve_repo_root(project_dir: str | None = None) -> Path:
@@ -29,19 +37,28 @@ def _resolve_repo_root(project_dir: str | None = None) -> Path:
         project_dir: Explicit project directory path, typically passed via
             ``--project-dir`` CLI argument when the server is installed as a
             plugin (where ``__file__`` points to the plugin cache, not the
-            user's project).  When ``None``, falls back to ``Path.cwd()``
-            which is correct for in-repo development.
+            user's project).  When ``None``, uses :func:`dh_paths.git_project_root`.
 
     Returns:
         Resolved Path to the repository root.
     """
     if project_dir:
         return Path(project_dir).resolve()
-    return Path.cwd()
+    return _dh_paths.git_project_root()
 
 
 _REPO_ROOT = _resolve_repo_root()
-BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
+BACKLOG_DIR: Path = _dh_paths.backlog_dir(_REPO_ROOT)
+
+
+def get_repo_root() -> Path:
+    """Return the current project (git) root.
+
+    Returns:
+        Absolute path to the repository root.  Updated when :func:`init` is
+        called with a ``project_dir`` argument.
+    """
+    return _REPO_ROOT
 
 
 def init(project_dir: str | None = None, repo: str | None = None) -> None:
@@ -51,6 +68,9 @@ def init(project_dir: str | None = None, repo: str | None = None) -> None:
     launched with ``--project-dir`` or a known ``repo`` slug.  Mutates module
     globals ``_REPO_ROOT``, ``BACKLOG_DIR``, and ``DEFAULT_REPO`` in-place.
 
+    Path resolution now delegates to :mod:`dh_paths` so that ``BACKLOG_DIR``
+    points to ``~/.dh/projects/{slug}/backlog/``.
+
     Args:
         project_dir: Absolute path to the user's project root, forwarded from
             the ``--project-dir`` CLI argument in ``server.py``.
@@ -59,7 +79,7 @@ def init(project_dir: str | None = None, repo: str | None = None) -> None:
     """
     global _REPO_ROOT, BACKLOG_DIR, DEFAULT_REPO  # noqa: PLW0603
     _REPO_ROOT = _resolve_repo_root(project_dir)
-    BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
+    BACKLOG_DIR = _dh_paths.backlog_dir(_REPO_ROOT)
     if repo is not None:
         DEFAULT_REPO = _validate_repo_slug(repo)
     else:

@@ -71,7 +71,7 @@ _init_models(_args.project_dir)
 mcp = FastMCP(
     "backlog",
     instructions=(
-        "Backlog management server. Manages per-item markdown files in .claude/backlog/, "
+        "Backlog management server. Manages per-item markdown files in ~/.dh/projects/{slug}/backlog/, "
         "syncs with GitHub Issues (source of truth), and provides CRUD operations for "
         "backlog items including add, list, view, update, groom, close, resolve, and sync."
     ),
@@ -1297,8 +1297,10 @@ def _dispatch_plan_path(milestone_number: int) -> Path:
     Returns:
         Path to ``plan/milestone-{N}-dispatch.yaml`` under the project root.
     """
-    # BACKLOG_DIR is <project_root>/.claude/backlog — walk up to project root
-    return _ds.dispatch_plan_path(milestone_number, _models.BACKLOG_DIR.parent.parent)
+    # Use the git project root for dispatch plan path resolution.
+    # BACKLOG_DIR now points to ~/.dh/projects/{slug}/backlog/ and cannot be
+    # used to derive the project root by walking up with .parent.parent.
+    return _ds.dispatch_plan_path(milestone_number, _models.get_repo_root())
 
 
 @mcp.tool

@@ -15,13 +15,12 @@ from typing import TYPE_CHECKING
 import frontmatter
 from ruamel.yaml import YAML, YAMLError
 
-from .frontmatter_utils import dump_frontmatter, loads_frontmatter
-
 # ---------------------------------------------------------------------------
 # Imports from sibling models module
 # ---------------------------------------------------------------------------
+from . import models as _models
+from .frontmatter_utils import dump_frontmatter, loads_frontmatter
 from .models import (
-    BACKLOG_DIR,
     BENEFIT_MAP,
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     FIELD_TO_INDEX as _FIELD_TO_INDEX,
@@ -249,7 +248,7 @@ def parse_item_file(text: str, path: Path) -> BacklogItem:
 
 
 def parse_backlog_from_directory() -> list[BacklogItem]:
-    """Parse backlog items directly from .claude/backlog/ per-item files.
+    """Parse backlog items directly from ~/.dh/projects/{slug}/backlog/ per-item files.
 
     Scans the directory, reads frontmatter from each file, and derives the
     priority section from the filename prefix. This is the primary parsing
@@ -258,7 +257,7 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
     Returns:
         List of BacklogItem instances with section, title, and parsed fields.
     """
-    if not BACKLOG_DIR.exists():
+    if not _models.BACKLOG_DIR.exists():
         return []
     prefix_to_section = {
         "p0-": "P0",
@@ -270,7 +269,7 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
         "medium-": "P1",
     }
     items: list[BacklogItem] = []
-    for filepath in sorted(BACKLOG_DIR.glob("*.md")):
+    for filepath in sorted(_models.BACKLOG_DIR.glob("*.md")):
         name = filepath.stem
         section = ""
         for prefix, sec in prefix_to_section.items():
@@ -297,7 +296,7 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
 
 
 def parse_backlog() -> list[BacklogItem]:
-    """Parse backlog items from .claude/backlog/ per-item files.
+    """Parse backlog items from ~/.dh/projects/{slug}/backlog/ per-item files.
 
     Returns:
         List of BacklogItem instances with section, title, and parsed fields.
