@@ -23,6 +23,7 @@ dev = [
     "pytest-asyncio>=0.26.0",
     "pytest-mock>=3.15.1",
     "pytest-cov>=6.0.0",
+    "fastmcp[tasks]>=3.0.2",
 ]
 
 [tool.pytest.ini_options]

@@ -753,3 +753,86 @@ class ArtifactContent(BaseModel):
 
     status: ArtifactStatus = Field(..., description="Current lifecycle state of the artifact.")
     """Current lifecycle state of the artifact."""
+
+
+# ---------------------------------------------------------------------------
+# Dispatch orchestration models
+# ---------------------------------------------------------------------------
+
+
+class DispatchItemRecord(BaseModel):
+    """State of a single dispatch item, maps to the items SQLite table."""
+
+    milestone: int
+    wave_num: int
+    issue: int
+    title: str = ""
+    status: str = "pending"
+    """pending | in-progress | complete | failed | skipped"""
+    pid: int | None = None
+    started_at: str = ""
+    """ISO 8601 timestamp when item entered in-progress state."""
+    completed_at: str = ""
+    """ISO 8601 timestamp when item reached a terminal state."""
+    result: str = ""
+    """JSON string or summary from result file."""
+    error: str = ""
+    cost: float | None = None
+    result_file: str = ""
+    error_file: str = ""
+
+
+class DispatchWaveRecord(BaseModel):
+    """State of a dispatch wave, maps to the waves SQLite table."""
+
+    milestone: int
+    wave_num: int
+    status: str = "pending"
+    """pending | in-progress | complete | failed"""
+    started_at: str = ""
+    completed_at: str = ""
+    items: list[DispatchItemRecord] = Field(default_factory=list)
+
+
+class DispatchSpawnResult(BaseModel):
+    """JSON output from spawn.py parsed into a typed model."""
+
+    pid: int
+    name: str = ""
+    worktree: str | None = None
+    result_file: str
+    error_file: str
+    model: str = "sonnet"
+    lock_file: str | None = None
+
+
+class DispatchWaveSummary(BaseModel):
+    """Aggregated wave status returned by the dispatch_wave_status tool."""
+
+    milestone: int
+    wave_num: int
+    status: str
+    total_items: int
+    pending: int
+    in_progress: int
+    complete: int
+    failed: int
+    skipped: int
+    started_at: str = ""
+    completed_at: str = ""
+    elapsed_seconds: float | None = None
+    items: list[DispatchItemRecord] = Field(default_factory=list)
+
+
+class DispatchSpawnSummary(BaseModel):
+    """Final summary returned when the dispatch_spawn background task completes."""
+
+    milestone: int
+    waves_executed: int
+    total_items: int
+    completed: int
+    failed: int
+    skipped: int
+    elapsed_seconds: float
+    per_wave: list[DispatchWaveSummary] = Field(default_factory=list)
+    total_cost: float | None = None
