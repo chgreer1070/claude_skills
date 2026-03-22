@@ -1216,7 +1216,7 @@ def refresh_local_cache_from_github(
     count = 0
     for issue_node in open_issues:
         issue_number = issue_node.get("number", 0)
-        pull_single_issue(repo_obj, issue_number, output=out)
+        _write_issue_node_to_cache(issue_node, issue_number, out)
         open_issue_numbers.add(issue_number)
         count += 1
     out.info(f"  Refreshed {count} issue(s) from GitHub into local cache.")
@@ -2177,39 +2177,24 @@ def normalize_items(dry_run: bool = False, output: Output | None = None) -> dict
 # ---------------------------------------------------------------------------
 
 
-def pull_single_issue(
-    repo_obj: Repository,
-    issue_num: int,
-    filepath: Path | None = None,
-    output: Output | None = None,
-    diff_mode: bool = False,
-) -> dict[str, Path | str | list[str] | None]:
-    """Fetch a GitHub issue and write/update the local cache file.
+def _write_issue_node_to_cache(
+    issue_node: IssueNode, issue_num: int, out: Output, filepath: Path | None = None, diff_mode: bool = False
+) -> tuple[Path | None, str]:
+    """Write or update the local cache file for an already-fetched IssueNode.
 
-    If filepath is None, derives it from the issue title and priority.
+    Extracted from pull_single_issue so that bulk sync callers can reuse this
+    logic without a redundant per-issue GraphQL round-trip.
 
     Args:
-        repo_obj: PyGitHub Repository object.
-        issue_num: GitHub issue number to fetch.
+        issue_node: IssueNode TypedDict already fetched from GraphQL.
+        issue_num: GitHub issue number (used for frontmatter and messages).
+        out: Output collector for messages and warnings.
         filepath: Local path to write. If None, derived from issue title and priority.
-        output: Optional Output collector for messages and warnings.
-        diff_mode: When True, computes a unified diff of old vs new body content and
-            includes it in the return dict under the ``"diff"`` key.
+        diff_mode: When True, computes a unified diff of old vs new body content.
 
     Returns:
-        Dict with ``"file_path"`` (Path or None on failure) and, when diff_mode is True
-        and the file already existed, ``"diff"`` (unified diff string, may be empty if
-        content was unchanged).
+        Tuple of (filepath written or None on error, diff string or empty string).
     """
-    out = output or Output()
-
-    try:
-        owner, repo_name = repo_obj.full_name.split("/", 1)
-        issue_node = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_num)
-    except BacklogError as e:
-        out.warn(f"  WARNING: Could not fetch issue #{issue_num}: {e}")
-        return {"file_path": None, **out.to_dict()}
-
     fields = issue_to_local_fields(issue_node)
     # Strip conventional-commit prefix from title (e.g., "feat: Title" -> "Title")
     clean_title = _COMMIT_PREFIX_RE.sub("", fields.title).strip()
@@ -2224,6 +2209,7 @@ def pull_single_issue(
     diff_str = ""
     if filepath.exists():
         # Capture old body before update when diff is requested
+        old_body = ""
         if diff_mode:
             old_text = filepath.read_text(encoding="utf-8")
             parts = old_text.split("---", 2)
@@ -2263,7 +2249,46 @@ def pull_single_issue(
         filepath.write_text(fm_str.rstrip() + "\n\n" + fields.body + "\n", encoding="utf-8")
         update_item_metadata(filepath, {"metadata": {"last_synced": now_iso()}}, output=out)
 
-    result: dict[str, Path | str | list[str] | None] = {"file_path": filepath, **out.to_dict()}
+    return filepath, diff_str
+
+
+def pull_single_issue(
+    repo_obj: Repository,
+    issue_num: int,
+    filepath: Path | None = None,
+    output: Output | None = None,
+    diff_mode: bool = False,
+) -> dict[str, Path | str | list[str] | None]:
+    """Fetch a GitHub issue and write/update the local cache file.
+
+    If filepath is None, derives it from the issue title and priority.
+
+    Args:
+        repo_obj: PyGitHub Repository object.
+        issue_num: GitHub issue number to fetch.
+        filepath: Local path to write. If None, derived from issue title and priority.
+        output: Optional Output collector for messages and warnings.
+        diff_mode: When True, computes a unified diff of old vs new body content and
+            includes it in the return dict under the ``"diff"`` key.
+
+    Returns:
+        Dict with ``"file_path"`` (Path or None on failure) and, when diff_mode is True
+        and the file already existed, ``"diff"`` (unified diff string, may be empty if
+        content was unchanged).
+    """
+    out = output or Output()
+
+    try:
+        owner, repo_name = repo_obj.full_name.split("/", 1)
+        issue_node = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_num)
+    except BacklogError as e:
+        out.warn(f"  WARNING: Could not fetch issue #{issue_num}: {e}")
+        return {"file_path": None, **out.to_dict()}
+
+    written_path, diff_str = _write_issue_node_to_cache(
+        issue_node, issue_num, out, filepath=filepath, diff_mode=diff_mode
+    )
+    result: dict[str, Path | str | list[str] | None] = {"file_path": written_path, **out.to_dict()}
     if diff_mode:
         result["diff"] = diff_str
     return result

@@ -818,9 +818,12 @@ class TestUpdateItemTitleAndDescription:
     def test_update_item_title_updates_github_issue_when_linked(self, mocker: MockerFixture) -> None:
         """update_item with title= calls GitHub issue edit when item has an issue.
 
-        Tests: update_item title rename with GitHub sync.
-        How: Write an item with issue='#42'; mock get_issue; call update_item with title=.
+        Tests: update_item title rename with GitHub sync via GraphQL.
+        How: Write an item with issue='#42'; mock _fetch_issue_graphql and
+             _update_issue_graphql; call update_item with title=; verify GraphQL
+             mutation was called with the new title.
         Why: Title rename must propagate to the linked GitHub issue when one exists.
+             After T01 the rename path uses GraphQL, not PyGithub get_issue/edit.
         """
         import backlog_core.models as models
         from backlog_core.operations import update_item
@@ -828,15 +831,21 @@ class TestUpdateItemTitleAndDescription:
         fake_dir: Path = models.BACKLOG_DIR
         _write_item(fake_dir, title="Linked Item", topic="linked-item", issue="42")
 
-        mock_gh_issue = mocker.Mock()
         mock_repo = mocker.Mock()
-        mock_repo.get_issue.return_value = mock_gh_issue
+        mock_repo.full_name = "owner/repo"
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        fake_node_id = "MDExOlB1bGxSZXF1ZXN0NDE="
+        mock_fetch_issue = mocker.patch(
+            "backlog_core.operations._fetch_issue_graphql",
+            return_value={"id": fake_node_id, "number": 42, "title": "Linked Item"},
+        )
+        mock_update_issue = mocker.patch("backlog_core.operations._update_issue_graphql")
 
         update_item(selector="Linked Item", title="Renamed Item")
 
-        mock_repo.get_issue.assert_called_once_with(42)
-        mock_gh_issue.edit.assert_called_once_with(title="Renamed Item")
+        mock_fetch_issue.assert_called_once_with(mock_repo, "owner", "repo", 42)
+        mock_update_issue.assert_called_once_with(mock_repo, fake_node_id, title="Renamed Item")
 
     def test_update_item_title_no_github_when_no_issue(self, mocker: MockerFixture) -> None:
         """update_item with title= does NOT call GitHub when item has no issue.
@@ -1676,38 +1685,45 @@ class TestRefreshClosedIssueReconciliation:
     """refresh_local_cache_from_github reconciles externally closed GitHub issues."""
 
     def test_refresh_fetches_closed_issues(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        """API call includes state=closed with since parameter for reconciliation.
+        """Bulk GraphQL fetch is called for both open and closed states during refresh.
 
-        Tests: closed-issue fetch is called during refresh.
-        How: Mock repo_obj.get_issues and verify it is called with state="closed".
+        Tests: _fetch_issues_graphql is invoked with state='CLOSED' during refresh.
+        How: Mock _fetch_issues_graphql; call refresh; verify it was called with
+             state='CLOSED' at least once.
         Why: Without fetching closed issues, local cache drifts from GitHub state.
+             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             repo.get_issues (REST).
         """
         # Arrange
         # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
 
         mock_repo = mocker.MagicMock()
-        # Open issues pass: return empty list
-        # Closed issues pass: return empty list
-        mock_repo.get_issues.return_value = []
+        mock_repo.full_name = "owner/repo"
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mock_fetch = mocker.patch("backlog_core.operations._fetch_issues_graphql", return_value=[])
 
         out = Output()
 
         # Act
         ops.refresh_local_cache_from_github(output=out)
 
-        # Assert — get_issues called at least once with state="closed"
-        calls = mock_repo.get_issues.call_args_list
-        closed_calls = [c for c in calls if c.kwargs.get("state") == "closed" or (c.args and c.args[0] == "closed")]
-        assert len(closed_calls) >= 1, f"Expected at least one get_issues(state='closed') call, got: {calls}"
+        # Assert — _fetch_issues_graphql called at least once with state="CLOSED"
+        calls = mock_fetch.call_args_list
+        closed_calls = [
+            c for c in calls if c.kwargs.get("state") == "CLOSED" or (len(c.args) >= 4 and c.args[3] == "CLOSED")
+        ]
+        assert len(closed_calls) >= 1, f"Expected at least one _fetch_issues_graphql(state='CLOSED') call, got: {calls}"
 
     def test_refresh_updates_local_status_for_closed(self, mocker: MockerFixture, tmp_path: Path) -> None:
         """Local file updated to status=closed when GitHub issue is closed.
 
         Tests: reconciliation updates local cache for closed issues.
-        How: Create local item with open status and issue #50; simulate closed issue
-             returned by GitHub; verify local file status changes to closed.
+        How: Create local item with open status and issue #50; mock
+             _fetch_issues_graphql to return a closed issue node; verify local
+             file status changes to closed.
         Why: Local files must reflect GitHub state to prevent stale displays.
+             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             repo.get_issues (REST). Node dicts use camelCase GraphQL field names.
         """
         # Arrange
         import backlog_core.models as models
@@ -1718,18 +1734,24 @@ class TestRefreshClosedIssueReconciliation:
         filepath = _write_item(fake_dir, title="Closable Item", issue="#50", topic="closable-item")
 
         mock_repo = mocker.MagicMock()
-        # Mock closed issue
-        closed_issue = mocker.MagicMock()
-        closed_issue.number = 50
-        closed_issue.pull_request = None
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
 
-        def _get_issues(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
+        closed_node = {
+            "number": 50,
+            "title": "Closable Item",
+            "state": "CLOSED",
+            "closedAt": "2099-01-01T00:00:00+00:00",  # far future — always within cutoff
+            "isPullRequest": False,
+            "id": "node-50",
+        }
+
+        def _fake_fetch(repo_obj, owner, repo_name, state, labels=None):
+            if state == "CLOSED":
+                return [closed_node]
             return []  # no open issues
 
-        mock_repo.get_issues.side_effect = _get_issues
-        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
@@ -1746,8 +1768,11 @@ class TestRefreshClosedIssueReconciliation:
         """Items already in terminal status (done/resolved/closed) are not modified.
 
         Tests: terminal status guard in reconciliation.
-        How: Create item with status=done and matching closed issue; verify no update.
+        How: Create item with status=done and matching closed issue; mock
+             _fetch_issues_graphql to return the closed issue node; verify no update.
         Why: Re-processing terminal items wastes I/O and may corrupt metadata.
+             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             repo.get_issues (REST).
         """
         # Arrange
         import backlog_core.models as models
@@ -1759,17 +1784,24 @@ class TestRefreshClosedIssueReconciliation:
         original_content = filepath.read_text(encoding="utf-8")
 
         mock_repo = mocker.MagicMock()
-        closed_issue = mocker.MagicMock()
-        closed_issue.number = 60
-        closed_issue.pull_request = None
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
 
-        def _get_issues(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
+        closed_node = {
+            "number": 60,
+            "title": "Already Done",
+            "state": "CLOSED",
+            "closedAt": "2099-01-01T00:00:00+00:00",
+            "isPullRequest": False,
+            "id": "node-60",
+        }
+
+        def _fake_fetch(repo_obj, owner, repo_name, state, labels=None):
+            if state == "CLOSED":
+                return [closed_node]
             return []
 
-        mock_repo.get_issues.side_effect = _get_issues
-        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
@@ -1785,8 +1817,12 @@ class TestRefreshClosedIssueReconciliation:
         """Issue appearing in both open and closed sets is treated as open.
 
         Tests: open-takes-precedence rule in reconciliation.
-        How: Return issue #70 in both open and closed passes; verify not reconciled.
-        Why: GitHub API may return recently-reopened issues in both sets.
+        How: Mock _fetch_issues_graphql to return issue #70 in both OPEN and CLOSED
+             passes; verify reconciled count is 0.
+        Why: GitHub may return recently-reopened issues in both state sets.
+             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             repo.get_issues (REST). open_issue_numbers set prevents reconciliation
+             of issues that appeared in the open pass.
         """
         # Arrange
         import backlog_core.models as models
@@ -1797,22 +1833,33 @@ class TestRefreshClosedIssueReconciliation:
         _write_item(fake_dir, title="Ambiguous Item", issue="#70", topic="ambiguous-item")
 
         mock_repo = mocker.MagicMock()
-        open_issue = mocker.MagicMock()
-        open_issue.number = 70
-        open_issue.pull_request = None
-
-        closed_issue = mocker.MagicMock()
-        closed_issue.number = 70
-        closed_issue.pull_request = None
-
-        def _get_issues(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
-            return [open_issue]
-
-        mock_repo.get_issues.side_effect = _get_issues
+        mock_repo.full_name = "owner/repo"
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
-        mocker.patch("backlog_core.operations.pull_single_issue")
+
+        open_node = {
+            "number": 70,
+            "title": "Ambiguous Item",
+            "state": "OPEN",
+            "closedAt": None,
+            "isPullRequest": False,
+            "id": "node-70",
+        }
+        closed_node = {
+            "number": 70,
+            "title": "Ambiguous Item",
+            "state": "CLOSED",
+            "closedAt": "2099-01-01T00:00:00+00:00",
+            "isPullRequest": False,
+            "id": "node-70",
+        }
+
+        def _fake_fetch(repo_obj, owner, repo_name, state, labels=None):
+            if state == "CLOSED":
+                return [closed_node]
+            return [open_node]
+
+        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_fake_fetch)
+        mocker.patch("backlog_core.operations._write_issue_node_to_cache")
 
         out = Output()
 
@@ -1826,22 +1873,32 @@ class TestRefreshClosedIssueReconciliation:
         """Closed issue with no matching local file causes no error.
 
         Tests: graceful skip when closed issue has no local counterpart.
-        How: Return closed issue #80 with no corresponding local file; verify no crash.
+        How: Mock _fetch_issues_graphql to return closed issue #80 with no
+             corresponding local file; verify no crash and reconciled=0.
         Why: Not all GitHub issues have local backlog files — must skip silently.
+             After T01 the bulk fetch uses _fetch_issues_graphql (GraphQL), not
+             repo.get_issues (REST).
         """
         # Arrange — autouse _isolate_backlog_dir redirects BACKLOG_DIR; no local files written.
         mock_repo = mocker.MagicMock()
-        closed_issue = mocker.MagicMock()
-        closed_issue.number = 80
-        closed_issue.pull_request = None
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
 
-        def _get_issues(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
+        closed_node = {
+            "number": 80,
+            "title": "Orphan Issue",
+            "state": "CLOSED",
+            "closedAt": "2099-01-01T00:00:00+00:00",
+            "isPullRequest": False,
+            "id": "node-80",
+        }
+
+        def _fake_fetch(repo_obj, owner, repo_name, state, labels=None):
+            if state == "CLOSED":
+                return [closed_node]
             return []
 
-        mock_repo.get_issues.side_effect = _get_issues
-        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations._fetch_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
