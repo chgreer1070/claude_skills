@@ -409,6 +409,125 @@ async def test_backlog_view_backlog_error_returns_error_key():
     assert "No item found for: #999" in response["error"]
 
 
+async def test_backlog_view_default_includes_content():
+    """backlog_view default call (include_content omitted) returns body and sections keys.
+
+    Tests: Backward compatibility guarantee — existing callers receive body and sections.
+    How: Mock operations.view_item to return a dict with body and sections keys.
+         Call backlog_view without include_content parameter (defaults to True).
+         Assert both keys are present in the response.
+    Why: The include_content=True default must preserve existing behavior so all
+         existing callers — tests, skills, agents — continue to work without modification.
+    """
+    # Arrange
+    op_result = {
+        "title": "My Feature",
+        "priority": "P1",
+        "body": "## Groomed (2026-03-22)\n- [ ] entry one",
+        "sections": {
+            "Groomed (2026-03-22)": {
+                "num_entries": 1,
+                "num_struck": 0,
+                "entries": [{"id": "e1", "struck": False, "content": "entry one"}],
+            }
+        },
+        "messages": [],
+        "warnings": [],
+    }
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
+        response = await _call("backlog_view", {"selector": "#42"})
+
+    # Assert
+    call_kwargs = mock_view.call_args.kwargs
+    assert call_kwargs["include_content"] is True
+    assert "body" in response
+    assert "sections" in response
+    assert response["body"] == "## Groomed (2026-03-22)\n- [ ] entry one"
+
+
+async def test_backlog_view_compact_mode_omits_body():
+    """backlog_view with include_content=False response has no 'body' or 'sections' keys.
+
+    Tests: Compact mode response shape — body and sections are absent.
+    How: Mock operations.view_item to return a compact dict (no body, no sections).
+         Call backlog_view with include_content=False.
+         Assert 'body' key is absent and 'sections' key is absent in the response.
+    Why: Callers detecting compact mode use 'body' in response as the sentinel.
+         Absent keys (not None, not empty string) is the contract.
+         Large backlog items can have 53K+ character bodies — compact mode is essential
+         for token-efficient metadata queries.
+    """
+    # Arrange — operations.view_item returns compact dict (body already popped by operations layer)
+    op_result = {
+        "title": "My Feature",
+        "priority": "P1",
+        "sections_metadata": [
+            {"name": "Groomed (2026-03-22)", "num_entries": 3, "num_struck": 1},
+            {"name": "Concerns", "num_entries": 2, "num_struck": 0},
+        ],
+        "messages": [],
+        "warnings": [],
+    }
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
+        response = await _call("backlog_view", {"selector": "#42", "include_content": False})
+
+    # Assert
+    call_kwargs = mock_view.call_args.kwargs
+    assert call_kwargs["include_content"] is False
+    assert "body" not in response, "Compact mode must not include 'body' key"
+    assert "sections" not in response, "Compact mode must not include 'sections' key"
+
+
+async def test_backlog_view_compact_mode_includes_sections_metadata():
+    """backlog_view with include_content=False response has 'sections_metadata' list.
+
+    Tests: Compact mode sections_metadata structure — name and entry counts per section.
+    How: Mock operations.view_item to return sections_metadata list with two sections.
+         Call backlog_view with include_content=False.
+         Assert sections_metadata is present, is a list, and each entry has
+         name, num_entries, and num_struck keys with correct values.
+    Why: The sections_metadata contract is the API surface for compact mode consumers.
+         Each dict must contain exactly the three keys (name, num_entries, num_struck)
+         so callers can build summaries without parsing full entry content.
+    """
+    # Arrange
+    compact_sections = [
+        {"name": "Groomed (2026-03-22)", "num_entries": 5, "num_struck": 2},
+        {"name": "Concerns", "num_entries": 3, "num_struck": 0},
+    ]
+    op_result = {
+        "title": "My Feature",
+        "priority": "P1",
+        "sections_metadata": compact_sections,
+        "messages": [],
+        "warnings": [],
+    }
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#42", "include_content": False})
+
+    # Assert
+    assert "sections_metadata" in response
+    metadata = response["sections_metadata"]
+    assert isinstance(metadata, list)
+    assert len(metadata) == 2
+
+    first = metadata[0]
+    assert first["name"] == "Groomed (2026-03-22)"
+    assert first["num_entries"] == 5
+    assert first["num_struck"] == 2
+
+    second = metadata[1]
+    assert second["name"] == "Concerns"
+    assert second["num_entries"] == 3
+    assert second["num_struck"] == 0
+
+
 # ---------------------------------------------------------------------------
 # backlog_sync
 # ---------------------------------------------------------------------------

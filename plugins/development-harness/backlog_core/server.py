@@ -270,6 +270,12 @@ async def backlog_list(
 @mcp.tool
 async def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
+    include_content: Annotated[
+        bool,
+        Field(
+            description="When True (default), returns full body and section entries. When False, returns metadata and section inventory only (section names with entry counts, no body or entry content)."
+        ),
+    ] = True,
     offset: Annotated[int, Field(ge=0, description="Skip N entry blocks from body start (for pagination)")] = 0,
     limit: Annotated[int, Field(ge=0, description="Show at most N entry blocks (0 = all, no truncation)")] = 0,
     show: Annotated[
@@ -285,11 +291,14 @@ async def backlog_view(
     Accepts a GitHub issue URL, #N, bare number, or title substring as selector.
     Use offset and limit to paginate long issue bodies.
     Use show and since to filter entry blocks within sections.
+    Use include_content=False to get a compact response with section names and
+    entry counts only, omitting the full body and entry content.
 
     Returns:
         Dict with title, priority, issue, plan, file_path, body, sections
         metadata, and output messages/warnings. On error, dict contains an
-        error key.
+        error key. When include_content=False, body and sections are omitted
+        and sections_metadata (list of section name/count dicts) is included.
     """
     out = Output()
     try:
@@ -303,6 +312,7 @@ async def backlog_view(
         result = await asyncio.to_thread(
             operations.view_item,
             selector=selector,
+            include_content=include_content,
             offset=offset,
             limit=limit,
             show=parsed_show,

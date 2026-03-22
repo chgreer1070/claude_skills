@@ -1371,6 +1371,37 @@ def _build_sections_metadata(body: str, show: str | int | None, since: str | Non
     return sections
 
 
+def _build_sections_compact(body: str) -> list[dict[str, str | int]]:
+    """Extract section names and entry counts without parsing entry content.
+
+    Returns a lightweight section inventory suitable for compact-mode responses.
+    Unlike ``_build_sections_metadata``, this function does not apply section or
+    entry filters — it always returns all sections with their active and struck
+    entry counts.
+
+    Args:
+        body: Full issue/item body text.
+
+    Returns:
+        List of dicts, each with ``name`` (str), ``num_entries`` (int active),
+        and ``num_struck`` (int struck).
+    """
+    section_re = re.compile(r"^### (.+?)$", re.MULTILINE)
+    section_headers = list(section_re.finditer(body))
+
+    result: list[dict[str, str | int]] = []
+    for i, hdr in enumerate(section_headers):
+        sec_name = hdr.group(1).strip()
+        start = hdr.end()
+        end = section_headers[i + 1].start() if i + 1 < len(section_headers) else len(body)
+        sec_body = body[start:end]
+        entries = parse_entries(sec_body, show="all")
+        active_count = sum(1 for e in entries if not e.struck)
+        struck_count = sum(1 for e in entries if e.struck)
+        result.append({"name": sec_name, "num_entries": active_count, "num_struck": struck_count})
+    return result
+
+
 def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
     """Apply offset/limit pagination to the ``body`` field of *data* in-place.
 
@@ -1427,6 +1458,7 @@ def view_item(
     show: str | int | None = None,
     since: str | None = None,
     output: Output | None = None,
+    include_content: bool = True,
 ) -> dict[str, str | int | bool | list[str] | dict | None]:
     """View a backlog item or GitHub issue by URL, #N, bare number, or title.
 
@@ -1444,10 +1476,14 @@ def view_item(
               to int automatically.
         since: If set, filter entries to those on or after this date.
         output: Optional Output collector.
+        include_content: When True (default), returns full body and section entries.
+            When False, returns metadata and section inventory only (section names
+            with entry counts, no body or entry content).
 
     Returns:
-        Dict with item/issue details, including a ``sections`` key when the
-        item body contains ``### ``-delimited section blocks.
+        Dict with item/issue details. When ``include_content=True``, includes
+        ``body`` and ``sections`` keys. When ``include_content=False``, omits
+        ``body`` and ``sections`` and includes ``sections_metadata`` instead.
     """
     out = output or Output()
     item = find_item(parse_backlog(), selector)
@@ -1472,11 +1508,19 @@ def view_item(
     data = result.model_dump()
 
     body = data.get("body", "")
-    if body:
-        data["sections"] = _build_sections_metadata(body, parsed_show, since)
 
-    if body and (offset > 0 or limit > 0):
-        _paginate_body(data, body, offset, limit)
+    if include_content:
+        # Full-content path (existing behavior unchanged).
+        if body:
+            data["sections"] = _build_sections_metadata(body, parsed_show, since)
+        if body and (offset > 0 or limit > 0):
+            _paginate_body(data, body, offset, limit)
+    else:
+        # Compact path: pop body and sections, add lightweight section inventory.
+        body = data.pop("body", "")
+        data.pop("sections", None)
+        if body:
+            data["sections_metadata"] = _build_sections_compact(body)
 
     return {**data, **out.to_dict()}
 

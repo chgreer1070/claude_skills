@@ -15,6 +15,7 @@ from typing import Literal, TypedDict
 
 import git
 from pydantic import AliasChoices, BaseModel, Field
+from typing_extensions import TypedDict as ExtTypedDict
 
 # ---------------------------------------------------------------------------
 # Path constants
@@ -501,6 +502,53 @@ class ViewItemResult(BaseModel):
     labels: list[str] = Field(default_factory=list)
     milestone: str = ""
     sections: dict[str, dict[str, object]] = Field(default_factory=dict)
+
+
+class SectionMeta(ExtTypedDict):
+    """Compact section inventory entry — section name plus entry counts, no body content."""
+
+    name: str
+    """Section heading text, e.g. ``Groomed (2026-03-22)``."""
+
+    num_entries: int
+    """Count of active (non-struck) entries in this section."""
+
+    num_struck: int
+    """Count of struck (completed/removed) entries in this section."""
+
+
+class ViewItemResultCompact(BaseModel):
+    """Compact result of viewing a single backlog item.
+
+    Returned when ``include_content=False`` is passed to ``backlog_view``.
+    Contains all metadata fields from :class:`ViewItemResult` but omits the
+    full ``body`` text and per-entry ``sections`` dict.  Callers receive a
+    section inventory (names and entry counts) instead.
+
+    Fields are duplicated from :class:`ViewItemResult` rather than inherited
+    (ADR-1) so that the two response shapes remain independently evolvable.
+    """
+
+    title: str = ""
+    priority: str = ""
+    description: str = ""
+    source: str = ""
+    added: str = ""
+    plan: str = ""
+    issue: str = ""
+    file_path: str = ""
+    groomed: bool = False
+    status: str = ""
+    number: int | None = None
+    state: str = ""
+    labels: list[str] = Field(default_factory=list)
+    milestone: str = ""
+    sections_metadata: list[SectionMeta] = Field(
+        default_factory=list,
+        description="Compact section inventory: section names with entry counts, no body or entry content.",
+    )
+    messages: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class IssueLocalFields(BaseModel):

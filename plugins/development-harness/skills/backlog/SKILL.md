@@ -60,10 +60,14 @@ View a single backlog item in detail. Supports pagination for long bodies.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `selector` | `str` | required | GitHub issue URL, `#N`, bare number, or title substring |
+| `include_content` | `bool` | `True` | When True (default), returns full body and section entries. When False, returns metadata and section inventory only (section names with entry counts, no body or entry content). |
 | `offset` | `int` | `0` | Skip N entry blocks from body start (for pagination) |
 | `limit` | `int` | `0` | Show at most N entry blocks (`0` = all, no truncation) |
 
-Returns `{title, priority, issue, plan, file_path, body, groomed, messages, warnings}`.
+Returns `{title, priority, issue, plan, file_path, body, groomed, messages, warnings}` when
+`include_content=True` (default). When `include_content=False`, returns compact metadata:
+`{title, priority, issue, plan, file_path, groomed, sections_metadata, messages, warnings}` where
+`sections_metadata` is a list of `{name, num_entries, num_struck}` dicts — no `body` or `sections` keys.
 
 ### `backlog_sync`
 

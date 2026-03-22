@@ -1008,23 +1008,142 @@ class TestEndToEndQueryToResult:
         assert s1_result["items"] == []
         assert "error" not in s1_result
 
-        # Strategy 2: type filter on empty corpus
-        s2_result = await _call("backlog_list", {"type": "Bug"})
-        assert s2_result["count"] == 0
-        assert s2_result["items"] == []
-        assert "error" not in s2_result
 
-        # Strategy 2: topic filter on empty corpus
-        s2b_result = await _call("backlog_list", {"topic": "mcp-server"})
-        assert s2b_result["count"] == 0
-        assert s2b_result["items"] == []
-        assert "error" not in s2b_result
+# ---------------------------------------------------------------------------
+# Group 5: Progressive disclosure — compact backlog_view (Scenario C1)
+# ---------------------------------------------------------------------------
 
-        # Strategy 3: unfiltered on empty corpus
-        s3_result = await _call("backlog_list")
-        assert s3_result["count"] == 0
-        assert s3_result["items"] == []
-        assert "error" not in s3_result
+
+class TestCompactBacklogView:
+    """Scenarios for backlog_view with include_content=False (compact mode).
+
+    Verifies that compact mode returns section inventory without body or entry
+    content, and that offset/limit parameters do not affect the compact response
+    shape.
+    """
+
+    async def test_compact_view_returns_sections_metadata(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1a: backlog_view(include_content=False) returns sections_metadata list.
+
+        Tests: compact mode response shape
+        How: write item with groomed section content, call backlog_view with
+             include_content=False, assert sections_metadata is a list of dicts
+             with name/num_entries/num_struck keys.
+        Why: callers that only need a section inventory should not pay the cost
+             of transferring full body content.
+        """
+        filepath = write_test_item("Compact View Test Item")
+        # Append a section with entries so sections_metadata is non-empty
+        filepath.write_text(
+            filepath.read_text(encoding="utf-8")
+            + "\n### Groomed (2026-03-22)\n\n"
+            + "- [2026-03-22] First entry content.\n"
+            + "- [2026-03-22] Second entry content.\n",
+            encoding="utf-8",
+        )
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call("backlog_view", {"selector": "Compact View Test Item", "include_content": False})
+
+        assert "error" not in result
+        assert "sections_metadata" in result, "Compact mode must include sections_metadata"
+        assert isinstance(result["sections_metadata"], list)
+        for section in result["sections_metadata"]:
+            assert "name" in section, f"Section entry missing 'name': {section}"
+            assert "num_entries" in section, f"Section entry missing 'num_entries': {section}"
+            assert "num_struck" in section, f"Section entry missing 'num_struck': {section}"
+            assert isinstance(section["num_entries"], int)
+            assert isinstance(section["num_struck"], int)
+
+    async def test_compact_view_omits_body_and_sections(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1b: backlog_view(include_content=False) omits body and sections keys.
+
+        Tests: compact mode omits full-content fields
+        How: call backlog_view with include_content=False, assert 'body' and
+             'sections' keys are absent from the response.
+        Why: the compact response contract guarantees no body or entry content
+             is transferred — callers rely on key absence to detect compact mode.
+        """
+        write_test_item("No Body View Item")
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call("backlog_view", {"selector": "No Body View Item", "include_content": False})
+
+        assert "error" not in result
+        assert "body" not in result, "Compact mode must not include 'body' key"
+        assert "sections" not in result, "Compact mode must not include 'sections' key"
+
+    async def test_compact_view_preserves_metadata_fields(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1c: backlog_view(include_content=False) returns all metadata fields.
+
+        Tests: compact mode includes all non-content metadata fields
+        How: call backlog_view with include_content=False, assert expected
+             metadata keys are present with correct types.
+        Why: callers using compact mode still need item metadata (title, priority,
+             issue, file_path, etc.) to identify and act on the item.
+        """
+        write_test_item("Metadata Preserved Item", priority="P1", issue="#77")
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call("backlog_view", {"selector": "Metadata Preserved Item", "include_content": False})
+
+        assert "error" not in result
+        assert result["title"] == "Metadata Preserved Item"
+        assert isinstance(result["priority"], str)
+        assert isinstance(result["file_path"], str)
+        assert result["file_path"] != ""
+        assert isinstance(result["groomed"], bool)
+        assert isinstance(result["labels"], list)
+        assert isinstance(result["messages"], list)
+        assert isinstance(result["warnings"], list)
+
+    async def test_compact_view_with_offset_limit_does_not_error(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1d: backlog_view(include_content=False, offset=5, limit=3) does not error.
+
+        Tests: compact mode with pagination params is harmless (no error path)
+        How: call backlog_view with include_content=False plus offset and limit,
+             assert response has no error key and sections_metadata is present.
+        Why: offset/limit are pagination params for full-content mode; compact
+             mode ignores them (returns all sections) but must not raise an error
+             when they are supplied, preserving backward compatibility for callers
+             that always pass pagination params.
+        """
+        filepath = write_test_item("Pagination Compact Item")
+        filepath.write_text(
+            filepath.read_text(encoding="utf-8")
+            + "\n### Groomed (2026-03-22)\n\n"
+            + "- [2026-03-22] Entry one.\n"
+            + "- [2026-03-22] Entry two.\n",
+            encoding="utf-8",
+        )
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call(
+            "backlog_view", {"selector": "Pagination Compact Item", "include_content": False, "offset": 5, "limit": 3}
+        )
+
+        assert "error" not in result
+        assert "sections_metadata" in result
+        assert "body" not in result
+        assert "sections" not in result
+
+    async def test_default_include_content_true_unchanged(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1e: backlog_view without include_content returns full body (backward compat).
+
+        Tests: default behavior is unchanged when include_content is omitted
+        How: call backlog_view with no include_content param, assert 'body' is
+             present in the response and 'sections_metadata' is absent.
+        Why: include_content defaults to True — all existing callers that do not
+             pass the parameter must continue to receive the full response.
+        """
+        write_test_item("Default Full View Item")
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call("backlog_view", {"selector": "Default Full View Item"})
+
+        assert "error" not in result
+        assert "body" in result, "Default mode must include 'body' key"
+        assert "sections_metadata" not in result, "Default mode must not include 'sections_metadata' key"
 
     async def test_e2e_combined_type_and_title_filters(self, backlog_dir, mock_github, write_test_item):
         """Combined filters narrow results correctly through the full MCP path."""

@@ -11,6 +11,7 @@ metadata:
   issue: '#987'
   last_synced: '2026-03-22T12:23:12Z'
   groomed: '2026-03-22'
+  plan: plan/P987-progressive-disclosure-backlog-view.yaml
 ---
 
 ## RT-ICA
