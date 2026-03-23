@@ -143,7 +143,7 @@ jobs:
       - uses: ./.github/actions/setup-python
 
       - name: Validate plugins
-        run: uv run prek run skilllint --all-files
+        run: uvx skilllint@latest check plugins/ .claude/
 
   # =============================================================================
   # Local hooks: manifest sync (via prek)

@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "backlog-core",
-    "fastmcp>=3.0.2",
+    "fastmcp[tasks]>=3.0.2",
     "pygithub>=2.8.1",
     "skill-seekers>=3.0.0",
 ]
@@ -361,6 +361,8 @@ max-complexity = 12
 "plugins/agentskill-kaizen/scripts/sentiment-score.py" = ["PLC0415"]
 # Hyphenated package directory name is required by MCP convention
 "plugins/scientific-method/mcp/experiment-registry/__init__.py" = ["N999"]
+# ruamel.yaml returns dynamically typed values; Any is the correct annotation here
+"research/knowledge-explorer.py" = ["ANN401"]
 "typings/**" = ["A", "ANN", "N"]
 
 [tool.ruff.lint.pycodestyle]

@@ -16,7 +16,7 @@ import time as _time
 from datetime import UTC, datetime as _datetime
 from io import StringIO as _StringIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 import dh_paths as _dh_paths
 import dispatch_schema as _ds
@@ -229,8 +229,8 @@ async def backlog_list(
         return {"error": str(e), **out.to_dict()}
 
     # "items" holds list[dict[str, str | bool]] per operations.list_items return type.
-    # Assign with explicit annotation to narrow from the heterogeneous value union.
-    all_items: list[dict[str, str | bool]] = result.get("items", [])
+    # cast narrows from the heterogeneous value union returned by dict.get().
+    all_items = cast("list[dict[str, str | bool]]", result.get("items", []))
 
     # Apply cross-field search filter when requested.
     if search is not None:
@@ -2134,7 +2134,7 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
         if isinstance(raw, list):
             backlog_items = raw
         elif isinstance(raw, dict):
-            backlog_items = raw.get("items", [])
+            backlog_items = cast("list[dict]", raw.get("items", []))
     except Exception:  # noqa: BLE001
         out.warn("Could not fetch backlog items for slug matching. Continuing without fallback.")
 
