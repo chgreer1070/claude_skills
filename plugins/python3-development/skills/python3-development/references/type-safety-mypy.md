@@ -1,10 +1,12 @@
 # Type Safety with Mypy
 
+**Tooling policy**: **ty** is the default type checker for new work in this ecosystem. **mypy** remains fully supported when an existing project already uses it — follow that project's `pyproject.toml` / `mypy.ini` and CI; do not require migration to ty. Annotation guidance below applies to both; mypy doc links are the authoritative reference for mypy diagnostics and for patterns that are checker-specific.
+
 **REQUIREMENT**: All Python code MUST be comprehensively typed using Python 3.11+ native type hints.
 
 **Python Version**: Python 3.11+ is required unless explicitly documented otherwise. Older versions are rare, documented exceptions.
 
-**The model MUST read the official mypy documentation examples before implementing type patterns. Each subsection links to authoritative mypy docs.**
+**The model MUST read the official mypy documentation examples before implementing type patterns** (especially when resolving mypy output). Each subsection links to authoritative mypy docs. When using **ty** as the primary checker, still use these patterns; map diagnostics via the `/python3-development:ty` skill and migration reference where ty differs from mypy.
 
 ## When to Use Generics
 

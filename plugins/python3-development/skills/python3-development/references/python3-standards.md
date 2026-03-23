@@ -9,8 +9,15 @@ This document centralizes the shared Python 3.11+ development standards, quality
 - **Eliminate `Any`**: Replace `Any` with specific types, `TypeVar`, `Generic`, or `Protocol`.
 - **Duck Typing**: Use `typing.Protocol` for structural subtyping instead of ABCs where appropriate.
 - **Data Structures**: Use `dataclasses` (with `slots=True, frozen=True` when possible), `TypedDict` (with `NotRequired`), or `pydantic` for structured data.
-- **Narrowing**: Use `TypeGuard` for runtime type narrowing.
+- **Narrowing**: Use `TypeIs` (PEP 742, Python 3.13+) for bidirectional type narrowing. Use `TypeGuard` only when targeting Python < 3.13 without `typing_extensions`.
 - **Modern Operators**: Utilize the walrus operator (`:=`) and `match-case` statements where they improve readability.
+- **Type Checking (default)**: Use **ty** (Astral) as the primary type checker for new work and greenfield setup. Run `uv run ty check` (paths per project). See the `/python3-development:ty` skill for configuration and CLI reference.
+- **Type Checking (existing projects on mypy)**: If `pyproject.toml` already defines **`[tool.mypy]`**, lists **`mypy`** in dev dependencies, or CI/hooks run **mypy**, **do not** force a migration to ty. Run **`uv run mypy`** (or the project's documented command) and respect **`[tool.mypy]`** / `mypy.ini`. Use [Type Safety Reference](./type-safety-mypy.md) for annotation patterns and mypy-specific docs when debugging mypy output.
+- **Other checkers**: When the project uses **basedpyright** or **pyright** as the configured checker, follow that configuration instead of replacing it.
+- **TOML**: Use `tomlkit` for TOML read and write (preserves formatting, comments). Use `tomllib` (stdlib) only for stdlib-only scripts.
+- **Type Safety Reference**: For comprehensive type safety guidance including Generics, Protocols, TypedDict, Type Narrowing, attrs/dataclasses/pydantic comparison, see [Type Safety Reference](./type-safety-mypy.md). (Filename references mypy docs; patterns apply to ty and other checkers unless a rule is mypy-specific.)
+- **Version-Specific Features**: Not all type system features are available at all Python versions. Check the project's `requires-python` floor against the per-version supplements: [3.11](./python311-features.md), [3.12](./python312-features.md), [3.13](./python313-features.md), [3.14](./python314-features.md).
+- **Version Lifecycle** (SOURCE: <https://devguide.python.org/versions>, accessed 2026-03-23): 3.10 EOL 2026-10, 3.11 security-only until 2027-10, 3.12 security-only until 2028-10, 3.13 bugfix until 2029-10, 3.14 bugfix until 2030-10. When choosing a `requires-python` floor, prefer versions still in bugfix status.
 
 ### 1.2 Architecture & Structure
 - **Layered Architecture**: Separate concerns into clear boundaries: CLI → Core Logic → Services → Display/UI.
@@ -33,10 +40,40 @@ This document centralizes the shared Python 3.11+ development standards, quality
 - **Caching**: Cache repeated expensive function calls.
 - **String Building**: Avoid string concatenation in loops; use `.join()` or list comprehensions.
 
-### 1.5 Testing & Documentation
+### 1.6 Script Dependency Trade-offs
+Understand the complexity vs portability trade-off when creating Python CLI scripts:
+
+**Scripts with dependencies (Typer + Rich via PEP 723)**:
+- **Benefits**: Less development complexity, less code to write, better UX (colors, progress bars), simple to execute (PEP 723 makes it a single-file executable; uv handles dependencies).
+- **Trade-off**: Requires network access on first run (to fetch packages).
+- **Default recommendation**: Use Typer + Rich with PEP 723 unless you have specific portability requirements that prevent network access.
+
+**stdlib-only scripts**:
+- **Benefits**: Maximum portability - Runs on ANY Python installation without network access. Best for air-gapped systems or restricted corporate environments.
+- **Trade-offs**: More development complexity (manual argparse, formatting), more code to write and test, basic UX.
+
+### 1.7 UI & CLI (Rich / Typer)
+- **Rich Emoji Usage**: In Rich console output, always use Rich emoji tokens (e.g., `:white_check_mark:`) instead of literal Unicode emojis. This ensures cross-platform compatibility, consistent rendering, and markdown-safe alignment.
+- **Width Handling**: For Rich table and panel width patterns, use `get_rendered_width()`. See `console_containers_no_wrap.py` in the `typer-and-rich` skill for examples.
+
+### 1.8 Exception Handling Pattern
+Catch exceptions only when you have a specific recovery action. Let all other errors propagate to the caller.
+```python
+def get_user_with_handling(id):
+    try:
+        return db.query(User, id)
+    except ConnectionError:
+        logger.warning("DB unavailable, using cache")
+        return cache.get(f"user:{id}")  # Specific recovery action
+```
 - **Test-First (TDD)**: Write failing tests against defined interfaces before implementing logic.
 - **Framework**: Use `pytest` with `pytest-mock` (avoid `unittest.mock`).
-- **Coverage**: Maintain a minimum of 80% test coverage, ensuring edge cases are handled.
+- **Coverage**: Maintain a minimum of 80% test coverage, ensuring edge cases are handled. Critical paths require 95%+ coverage and mutation testing.
+- **Test Quality**:
+  - Follow the AAA (Arrange-Act-Assert) pattern.
+  - Test names must describe behavior, not implementation (e.g., `test_process_payment_when_insufficient_funds_returns_declined`).
+  - Tests must be isolated and independent.
+- **Test Failure Mindset**: Treat every test failure as a potential bug discovery, not an annoyance. Use a dual-hypothesis approach (Test is wrong vs. Implementation is wrong). Never automatically change a test to match the implementation.
 - **Docstrings**: Use Google-style docstrings (Args/Returns/Raises) for all public functions and classes.
 - **Sync Docs**: Ensure `CLAUDE.md` and architecture documents are updated when adding new commands or modules.
 
@@ -52,9 +89,9 @@ mindmap
     Type Safety
       Native Generics
       Protocols
-      TypeGuard
-      Mypy / Pyright
-    Architecture
+      TypeGuard / TypeIs
+      ty / mypy / pyright
+    Architecture & Design
       Layered Design
       Dependency Injection
       Pydantic / Dataclasses
@@ -62,7 +99,10 @@ mindmap
       Match-Case
       Walrus Operator
       Asyncio / HTTPX
-      Typer / Rich
+    UI & CLI
+      Typer
+      Rich
+      Textual
     Quality & Security
       Fail-Fast Errors
       Ruff Linting
@@ -73,6 +113,11 @@ mindmap
       Pytest-Mock
       TDD Approach
       80% Coverage
+    Ecosystem & Tooling
+      uv Package Manager
+      Hatchling Build Backend
+      Pre-commit / Prek
+      PyPI Packaging
 ```
 
 ---
@@ -107,7 +152,7 @@ flowchart TD
     end
 
     subgraph Verification Phase
-        StaticAnalysis[Ruff / Mypy<br/>Format, Lint, Type Check] ::: verify
+        StaticAnalysis[Ruff + type checker<br/>ty default; mypy if configured] ::: verify
         Review[code-reviewer / python3-review<br/>Holistic Quality & Pattern Check] ::: verify
     end
 
@@ -144,5 +189,21 @@ flowchart TD
    - `python-cli-architect` writes the actual code.
    - `snakepolish` is an automated loop that implements code and runs tests iteratively until the tests pass.
 4. **Verification Phase**:
-   - Automated static analysis (`ruff`, `mypy`) ensures formatting and type safety.
+   - Automated static analysis: **`ruff`** plus the project's type checker — **ty** by default; **`mypy`** when the repo already configures it (never force migration off mypy).
    - `code-reviewer` (or `python3-review`) performs a holistic, human-like review to ensure the code follows the standards defined in Section 1 (Architecture, Security, Modern Patterns). If it finds issues, it kicks the process back to implementation.
+
+---
+
+## 4. Reviewing and Amending Standards
+
+The standards and graphs in this document are living artifacts. If you discover new best practices, identify missing ecosystem tools, or find that the current standards contradict official Python documentation (PEPs), you MUST update this document.
+
+### Process for Amending Standards
+1. **Identify the Gap**:
+   - **Trigger**: An agent encounters a recurring failure mode, a new tool is introduced to the ecosystem, or a user explicitly requests a standard update.
+   - **Research**: Use the `WebFetch` or `WebSearch` tools to verify the proposed standard against primary sources (e.g., Python PEPs, official library documentation like `docs.pytest.org` or `docs.astral.sh`).
+   - **Compare**: Compare the verified best practice against the existing nodes in the Knowledge Graph and the rules in Section 1. If the concept is missing or the existing rule is anti-pattern, a gap is identified.
+2. **Update the Text**: Add or modify the relevant bullet points in `Section 1. Shared Development Standards`. Ensure the new rule is concise and actionable.
+3. **Update the Knowledge Graph**: If adding a new tool, library, or core concept, add a corresponding node to the Mermaid mindmap in `Section 2. Python Development Knowledge Graph`.
+4. **Update the Process Graph**: If adding a new agent or altering the development workflow, update the Mermaid flowchart in `Section 3. Python Development Process Graph` to show exactly where the new step fits into the lifecycle.
+5. **Validate**: Ensure that the changes do not introduce contradictions with other rules in this document or the `language-manifest.md`.
