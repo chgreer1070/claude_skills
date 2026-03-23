@@ -2,9 +2,7 @@
 name: use-command-template
 argument-hint: <skill_purpose_description>
 user-invocable: true
-description: 'This skill should be used when the user asks to "create a new skill", "add a skill to plugin", "write skill from template", or needs to create new Claude Code skills following established patterns. Note: Commands are deprecated - this creates skills instead.'
-version: 1.0.0
-last_updated: '2026-01-25'
+description: Use when creating new Claude Code skills following established patterns and templates. Activates on "create a new skill", "add a skill to plugin", or "write skill from template" requests. Note — commands are deprecated; this skill creates SKILL.md files instead. Produces correctly structured skill files with valid frontmatter and body.
 ---
 
 # Use Skill Template
@@ -14,6 +12,8 @@ Create a new Claude Code skill following established patterns.
 **Note**: Commands have been deprecated in favor of skills. This skill creates properly formatted SKILL.md files.
 
 ## Execution Steps
+
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
 
 ### 1. Determine Skill Type
 

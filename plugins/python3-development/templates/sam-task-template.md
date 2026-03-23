@@ -81,7 +81,7 @@ Testable pass/fail conditions that verify task completion. Each criterion should
 3. Third testable condition with success criteria
 
 Example:
-1. All dataclasses type-check with mypy --strict mode
+1. All dataclasses type-check clean under the project type checker (`ty check` or `mypy` per pyproject)
 2. Error code constants match architecture catalog exactly (23 codes)
 3. ValidationIssue.format() produces expected output format
 
@@ -106,8 +106,8 @@ uv run prek run --files path/to/file.py
 Example:
 
 ```bash
-# Type checking with strict mode
-uv run mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
+# Type checking
+uv run ty check plugins/plugin-creator/scripts/plugin_validator.py
 
 # Unit test data models
 uv run pytest tests/test_data_models.py -v
@@ -138,6 +138,6 @@ Report to orchestrator:
 Example:
 - Data model file: plugins/plugin-creator/scripts/plugin_validator.py
 - Error codes implemented: 23 (matches architecture catalog)
-- Type checking: passed (mypy --strict)
+- Type checking: passed (ty or project mypy command)
 - Unit tests: passed (100% coverage on data models)
 - Ready for: T2 (ValidationProtocol), T3 (FrontmatterValidator port)

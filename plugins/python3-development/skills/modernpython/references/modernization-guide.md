@@ -798,5 +798,5 @@ if ls_path := which("ls"):
 11. Prefer stdlib over manual implementations
 12. Specific exceptions with fail-fast error handling
 13. Exception notes (PEP 678) for richer error context
-14. Validation with ruff, mypy --strict, pytest
+14. Validation with ruff, ty check (or project mypy if already configured), pytest
 15. 80%+ test coverage

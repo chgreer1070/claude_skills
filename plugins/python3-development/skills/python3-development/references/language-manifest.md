@@ -12,7 +12,7 @@
 
 - format: `uv run ruff format {files}`
 - lint: `uv run ruff check {files}`
-- typecheck: Prefer `uv run ty check {files}`. If the project already uses mypy (`[tool.mypy]`, dev dependency, or hooks), use `uv run mypy {files}` per project config instead — do not mandate switching to ty.
+- typecheck: Prefer `uv run ty check {files}`. If hooks or CI **invoke** `mypy`, use `uv run mypy {files}` per project config — do not mandate switching to ty. Do not choose mypy only because `[tool.mypy]` exists without a running mypy hook or step.
 - test: `uv run pytest tests/ --tb=short`
 - standards: /python3-development:modernpython
 

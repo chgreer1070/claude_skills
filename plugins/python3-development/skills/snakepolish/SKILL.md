@@ -171,8 +171,9 @@ uv run ruff format --check <file_paths/>
 # Lint check
 uv run ruff check <file_paths/>
 
-# Type check
-uv run mypy <file_paths/> --strict
+# Type check — match hooks/CI; ty when repo runs ty (do not infer mypy from [tool.mypy] alone)
+uv run ty check <file_paths/>
+# uv run mypy <file_paths/> --strict
 ```
 
 Fix any issues that arise.

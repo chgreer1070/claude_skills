@@ -118,6 +118,38 @@ include = ["tests/**"]
 possibly-unresolved-reference = "warn"
 ```
 
+### IDE coexistence: stub legacy checkers (mypy, basedpyright, pyright)
+
+After **ty** owns pre-commit and CI, this plugin treats **ty** as sufficient for the same class of static typing checks that **mypy**, **basedpyright**, and **pyright** addressed in CI — run **one** enforced checker in hooks/CI (**ty**), not parallel runs unless the team explicitly wants that.
+
+Editors still probe **mypy**, **Pylance/pyright**, and **basedpyright** when they find config. **Keep stub sections** so IDE-integrated checkers do not re-analyze the tree or fight **ty**.
+
+#### mypy (`pyproject.toml`)
+
+```toml
+[tool.mypy]
+# Project uses ty for type checking (pre-commit / CI). Exclude all so IDE-integrated mypy stays quiet.
+exclude = [".*"]
+```
+
+**Do not** remove `[tool.mypy]` solely to “clean up” after migrating — that often makes IDE mypy run again with default settings.
+
+#### basedpyright (`pyproject.toml`)
+
+```toml
+[tool.basedpyright]
+# Disabled: project uses ty for type checking. Config kept so the IDE loads project settings, not aggressive defaults.
+typeCheckingMode = "off"
+```
+
+Adjust fields if your editor reads other keys; goal is **no second full-project analysis** competing with **ty**.
+
+#### pyright (`pyproject.toml` or `pyrightconfig.json`)
+
+Prefer the same idea: **`typeCheckingMode = "off"`** (or disable type checking in the JSON equivalent) while **ty** is canonical. If the team keeps a file for editor metadata only, document that **ty** enforces types in CI.
+
+**Automation** must still decide which tool to run from **hooks and CI** (`ty check` vs `mypy` vs `basedpyright`). **Stub `[tool.mypy]` / `[tool.basedpyright]` / pyright config does not mean** those tools run in CI — same rule as [python3-standards.md](../../python3-development/references/python3-standards.md): do not infer the primary checker from stub tables alone.
+
 ### mypy Flag to ty Equivalent
 
 | mypy Flag | ty Equivalent | Notes |

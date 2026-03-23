@@ -17,7 +17,7 @@ REVIEW CRITERIA:
    - Are simpler solutions available?
 
 2. **Online Verification**
-   - Verify type patterns against mypy/pyright docs
+   - Verify type patterns against ty docs and/or mypy/pyright docs per project checker
    - Check library recommendations against current best practices
    - Confirm version compatibility claims
 

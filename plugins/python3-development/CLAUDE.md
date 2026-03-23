@@ -40,7 +40,7 @@ The canonical source files are in `plugins/development-harness/`.
 
 ## Key References
 
-- Language manifest (library registry, modern patterns): `skills/python3-development/references/language-manifest.md`
+- Language manifest (library registry, modern patterns): `./skills/python3-development/references/language-manifest.md`
 
 ---
 

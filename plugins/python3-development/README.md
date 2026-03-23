@@ -26,7 +26,7 @@ With this plugin installed, Claude will:
 - **Use proven libraries**: Typer+Rich for CLIs, pytest-mock for testing, httpx for HTTP, pydantic for validation
 - **Follow consistent structure**: `packages/` directory layout, hatchling build system, proper type hints
 - **Investigate test failures**: Balanced approach that considers both test issues and real bugs
-- **Apply quality workflows**: Integrated linting (ruff), formatting, type checking (mypy), and testing (pytest)
+- **Apply quality workflows**: Integrated linting (ruff), formatting, type checking (ty by default; mypy when the project already uses it), and testing (pytest)
 - **Reference 50+ modern libraries**: Built-in guidance for asyncio, FastAPI, SQLAlchemy, and more
 
 ## Commands
@@ -109,7 +109,7 @@ Once installed, Claude automatically applies these improvements when working wit
 
 **Code Quality**:
 - Runs ruff for linting and formatting
-- Applies mypy for type checking
+- Uses **ty** for type checking by default; keeps **mypy** when the project already configures it (no forced migration)
 - Eliminates `Any` types progressively
 - Follows DRY and SRP principles
 

@@ -25,14 +25,14 @@ See [Script Dependency Trade-offs](../python3-development/SKILL.md#script-depend
 
 ## Role
 
-Create portable, dependency-free Python 3.11+ scripts that use only standard library at runtime. All code passes `ruff check`, `pyright`/`mypy` strict mode, with comprehensive pytest coverage.
+Create portable, dependency-free Python 3.11+ scripts that use only standard library at runtime. All code passes `ruff check` and the project type checker (**ty** or **mypy** / **pyright** per repo), with comprehensive pytest coverage.
 
 **Fundamental principle:** Patterns are tools, not goals. Prefer simplicity, clarity, maintainability, and pragmatism over pattern correctness.
 
 ## Dependency Policy
 
 - **Runtime:** Standard library ONLY (no external packages)
-- **Dev-only:** pytest, ruff, mypy, pyright allowed
+- **Dev-only:** pytest, ruff, ty (preferred), mypy or pyright when matching the host project
 - **Runtime exceptions:** Only if essential, with explicit written justification and pinning strategy
 
 ## Working Process
@@ -74,7 +74,8 @@ REFACTORING IMPACT ANALYSIS:
 python -m py_compile <file>
 grep -E "from typing import .*(Dict|List|Set|Tuple|Optional|Union)\b" <file>
 ruff check <file>
-mypy --strict <file>
+# Type check: match the host project — ty is default in this repo (`uv run ty check <file>`);
+# use `mypy --strict <file>` when the project standardizes on mypy or uv is unavailable.
 ```
 
 **Checklist:**
@@ -93,13 +94,13 @@ VALIDATION REPORT:
 ✅ Forbidden patterns: NONE FOUND
 ✅ Native type hints: VERIFIED (X instances)
 ✅ Ruff: PASSED
-✅ Mypy: PASSED
+✅ Type check (ty or mypy): PASSED
 ✅ Checklist items: COMPLETED
 ```
 
 ## Code Quality Standards
 
-- Pass `ruff check` and `mypy --strict` clean
+- Pass `ruff check` and type checking clean (`ty` or `mypy --strict` per project)
 - Google-style docstrings for modules, classes, and functions
 - Use structural pattern matching, dataclasses, and walrus operator only if they reduce complexity and increase clarity
 - Follow PEP 8
