@@ -2,15 +2,15 @@
 # /// script
 # requires-python = ">=3.11"
 # ///
-"""Kage-bunshin session manager — bidirectional orchestrator/claude communication.
+r"""Kage-bunshin session manager — bidirectional orchestrator/claude communication.
 
 Provides CLI subcommands for spawning and managing persistent claude CLI sessions
-via tmux, named pipes (FIFOs), and JSONL output files.
+via claude's built-in --worktree and --tmux flags.
 
 Usage:
-    spawn.py spawn  --name X [--worktree] [--model MODEL] [--max-budget N] "prompt"
+    spawn.py spawn  --name X [--model MODEL] [--max-budget N] "prompt"
     spawn.py send   --name X "message"
-    spawn.py read   --name X [--wait SECONDS] [--follow]
+    spawn.py read   --name X
     spawn.py status --name X
     spawn.py list
     spawn.py kill   --name X
@@ -22,6 +22,31 @@ Session State Directory:
     Slug is derived from the git repo root path by replacing '/' with '-'.
     Example: /home/user/repos/claude_skills -> -home-user-repos-claude_skills
 
+Architecture — --worktree + --tmux (interactive mode):
+    Each session is spawned via:
+
+        tmux new-session -d -s kb-launcher-{name} \\
+            claude --worktree {name} --tmux --dangerously-skip-permissions --model {model}
+
+    This launches claude in interactive REPL mode — no -p, no --output-format, no
+    --input-format. The session stays alive indefinitely waiting for input.
+
+    The launcher tmux session provides the TTY that --tmux requires. Claude creates
+    its own persistent tmux session named: {repo_dir_name}_worktree-{name}
+    (e.g. "claude_skills_worktree-test-1")
+
+    After claude initialises, the initial prompt is sent via tmux send-keys:
+
+        tmux send-keys -t {tmux_session} 'initial prompt' Enter
+
+    Subsequent messages are sent the same way:
+
+        tmux send-keys -t {tmux_session} 'follow-up message' Enter
+
+    Output is read by capturing the tmux pane:
+
+        tmux capture-pane -p -J -t {tmux_session} -S -200
+
 Exit Codes:
     0: Success.
     1: Fatal error (session not found, tmux failure, etc.).
@@ -30,13 +55,10 @@ Exit Codes:
 from __future__ import annotations
 
 import argparse
-import contextlib
-import errno
 import json
 import os
 import re
 import shutil
-import stat
 import subprocess
 import sys
 import time
@@ -49,11 +71,11 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 _DEFAULT_MODEL = "sonnet"
-_TMUX_PREFIX = "kb-"
 _REGISTRY_FILE = "registry.json"
-_POLL_INTERVAL_SECONDS = 2
 _NAME_MAX_CHARS = 30
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
+# Timeout waiting for the claude tmux session to appear after spawn.
+_SPAWN_WAIT_SECONDS = 30
 
 
 # ---------------------------------------------------------------------------
@@ -100,6 +122,20 @@ def _repo_slug(repo_root: Path) -> str:
         Slug string derived from the path, e.g. '-home-user-repos-project'.
     """
     return str(repo_root).replace("/", "-")
+
+
+def _repo_dir_name(repo_root: Path) -> str:
+    """Return the final path component of the git repo root (the directory name).
+
+    Claude names its tmux sessions as '{repo_dir_name}_worktree-{name}'.
+
+    Args:
+        repo_root: Absolute path to the git repository root.
+
+    Returns:
+        Directory name string, e.g. 'claude_skills'.
+    """
+    return repo_root.name
 
 
 def _session_state_dir() -> Path:
@@ -187,56 +223,61 @@ def _get_session(state_dir: Path, name: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _tmux_session_name(name: str) -> str:
-    """Return the tmux session name for a kage-bunshin session.
+def _claude_tmux_session_name(repo_dir_name: str, name: str) -> str:
+    """Return the tmux session name that claude creates for a worktree session.
+
+    Claude follows the pattern: {repo_dir_name}_worktree-{name}.
 
     Args:
+        repo_dir_name: Last path component of the git repository root.
         name: Session name.
 
     Returns:
-        tmux session name string.
+        tmux session name string, e.g. 'claude_skills_worktree-test-1'.
     """
-    return f"{_TMUX_PREFIX}{name}"
+    return f"{repo_dir_name}_worktree-{name}"
 
 
-def _tmux_alive(name: str) -> bool:
-    """Check whether a tmux session is currently alive.
+def _tmux_alive(tmux_session: str) -> bool:
+    """Check whether a tmux session is currently alive by its full session name.
 
     Args:
-        name: Session name (not the tmux name — the kage-bunshin name).
+        tmux_session: Full tmux session name to check.
 
     Returns:
         True if the tmux session exists, False otherwise.
     """
-    result = subprocess.run(["tmux", "has-session", "-t", _tmux_session_name(name)], capture_output=True, check=False)
+    result = subprocess.run(["tmux", "has-session", "-t", tmux_session], capture_output=True, check=False)
     return result.returncode == 0
 
 
-def _tmux_kill(name: str) -> None:
-    """Kill a tmux session, ignoring errors if it no longer exists.
+def _tmux_kill(tmux_session: str) -> None:
+    """Kill a tmux session by its full name, ignoring errors if it no longer exists.
 
     Args:
-        name: Session name.
+        tmux_session: Full tmux session name.
     """
-    subprocess.run(["tmux", "kill-session", "-t", _tmux_session_name(name)], capture_output=True, check=False)
+    subprocess.run(["tmux", "kill-session", "-t", tmux_session], capture_output=True, check=False)
 
 
-# ---------------------------------------------------------------------------
-# Stream-JSON helpers
-# ---------------------------------------------------------------------------
+def _tmux_run_in_session(tmux_session: str, cmd: str) -> None:
+    """Run a shell command inside an existing tmux session via send-keys.
 
-
-def _make_user_message(content: str) -> str:
-    """Serialise a user message as a stream-json line.
+    Sends the command string followed by Enter. This delivers input to the
+    running shell in the tmux session.
 
     Args:
-        content: Message text.
+        tmux_session: Full tmux session name.
+        cmd: Shell command string to execute (newline appended automatically).
 
-    Returns:
-        JSON string (no trailing newline) suitable for writing to a FIFO.
+    Raises:
+        SystemExit: If tmux send-keys returns non-zero.
     """
-    payload: dict[str, Any] = {"type": "user", "message": {"role": "user", "content": content}}
-    return json.dumps(payload)
+    result = subprocess.run(
+        ["tmux", "send-keys", "-t", tmux_session, cmd, "Enter"], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        _die(f"tmux send-keys to {tmux_session} failed: {result.stderr.strip()}")
 
 
 # ---------------------------------------------------------------------------
@@ -273,22 +314,49 @@ def _slugify(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def cmd_spawn(args: argparse.Namespace) -> None:
-    """Spawn a new persistent claude session inside a tmux window.
+def _build_spawn_shell_cmd(name: str, model: str, max_budget: float | None) -> list[str]:
+    """Build the command argv list for launching claude in interactive tmux mode.
 
-    Creates a named FIFO for input, launches claude inside tmux with
-    stream-json I/O, sends the initial prompt, and keeps the write end
-    of the FIFO open so the session remains alive.
+    Launches claude as an interactive REPL via --worktree and --tmux flags.
+    No -p, no --output-format, no --input-format — claude stays alive
+    waiting for input delivered via tmux send-keys.
 
     Args:
-        args: Parsed arguments containing name, prompt, worktree, model,
-            max_budget fields.
+        name: Session name (used as the --worktree value).
+        model: Model identifier string.
+        max_budget: Optional maximum USD spend, or None.
+
+    Returns:
+        Argv list suitable for passing directly to subprocess or tmux new-session.
+    """
+    parts: list[str] = ["claude", "--dangerously-skip-permissions", "--worktree", name, "--tmux", "--model", model]
+    if max_budget is not None:
+        parts += ["--max-budget-usd", str(max_budget)]
+    return parts
+
+
+_CLAUDE_INIT_WAIT_SECONDS = 3.0
+"""Seconds to wait for claude's interactive REPL to initialise before sending the prompt."""
+
+
+def cmd_spawn(args: argparse.Namespace) -> None:
+    """Spawn a new claude session in interactive REPL mode via --worktree and --tmux.
+
+    Launches claude without -p so it stays alive as an interactive session.
+    Wraps the invocation in a tmux new-session -d to provide the TTY that
+    --tmux requires. After claude's own tmux session appears and initialises,
+    the initial prompt is sent via tmux send-keys.
+
+    Args:
+        args: Parsed arguments containing name, prompt, model, max_budget fields.
     """
     if shutil.which("claude") is None:
         _die("claude binary not found in PATH")
     if shutil.which("tmux") is None:
         _die("tmux binary not found in PATH")
 
+    repo_root = _git_repo_root()
+    repo_dir = _repo_dir_name(repo_root)
     state_dir = _session_state_dir()
     registry = _load_registry(state_dir)
 
@@ -296,130 +364,62 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if not name:
         _die("could not derive a session name from the prompt; pass --name explicitly")
 
+    claude_tmux_session = _claude_tmux_session_name(repo_dir, name)
+
     if name in registry:
-        if _tmux_alive(name):
+        if _tmux_alive(claude_tmux_session):
             _die(f"session '{name}' already exists and is alive. Kill it first.")
-        # Dead entry — clean up and re-spawn.
+        # Dead entry — remove stale registry record.
         registry.pop(name)
 
-    fifo_path = state_dir / f"{name}-input.fifo"
-    output_path = state_dir / f"{name}-output.jsonl"
-    error_path = state_dir / f"{name}-err.log"
-    tmux_session = _tmux_session_name(name)
+    # Build claude argv for interactive REPL mode (no -p, no --output-format).
+    # --worktree creates an isolated git worktree for the session.
+    # --tmux keeps claude alive in its own named tmux session.
+    claude_argv = _build_spawn_shell_cmd(name, args.model, args.max_budget)
 
-    # Create (or recreate) the FIFO.
-    if fifo_path.exists():
-        fifo_path.unlink()
-    os.mkfifo(fifo_path, mode=stat.S_IRUSR | stat.S_IWUSR)
-
-    # Build claude command.
-    claude_cmd_parts: list[str] = [
-        "claude",
-        "-p",
-        "--dangerously-skip-permissions",
-        "--input-format",
-        "stream-json",
-        "--output-format",
-        "stream-json",
-        "--verbose",
-        "--model",
-        args.model,
-    ]
-    if args.max_budget is not None:
-        claude_cmd_parts += ["--max-budget-usd", str(args.max_budget)]
-    if args.worktree:
-        claude_cmd_parts += ["--worktree", name]
-
-    # The tmux shell command:
-    #   cat <fifo> | claude ... > output.jsonl 2> err.log
-    # Using 'cat' keeps the read end open as long as any writer holds the
-    # write end open, which we ensure via the background tail below.
-    claude_cmd = " ".join(f"'{p}'" if " " in p else p for p in claude_cmd_parts)
-    shell_cmd = f"cat {fifo_path} | {claude_cmd} >> {output_path} 2>> {error_path}"
-
+    # tmux new-session -d provides the TTY that --tmux requires.
+    # Pass claude argv directly as the session command (no bash -c wrapper needed).
+    launcher_session = f"kb-launcher-{name}"
     result = subprocess.run(
-        ["tmux", "new-session", "-d", "-s", tmux_session, "bash", "-c", shell_cmd],
-        capture_output=True,
-        text=True,
-        check=False,
+        ["tmux", "new-session", "-d", "-s", launcher_session, *claude_argv], capture_output=True, text=True, check=False
     )
     if result.returncode != 0:
         _die(f"tmux new-session failed: {result.stderr.strip()}")
 
-    # Keep the write end open BEFORE writing the initial prompt.
-    # This prevents a race where 'cat' in tmux reads the prompt and gets
-    # EOF before any persistent writer opens the FIFO.
-    # tail -f /dev/null writes nothing but holds the fd open indefinitely.
-    subprocess.Popen(
-        ["bash", "-c", f"tail -f /dev/null > {fifo_path}"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
+    # Wait for claude to create its own tmux session.
+    deadline = time.monotonic() + _SPAWN_WAIT_SECONDS
+    while not _tmux_alive(claude_tmux_session):
+        if time.monotonic() >= deadline:
+            _tmux_kill(launcher_session)
+            _die(f"timed out waiting for claude tmux session '{claude_tmux_session}' to appear.")
+        time.sleep(0.5)
 
-    # Write the initial prompt to the FIFO.  The keepalive above ensures
-    # 'cat' always has at least one writer, so it won't get EOF after
-    # consuming this message.
-    _write_to_fifo(fifo_path, _make_user_message(args.prompt[0]))
+    # Give claude's interactive REPL time to finish initialising before sending input.
+    time.sleep(_CLAUDE_INIT_WAIT_SECONDS)
+
+    # Send the initial prompt as keyboard input to the running REPL.
+    _tmux_run_in_session(claude_tmux_session, args.prompt[0])
 
     spawned_at = datetime.now(UTC).isoformat()
     entry: dict[str, Any] = {
         "name": name,
         "model": args.model,
         "spawned_at": spawned_at,
-        "worktree": args.worktree,
-        "fifo_path": str(fifo_path),
-        "output_path": str(output_path),
-        "error_path": str(error_path),
-        "tmux_session": tmux_session,
+        "worktree": True,
+        "tmux_session": claude_tmux_session,
+        "repo_dir": repo_dir,
     }
     registry[name] = entry
     _save_registry(state_dir, registry)
 
     record: dict[str, Any] = {
         "name": name,
-        "tmux_session": tmux_session,
+        "tmux_session": claude_tmux_session,
         "model": args.model,
         "spawned_at": spawned_at,
-        "worktree": args.worktree,
-        "fifo_path": str(fifo_path),
-        "output_path": str(output_path),
-        "error_path": str(error_path),
+        "worktree": True,
     }
     print(json.dumps(record))
-
-
-def _write_to_fifo(fifo_path: Path, line: str, retries: int = 10, delay: float = 0.3) -> None:
-    """Write a newline-terminated JSON line to the FIFO with retry logic.
-
-    Opening the write end of a FIFO blocks until a reader is present.
-    We use O_NONBLOCK with retries to handle the brief window before
-    tmux's 'cat' opens the read end.
-
-    Args:
-        fifo_path: Path to the named pipe.
-        line: JSON string to write (newline will be appended).
-        retries: Maximum number of open attempts before giving up.
-        delay: Seconds to wait between retries.
-
-    Raises:
-        SystemExit: If the FIFO cannot be opened after all retries.
-    """
-    for _attempt in range(retries):
-        try:
-            fd = os.open(str(fifo_path), os.O_WRONLY | os.O_NONBLOCK)
-            with os.fdopen(fd, "w") as fh:
-                fh.write(line + "\n")
-        except OSError as exc:
-            if exc.errno in {errno.ENXIO, errno.EAGAIN}:
-                # No reader yet — wait and retry.
-                time.sleep(delay)
-                continue
-            _die(f"could not write to FIFO {fifo_path}: {exc}")
-        else:
-            return
-    _die(f"FIFO {fifo_path} has no reader after {retries} attempts. Is the session alive?")
 
 
 # ---------------------------------------------------------------------------
@@ -428,7 +428,10 @@ def _write_to_fifo(fifo_path: Path, line: str, retries: int = 10, delay: float =
 
 
 def cmd_send(args: argparse.Namespace) -> None:
-    """Send a message to an existing session via its input FIFO.
+    """Send a follow-up message to an existing session via tmux send-keys.
+
+    Sends the message text directly to the claude process running in the
+    session's tmux pane via 'tmux send-keys'.
 
     Args:
         args: Parsed arguments with name and message fields.
@@ -436,14 +439,11 @@ def cmd_send(args: argparse.Namespace) -> None:
     state_dir = _session_state_dir()
     session = _get_session(state_dir, args.name)
 
-    if not _tmux_alive(args.name):
-        _die(f"session '{args.name}' tmux session is dead")
+    tmux_session = session["tmux_session"]
+    if not _tmux_alive(tmux_session):
+        _die(f"session '{args.name}' tmux session '{tmux_session}' is dead")
 
-    fifo_path = Path(session["fifo_path"])
-    if not fifo_path.exists():
-        _die(f"FIFO not found at {fifo_path}. Session may have died.")
-
-    _write_to_fifo(fifo_path, _make_user_message(args.message[0]))
+    _tmux_run_in_session(tmux_session, args.message[0])
     print(json.dumps({"status": "sent", "name": args.name}))
 
 
@@ -452,149 +452,33 @@ def cmd_send(args: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _parse_jsonl_events(output_path: Path) -> list[dict[str, Any]]:
-    """Parse all valid JSON lines from the output JSONL file.
-
-    Args:
-        output_path: Path to the session's output JSONL file.
-
-    Returns:
-        List of parsed event dicts. Malformed lines are silently skipped.
-    """
-    if not output_path.exists():
-        return []
-    events: list[dict[str, Any]] = []
-    for raw_line in output_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        with contextlib.suppress(json.JSONDecodeError):
-            events.append(json.loads(line))
-    return events
-
-
-def _extract_assistant_text(events: list[dict[str, Any]]) -> str | None:
-    """Extract the text content from the last assistant message event.
-
-    Args:
-        events: Parsed stream-json events.
-
-    Returns:
-        Text string from the last assistant message, or None if not found.
-    """
-    for event in reversed(events):
-        if event.get("type") != "assistant":
-            continue
-        msg = event.get("message", {})
-        content = msg.get("content", [])
-        if isinstance(content, str):
-            return content
-        if isinstance(content, list):
-            parts = [
-                block.get("text", "") for block in content if isinstance(block, dict) and block.get("type") == "text"
-            ]
-            if parts:
-                return "".join(parts)
-    return None
-
-
 def cmd_read(args: argparse.Namespace) -> None:
-    """Read responses from a session's output JSONL file.
+    """Read pane content from a session via tmux capture-pane.
 
-    By default prints the latest assistant message text.
-    With --follow, tails the output file continuously.
-    With --wait N, polls for up to N seconds.
+    Captures the last ~200 lines of the tmux pane and prints to stdout.
+    Exits non-zero if the session is not alive.
 
     Args:
-        args: Parsed arguments with name, wait, follow fields.
+        args: Parsed arguments with name field.
     """
     state_dir = _session_state_dir()
     session = _get_session(state_dir, args.name)
-    output_path = Path(session["output_path"])
+    tmux_session = session["tmux_session"]
 
-    if args.follow:
-        _follow_output(output_path)
-        return
+    if not _tmux_alive(tmux_session):
+        print("Session not alive", file=sys.stderr)
+        sys.exit(1)
 
-    wait_seconds: float = args.wait or 0.0
-    deadline = time.monotonic() + wait_seconds
-    last_seen = 0
+    result = subprocess.run(
+        ["tmux", "capture-pane", "-p", "-J", "-t", tmux_session, "-S", "-200"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        _die(f"tmux capture-pane failed: {result.stderr.strip()}")
 
-    while True:
-        events = _parse_jsonl_events(output_path)
-        new_events = events[last_seen:]
-
-        for event in new_events:
-            etype = event.get("type", "")
-            if etype == "assistant":
-                text = _extract_assistant_text([event])
-                if text:
-                    print(text)
-            elif etype == "result":
-                # Print result summary as JSON.
-                print(json.dumps(event))
-
-        if new_events:
-            last_seen = len(events)
-
-        if not new_events and wait_seconds > 0 and time.monotonic() < deadline:
-            time.sleep(_POLL_INTERVAL_SECONDS)
-            continue
-
-        break
-
-    if last_seen == 0 and not output_path.exists():
-        print("(no output yet)", file=sys.stderr)
-
-
-def _follow_output(output_path: Path) -> None:
-    """Continuously tail the output JSONL file, printing new events.
-
-    Runs until interrupted with Ctrl-C.
-
-    Args:
-        output_path: Path to the session output file.
-    """
-    print(f"Following {output_path} (Ctrl-C to stop)", file=sys.stderr)
-    offset = 0
-    if output_path.exists():
-        offset = output_path.stat().st_size
-
-    try:
-        while True:
-            if not output_path.exists():
-                time.sleep(_POLL_INTERVAL_SECONDS)
-                continue
-
-            current_size = output_path.stat().st_size
-            if current_size <= offset:
-                time.sleep(_POLL_INTERVAL_SECONDS)
-                continue
-
-            with output_path.open(encoding="utf-8") as fh:
-                fh.seek(offset)
-                chunk = fh.read(current_size - offset)
-            offset = current_size
-
-            for raw_line in chunk.splitlines():
-                line = raw_line.strip()
-                if not line:
-                    continue
-                try:
-                    event = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                etype = event.get("type", "")
-                if etype == "assistant":
-                    text = _extract_assistant_text([event])
-                    if text:
-                        print(text)
-                elif etype == "result":
-                    print(json.dumps(event))
-
-    except KeyboardInterrupt:
-        pass
+    print(result.stdout, end="")
 
 
 # ---------------------------------------------------------------------------
@@ -605,7 +489,7 @@ def _follow_output(output_path: Path) -> None:
 def cmd_status(args: argparse.Namespace) -> None:
     """Print status for a named session.
 
-    Checks tmux liveness, reads the latest result event for cost/turns.
+    Checks tmux liveness and reports registry metadata.
 
     Args:
         args: Parsed arguments with name field.
@@ -613,18 +497,8 @@ def cmd_status(args: argparse.Namespace) -> None:
     state_dir = _session_state_dir()
     session = _get_session(state_dir, args.name)
 
-    alive = _tmux_alive(args.name)
-    output_path = Path(session["output_path"])
-    events = _parse_jsonl_events(output_path)
-
-    # Find the most recent result event.
-    cost: float | None = None
-    turns: int | None = None
-    for event in reversed(events):
-        if event.get("type") == "result":
-            cost = event.get("cost_usd")
-            turns = event.get("num_turns")
-            break
+    tmux_session = session["tmux_session"]
+    alive = _tmux_alive(tmux_session)
 
     spawned_at = session.get("spawned_at", "unknown")
     try:
@@ -641,9 +515,7 @@ def cmd_status(args: argparse.Namespace) -> None:
         "spawned_at": spawned_at,
         "age": age_str,
         "worktree": session.get("worktree"),
-        "tmux_session": session.get("tmux_session"),
-        "cost_usd": cost,
-        "turns": turns,
+        "tmux_session": tmux_session,
     }
     print(json.dumps(status, indent=2))
 
@@ -668,7 +540,8 @@ def cmd_list(_args: argparse.Namespace) -> None:
 
     rows: list[dict[str, Any]] = []
     for name, session in registry.items():
-        alive = _tmux_alive(name)
+        tmux_session = session.get("tmux_session", "")
+        alive = _tmux_alive(tmux_session) if tmux_session else False
         spawned_at = session.get("spawned_at", "")
         try:
             dt = datetime.fromisoformat(spawned_at)
@@ -681,7 +554,7 @@ def cmd_list(_args: argparse.Namespace) -> None:
             "status": "alive" if alive else "dead",
             "age": age_str,
             "worktree": session.get("worktree", False),
-            "tmux_session": session.get("tmux_session", ""),
+            "tmux_session": tmux_session,
         })
 
     # Simple columnar output.
@@ -696,7 +569,7 @@ def cmd_list(_args: argparse.Namespace) -> None:
         f"{'MODEL':<{col_widths['model']}}  "
         f"{'STATUS':<{col_widths['status']}}  "
         f"{'AGE':<{col_widths['age']}}  "
-        f"WORKTREE"
+        f"TMUX_SESSION"
     )
     print(header)
     print("-" * len(header))
@@ -706,7 +579,7 @@ def cmd_list(_args: argparse.Namespace) -> None:
             f"{r['model']:<{col_widths['model']}}  "
             f"{r['status']:<{col_widths['status']}}  "
             f"{r['age']:<{col_widths['age']}}  "
-            f"{'yes' if r['worktree'] else 'no'}"
+            f"{r['tmux_session']}"
         )
 
 
@@ -716,9 +589,7 @@ def cmd_list(_args: argparse.Namespace) -> None:
 
 
 def cmd_kill(args: argparse.Namespace) -> None:
-    """Kill a session: terminate tmux, remove FIFO, update registry.
-
-    Output and error logs are preserved for post-mortem review.
+    """Kill a session: kill the claude tmux session and remove its registry entry.
 
     Args:
         args: Parsed arguments with name field.
@@ -726,11 +597,9 @@ def cmd_kill(args: argparse.Namespace) -> None:
     state_dir = _session_state_dir()
     session = _get_session(state_dir, args.name)
 
-    _tmux_kill(args.name)
-
-    fifo_path = Path(session.get("fifo_path", ""))
-    if fifo_path.exists() and fifo_path.is_fifo():
-        fifo_path.unlink()
+    tmux_session = session.get("tmux_session", "")
+    if tmux_session:
+        _tmux_kill(tmux_session)
 
     registry = _load_registry(state_dir)
     registry.pop(args.name, None)
@@ -782,18 +651,15 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", metavar="COMMAND", required=True)
 
     # spawn
-    p_spawn = sub.add_parser("spawn", help="Launch a new claude session in tmux.")
+    p_spawn = sub.add_parser("spawn", help="Launch a new claude session.")
     p_spawn.add_argument("prompt", nargs=1, metavar="PROMPT", help="Initial prompt to send.")
     p_spawn.add_argument("--name", default=None, help="Session name (auto-derived from prompt if omitted).")
-    p_spawn.add_argument(
-        "--worktree", action="store_true", default=False, help="Use claude's built-in --worktree flag."
-    )
     p_spawn.add_argument("--model", default=_DEFAULT_MODEL, help=f"Model to use (default: {_DEFAULT_MODEL}).")
     p_spawn.add_argument("--max-budget", type=float, default=None, metavar="USD", help="Maximum USD spend.")
     p_spawn.set_defaults(func=cmd_spawn)
 
     # send
-    p_send = sub.add_parser("send", help="Send a message to a running session.")
+    p_send = sub.add_parser("send", help="Send a follow-up message to a running session.")
     p_send.add_argument("--name", required=True, help="Session name.")
     p_send.add_argument("message", nargs=1, metavar="MESSAGE", help="Message text to send.")
     p_send.set_defaults(func=cmd_send)
@@ -802,10 +668,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_read = sub.add_parser("read", help="Read responses from a session.")
     p_read.add_argument("--name", required=True, help="Session name.")
     p_read.add_argument(
-        "--wait", type=float, default=0.0, metavar="SECONDS", help="Poll for up to N seconds if no response yet."
+        "--wait", type=float, default=0.0, metavar="SECONDS", help="(Unused) Retained for interface compatibility."
     )
     p_read.add_argument(
-        "--follow", action="store_true", default=False, help="Tail output continuously (Ctrl-C to stop)."
+        "--follow", action="store_true", default=False, help="(Unused) Retained for interface compatibility."
     )
     p_read.set_defaults(func=cmd_read)
 
@@ -819,7 +685,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_list.set_defaults(func=cmd_list)
 
     # kill
-    p_kill = sub.add_parser("kill", help="Kill a session and clean up its FIFO.")
+    p_kill = sub.add_parser("kill", help="Kill a session and remove its registry entry.")
     p_kill.add_argument("--name", required=True, help="Session name.")
     p_kill.set_defaults(func=cmd_kill)
 

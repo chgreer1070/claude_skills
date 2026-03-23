@@ -1,0 +1,16 @@
+{
+  "description": "Development-harness plugin hooks — task completion reminders and session hygiene",
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/task-completed-kage-bunshin-reminder.cjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

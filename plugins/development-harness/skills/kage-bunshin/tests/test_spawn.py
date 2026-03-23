@@ -67,6 +67,36 @@ def test_repo_slug_leading_hyphen_is_intentional():
 
 
 # ---------------------------------------------------------------------------
+# _repo_dir_name
+# ---------------------------------------------------------------------------
+
+
+def test_repo_dir_name_returns_last_path_component():
+    result = _spawn._repo_dir_name(Path("/home/user/repos/claude_skills"))
+    assert result == "claude_skills"
+
+
+def test_repo_dir_name_single_component():
+    result = _spawn._repo_dir_name(Path("/myrepo"))
+    assert result == "myrepo"
+
+
+# ---------------------------------------------------------------------------
+# _claude_tmux_session_name
+# ---------------------------------------------------------------------------
+
+
+def test_claude_tmux_session_name_uses_worktree_pattern():
+    result = _spawn._claude_tmux_session_name("claude_skills", "test-1")
+    assert result == "claude_skills_worktree-test-1"
+
+
+def test_claude_tmux_session_name_with_different_repo():
+    result = _spawn._claude_tmux_session_name("myproject", "sess")
+    assert result == "myproject_worktree-sess"
+
+
+# ---------------------------------------------------------------------------
 # _dh_state_home
 # ---------------------------------------------------------------------------
 
@@ -128,27 +158,38 @@ def test_get_session_returns_entry_when_present(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_tmux_session_name_prefixes_with_kb():
-    assert _spawn._tmux_session_name("myname") == "kb-myname"
-
-
 def test_tmux_alive_returns_false_when_session_absent():
     # Use an implausible session name that won't exist.
     result = _spawn._tmux_alive("kage-bunshin-test-nonexistent-xyzzy-99999")
     assert result is False
 
 
-# ---------------------------------------------------------------------------
-# _make_user_message
-# ---------------------------------------------------------------------------
+def test_tmux_run_in_session_calls_send_keys_with_enter():
+    fake_result = MagicMock()
+    fake_result.returncode = 0
+    fake_result.stderr = ""
+
+    with patch("subprocess.run", return_value=fake_result) as mock_run:
+        _spawn._tmux_run_in_session("myproject_worktree-sess", "echo hello")
+
+    mock_run.assert_called_once()
+    cmd = mock_run.call_args[0][0]
+    assert cmd[0] == "tmux"
+    assert cmd[1] == "send-keys"
+    assert "-t" in cmd
+    assert "myproject_worktree-sess" in cmd
+    assert "echo hello" in cmd
+    assert "Enter" in cmd
 
 
-def test_make_user_message_produces_valid_stream_json():
-    raw = _spawn._make_user_message("hello there")
-    parsed = json.loads(raw)
-    assert parsed["type"] == "user"
-    assert parsed["message"]["role"] == "user"
-    assert parsed["message"]["content"] == "hello there"
+def test_tmux_run_in_session_exits_1_on_failure():
+    fake_result = MagicMock()
+    fake_result.returncode = 1
+    fake_result.stderr = "no session"
+
+    with patch("subprocess.run", return_value=fake_result), pytest.raises(SystemExit) as exc_info:
+        _spawn._tmux_run_in_session("nosuchsession", "echo hi")
+    assert exc_info.value.code == 1
 
 
 # ---------------------------------------------------------------------------
@@ -173,68 +214,6 @@ def test_format_age_days():
 
 
 # ---------------------------------------------------------------------------
-# _parse_jsonl_events
-# ---------------------------------------------------------------------------
-
-
-def test_parse_jsonl_events_returns_empty_list_when_file_absent(tmp_path):
-    result = _spawn._parse_jsonl_events(tmp_path / "nonexistent.jsonl")
-    assert result == []
-
-
-def test_parse_jsonl_events_parses_valid_lines(tmp_path):
-    output = tmp_path / "out.jsonl"
-    output.write_text('{"type":"assistant","message":{"content":"hi"}}\n{"type":"result","cost_usd":0.01}\n')
-    events = _spawn._parse_jsonl_events(output)
-    assert len(events) == 2
-    assert events[0]["type"] == "assistant"
-    assert events[1]["type"] == "result"
-
-
-def test_parse_jsonl_events_skips_malformed_lines(tmp_path):
-    output = tmp_path / "out.jsonl"
-    output.write_text('{"type":"result"}\nNOT JSON\n{"type":"assistant"}\n')
-    events = _spawn._parse_jsonl_events(output)
-    assert len(events) == 2
-
-
-# ---------------------------------------------------------------------------
-# _extract_assistant_text
-# ---------------------------------------------------------------------------
-
-
-def test_extract_assistant_text_returns_none_when_no_assistant_event():
-    events = [{"type": "result", "cost_usd": 0.01}]
-    assert _spawn._extract_assistant_text(events) is None
-
-
-def test_extract_assistant_text_extracts_string_content():
-    events = [{"type": "assistant", "message": {"content": "Hello!"}}]
-    result = _spawn._extract_assistant_text(events)
-    assert result == "Hello!"
-
-
-def test_extract_assistant_text_extracts_list_content():
-    events = [
-        {
-            "type": "assistant",
-            "message": {"content": [{"type": "text", "text": "Part one. "}, {"type": "text", "text": "Part two."}]},
-        }
-    ]
-    result = _spawn._extract_assistant_text(events)
-    assert result == "Part one. Part two."
-
-
-def test_extract_assistant_text_returns_last_assistant_message():
-    events = [
-        {"type": "assistant", "message": {"content": "First"}},
-        {"type": "assistant", "message": {"content": "Second"}},
-    ]
-    result = _spawn._extract_assistant_text(events)
-    assert result == "Second"
-
-
-# ---------------------------------------------------------------------------
 # Argument parser — subcommands
 # ---------------------------------------------------------------------------
 
@@ -244,26 +223,14 @@ def test_build_parser_spawn_subcommand_parses_prompt():
     args = parser.parse_args(["spawn", "my prompt"])
     assert args.prompt == ["my prompt"]
     assert args.model == "sonnet"
-    assert args.worktree is False
     assert args.max_budget is None
     assert args.name is None
 
 
 def test_build_parser_spawn_with_all_flags():
     parser = _spawn._build_parser()
-    args = parser.parse_args([
-        "spawn",
-        "--name",
-        "sess",
-        "--worktree",
-        "--model",
-        "opus",
-        "--max-budget",
-        "3.0",
-        "prompt",
-    ])
+    args = parser.parse_args(["spawn", "--name", "sess", "--model", "opus", "--max-budget", "3.0", "prompt"])
     assert args.name == "sess"
-    assert args.worktree is True
     assert args.model == "opus"
     assert args.max_budget == pytest.approx(3.0)
 
@@ -319,33 +286,57 @@ def test_build_parser_status_requires_name():
 
 
 # ---------------------------------------------------------------------------
+# _build_spawn_shell_cmd
+# ---------------------------------------------------------------------------
+
+
+def test_build_spawn_shell_cmd_returns_interactive_argv_without_p_flag():
+    argv = _spawn._build_spawn_shell_cmd("mysess", "sonnet", None)
+    assert argv[0] == "claude"
+    assert "-p" not in argv
+    assert "--output-format" not in argv
+    assert "--input-format" not in argv
+    assert "--worktree" in argv
+    assert "mysess" in argv
+    assert "--tmux" in argv
+    assert "--model" in argv
+    assert "sonnet" in argv
+
+
+def test_build_spawn_shell_cmd_includes_max_budget_when_set():
+    argv = _spawn._build_spawn_shell_cmd("sess", "haiku", 5.0)
+    assert "--max-budget-usd" in argv
+    assert "5.0" in argv
+
+
+def test_build_spawn_shell_cmd_omits_max_budget_when_none():
+    argv = _spawn._build_spawn_shell_cmd("sess", "haiku", None)
+    assert "--max-budget-usd" not in argv
+
+
+# ---------------------------------------------------------------------------
 # cmd_spawn — integration with subprocess mocked
 # ---------------------------------------------------------------------------
 
 
 def _make_spawn_args(
-    tmp_path: Path,
-    name: str = "testsess",
-    prompt: str = "hello world",
-    model: str = "sonnet",
-    worktree: bool = False,
-    max_budget: float | None = None,
+    name: str = "testsess", prompt: str = "hello world", model: str = "sonnet", max_budget: float | None = None
 ) -> MagicMock:
     """Build a mock Namespace for cmd_spawn."""
     ns = MagicMock()
     ns.name = name
     ns.prompt = [prompt]
     ns.model = model
-    ns.worktree = worktree
     ns.max_budget = max_budget
     return ns
 
 
 def test_cmd_spawn_exits_1_when_claude_not_in_path(tmp_path):
-    args = _make_spawn_args(tmp_path)
+    args = _make_spawn_args()
     with (
         patch("shutil.which", return_value=None),
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_git_repo_root", return_value=Path("/repo/claude_skills")),
         pytest.raises(SystemExit) as exc_info,
     ):
         _spawn.cmd_spawn(args)
@@ -353,7 +344,7 @@ def test_cmd_spawn_exits_1_when_claude_not_in_path(tmp_path):
 
 
 def test_cmd_spawn_exits_1_when_tmux_not_in_path(tmp_path):
-    args = _make_spawn_args(tmp_path)
+    args = _make_spawn_args()
 
     def fake_which(name: str) -> str | None:
         return "/usr/bin/claude" if name == "claude" else None
@@ -361,14 +352,15 @@ def test_cmd_spawn_exits_1_when_tmux_not_in_path(tmp_path):
     with (
         patch("shutil.which", side_effect=fake_which),
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_git_repo_root", return_value=Path("/repo/claude_skills")),
         pytest.raises(SystemExit) as exc_info,
     ):
         _spawn.cmd_spawn(args)
     assert exc_info.value.code == 1
 
 
-def test_cmd_spawn_creates_fifo_and_registry_entry(tmp_path, capsys):
-    args = _make_spawn_args(tmp_path)
+def test_cmd_spawn_creates_registry_entry(tmp_path, capsys):
+    args = _make_spawn_args()
 
     fake_run_result = MagicMock()
     fake_run_result.returncode = 0
@@ -376,10 +368,13 @@ def test_cmd_spawn_creates_fifo_and_registry_entry(tmp_path, capsys):
 
     with (
         patch("shutil.which", return_value="/usr/bin/claude"),
+        patch.object(_spawn, "_git_repo_root", return_value=Path("/repo/claude_skills")),
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
         patch("subprocess.run", return_value=fake_run_result),
-        patch("subprocess.Popen"),
-        patch.object(_spawn, "_write_to_fifo"),
+        # claude tmux session appears immediately
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch("time.sleep"),
+        patch.object(_spawn, "_tmux_run_in_session"),
     ):
         _spawn.cmd_spawn(args)
 
@@ -388,20 +383,22 @@ def test_cmd_spawn_creates_fifo_and_registry_entry(tmp_path, capsys):
     assert "testsess" in registry
     entry = registry["testsess"]
     assert entry["model"] == "sonnet"
-    assert entry["worktree"] is False
-    assert "fifo_path" in entry
-    assert "output_path" in entry
+    assert entry["worktree"] is True
+    assert "tmux_session" in entry
+    assert entry["tmux_session"] == "claude_skills_worktree-testsess"
+    assert "output_path" not in entry
 
     # JSON record printed to stdout.
     captured = capsys.readouterr()
     record = json.loads(captured.out)
     assert record["name"] == "testsess"
     assert record["model"] == "sonnet"
-    assert "tmux_session" in record
+    assert record["tmux_session"] == "claude_skills_worktree-testsess"
+    assert "output_path" not in record
 
 
-def test_cmd_spawn_exits_1_when_tmux_fails(tmp_path):
-    args = _make_spawn_args(tmp_path)
+def test_cmd_spawn_exits_1_when_tmux_launcher_fails(tmp_path):
+    args = _make_spawn_args()
 
     fake_run_result = MagicMock()
     fake_run_result.returncode = 1
@@ -409,6 +406,7 @@ def test_cmd_spawn_exits_1_when_tmux_fails(tmp_path):
 
     with (
         patch("shutil.which", return_value="/usr/bin/claude"),
+        patch.object(_spawn, "_git_repo_root", return_value=Path("/repo/claude_skills")),
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
         patch("subprocess.run", return_value=fake_run_result),
         pytest.raises(SystemExit) as exc_info,
@@ -417,32 +415,126 @@ def test_cmd_spawn_exits_1_when_tmux_fails(tmp_path):
     assert exc_info.value.code == 1
 
 
-def test_cmd_spawn_includes_worktree_flag_in_claude_cmd(tmp_path, capsys):
-    args = _make_spawn_args(tmp_path, worktree=True)
+def test_cmd_spawn_includes_worktree_flag_in_argv(tmp_path, capsys):
+    """Verify --worktree {name} appears in the argv passed to tmux new-session."""
+    args = _make_spawn_args(name="myworktree")
 
     fake_run_result = MagicMock()
     fake_run_result.returncode = 0
     fake_run_result.stderr = ""
 
-    captured_shell_cmd: list[str] = []
+    captured_argv: list[list[str]] = []
 
     def fake_run(cmd, **kwargs):
-        if "new-session" in cmd:
-            captured_shell_cmd.append(cmd[-1])  # last arg is the shell_cmd
+        if isinstance(cmd, list) and "new-session" in cmd:
+            captured_argv.append(list(cmd))
         return fake_run_result
 
     with (
         patch("shutil.which", return_value="/usr/bin/claude"),
+        patch.object(_spawn, "_git_repo_root", return_value=Path("/repo/claude_skills")),
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
         patch("subprocess.run", side_effect=fake_run),
-        patch("subprocess.Popen"),
-        patch.object(_spawn, "_write_to_fifo"),
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch("time.sleep"),
+        patch.object(_spawn, "_tmux_run_in_session"),
     ):
         _spawn.cmd_spawn(args)
 
-    assert captured_shell_cmd, "tmux new-session was not called"
-    shell_cmd = captured_shell_cmd[0]
-    assert "--worktree" in shell_cmd
+    assert captured_argv, "tmux new-session was not called"
+    argv = captured_argv[0]
+    # claude argv is embedded directly in the tmux new-session command
+    assert "--worktree" in argv
+    assert "myworktree" in argv
+    assert "--tmux" in argv
+    # No -p in interactive mode
+    assert "-p" not in argv
+    # No --output-format in interactive mode
+    assert "--output-format" not in argv
+    # No file redirects
+    assert not any(">>" in arg for arg in argv)
+
+
+def test_cmd_spawn_waits_for_claude_tmux_session(tmp_path, capsys):
+    """Verify spawn polls until the claude-created tmux session appears."""
+    args = _make_spawn_args()
+
+    fake_run_result = MagicMock()
+    fake_run_result.returncode = 0
+    fake_run_result.stderr = ""
+
+    alive_calls: list[int] = [0]
+
+    def fake_alive(tmux_session: str) -> bool:
+        alive_calls[0] += 1
+        # Return False for first 2 calls, then True (session appears).
+        return alive_calls[0] >= 3
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/claude"),
+        patch.object(_spawn, "_git_repo_root", return_value=Path("/repo/claude_skills")),
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch("subprocess.run", return_value=fake_run_result),
+        patch.object(_spawn, "_tmux_alive", side_effect=fake_alive),
+        patch("time.sleep"),
+        patch.object(_spawn, "_tmux_run_in_session"),
+    ):
+        _spawn.cmd_spawn(args)
+
+    assert alive_calls[0] >= 3
+
+
+def test_cmd_spawn_sends_initial_prompt_via_send_keys(tmp_path, capsys):
+    """Verify spawn sends the initial prompt to the claude pane via tmux send-keys."""
+    args = _make_spawn_args(prompt="explain recursion")
+
+    fake_run_result = MagicMock()
+    fake_run_result.returncode = 0
+    fake_run_result.stderr = ""
+
+    sent: list[tuple[str, str]] = []
+
+    def fake_run_in_session(tmux_session: str, cmd: str) -> None:
+        sent.append((tmux_session, cmd))
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/claude"),
+        patch.object(_spawn, "_git_repo_root", return_value=Path("/repo/claude_skills")),
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch("subprocess.run", return_value=fake_run_result),
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch("time.sleep"),
+        patch.object(_spawn, "_tmux_run_in_session", side_effect=fake_run_in_session),
+    ):
+        _spawn.cmd_spawn(args)
+
+    assert len(sent) == 1, "expected exactly one send-keys call for the initial prompt"
+    tmux_session, prompt = sent[0]
+    assert tmux_session == "claude_skills_worktree-testsess"
+    assert "explain recursion" in prompt
+
+
+def test_cmd_spawn_exits_1_when_claude_session_never_appears(tmp_path):
+    """Verify spawn fails if claude's tmux session never appears within timeout."""
+    args = _make_spawn_args()
+
+    fake_run_result = MagicMock()
+    fake_run_result.returncode = 0
+    fake_run_result.stderr = ""
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/claude"),
+        patch.object(_spawn, "_git_repo_root", return_value=Path("/repo/claude_skills")),
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch("subprocess.run", return_value=fake_run_result),
+        patch.object(_spawn, "_tmux_alive", return_value=False),
+        patch("time.sleep"),
+        # Make the deadline expire immediately.
+        patch("time.monotonic", side_effect=[0.0, 0.0, _spawn._SPAWN_WAIT_SECONDS + 1]),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        _spawn.cmd_spawn(args)
+    assert exc_info.value.code == 1
 
 
 # ---------------------------------------------------------------------------
@@ -460,16 +552,7 @@ def test_cmd_send_exits_1_when_session_not_found(tmp_path):
 
 
 def test_cmd_send_exits_1_when_tmux_dead(tmp_path):
-    registry = {
-        "sess": {
-            "name": "sess",
-            "model": "sonnet",
-            "fifo_path": str(tmp_path / "sess-input.fifo"),
-            "output_path": str(tmp_path / "sess-output.jsonl"),
-            "error_path": str(tmp_path / "sess-err.log"),
-            "tmux_session": "kb-sess",
-        }
-    }
+    registry = {"sess": {"name": "sess", "model": "sonnet", "tmux_session": "claude_skills_worktree-sess"}}
     _spawn._save_registry(tmp_path, registry)
 
     ns = MagicMock()
@@ -485,41 +568,36 @@ def test_cmd_send_exits_1_when_tmux_dead(tmp_path):
     assert exc_info.value.code == 1
 
 
-def test_cmd_send_writes_stream_json_to_fifo(tmp_path, capsys):
-    fifo_path = tmp_path / "sess-input.fifo"
-    registry = {
-        "sess": {
-            "name": "sess",
-            "model": "sonnet",
-            "fifo_path": str(fifo_path),
-            "output_path": str(tmp_path / "sess-output.jsonl"),
-            "error_path": str(tmp_path / "sess-err.log"),
-            "tmux_session": "kb-sess",
-        }
-    }
+def test_cmd_send_sends_message_via_tmux(tmp_path, capsys):
+    """Verify send calls _tmux_run_in_session with the message directly."""
+    registry = {"sess": {"name": "sess", "model": "sonnet", "tmux_session": "claude_skills_worktree-sess"}}
     _spawn._save_registry(tmp_path, registry)
-    fifo_path.touch()  # Simulate an existing fifo for the exists() check.
 
     ns = MagicMock()
     ns.name = "sess"
     ns.message = ["do the thing"]
 
-    written: list[str] = []
+    sent_cmds: list[tuple[str, str]] = []
 
-    def fake_write(path: Path, line: str, **_kwargs: object) -> None:
-        written.append(line)
+    def fake_run_in_session(tmux_session: str, cmd: str) -> None:
+        sent_cmds.append((tmux_session, cmd))
 
     with (
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
         patch.object(_spawn, "_tmux_alive", return_value=True),
-        patch.object(_spawn, "_write_to_fifo", side_effect=fake_write),
+        patch.object(_spawn, "_tmux_run_in_session", side_effect=fake_run_in_session),
     ):
         _spawn.cmd_send(ns)
 
-    assert len(written) == 1
-    parsed = json.loads(written[0])
-    assert parsed["type"] == "user"
-    assert parsed["message"]["content"] == "do the thing"
+    assert len(sent_cmds) == 1
+    tmux_session, cmd = sent_cmds[0]
+    assert tmux_session == "claude_skills_worktree-sess"
+    assert "do the thing" in cmd
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    assert result["status"] == "sent"
+    assert result["name"] == "sess"
 
 
 # ---------------------------------------------------------------------------
@@ -528,11 +606,8 @@ def test_cmd_send_writes_stream_json_to_fifo(tmp_path, capsys):
 
 
 def test_cmd_kill_removes_registry_entry(tmp_path):
-    fifo_path = tmp_path / "sess-input.fifo"
-    registry = {"sess": {"name": "sess", "fifo_path": str(fifo_path), "tmux_session": "kb-sess"}}
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
     _spawn._save_registry(tmp_path, registry)
-    # Create a real FIFO for the unlink test.
-    os.mkfifo(fifo_path)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -541,7 +616,24 @@ def test_cmd_kill_removes_registry_entry(tmp_path):
         _spawn.cmd_kill(ns)
 
     assert "sess" not in _spawn._load_registry(tmp_path)
-    assert not fifo_path.exists()
+
+
+def test_cmd_kill_kills_claude_tmux_session(tmp_path):
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
+    _spawn._save_registry(tmp_path, registry)
+
+    ns = MagicMock()
+    ns.name = "sess"
+
+    killed: list[str] = []
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_tmux_kill", side_effect=killed.append),
+    ):
+        _spawn.cmd_kill(ns)
+
+    assert "claude_skills_worktree-sess" in killed
 
 
 def test_cmd_kill_exits_1_when_session_not_found(tmp_path):
@@ -571,21 +663,21 @@ def test_cmd_list_shows_alive_and_dead_sessions(tmp_path, capsys):
             "name": "alive-sess",
             "model": "sonnet",
             "spawned_at": "2026-01-01T00:00:00+00:00",
-            "worktree": False,
-            "tmux_session": "kb-alive-sess",
+            "worktree": True,
+            "tmux_session": "claude_skills_worktree-alive-sess",
         },
         "dead-sess": {
             "name": "dead-sess",
             "model": "haiku",
             "spawned_at": "2026-01-01T00:00:00+00:00",
             "worktree": True,
-            "tmux_session": "kb-dead-sess",
+            "tmux_session": "claude_skills_worktree-dead-sess",
         },
     }
     _spawn._save_registry(tmp_path, registry)
 
-    def fake_alive(name: str) -> bool:
-        return name == "alive-sess"
+    def fake_alive(tmux_session: str) -> bool:
+        return "alive-sess" in tmux_session
 
     ns = MagicMock()
     with (
@@ -607,16 +699,13 @@ def test_cmd_list_shows_alive_and_dead_sessions(tmp_path, capsys):
 
 
 def test_cmd_status_shows_alive_true(tmp_path, capsys):
-    output_path = tmp_path / "sess-output.jsonl"
-    output_path.write_text("")
     registry = {
         "sess": {
             "name": "sess",
             "model": "sonnet",
             "spawned_at": "2026-01-01T00:00:00+00:00",
-            "worktree": False,
-            "tmux_session": "kb-sess",
-            "output_path": str(output_path),
+            "worktree": True,
+            "tmux_session": "claude_skills_worktree-sess",
         }
     }
     _spawn._save_registry(tmp_path, registry)
@@ -636,18 +725,15 @@ def test_cmd_status_shows_alive_true(tmp_path, capsys):
     assert status["model"] == "sonnet"
 
 
-def test_cmd_status_extracts_cost_from_result_event(tmp_path, capsys):
-    output_path = tmp_path / "sess-output.jsonl"
-    output_path.write_text('{"type":"result","cost_usd":0.05,"num_turns":3}\n')
-
+def test_cmd_status_shows_session_fields(tmp_path, capsys):
+    """Verify status output includes expected registry fields."""
     registry = {
         "sess": {
             "name": "sess",
-            "model": "sonnet",
+            "model": "haiku",
             "spawned_at": "2026-01-01T00:00:00+00:00",
-            "worktree": False,
-            "tmux_session": "kb-sess",
-            "output_path": str(output_path),
+            "worktree": True,
+            "tmux_session": "claude_skills_worktree-sess",
         }
     }
     _spawn._save_registry(tmp_path, registry)
@@ -663,8 +749,10 @@ def test_cmd_status_extracts_cost_from_result_event(tmp_path, capsys):
 
     captured = capsys.readouterr()
     status = json.loads(captured.out)
-    assert status["cost_usd"] == pytest.approx(0.05)
-    assert status["turns"] == 3
+    assert status["alive"] is False
+    assert status["model"] == "haiku"
+    assert status["tmux_session"] == "claude_skills_worktree-sess"
+    assert status["worktree"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -672,10 +760,8 @@ def test_cmd_status_extracts_cost_from_result_event(tmp_path, capsys):
 # ---------------------------------------------------------------------------
 
 
-def test_cmd_read_prints_latest_assistant_text(tmp_path, capsys):
-    output_path = tmp_path / "sess-output.jsonl"
-    output_path.write_text('{"type":"assistant","message":{"content":"The answer is 42."}}\n')
-    registry = {"sess": {"name": "sess", "output_path": str(output_path), "tmux_session": "kb-sess"}}
+def test_cmd_read_prints_pane_content(tmp_path, capsys):
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
     _spawn._save_registry(tmp_path, registry)
 
     ns = MagicMock()
@@ -683,53 +769,71 @@ def test_cmd_read_prints_latest_assistant_text(tmp_path, capsys):
     ns.wait = 0.0
     ns.follow = False
 
-    with patch.object(_spawn, "_session_state_dir", return_value=tmp_path):
+    fake_result = MagicMock()
+    fake_result.returncode = 0
+    fake_result.stdout = "Claude says: The answer is 42.\n"
+    fake_result.stderr = ""
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch("subprocess.run", return_value=fake_result),
+    ):
         _spawn.cmd_read(ns)
 
     captured = capsys.readouterr()
     assert "The answer is 42." in captured.out
 
 
-def test_cmd_read_with_wait_polls_until_content_appears(tmp_path, capsys):
-    output_path = tmp_path / "sess-output.jsonl"
-
-    call_count = 0
-
-    def fake_parse(path: Path) -> list[dict]:
-        nonlocal call_count
-        call_count += 1
-        if call_count >= 2:
-            return [{"type": "assistant", "message": {"content": "Delayed reply."}}]
-        return []
-
-    registry = {"sess": {"name": "sess", "output_path": str(output_path), "tmux_session": "kb-sess"}}
+def test_cmd_read_calls_capture_pane_with_correct_session(tmp_path):
+    """Verify cmd_read invokes tmux capture-pane targeting the registered session."""
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
     _spawn._save_registry(tmp_path, registry)
 
     ns = MagicMock()
     ns.name = "sess"
-    ns.wait = 10.0
+    ns.wait = 0.0
+    ns.follow = False
+
+    fake_result = MagicMock()
+    fake_result.returncode = 0
+    fake_result.stdout = "output"
+    fake_result.stderr = ""
+
+    captured_cmds: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):
+        captured_cmds.append(list(cmd))
+        return fake_result
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch("subprocess.run", side_effect=fake_run),
+    ):
+        _spawn.cmd_read(ns)
+
+    assert captured_cmds, "subprocess.run was not called"
+    cmd = captured_cmds[0]
+    assert "tmux" in cmd
+    assert "capture-pane" in cmd
+    assert "claude_skills_worktree-sess" in cmd
+
+
+def test_cmd_read_exits_1_when_session_not_alive(tmp_path):
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
+    _spawn._save_registry(tmp_path, registry)
+
+    ns = MagicMock()
+    ns.name = "sess"
+    ns.wait = 0.0
     ns.follow = False
 
     with (
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
-        patch.object(_spawn, "_parse_jsonl_events", side_effect=fake_parse),
-        patch("time.sleep"),
+        patch.object(_spawn, "_tmux_alive", return_value=False),
+        pytest.raises(SystemExit) as exc_info,
     ):
         _spawn.cmd_read(ns)
 
-    captured = capsys.readouterr()
-    assert "Delayed reply." in captured.out
-
-
-# ---------------------------------------------------------------------------
-# _write_to_fifo — error path
-# ---------------------------------------------------------------------------
-
-
-def test_write_to_fifo_exits_when_no_reader(tmp_path):
-    fifo_path = tmp_path / "test.fifo"
-    os.mkfifo(fifo_path)
-    # No reader — all retries should exhaust and _die should be called.
-    with pytest.raises(SystemExit) as exc_info:
-        _spawn._write_to_fifo(fifo_path, '{"type":"user"}', retries=2, delay=0.01)
     assert exc_info.value.code == 1
