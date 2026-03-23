@@ -746,15 +746,8 @@ def _discover_skills(plugin_dir: Path) -> list[str]:
         if item.is_dir():
             skill_md = item / "SKILL.md"
             if skill_md.is_file():
-                # Skill directory with SKILL.md
+                # Skill directory with SKILL.md — skills are always flat: skills/{name}/
                 found.append(f"./skills/{item.name}")
-
-            # Check for nested skill directories (e.g., skills/testing/*)
-            for nested in sorted(item.iterdir()):
-                if nested.is_dir() and not nested.name.startswith("."):
-                    nested_skill_md = nested / "SKILL.md"
-                    if nested_skill_md.is_file():
-                        found.append(f"./skills/{item.name}/{nested.name}")
 
         elif item.suffix == ".md" and item.name == "SKILL.md":
             # Bare SKILL.md directly in skills/ (unusual but valid)

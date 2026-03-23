@@ -1340,12 +1340,15 @@ class TestDiscoverSkills:
 
         assert result == ["./skills/alpha", "./skills/beta"]
 
-    def test_nested_skills_discovered_correctly(self, tmp_path: Path) -> None:
-        """Nested skill directories (e.g., skills/testing/unit) are discovered.
+    def test_nested_skills_not_discovered(self, tmp_path: Path) -> None:
+        """Nested skill directories (e.g., skills/testing/unit) are NOT discovered.
 
-        Tests: Nested skill directory discovery is not broken by the fix
-        How: Create skills/parent/child/SKILL.md and verify discovery
-        Why: Ensures the nested skill path remains intact after removing script code
+        Tests: Discovery enforces the flat skills/{name}/ constraint — subdirectory
+               nesting is not a supported skill layout.
+        How: Create skills/testing/unit-tests/SKILL.md (nested) and verify the result
+             is an empty list — no nested path is returned.
+        Why: Skills must be directly under skills/. Nested directories are not valid
+             skill locations; discovery must not register them.
         """
         plugin_dir = tmp_path / "plugins" / "test-plugin"
         parent = plugin_dir / "skills" / "testing"
@@ -1356,7 +1359,7 @@ class TestDiscoverSkills:
 
         result = auto_sync._discover_skills(plugin_dir)
 
-        assert result == ["./skills/testing/unit-tests"]
+        assert result == []
 
     def test_no_skills_directory(self, tmp_path: Path) -> None:
         """Plugin with no skills/ directory returns empty list.
