@@ -183,7 +183,7 @@ def circular_plugin_root(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def domain_plugin_root(tmp_path: Path) -> Path:
-    """A plugins/ root with a domain-path skill under skills/domains/."""
+    """A plugins/ root with a flat skill directly under skills/enterprise-foo/."""
     plugins_root = tmp_path / "plugins"
     plugin_dir = plugins_root / "domain-plugin"
     agents_dir = plugin_dir / "agents"
@@ -194,12 +194,12 @@ def domain_plugin_root(tmp_path: Path) -> Path:
     _write_agent(
         agents_dir,
         "domain-agent",
-        "name: domain-agent\ndescription: Agent using domain skill\nskills:\n  - domains/enterprise-foo\n",
+        "name: domain-agent\ndescription: Agent using domain skill\nskills:\n  - enterprise-foo\n",
     )
 
-    # Create the domain skill directory
-    domain_skill_dir = skills_dir / "domains" / "enterprise-foo"
-    domain_skill_dir.mkdir(parents=True)
-    (domain_skill_dir / "SKILL.md").write_text("Enterprise Foo skill content.", encoding="utf-8")
+    # Create the skill directory flat under skills/ (nesting is not supported)
+    skill_dir = skills_dir / "enterprise-foo"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("Enterprise Foo skill content.", encoding="utf-8")
 
     return plugins_root

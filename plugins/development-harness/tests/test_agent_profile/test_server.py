@@ -646,32 +646,33 @@ class TestProfileLoadCircularDependency:
 
 
 # ---------------------------------------------------------------------------
-# Test: domain path resolution via synthetic plugin tree
+# Test: flat skill resolution via synthetic plugin tree
 # ---------------------------------------------------------------------------
 
 
 class TestProfileLoadDomainPath:
-    """Tests for domain-path skill URI resolution in profile_load.
+    """Tests for flat skill URI resolution in profile_load.
 
-    Tests: 'domains/...' skill URIs resolve correctly relative to context plugin.
+    Tests: Flat skills/{name}/ URIs resolve correctly relative to the context plugin.
     Strategy: Use domain_plugin_root fixture; patch get_plugins_root only.
     """
 
-    async def test_load_with_domain_path_skill_resolves_correctly(
+    async def test_load_with_flat_skill_resolves_correctly(
         self, mocker: MockerFixture, domain_plugin_root: Path
     ) -> None:
-        """profile_load resolves 'domains/...' skill URIs to correct SKILL.md.
+        """profile_load resolves a flat skill URI to the correct SKILL.md.
 
-        Tests: Domain-path format resolves relative to the context plugin.
-        How: Use domain_plugin_root with domains/enterprise-foo skill.
+        Tests: Flat skills/{name}/ format resolves relative to the context plugin.
+        How: Use domain_plugin_root with enterprise-foo skill (flat, not nested).
              Mock get_plugins_root to point at that root.
-        Why: Domain paths are a valid skill URI format for plugin-internal skills.
+        Why: Skills must be directly under skills/ — nested paths are not supported.
+             This test verifies flat skill resolution works correctly.
         """
         # Arrange
         agents_dir = domain_plugin_root / "domain-plugin" / "agents"
         agent_file = agents_dir / "domain-agent.md"
         entry = AgentEntry(name="domain-agent", plugin="domain-plugin", path=agent_file)
-        metadata = _make_metadata(name="domain-agent", skills=["domains/enterprise-foo"])
+        metadata = _make_metadata(name="domain-agent", skills=["enterprise-foo"])
 
         mocker.patch("agent_profile.server.get_plugins_root", return_value=domain_plugin_root)
         mocker.patch("agent_profile.server.find_agent", return_value=entry)
@@ -685,7 +686,7 @@ class TestProfileLoadDomainPath:
         assert "error" not in result.data
         skills = result.data["skills"]
         assert len(skills) == 1
-        assert skills[0]["skill_name"] == "domains/enterprise-foo"
+        assert skills[0]["skill_name"] == "enterprise-foo"
         assert "Enterprise Foo skill content" in skills[0]["content"]
 
 
