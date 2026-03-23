@@ -17,6 +17,8 @@ The model configures modern Python packaging using pyproject.toml and PEP standa
 
 ## Instructions
 
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
+
 1. **Analyze existing project** structure and configuration
 2. **Create or update** pyproject.toml with complete configuration
 3. **Configure tools** (ruff, mypy, pytest, hatch/setuptools)

@@ -80,7 +80,7 @@ Skill(skill="python3-development:ty")
 
 Covers: CLI flags, configuration schema, rule levels (`error`/`warn`/`ignore`), suppression comments (`ty: ignore`, `type: ignore`), virtual environment discovery, Python version targeting, installation, VS Code/Neovim/Zed/PyCharm integration, troubleshooting.
 
-Does NOT cover: mypy or pyright configuration, writing type annotations in Python source.
+Does NOT cover: deep mypy or pyright configuration (follow the project’s `pyproject.toml` when the repo already uses those tools — do not force ty). For annotation patterns shared across checkers, see python3-development references (e.g. type-safety-mypy). Does not replace a dedicated typing tutorial for writing annotations from scratch.
 
 ---
 
@@ -191,3 +191,84 @@ Skill(skill="python3-development:stinkysnake")
 ```
 
 Multi-phase workflow: static analysis → type analysis → modernization planning → plan review → test-driven implementation. Load before planning a refactor, not mid-implementation.
+
+**Triggers**: applying modern Python 3.11+ patterns, learning about PEPs (585, 604, 695), finding modern alternatives for old code
+
+```text
+Skill(skill="python3-development:modernpython")
+```
+
+---
+
+## Script Execution & Shebangs
+
+**Triggers**: validating script shebangs, PEP 723 inline metadata, creating standalone executable Python scripts
+
+```text
+Skill(skill="python3-development:shebangpython")
+```
+
+---
+
+## Development Workflows
+
+**Triggers**: creating a structured feature development task, setting up feature tracking
+
+```text
+Skill(skill="python3-development:create-feature-task")
+```
+
+**Triggers**: creating a new Claude Code skill from a template
+
+```text
+Skill(skill="python3-development:use-command-template")
+```
+
+---
+
+## Implementation & Refactoring Loop
+
+**Triggers**: implementing functions following a modernization plan, running tests iteratively until passing, executing the implementation phase of a refactor
+
+```text
+Skill(skill="python3-development:snakepolish")
+```
+
+---
+
+## Code Review & Quality Audits
+
+**Triggers**: reviewing Python code for quality issues, auditing code before merge, checking pattern compliance, verifying architecture standards
+
+```text
+Skill(skill="python3-development:python3-review")
+```
+
+Note: If you are an orchestrator reviewing a completed feature, use the `code-reviewer` agent instead.
+
+---
+
+## Testing & Coverage
+
+**Triggers**: auditing test quality, reviewing test coverage, checking for missing edge cases
+
+```text
+Skill(skill="python3-development:comprehensive-test-review")
+```
+
+**Triggers**: investigating failing tests, debugging test failures, analyzing pytest output
+
+```text
+Skill(skill="python3-development:analyze-test-failures")
+```
+
+---
+
+## Agent Routing (For Orchestrators)
+
+If you are an orchestrator agent, delegate to these specialized agents based on the task phase:
+
+- **Architecture/Planning**: `Agent(subagent_type="python3-development:python-cli-design-spec")`
+- **Writing Tests**: `Agent(subagent_type="python3-development:python-pytest-architect")`
+- **Implementation**: `Agent(subagent_type="python3-development:python-cli-architect")`
+- **Post-Implementation Review**: `Agent(subagent_type="python3-development:code-reviewer")`

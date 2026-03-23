@@ -1,11 +1,8 @@
 ---
 name: analyze-test-failures
-description: This skill should be used when the user asks to "analyze failing tests", "debug test failures", "investigate test errors", or provides specific failing test cases to examine. Analyzes failing test cases with a balanced, investigative approach to determine whether failures indicate test issues or genuine bugs.
+description: Use when analyzing failing test cases to determine whether failures indicate genuine bugs or test implementation issues. Activates on "analyze failing tests", "debug test failures", "investigate test errors", or when provided with specific failing test names or output. Applies balanced investigative reasoning — does not auto-fix tests without establishing root cause.
 argument-hint: <test_file_or_test_name>
 user-invocable: true
-version: 1.0.0
-last_updated: '2026-01-25'
-python_compatibility: 3.11+
 ---
 
 # Analyze Test Failures
@@ -13,6 +10,8 @@ python_compatibility: 3.11+
 Analyze failing test cases with a balanced, investigative approach.
 
 ## Context
+
+Consult `../python3-development/references/python3-standards.md` when shared testing or quality rules from this plugin apply; full standards, graphs, and amendment process are documented there.
 
 When tests fail, there are two primary possibilities:
 

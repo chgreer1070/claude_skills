@@ -1,7 +1,7 @@
 ---
 name: reaction-detector
-description: Detects emotional reactions in Claude Code session transcript batches. Reads a user-only batch file and uses LLM semantic judgment to identify messages with strong emotional reactions aimed at the assistant. Returns a JSON file and a plain list of flagged entries.
-allowed-tools: Read, Bash, Glob
+description: Use when scanning Claude Code session transcript batches for strong emotional reactions aimed at the assistant. Activates on RTFP batch processing — reads a user-only batch file, applies LLM semantic judgment to identify flagged messages, and returns a JSON file plus a plain list of flagged entries for the context-reconstructor stage.
+tools: Read, Bash, Glob
 ---
 
 # Reaction Detector

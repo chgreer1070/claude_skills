@@ -1,10 +1,7 @@
 ---
 name: test-failure-mindset
-description: This skill should be used when encountering failing tests or when the user asks about "test failure analysis", "debugging tests", "why tests fail", or needs to set a balanced investigative approach for test failures. Establishes mindset that treats test failures as valuable signals requiring investigation, not automatic dismissal.
+description: Use when encountering failing tests, diagnosing test errors, or establishing a systematic approach to test failure investigation. Activates on "test failure analysis", "debugging tests", or "why tests fail" requests. Establishes the mindset that treats test failures as valuable diagnostic signals requiring root-cause investigation — not automatic code fixes or test dismissal.
 user-invocable: true
-version: 1.0.0
-last_updated: '2026-01-25'
-python_compatibility: 3.11+
 ---
 
 # Test Failure Analysis Mindset
@@ -12,6 +9,8 @@ python_compatibility: 3.11+
 Establish a balanced investigative approach for all test failures encountered in this session.
 
 ## Core Principle
+
+Consult `../python3-development/references/python3-standards.md` when shared testing or quality rules from this plugin apply; full standards, graphs, and amendment process are documented there.
 
 Tests are specifications - they define expected behavior. When they fail, it's a critical moment requiring balanced investigation, not automatic dismissal.
 

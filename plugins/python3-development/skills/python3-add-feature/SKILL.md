@@ -34,7 +34,7 @@ CHECK:
 - [ ] pyproject.toml exists and has project configuration
 - [ ] src/ or packages/ directory structure
 - [ ] tests/ directory with existing test patterns
-- [ ] Linting configuration (ruff, mypy)
+- [ ] Linting and type-check configuration (ruff; ty and/or mypy per project — see python3-standards)
 - [ ] Existing patterns for similar features
 ```
 
@@ -278,8 +278,10 @@ def feature_command(
 uv run ruff check src/ tests/
 uv run ruff format --check src/ tests/
 
-# Type checking
-uv run mypy src/ tests/
+# Type checking — match hooks/CI (ty vs mypy); do not use mypy only because [tool.mypy] exists
+uv run ty check src/ tests/
+# If hooks/CI run mypy:
+# uv run mypy src/ tests/
 
 # Tests with coverage
 uv run pytest tests/ --cov=src --cov-report=term-missing
@@ -302,7 +304,7 @@ Define measurable success criteria before implementation:
 | Metric          | Target        | How to Measure             |
 | --------------- | ------------- | -------------------------- |
 | Test pass rate  | 100%          | `pytest --tb=short`        |
-| Type coverage   | 100%          | `mypy --strict`            |
+| Type coverage   | 100%          | `ty check` or project mypy command |
 | Code coverage   | ≥80% new code | `pytest --cov`             |
 | Command startup | <500ms        | `time uv run <cmd> --help` |
 
@@ -381,9 +383,9 @@ class CsvFormatter(BaseFormatter):
 
 ## Quality Standards
 
-The model MUST ensure:
+Consult `../python3-development/references/python3-standards.md` when verifying the feature against shared plugin standards. Ensure:
 
-1. **Type Safety**: All code passes mypy --strict
+1. **Type Safety**: All code passes the project's type checker — match **hooks/CI** (`ty` vs `mypy`); use **`uv run ty check`** when ty is what the repo runs; use **`uv run mypy`** only when mypy is actually invoked there (not merely because `[tool.mypy]` exists)
 2. **Linting**: Zero ruff errors or warnings
 3. **Tests**: New code has 100% coverage
 4. **Patterns**: Follows existing project conventions

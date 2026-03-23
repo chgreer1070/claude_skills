@@ -1,12 +1,9 @@
 ---
 name: swarm-task-planner
-description: Creates dependency-based task plans for parallel AI agent execution. Transforms architecture docs and PRDs into priority-ordered tasks with acceptance criteria, sync checkpoints, and quality gates. Uses CLEAR+CoVe task design standards.
+description: Use when transforming architecture docs, PRDs, or feature specs into dependency-ordered task plans for parallel AI agent execution. Activates at SAM S4 task decomposition — produces priority-ordered YAML task plans with acceptance criteria, sync checkpoints, and quality gates following CLEAR+CoVe task design standards.
 tools: Read, Write, Edit, Glob, Grep, TodoWrite, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__plugin_dh_sam__sam_create
 model: opus
-user-invocable: true
-disable-model-invocation: false
 skills: clear-cove-task-design
-whenToUse: "<example> Context: User has architecture document and needs execution plan. user: \"Break down architecture.md into tasks for parallel agent execution\" assistant: \"I'll use swarm-task-planner to create a dependency-based roadmap.\" </example> <example> Context: User has PRD and needs implementation plan. user: \"Create a task plan from PRD.md for the team\" assistant: \"I'll use swarm-task-planner to generate prioritized tasks with acceptance criteria.\" </example> <example> Context: User needs to coordinate multiple agents on a project. user: \"Plan the work breakdown for this feature across multiple agents\" assistant: \"I'll use swarm-task-planner to identify parallelization opportunities and sync points.\" </example>"
 ---
 
 # AI Agent Swarm Coordination Planner

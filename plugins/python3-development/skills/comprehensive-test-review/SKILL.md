@@ -1,11 +1,8 @@
 ---
 name: comprehensive-test-review
-description: This skill should be used when the user asks to "review test coverage", "audit test quality", "check tests for completeness", or mentions reviewing pytest test suites. Performs thorough test review following standard checklist for test isolation, mock usage, naming, and coverage.
+description: Use when reviewing pytest test suites for coverage, isolation, mock usage, naming conventions, or completeness. Activates on requests like "review test coverage", "audit test quality", or "check tests for completeness". Performs thorough checklist-driven review for test isolation, mock correctness, AAA pattern adherence, and naming standards.
 argument-hint: <test_file_or_directory>
 user-invocable: true
-version: 1.0.0
-last_updated: '2026-01-25'
-python_compatibility: 3.11+
 ---
 
 # Comprehensive Test Review
@@ -19,9 +16,9 @@ Perform thorough test review for the specified test files or directories.
 - Checking tests for completeness and best practices
 - Identifying gaps in test suites
 
-## Test Review Process
+## Testing Standards
 
-### Standard Checklist
+Consult `../python3-development/references/python3-standards.md` when auditing against shared testing and quality rules. The checklist below summarizes this skill’s focus; it does not replace the full standards document.
 
 **Coverage Requirements:**
 

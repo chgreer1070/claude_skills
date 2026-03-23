@@ -11,6 +11,8 @@ Enables writing correct Rich terminal UI code — markup, styled output, tables,
 
 ## Scope
 
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
+
 TRIGGER: Activate when writing Python code that imports from `rich` or when asked to add terminal UI, colored output, progress bars, tables, syntax highlighting, or pretty printing to a Python CLI.
 
 COVERS:

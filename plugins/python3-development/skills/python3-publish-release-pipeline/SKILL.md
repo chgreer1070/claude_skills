@@ -19,6 +19,8 @@ If no argument provided, detect from repository (look for `.github/` or `.gitlab
 
 ## Instructions
 
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
+
 1. **Detect CI platform** (GitHub Actions or GitLab CI)
 2. **Create workflow files** for testing, linting, and publishing
 3. **Configure secrets** documentation for PyPI tokens
@@ -73,8 +75,8 @@ jobs:
           uv run ruff check src/ tests/
           uv run ruff format --check src/ tests/
 
-      - name: Run mypy
-        run: uv run mypy src/
+      - name: Run type check (ty default; swap to mypy if hooks/CI run mypy — not merely [tool.mypy])
+        run: uv run ty check src/ tests/
 
   test:
     runs-on: ubuntu-latest
@@ -229,7 +231,7 @@ lint:
   script:
     - uv run ruff check src/ tests/
     - uv run ruff format --check src/ tests/
-    - uv run mypy src/
+    - uv run ty check src/ tests/
 
 test:
   stage: test

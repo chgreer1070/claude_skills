@@ -1,10 +1,8 @@
 ---
 name: comprehensive-test-review
-description: This skill should be used when the user asks to "review test coverage", "audit test quality", "check tests for completeness", or mentions reviewing test suites. Performs thorough test review following standard checklist for test isolation, mock usage, naming, and coverage.
+description: Use when reviewing test suites for coverage, isolation, mock usage, naming conventions, or completeness. Activates on "review test coverage", "audit test quality", or "check tests for completeness" requests. Performs thorough checklist-driven review covering test isolation, mock correctness, AAA pattern adherence, and naming standards.
 argument-hint: <test_file_or_directory>
 user-invocable: true
-version: 1.0.0
-last_updated: '2026-01-25'
 ---
 
 # Comprehensive Test Review

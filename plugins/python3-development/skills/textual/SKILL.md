@@ -11,6 +11,8 @@ Provides patterns, API constraints, and working examples for building terminal a
 
 ## Scope
 
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
+
 TRIGGER: Activate when the user asks about Textual — building TUI apps, widgets, CSS styling, reactive attributes, testing, or concurrency.
 
 COVERS:

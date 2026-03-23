@@ -17,6 +17,8 @@ The model investigates functional bugs using specifications, logs, and observed 
 
 ## Instructions
 
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
+
 1. **Gather context** from user (spec, logs, reproduction steps)
 2. **Scope the problem** (what works, what doesn't, boundaries)
 3. **Form hypotheses** about root cause

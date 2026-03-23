@@ -667,6 +667,8 @@ See reference files for complete examples:
 
 ## Quality Standards
 
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
+
 Before finalizing a README:
 
 - [ ] One-line description clearly states project purpose

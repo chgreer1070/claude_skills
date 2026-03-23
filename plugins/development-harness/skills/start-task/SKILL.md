@@ -1,6 +1,6 @@
 ---
 name: start-task
-description: Start or complete a specific task inside a SAM task file. Updates task status to IN PROGRESS with Started timestamp, writes active-task context for hooks, and supports --complete to mark tasks complete. Use when an agent needs to pick up a SAM task, set it in progress, implement acceptance criteria, and signal completion.
+description: Use when an agent needs to pick up a specific SAM task, set it in progress, implement its acceptance criteria, and signal completion. Activates when executing tasks from a SAM task file — updates status to IN PROGRESS with a Started timestamp, writes active-task context for hooks, and supports --complete to mark tasks done. Triggers on task execution within the implement-feature loop.
 argument-hint: <task-file-path> [--task <task-id>] [--complete <task-id>]
 user-invocable: true
 hooks:
@@ -9,9 +9,6 @@ hooks:
     hooks:
     - type: command
       command: python3 "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
-version: 1.0.0
-last_updated: '2026-02-28'
-python_compatibility: 3.11+
 ---
 
 # Start Task (SAM Task Execution Helper)

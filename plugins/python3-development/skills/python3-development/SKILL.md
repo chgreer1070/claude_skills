@@ -1,9 +1,6 @@
 ---
 name: python3-development
-description: Python 3.11+ development with CLI apps (Typer/Rich), testing (pytest), linting (ruff/mypy), and TDD workflows. Use when building Python CLIs, writing tests, fixing linting errors, configuring pyproject.toml, creating portable scripts, or reviewing Python code for best practices.
-version: 1.2.0
-last_updated: '2026-01-14'
-python_compatibility: 3.11+
+description: Use when building Python 3.11+ CLI apps (Typer/Rich), writing pytest test suites, fixing ruff linting or ty/mypy type errors, configuring pyproject.toml, creating portable scripts, or reviewing Python code. Activates on all Python implementation tasks — routes to specialist agents for CLI architecture, test design, packaging, and code review. Authoritative reference for modern Python 3.11-3.14 patterns and TDD workflows.
 ---
 
 # Opinionated Python Development Skill
@@ -12,39 +9,41 @@ Python development guide for modern Python 3.11-3.14 patterns.
 
 ## Domain-Specific Skill Routing
 
-Load these specialist skills when the task matches their domain.
-
 ### Testing
 
-When reviewing test quality or performing test audits, load `/python3-development:comprehensive-test-review` for the full review checklist.
+Load `/python3-development:comprehensive-test-review` when reviewing test quality or performing test audits (full checklist).
 
-When analyzing failing tests or debugging test failures, load `/python3-development:analyze-test-failures` for balanced investigative methodology.
+Load `/python3-development:analyze-test-failures` when analyzing failing tests or debugging test failures (balanced investigation).
 
-When setting the right mindset for approaching test failures, load `/python3-development:test-failure-mindset` for the investigative stance.
+Load `/python3-development:test-failure-mindset` when resetting approach to test failures (tests-as-spec mindset).
 
-### CLI and UI Libraries
+### CLI and UI libraries
 
-When building CLI tools with Typer and Rich together, load `/python3-development:typer-and-rich` for integration patterns, width handling, and working examples.
+Load `/python3-development:typer-and-rich` when building CLIs with Typer and Rich together (integration, width handling, examples).
 
-When working with Typer CLI patterns specifically, load `/python3-development:typer` for command definitions, argument parsing, and Typer best practices.
+Load `/python3-development:typer` when working on Typer-only CLI patterns (commands, arguments, Typer features).
 
-When working with Rich output (tables, panels, progress bars, trees), load `/python3-development:rich` for Rich component patterns.
+Load `/python3-development:rich` when working on Rich output (tables, panels, progress, trees).
 
-When building terminal user interfaces with Textual, load `/python3-development:textual` for TUI application patterns.
+Load `/python3-development:textual` when building terminal UIs with Textual.
 
-### Development Workflows
+### Development workflows
 
-When creating a structured feature development task, load `/python3-development:create-feature-task` for the task template and tracking setup.
+Load `/python3-development:create-feature-task` when creating a structured feature task with tracking and phases.
 
-When creating a new Claude Code skill from a template, load `/python3-development:use-command-template` for the skill creation workflow.
+Load `/python3-development:use-command-template` when creating a new Claude Code skill from the template workflow.
 
-### Code Quality
+### Code quality
 
-When applying modern Python patterns or modernizing legacy code, load `/python3-development:modernpython` for Python 3.11+ patterns with PEP citations.
+Load `/python3-development:modernpython` when applying modern Python 3.11+ patterns or modernizing legacy code (PEP-grounded).
 
-When validating shebangs and PEP 723 inline metadata, load `/python3-development:shebangpython` for shebang correctness rules.
+Load `/python3-development:shebangpython` when validating shebangs or PEP 723 inline script metadata.
 
-When running progressive quality improvement (static analysis, type refinement, modernization), load `/python3-development:stinkysnake` for the quality pipeline.
+Load `/python3-development:stinkysnake` when running progressive quality improvement (static analysis, typing, modernization plan, TDD loop).
+
+### Extended tool matrix
+
+Load `/python3-development:specialist-skill-routing` when the task involves uv, Hatchling, ty, pre-commit, packaging, or other specialists not listed above (full trigger map inside that skill).
 
 ## Skill Architecture
 
@@ -52,18 +51,20 @@ When running progressive quality improvement (static analysis, type refinement, 
 
 **Reference Documentation:**
 
-- [User Project Conventions](./references/user-project-conventions.md) - Extracted conventions from user's production projects (MANDATORY for new projects)
+- [Python 3 Standards](./references/python3-standards.md) — Unified Python 3.11+ standards, knowledge graph, process graph, and how to amend them (consult when enforcing plugin-wide rules)
+- [User Project Conventions](./references/user-project-conventions.md) — Conventions from production projects; consult when starting or matching an existing project style
 - [Modern Python Modules](./references/modern-modules.md) - 50+ library guides with usage patterns and best practices
 - [Tool & Library Registry](./references/tool-library-registry.md) - Development tools catalog for linting, testing, and build automation
 - [API Reference](./references/api_reference.md) - API specifications and integration guides
 - [Python Development Orchestration](./references/python-development-orchestration.md) - Detailed workflow patterns for TDD, feature addition, refactoring, and code review
 
-**Specialist Skills** (loaded via routing section above):
+**Specialist Skills** (routing commands — see **Domain-Specific Skill Routing**):
 
-- Testing skills: comprehensive-test-review, analyze-test-failures, test-failure-mindset
-- CLI/UI skills: typer-and-rich, typer, rich, textual
-- Development skills: create-feature-task, use-command-template
-- Quality skills: modernpython, shebangpython, stinkysnake
+- Testing: comprehensive-test-review, analyze-test-failures, test-failure-mindset
+- CLI/UI: typer-and-rich, typer, rich, textual
+- Workflows: create-feature-task, use-command-template
+- Quality: modernpython, shebangpython, stinkysnake
+- More: specialist-skill-routing (uv, Hatchling, ty, packaging, …)
 
 **Scripts and Assets:**
 
@@ -74,8 +75,9 @@ When running progressive quality improvement (static analysis, type refinement, 
 
 - `uv` - Python package and project manager (required)
 - `ruff` - Linter and formatter
-- `pyright` - Type checker (Microsoft)
-- `mypy` - Static type checker
+- `ty` - Primary static type checker (Astral); default for new work — see `/python3-development:ty`
+- `mypy` - Static type checker; use when the project already configures it — do not force migration away from mypy
+- `pyright` / `basedpyright` - Use when the project already standardizes on them
 - `pytest` - Testing framework
 - `pre-commit` - Git hook framework
 - `mutmut` - Mutation testing (for critical code)
@@ -91,127 +93,78 @@ When running progressive quality improvement (static analysis, type refinement, 
 
 This skill provides modern Python 3.11+ standards, quality gates, and reference documentation for Python development.
 
-**Specialist skills**: See the Domain-Specific Skill Routing section above for loading the right skill based on your task.
+Consult [Python 3 Standards](./references/python3-standards.md) when applying shared rules for:
+- Architecture Standards (Layered architecture, Separation of concerns)
+- Python Standards (Native type hints, Google-style docstrings, Fail-fast error handling)
+- CLI Standards (Typer/Rich)
+- Service Integration Standards (Protocol classes)
+- Testing Standards (pytest-mock, 80% coverage)
 
-**Reference Documentation**:
+### Python Development Process Graph
 
-- Modern Python modules (50+ libraries)
-- Tool and library registry with template variable system
-- API specifications
-- Working configurations for pyproject.toml, ruff, mypy, pytest
+The following flowchart illustrates exactly where and why each skill/agent is used in the Python development lifecycle:
 
-**Docstring Standard**: Google style (Args/Returns/Raises sections). See [User Project Conventions](./references/user-project-conventions.md) for ruff pydocstyle configuration (`convention = "google"`).
+```mermaid
+flowchart TD
+    %% Define Styles
+    classDef trigger fill:#e1f5fe,stroke:#3b82f6,stroke-width:2px;
+    classDef plan fill:#fff3e0,stroke:#ff9800,stroke-width:2px;
+    classDef implement fill:#e8f5e9,stroke:#4caf50,stroke-width:2px;
+    classDef verify fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px;
 
-**CRITICAL: Pyproject.toml Template Variables**:
+    %% Nodes
+    Start([Feature Request / Tech Debt]) ::: trigger
 
-All pyproject.toml examples use explicit template variables (e.g., `{{project_name_from_directory_or_git_remote}}`) instead of generic placeholders. The model MUST replace ALL template variables with actual values before creating files. See [Tool & Library Registry sections 18-19](./references/tool-library-registry.md#18-pyprojecttoml-template-variable-reference) for:
+    subgraph Planning Phase
+        DesignSpec[python-cli-design-spec<br/>Create Architecture & Interfaces] ::: plan
+        StinkySnake[stinkysnake<br/>Analyze & Plan Refactoring] ::: plan
+    end
 
-- Complete variable reference and sourcing methods
-- Mandatory rules for file creation
-- Validation and verification procedures
+    subgraph Test-Driven Phase
+        TestArch[python-pytest-architect<br/>Write Failing Tests] ::: implement
+    end
 
-### Script Dependency Trade-offs
+    subgraph Implementation Phase
+        CliArch[python-cli-architect<br/>Implement Core Logic] ::: implement
+        SnakePolish[snakepolish<br/>Iterative Implement & Test Loop] ::: implement
+    end
 
-Understand the complexity vs portability trade-off when creating Python CLI scripts:
+    subgraph Verification Phase
+        StaticAnalysis[Ruff + type checker<br/>ty default; mypy if configured] ::: verify
+        Review[code-reviewer / python3-review<br/>Holistic Quality & Pattern Check] ::: verify
+    end
 
-**Scripts with dependencies (Typer + Rich via PEP 723)**:
+    Done([Ready for Merge]) ::: trigger
 
-- **Benefits**:
-  - Less development complexity - Leverage well-tested libraries for argument parsing, formatting, validation
-  - Less code to write - Typer handles CLI boilerplate, Rich handles output formatting
-  - Better UX - Colors, progress bars, structured output built-in
-  - Just as simple to execute - PEP 723 makes it a single-file executable; uv handles dependencies automatically
-- **Trade-off**: Requires network access on first run (to fetch packages)
+    %% Edges
+    Start -->|New Feature| DesignSpec
+    Start -->|Refactor Legacy| StinkySnake
 
-**stdlib-only scripts**:
+    DesignSpec --> TestArch
+    StinkySnake --> TestArch
 
-- **Benefits**:
-  - Maximum portability - Runs on ANY Python installation without network access
-  - Best for: Air-gapped systems, restricted corporate environments, embedded systems
-- **Trade-offs**:
-  - More development complexity - Build everything from scratch (manual argparse, manual tree formatting, manual color codes)
-  - More code to write and test - Everything must be implemented manually
-  - Basic UX - Limited formatting without external libraries
+    TestArch -->|Tests Fail| CliArch
+    TestArch -->|Tests Fail| SnakePolish
 
-**Default recommendation:** Use Typer + Rich with PEP 723 unless you have specific portability requirements that prevent network access.
+    CliArch --> StaticAnalysis
+    SnakePolish --> StaticAnalysis
 
-**See:**
+    StaticAnalysis -->|Pass| Review
+    StaticAnalysis -->|Fail| CliArch
 
-- Load `Skill(skill="python3-development:typer-and-rich")` for Rich width handling solutions and working examples.
-
-### Rich Panel and Table Width Handling
-
-For Rich table and panel width patterns, activate the `/python3-development:python-cli-architect` skill.
-
-**Executable Examples**: Load `Skill(skill="python3-development:typer-and-rich")` when troubleshooting display and layout of terminal applications. The skill references:
-
-- `console_no_wrap_example.py` - Plain text wrapping solutions
-- `console_containers_no_wrap.py` - Panel/Table width handling with `get_rendered_width()`
-
-### Rich Emoji Usage
-
-**Instruction**: In Rich console output, always use Rich emoji tokens instead of literal Unicode emojis.
-
-**Use Rich emoji tokens**: `:white_check_mark: :cross_mark: :magnifying_glass:`
-
-**Why**: Cross-platform compatibility, consistent rendering, markdown-safe alignment
-
-**Example:**
-
-```python
-from rich.console import Console
-
-console = Console()
-
-# Correct - Rich emoji tokens
-console.print(":white_check_mark: Task completed")
-console.print(":cross_mark: Task failed")
-console.print(":sparkles: New feature")
-console.print(":rocket: Performance improvement")
+    Review -->|Issues Found| CliArch
+    Review -->|Approved| Done
 ```
 
-**Benefits**:
+**Reference documentation**
 
-- Rich emoji tokens work consistently across all terminals and fonts
-- Avoid markdown table alignment issues (emoji width calculation problems)
-- Enable proper width measurement in `get_rendered_width()`
-- Ensure cross-platform compatibility (Windows, Linux, macOS)
+- [Python 3 Standards](./references/python3-standards.md) — Same as above; load when the process graph or standards need detail.
 
-**See**: [Rich Emoji Documentation](https://rich.readthedocs.io/en/stable/appendix/colors.html#appendix-emoji) for complete emoji token reference.
+**Docstring standard** Google style (Args/Returns/Raises sections). See [User Project Conventions](./references/user-project-conventions.md) for ruff pydocstyle configuration (`convention = "google"`).
 
-### Python Exception Handling
+**Pyproject.toml template variables**
 
-Catch exceptions only when you have a specific recovery action. Let all other errors propagate to the caller.
-
-**Reason**: Fail-fast principle surfaces issues early rather than hiding them behind generic error messages.
-
-**Pattern**:
-
-```python
-def get_user(id):
-    return db.query(User, id)  # Errors surface naturally
-
-def get_user_with_handling(id):
-    try:
-        return db.query(User, id)
-    except ConnectionError:
-        logger.warning("DB unavailable, using cache")
-        return cache.get(f"user:{id}")  # Specific recovery action
-```
-
-When adding try/except, answer: "What specific error do I expect, and what is my recovery action?"
-
-**See**: Load `Skill(skill="python3-development:typer-and-rich")` for comprehensive Typer exception chain prevention patterns, including `AppExit` and `AppExitRich` examples.
-
-### Type Safety with Mypy
-
-**REQUIREMENT**: All Python code MUST be comprehensively typed using Python 3.11+ native type hints.
-
-**Python Version**: Python 3.11+ is required unless explicitly documented otherwise. Older versions are rare, documented exceptions.
-
-**The model MUST read the official mypy documentation examples before implementing type patterns.**
-
-For comprehensive type safety guidance including Generics, Protocols, TypedDict, Type Narrowing, attrs/dataclasses/pydantic comparison, and mypy configuration, see [Type Safety with Mypy Reference](./references/type-safety-mypy.md).
+All `pyproject.toml` examples use explicit template variables (e.g., `{{project_name_from_directory_or_git_remote}}`) instead of generic placeholders. Replace every template variable with actual values before writing files. See [Tool & Library Registry sections 18–19](./references/tool-library-registry.md#18-pyprojecttoml-template-variable-reference) for variable reference, sourcing methods, and verification steps.
 
 ## Command Usage
 
@@ -404,7 +357,7 @@ These skills are bundled with this plugin and available as slash commands:
 ## Summary
 
 - Modern Python 3.11+ standards and patterns
-- Quality gates: ruff, pyright, mypy, pytest (>80% coverage)
+- Quality gates: ruff, ty (default type check), mypy/pyright when project uses them, pytest (>80% coverage)
 - Command standards: /python3-development:modernpython, /python3-development:shebangpython
 - Reference documentation for 50+ modern Python modules
 - Tool and library registry

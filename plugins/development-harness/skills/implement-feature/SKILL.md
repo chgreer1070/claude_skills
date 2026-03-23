@@ -1,11 +1,8 @@
 ---
 name: implement-feature
-description: Execute a SAM task plan by looping ready tasks, delegating each to its specified agent, and relying on hooks to update task timestamps/status. Task plans are stored under ~/.dh/projects/{slug}/plan/ (resolved via dh_paths.plan_dir()). Use when a task file exists and you need to run the implementation loop that picks up ready tasks and delegates them to agents.
+description: Use when a SAM task plan exists and you need to execute the implementation loop — picks up ready tasks, delegates each to its specified agent, and relies on hooks to update task timestamps and status. Activates when a task file path or feature slug is provided after planning is complete. Task plans are stored under ~/.dh/projects/{slug}/plan/ and resolved via dh_paths.plan_dir().
 argument-hint: <task-file-path or feature-slug>
 user-invocable: true
-version: 1.0.0
-last_updated: '2026-02-28'
-memory: project
 hooks:
   SubagentStop:
   - hooks:

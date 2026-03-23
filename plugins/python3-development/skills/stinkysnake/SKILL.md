@@ -25,7 +25,7 @@ Systematic Python code quality improvement through static analysis, type refinem
 │  Phase 1: STATIC ANALYSIS                                                   │
 │  ├── Run formatters (ruff format)                                           │
 │  ├── Run linters (ruff check --fix)                                         │
-│  ├── Run type checkers (mypy, pyright)                                      │
+│  ├── Run type checkers (ty default; mypy/pyright if project configures)    │
 │  └── Auto-fix all resolvable issues                                         │
 │           │                                                                 │
 │           ▼                                                                 │
@@ -124,12 +124,18 @@ uv run ruff check --fix --unsafe-fixes $ARGUMENTS
 
 ### Step 1.3: Run Type Checkers
 
+Inspect `.pre-commit-config.yaml` (then CI) first, then `pyproject.toml`. **Default for new work:** **ty**. **If hooks or CI invoke mypy:** run **mypy** and do not rip it out. **Do not** switch to mypy only because `[tool.mypy]` exists — many repos keep that section while **ty** is the real gate.
+
 ```bash
-# Run mypy
+# Default (ty) — when hooks run ty, [tool.ty] is active, or no mypy invocation in hooks/CI
+uv run ty check $ARGUMENTS
+
+# Project that actually runs mypy in hooks/CI — respect mypy.ini / [tool.mypy]
 uv run mypy $ARGUMENTS
 
-# Run pyright if configured
+# Project standardizes on pyright / basedpyright
 uv run pyright $ARGUMENTS
+# uv run basedpyright $ARGUMENTS
 ```
 
 ### Step 1.4: Document Remaining Issues
@@ -195,8 +201,10 @@ Search for explicit and implicit `Any` usage:
 # Find explicit Any imports and usage
 uv run rg "from typing import.*Any|: Any|-> Any" $ARGUMENTS
 
-# Run mypy with strict mode to find implicit Any
-uv run mypy --strict $ARGUMENTS 2>&1 | grep -E "has type.*Any|Implicit.*Any"
+# Implicit Any / strict diagnostics — use the same checker the project uses
+uv run ty check $ARGUMENTS 2>&1 | grep -iE "Any|implicit" || true
+# If project uses mypy instead:
+# uv run mypy --strict $ARGUMENTS 2>&1 | grep -E "has type.*Any|Implicit.*Any"
 ```
 
 **Create inventory**:
@@ -435,7 +443,8 @@ This skill:
 ```bash
 # Final verification
 uv run pytest tests/ -v
-uv run mypy $ARGUMENTS --strict
+uv run ty check $ARGUMENTS
+# If project uses mypy: uv run mypy $ARGUMENTS
 uv run ruff check $ARGUMENTS
 ```
 
@@ -519,7 +528,7 @@ SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
 
 ### Skill Reference Files
 
-- [Python 3 Standards](./python3-standards.md) — Shared development standards, knowledge graph, and process graph
+- [Python 3 Standards](../python3-development/references/python3-standards.md) — Shared development standards, knowledge graph, and process graph
 - [Plan Templates](./references/plan-templates.md) — document formats for modernization plan, review report, revised plan, and documentation update plan
 - [Agent Prompts](./references/agent-prompts.md) — pre-built delegation prompts for Phase 4 review agent and Phase 8 test writing agent
 
@@ -529,7 +538,8 @@ SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
 - [PEP 544 - Protocols](https://peps.python.org/pep-0544/)
 - [PEP 589 - TypedDict](https://peps.python.org/pep-0589/)
 - [PEP 647 - TypeGuard](https://peps.python.org/pep-0647/)
-- [mypy Cheat Sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
+- [ty documentation](https://docs.astral.sh/ty/) (default type checker)
+- [mypy Cheat Sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html) (when project uses mypy)
 
 ### Companion Plugins
 

@@ -1,7 +1,7 @@
 ---
 name: meta-inspector
-description: Extract specific data points from agent output transcripts, kaizen analysis reports, and JSONL session files without loading raw data into orchestrator context. Use when needing tool timings, query counts, error summaries, or any structured facts from large output files. Prevents context pollution from raw transcript reads.
-tools: Read, Grep, Glob, mcp__plugin_agentskill-kaizen_kaizen-duckdb__execute_query
+description: Use when extracting specific data points from large agent output transcripts, kaizen analysis reports, or JSONL session files — tool timings, query counts, error summaries, or any structured facts — without loading raw data into orchestrator context. Activates when the orchestrator needs targeted facts from large files and context pollution must be avoided.
+allowed-tools: Read, Grep, Glob, mcp__plugin_agentskill-kaizen_kaizen-duckdb__execute_query
 ---
 
 # Meta-Inspector — Data Point Extraction
