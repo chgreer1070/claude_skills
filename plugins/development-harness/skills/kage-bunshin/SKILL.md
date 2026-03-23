@@ -85,11 +85,22 @@ flowchart TD
     Clean --> Launch["tmux new-session -d wrapping<br>claude --worktree {name} --tmux<br>--dangerously-skip-permissions --model {model}"]
     Launch --> Wait["Wait for claude REPL to initialize<br>(3 seconds)"]
     Wait --> Prompt["Send initial prompt via<br>tmux send-keys"]
-    Prompt --> Register["Save to registry.json"]
+    Prompt --> Submit["Press Enter to submit prompt<br>tmux send-keys Enter"]
+    Submit --> Register["Save to registry.json"]
     Register --> Print["Print JSON record to stdout"]
 ```
 
 The claude CLI's built-in `--worktree` creates a git worktree at `.claude/worktrees/{name}`. The built-in `--tmux` creates a tmux session named `{repo}_worktree-{name}`. The script wraps the launch in `tmux new-session -d` to provide the TTY that `--tmux` requires in headless environments.
+
+**Verify prompt submission after spawn.** The script sends the initial prompt with Enter via `tmux send-keys`, but the REPL may not be fully initialized when the prompt arrives (race condition with the 3-second wait). After spawning, always verify the session started processing by reading the output within 10-15 seconds. If the REPL still shows the pasted prompt with a `❯` cursor and no activity, the Enter was swallowed — resend it:
+
+```bash
+tmux send-keys -t {tmux_session} Enter
+```
+
+The same applies to `send` — after sending a message, check within a few seconds that processing began.
+
+**Permission prompts use cursor selection, not text input.** When the session shows a numbered menu (e.g., "1. Yes / 2. No"), send `Enter` to accept the highlighted option or arrow keys to change selection. Do NOT send "1" or "2" as text — the REPL uses a cursor-based selection widget.
 
 ## Subcommand Reference
 
