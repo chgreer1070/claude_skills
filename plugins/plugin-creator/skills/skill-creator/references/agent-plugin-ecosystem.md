@@ -114,6 +114,32 @@ The `skilllint` FM009 guard treats `mcp:` as an ecosystem-owned key and skips re
 
 SOURCE: oh-my-opencode source `/src/features/opencode-skill-loader/skill-mcp-config.ts`, <https://github.com/code-yeongyu/oh-my-opencode> (accessed 2026-03-06).
 
+## MCP Fully-Qualified Tool Name Syntax
+
+When a skill instructs Claude to use an MCP tool, always use the fully-qualified format `ServerName:tool_name`. This is the naming convention Claude uses internally to route tool calls to the correct MCP server.
+
+**Format:** `ServerName:tool_name`
+
+**Examples:**
+
+```markdown
+Use the BigQuery:bigquery_schema tool to retrieve table schemas.
+Use the GitHub:create_issue tool to create a new issue.
+Use the Filesystem:read_file tool to read the configuration file.
+```
+
+Where the prefix before the colon is the MCP server name and the suffix is the tool name within that server. Without the server prefix, Claude may fail to locate the tool — especially when multiple MCP servers are available simultaneously and tool names conflict across servers.
+
+**Discovering available MCP tool names:**
+
+To find the correct server name and tool name for a given MCP server:
+
+1. Check the MCP server's manifest or documentation for its declared server name
+2. List available tools via the MCP protocol's `tools/list` method
+3. For Claude Code plugins, inspect the `mcpServers` field in `plugin.json` — the key name is the server name Claude uses as the prefix
+
+SOURCE: Anthropic skill-authoring best practices (docs.anthropic.com, accessed 2026-03-23)
+
 ## Writing for the Correct Target
 
 ```mermaid

@@ -12,6 +12,8 @@ SOURCE: [Extend Claude with skills](https://code.claude.com/docs/en/skills.md) (
 
 - [Skill File Format](#skill-file-format)
 - [Frontmatter Reference](#frontmatter-reference)
+- [Naming Conventions](#naming-conventions)
+- [Writing Effective Descriptions](#writing-effective-descriptions)
 - [Where Skills Live](#where-skills-live)
 - [String Substitutions](#string-substitutions)
 - [Dynamic Context Injection](#dynamic-context-injection)
@@ -76,6 +78,99 @@ When `allowed-tools` is **not specified**, the skill inherits tool capabilities 
 
 - **Pre-approval**: Listed tools are granted without per-use permission prompts
 - **Capability scoping**: Claude is restricted to only those tools, reducing context size
+
+### Frontmatter Validation Constraints
+
+Additional validation constraints not shown in the table above:
+
+- `name`: No XML tags. No reserved words (e.g., `anthropic-helper`, `claude-tools`).
+- `description`: No XML tags.
+
+Violating these constraints causes silent validation failures — the skill may fail to register without a clear error message.
+
+SOURCE: Anthropic skill-authoring best practices (docs.anthropic.com, accessed 2026-03-23)
+
+---
+
+## Naming Conventions
+
+Use consistent naming patterns to make skills easier to reference and discuss. The `name` field must use lowercase letters, numbers, and hyphens only.
+
+**Preferred: gerund form** (verb + -ing) — clearly describes the activity the skill provides:
+
+- `processing-pdfs`
+- `analyzing-spreadsheets`
+- `managing-databases`
+- `testing-code`
+- `writing-documentation`
+
+**Acceptable alternatives:**
+
+- Noun phrases: `pdf-processing`, `spreadsheet-analysis`
+- Action-oriented: `process-pdfs`, `analyze-spreadsheets`
+
+**Avoid:**
+
+- Vague names: `helper`, `utils`, `tools`
+- Overly generic: `documents`, `data`, `files`
+- Reserved words: `anthropic-helper`, `claude-tools`
+- Inconsistent patterns within your skill collection
+
+Consistent naming makes it easier to reference skills in documentation and conversations, understand what a skill does at a glance, and maintain a professional, cohesive skill library.
+
+SOURCE: Anthropic skill-authoring best practices (docs.anthropic.com, accessed 2026-03-23)
+
+---
+
+## Writing Effective Descriptions
+
+The `description` field is injected into the system prompt and is the **primary trigger mechanism** — Claude uses it to choose the right skill from potentially 100+ available skills.
+
+**Always write in third person.** The description is injected into the system prompt, and inconsistent point-of-view causes discovery problems.
+
+Good:
+
+```yaml
+description: Processes Excel files and generates reports
+```
+
+Avoid:
+
+```yaml
+description: I can help you process Excel files
+```
+
+```yaml
+description: You can use this to process Excel files
+```
+
+**Be specific and include key terms.** Include both what the skill does and specific triggers or contexts for when to use it. Make descriptions slightly directive ("Use when...") to improve triggering reliability.
+
+Effective examples:
+
+```yaml
+description: Generates descriptive commit messages by analyzing git diffs. Use when the user asks for help writing commit messages or reviewing staged changes.
+```
+
+```yaml
+description: Analyzes spreadsheets, creates pivot tables, generates charts. Use when analyzing tabular data or files with .xlsx, .csv, or .ods extensions.
+```
+
+Avoid vague descriptions:
+
+```yaml
+description: Helps with documents
+```
+
+```yaml
+description: Processes data
+```
+
+```yaml
+description: Does stuff with files
+```
+
+SOURCE: Anthropic skill-authoring best practices (docs.anthropic.com, accessed 2026-03-23)
 
 ---
 
@@ -215,6 +310,21 @@ Reference supporting files from `SKILL.md`:
 - For complete API details, see [reference.md](reference.md)
 - For usage examples, see [examples.md](examples.md)
 ```
+
+### One-Level-Deep Reference Rule
+
+Keep all reference files one level deep from `SKILL.md`. Claude may partially read files when they are referenced from other referenced files — using commands like `head -100` to preview content rather than reading entire files, resulting in incomplete information.
+
+```text
+Bad: SKILL.md -> advanced.md -> details.md   (details.md content is missed)
+Good: SKILL.md -> advanced.md
+      SKILL.md -> details.md
+      SKILL.md -> examples.md
+```
+
+File references must use the form `[text](references/file.md)` — not `[text](references/subdir/file.md)`.
+
+SOURCE: Anthropic skill-authoring best practices (docs.anthropic.com, accessed 2026-03-23)
 
 ---
 

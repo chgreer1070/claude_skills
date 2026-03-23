@@ -8,6 +8,8 @@ user-invocable: true
 
 Skills extend what Claude can do. Create a `SKILL.md` file with instructions, and Claude adds it to its toolkit. Claude uses skills when relevant, or you can invoke one directly with `/skill-name`.
 
+> To create or improve skills using a guided workflow, load the `/plugin-creator:skill-creator` skill.
+
 **Skills and slash commands are now unified** - they are the same system. A file at `.claude/commands/review.md` and a skill at `.claude/skills/review/SKILL.md` both create `/review` and work identically. If a skill and a command share the same name, the skill takes precedence. Skills are the recommended approach as they support additional features like supporting files and advanced frontmatter options.
 
 > **Portable skills?** This reference covers **Claude Code-specific** features (hooks, context fork, model selection, invocation control). If you need to create skills that work across Claude Code, Cursor, Gemini CLI, OpenAI Codex, VS Code, and 20+ other agents, see the [Agent Skills Open Standard](../agentskills/SKILL.md) skill instead — it covers the portable subset of the format defined at [agentskills.io](https://agentskills.io).
@@ -107,6 +109,14 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 ## Skill Tokenomics
 
 Skills use progressive disclosure - only frontmatter loads initially (~100 tokens), full content loads on activation.
+
+The context window is a public good shared with everything else Claude needs to know. Only add context Claude does not already have. Before writing each section, challenge it:
+
+- Does Claude really need this information to complete the task?
+- Can I assume Claude already knows this from training?
+- Does this paragraph justify its token cost?
+
+SOURCE: Anthropic skill-authoring best practices (docs.anthropic.com, accessed 2026-03-23)
 
 ### Budget Constraints
 
