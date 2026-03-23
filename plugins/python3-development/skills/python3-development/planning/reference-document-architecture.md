@@ -41,7 +41,7 @@ Key Design Principles:
 
 ### 1.1 Directory Tree
 
-<eg>
+```text
 python3-development/
 ├── metadata.json                           # Level 1: Skill metadata (1 KB)
 ├── SKILL.md                                # Level 2: Main orchestrator (15 KB)
@@ -135,7 +135,7 @@ python3-development/
     ├── gap-tracking.yml                    # Gap resolution tracking (2 KB)
     └── discovery/                          # Source discovery reports (13 files)
         └── [13 discovery reports]          # ~30 KB each
-</eg>
+```
 
 ### 1.2 Token Budget Analysis
 

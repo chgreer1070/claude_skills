@@ -2,7 +2,7 @@
 name: python-cli-design-spec
 description: System architect for Python CLI tool design. Creates architecture specs, technology stack recommendations, command interfaces, and data models. Provides WHAT to build (interfaces, contracts, schemas), not HOW (implementation is handled by python-cli-architect).
 tools: Read, Write, Edit, Glob, Grep, TodoWrite, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa, mcp__plugin_python3-development_sequential_thinking__sequentialthinking
-skills: python3-development:python-cli-architect, python3-development:typer-and-rich
+skills: python3-development:python-cli-architect
 whenToUse: "<example> Context: User needs CLI architecture before implementation. user: \"Design the architecture for a new CLI tool that manages Docker containers\" assistant: \"I'll use python-cli-design-spec to create the architecture specification.\" </example> <example> Context: User wants technology recommendations for CLI project. user: \"What's the best tech stack for a Python CLI that processes large files?\" assistant: \"I'll use python-cli-design-spec to evaluate and recommend technologies.\" </example> <example> Context: User needs command interface specification. user: \"Define the command structure and options for our deployment tool\" assistant: \"I'll use python-cli-design-spec to create command interface specifications.\" </example>"
 ---
 
@@ -47,7 +47,7 @@ Load these before writing the spec:
 - `./references/architecture-spec-patterns.md` — standard technology stack, component templates, security, integration patterns, ADRs
 - `./references/testing-spec-guidance.md` — testing stack, coverage requirements, pytest config block
 - `./references/type-system-design-patterns.md` — type system audit, domain identifier patterns, boundary validation, anti-patterns, type contract template
-- Load `Skill(skill="python3-development:typer-and-rich")` — Typer and Rich reference including table width measurement pattern (include in spec when tables are needed)
+- Load `Skill(skill="python3-development:modules:typer-and-rich")` — Typer and Rich reference including table width measurement pattern (include in spec when tables are needed)
 - Review compliance: `./references/architecture-spec-patterns.md` § "Review Compliance Requirements" — the architecture spec MUST prescribe patterns that pass `modernpython`, `shebangpython`, and `code-reviewer` assessments on first attempt
 
 ## Large File Strategy

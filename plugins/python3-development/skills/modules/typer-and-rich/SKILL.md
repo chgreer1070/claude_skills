@@ -1,14 +1,21 @@
 ---
 name: typer-and-rich
-description: Best practices and anti-patterns for Typer and Rich CLI applications — prevents common AI mistakes like Rich table wrapping in non-TTY, incorrect console output handling, testing Rich-formatted output, and integration pitfalls. Load alongside the typer and rich API reference skills when building CLI applications.
+description: "Best practices and anti-patterns for Typer and Rich CLI applications — prevents common AI mistakes like Rich table wrapping in non-TTY, incorrect console output handling, testing Rich-formatted output, and integration pitfalls. Load alongside the typer and rich API reference skills when building CLI applications."
+argument-hint: <test_file_or_test_name>
+user-invocable: true
+version: 1.0.0
+last_updated: '2026-03-23'
 ---
 
 # Typer and Rich Best Practices
 
+<user_input>$ARGUMENTS</user_input>
+If <user_input/> contains a directory or file then that is what should be examines against this guide specifically. Start immediately. If its empty, then use this as a reference for existing tasks.
+
 Correctness patterns for building CLI applications with Typer and Rich, focused on non-TTY environments and common failure modes. For API reference, load the dedicated skills:
 
-- `Skill(skill="python3-development:typer")` — Typer CLI framework API reference
-- `Skill(skill="python3-development:rich")` — Rich terminal UI API reference
+- `Skill(skill="python3-development:modules:typer")` — Typer CLI framework API reference
+- `Skill(skill="python3-development:modules:rich")` — Rich terminal UI API reference
 
 ## Non-TTY and Programmatic Usage
 

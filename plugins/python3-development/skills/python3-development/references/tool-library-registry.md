@@ -4136,7 +4136,7 @@ Coverage thresholds configured in `pyproject.toml` (95%+ for critical code like 
 
 **Tool Selection Decision Tree**:
 
-<eg>
+```text
 Need to...
 ├─ Manage packages? → uv
 ├─ Lint code? → ruff
@@ -4154,7 +4154,7 @@ Need to...
 ├─ Template projects? → copier
 ├─ Explore data? → datasette
 └─ Handle dates? → arrow
-</eg>
+```
 
 ---
 
@@ -4212,7 +4212,7 @@ Each variable name indicates:
 
 **Project Name**:
 
-<eg>
+```text
 Variable: {{project_name_from_directory_or_git_remote}}
 Sources (in priority order):
 1. git config --get remote.origin.url | sed 's/.*\///' | sed 's/\.git$//'
@@ -4224,7 +4224,7 @@ Example: my_awesome_package
 
 **Project Version**:
 
-<eg>
+```text
 Variable: {{version_from_git_tag_or_default_0_1_0}}
 Sources (in priority order):
 1. git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//'
@@ -4232,40 +4232,40 @@ Sources (in priority order):
 3. User input
 Validation: Must follow semantic versioning (X.Y.Z)
 Example: 1.2.3
-</eg>
+```
 
 **Project Description**:
 
-<eg>
+```text
 Variable: {{project_description_from_user_or_readme}}
 Sources (in priority order):
 1. First line of README.md after title
 2. User input (REQUIRED if README.md missing)
 Validation: Single-line string, <200 characters
 Example: A modern Python CLI tool for processing CSV files
-</eg>
+```
 
 ### 18.3 Author Variables
 
 **Author Name**:
 
-<eg>
+```text
 Variable: {{author_name_from_git_config_user_name}}
 Source: git config --get user.name
 Fallback: User input (REQUIRED if git config missing)
 Validation: Non-empty string
 Example: Jane Developer
-</eg>
+```
 
 **Author Email**:
 
-<eg>
+```text
 Variable: {{author_email_from_git_config_user_email}}
 Source: git config --get user.email
 Fallback: User input (REQUIRED if git config missing)
 Validation: Valid email format
 Example: jane@example.com
-</eg>
+```
 
 ### 18.4 Repository Variables
 
