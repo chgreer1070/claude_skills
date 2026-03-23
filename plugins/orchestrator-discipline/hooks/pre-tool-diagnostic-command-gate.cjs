@@ -61,6 +61,14 @@ process.stdin.on('end', () => {
     process.exit(0);
   }
 
+  // Skip warning for subagent sessions — subagents SHOULD run diagnostics.
+  // When running inside a subagent, the hook input includes agent_id and agent_type
+  // fields that are absent in the orchestrator session. Verified 2026-03-23.
+  if (data.agent_id) {
+    process.stdout.write(JSON.stringify({}));
+    process.exit(0);
+  }
+
   const toolName = data.tool_name || '';
   if (toolName !== 'Bash') {
     process.stdout.write(JSON.stringify({}));
