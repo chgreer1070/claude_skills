@@ -276,7 +276,7 @@ See the library modernization reference table in [Type Pattern Examples](./refer
 
 ### Step 3.4: Create Modernization Plan Document
 
-Create plan at `.claude/plans/stinkysnake-plan.md` using the template in [Plan Templates](./references/plan-templates.md#modernization-plan-template-phase-3-output).
+Resolve the plan directory at runtime: `uv run python -c 'from dh_paths import plan_dir; print(plan_dir())'` (typically `~/.dh/projects/{slug}/plan/`). Create the plan at `{plan_dir}/stinkysnake-plan.md` using the template in [Plan Templates](./references/plan-templates.md#modernization-plan-template-phase-3-output).
 
 ---
 
@@ -323,7 +323,7 @@ For each suggestion:
 
 ### Step 5.4: Update Plan Document
 
-Update `.claude/plans/stinkysnake-plan.md` using the revised plan format in [Plan Templates](./references/plan-templates.md#revised-plan-template-phase-5-output).
+Update `{plan_dir}/stinkysnake-plan.md` (resolve `plan_dir` as in Step 3.4) using the revised plan format in [Plan Templates](./references/plan-templates.md#revised-plan-template-phase-5-output).
 
 ---
 
@@ -458,9 +458,9 @@ The complete workflow produces:
 | ----------------------- | ----------------------------------------- | ------------------- |
 | Static Analysis Results | `.claude/reports/static-analysis-{ts}.md` | Auto-fix summary    |
 | Type Inventory          | `.claude/reports/type-inventory-{ts}.md`  | Any types found     |
-| Modernization Plan      | `.claude/plans/stinkysnake-plan.md`       | Implementation plan |
+| Modernization Plan      | `{plan_dir}/stinkysnake-plan.md`          | Implementation plan |
 | Plan Review             | `.claude/reports/plan-review-{ts}.md`     | Review feedback     |
-| Revised Plan            | `.claude/plans/stinkysnake-plan.md`       | Updated plan        |
+| Revised Plan            | `{plan_dir}/stinkysnake-plan.md`          | Updated plan        |
 | Doc Update Plan         | `.claude/reports/doc-updates-{ts}.md`     | Docs to change      |
 | Test Files              | `tests/test_*.py`                         | Failing tests       |
 | Implementation          | `src/`                                    | Passing code        |
