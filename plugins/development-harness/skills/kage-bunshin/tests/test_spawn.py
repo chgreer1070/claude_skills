@@ -120,37 +120,64 @@ def test_dh_state_home_respects_env_override(tmp_path):
 
 
 def test_load_registry_returns_empty_dict_when_file_absent(tmp_path):
-    result = _spawn._load_registry(tmp_path)
+    result = _spawn._load_registry(tmp_path, "default")
     assert result == {}
 
 
 def test_save_and_load_registry_round_trips(tmp_path):
     registry = {"mysession": {"name": "mysession", "model": "sonnet"}}
-    _spawn._save_registry(tmp_path, registry)
-    loaded = _spawn._load_registry(tmp_path)
+    _spawn._save_registry(tmp_path, "default", registry)
+    loaded = _spawn._load_registry(tmp_path, "default")
     assert loaded == registry
 
 
 def test_save_registry_writes_atomically(tmp_path):
     registry = {"a": {"name": "a"}}
-    _spawn._save_registry(tmp_path, registry)
-    rp = _spawn._registry_path(tmp_path)
+    _spawn._save_registry(tmp_path, "default", registry)
+    rp = _spawn._registry_path(tmp_path, "default")
     assert rp.exists()
     # No .tmp file should remain.
     assert not rp.with_suffix(".tmp").exists()
 
 
+def test_registry_path_uses_session_id_in_filename(tmp_path):
+    path = _spawn._registry_path(tmp_path, "abc123")
+    assert path.name == "registry-abc123.json"
+
+
+def test_registry_path_default_session_id(tmp_path):
+    path = _spawn._registry_path(tmp_path, "default")
+    assert path.name == "registry-default.json"
+
+
 def test_get_session_raises_system_exit_when_missing(tmp_path):
     with pytest.raises(SystemExit) as exc_info:
-        _spawn._get_session(tmp_path, "nonexistent")
+        _spawn._get_session(tmp_path, "default", "nonexistent")
     assert exc_info.value.code == 1
 
 
 def test_get_session_returns_entry_when_present(tmp_path):
     registry = {"mysess": {"name": "mysess", "model": "haiku"}}
-    _spawn._save_registry(tmp_path, registry)
-    result = _spawn._get_session(tmp_path, "mysess")
+    _spawn._save_registry(tmp_path, "default", registry)
+    result = _spawn._get_session(tmp_path, "default", "mysess")
     assert result["model"] == "haiku"
+
+
+def test_session_id_scoping_isolates_registries(tmp_path):
+    """Two session IDs write to separate files and do not clobber each other."""
+    reg_a = {"sess-a": {"name": "sess-a", "model": "sonnet"}}
+    reg_b = {"sess-b": {"name": "sess-b", "model": "haiku"}}
+
+    _spawn._save_registry(tmp_path, "orchestrator-1", reg_a)
+    _spawn._save_registry(tmp_path, "orchestrator-2", reg_b)
+
+    loaded_a = _spawn._load_registry(tmp_path, "orchestrator-1")
+    loaded_b = _spawn._load_registry(tmp_path, "orchestrator-2")
+
+    assert "sess-a" in loaded_a
+    assert "sess-b" not in loaded_a
+    assert "sess-b" in loaded_b
+    assert "sess-a" not in loaded_b
 
 
 # ---------------------------------------------------------------------------
@@ -320,7 +347,11 @@ def test_build_spawn_shell_cmd_omits_max_budget_when_none():
 
 
 def _make_spawn_args(
-    name: str = "testsess", prompt: str = "hello world", model: str = "sonnet", max_budget: float | None = None
+    name: str = "testsess",
+    prompt: str = "hello world",
+    model: str = "sonnet",
+    max_budget: float | None = None,
+    session_id: str = "default",
 ) -> MagicMock:
     """Build a mock Namespace for cmd_spawn."""
     ns = MagicMock()
@@ -328,6 +359,7 @@ def _make_spawn_args(
     ns.prompt = [prompt]
     ns.model = model
     ns.max_budget = max_budget
+    ns.session_id = session_id
     return ns
 
 
@@ -379,7 +411,7 @@ def test_cmd_spawn_creates_registry_entry(tmp_path, capsys):
         _spawn.cmd_spawn(args)
 
     # Registry entry written.
-    registry = _spawn._load_registry(tmp_path)
+    registry = _spawn._load_registry(tmp_path, "default")
     assert "testsess" in registry
     entry = registry["testsess"]
     assert entry["model"] == "sonnet"
@@ -546,6 +578,7 @@ def test_cmd_send_exits_1_when_session_not_found(tmp_path):
     ns = MagicMock()
     ns.name = "nosuchsession"
     ns.message = ["hi"]
+    ns.session_id = "default"
     with patch.object(_spawn, "_session_state_dir", return_value=tmp_path), pytest.raises(SystemExit) as exc_info:
         _spawn.cmd_send(ns)
     assert exc_info.value.code == 1
@@ -553,11 +586,12 @@ def test_cmd_send_exits_1_when_session_not_found(tmp_path):
 
 def test_cmd_send_exits_1_when_tmux_dead(tmp_path):
     registry = {"sess": {"name": "sess", "model": "sonnet", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
     ns.message = ["hello"]
+    ns.session_id = "default"
 
     with (
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
@@ -571,11 +605,12 @@ def test_cmd_send_exits_1_when_tmux_dead(tmp_path):
 def test_cmd_send_sends_message_via_tmux(tmp_path, capsys):
     """Verify send calls _tmux_run_in_session with the message directly."""
     registry = {"sess": {"name": "sess", "model": "sonnet", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
     ns.message = ["do the thing"]
+    ns.session_id = "default"
 
     sent_cmds: list[tuple[str, str]] = []
 
@@ -607,23 +642,25 @@ def test_cmd_send_sends_message_via_tmux(tmp_path, capsys):
 
 def test_cmd_kill_removes_registry_entry(tmp_path):
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
+    ns.session_id = "default"
 
     with patch.object(_spawn, "_session_state_dir", return_value=tmp_path), patch.object(_spawn, "_tmux_kill"):
         _spawn.cmd_kill(ns)
 
-    assert "sess" not in _spawn._load_registry(tmp_path)
+    assert "sess" not in _spawn._load_registry(tmp_path, "default")
 
 
 def test_cmd_kill_kills_claude_tmux_session(tmp_path):
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
+    ns.session_id = "default"
 
     killed: list[str] = []
 
@@ -639,6 +676,7 @@ def test_cmd_kill_kills_claude_tmux_session(tmp_path):
 def test_cmd_kill_exits_1_when_session_not_found(tmp_path):
     ns = MagicMock()
     ns.name = "ghost"
+    ns.session_id = "default"
     with patch.object(_spawn, "_session_state_dir", return_value=tmp_path), pytest.raises(SystemExit) as exc_info:
         _spawn.cmd_kill(ns)
     assert exc_info.value.code == 1
@@ -651,6 +689,7 @@ def test_cmd_kill_exits_1_when_session_not_found(tmp_path):
 
 def test_cmd_list_prints_no_sessions_when_registry_empty(tmp_path, capsys):
     ns = MagicMock()
+    ns.session_id = "default"
     with patch.object(_spawn, "_session_state_dir", return_value=tmp_path):
         _spawn.cmd_list(ns)
     captured = capsys.readouterr()
@@ -674,12 +713,13 @@ def test_cmd_list_shows_alive_and_dead_sessions(tmp_path, capsys):
             "tmux_session": "claude_skills_worktree-dead-sess",
         },
     }
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     def fake_alive(tmux_session: str) -> bool:
         return "alive-sess" in tmux_session
 
     ns = MagicMock()
+    ns.session_id = "default"
     with (
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
         patch.object(_spawn, "_tmux_alive", side_effect=fake_alive),
@@ -691,6 +731,56 @@ def test_cmd_list_shows_alive_and_dead_sessions(tmp_path, capsys):
     assert "dead-sess" in captured.out
     assert "alive" in captured.out
     assert "dead" in captured.out
+
+
+def test_cmd_list_all_registries_when_no_session_id(tmp_path, capsys):
+    """When session_id is None, list aggregates all registry files."""
+    reg_a = {
+        "sess-a": {
+            "name": "sess-a",
+            "model": "sonnet",
+            "spawned_at": "2026-01-01T00:00:00+00:00",
+            "worktree": True,
+            "tmux_session": "proj_worktree-sess-a",
+        }
+    }
+    reg_b = {
+        "sess-b": {
+            "name": "sess-b",
+            "model": "haiku",
+            "spawned_at": "2026-01-01T00:00:00+00:00",
+            "worktree": True,
+            "tmux_session": "proj_worktree-sess-b",
+        }
+    }
+    _spawn._save_registry(tmp_path, "orchestrator-1", reg_a)
+    _spawn._save_registry(tmp_path, "orchestrator-2", reg_b)
+
+    ns = MagicMock()
+    ns.session_id = None
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_tmux_alive", return_value=False),
+    ):
+        _spawn.cmd_list(ns)
+
+    captured = capsys.readouterr()
+    assert "sess-a" in captured.out
+    assert "sess-b" in captured.out
+    assert "orchestrator-1" in captured.out
+    assert "orchestrator-2" in captured.out
+    # SESSION_ID column header should appear when listing all
+    assert "SESSION_ID" in captured.out
+
+
+def test_cmd_list_all_registries_no_sessions_at_all(tmp_path, capsys):
+    """When session_id is None and no registries exist, prints no-sessions message."""
+    ns = MagicMock()
+    ns.session_id = None
+    with patch.object(_spawn, "_session_state_dir", return_value=tmp_path):
+        _spawn.cmd_list(ns)
+    captured = capsys.readouterr()
+    assert "No sessions" in captured.out
 
 
 # ---------------------------------------------------------------------------
@@ -708,10 +798,11 @@ def test_cmd_status_shows_alive_true(tmp_path, capsys):
             "tmux_session": "claude_skills_worktree-sess",
         }
     }
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
+    ns.session_id = "default"
 
     with (
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
@@ -736,10 +827,11 @@ def test_cmd_status_shows_session_fields(tmp_path, capsys):
             "tmux_session": "claude_skills_worktree-sess",
         }
     }
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
+    ns.session_id = "default"
 
     with (
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
@@ -762,12 +854,13 @@ def test_cmd_status_shows_session_fields(tmp_path, capsys):
 
 def test_cmd_read_prints_pane_content(tmp_path, capsys):
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
     ns.wait = 0.0
     ns.follow = False
+    ns.session_id = "default"
 
     fake_result = MagicMock()
     fake_result.returncode = 0
@@ -788,12 +881,13 @@ def test_cmd_read_prints_pane_content(tmp_path, capsys):
 def test_cmd_read_calls_capture_pane_with_correct_session(tmp_path):
     """Verify cmd_read invokes tmux capture-pane targeting the registered session."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
     ns.wait = 0.0
     ns.follow = False
+    ns.session_id = "default"
 
     fake_result = MagicMock()
     fake_result.returncode = 0
@@ -822,12 +916,13 @@ def test_cmd_read_calls_capture_pane_with_correct_session(tmp_path):
 
 def test_cmd_read_exits_1_when_session_not_alive(tmp_path):
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
     ns.wait = 0.0
     ns.follow = False
+    ns.session_id = "default"
 
     with (
         patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
@@ -890,16 +985,17 @@ def test_wait_for_session_exit_returns_true_after_a_few_polls():
 # ---------------------------------------------------------------------------
 
 
-def _make_stop_ns(name: str = "sess") -> MagicMock:
+def _make_stop_ns(name: str = "sess", session_id: str = "default") -> MagicMock:
     ns = MagicMock()
     ns.name = name
+    ns.session_id = session_id
     return ns
 
 
 def test_cmd_stop_graceful_exit_path_removes_registry_entry(tmp_path, capsys):
     """Ctrl-C causes session to exit within timeout — success without force."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
 
@@ -913,7 +1009,7 @@ def test_cmd_stop_graceful_exit_path_removes_registry_entry(tmp_path, capsys):
     ):
         _spawn.cmd_stop(ns)
 
-    assert "sess" not in _spawn._load_registry(tmp_path)
+    assert "sess" not in _spawn._load_registry(tmp_path, "default")
     captured = capsys.readouterr()
     result = json.loads(captured.out)
     assert result["status"] == "stopped"
@@ -924,7 +1020,7 @@ def test_cmd_stop_graceful_exit_path_removes_registry_entry(tmp_path, capsys):
 def test_cmd_stop_graceful_exit_path_does_not_force_kill(tmp_path):
     """Ctrl-C causes session to exit within timeout — tmux kill-session NOT called for main session."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
     killed: list[str] = []
@@ -946,7 +1042,7 @@ def test_cmd_stop_graceful_exit_path_does_not_force_kill(tmp_path):
 def test_cmd_stop_timeout_path_force_kills_and_sets_forced_true(tmp_path, capsys):
     """Session does not exit within timeout — force kill and forced=true in output."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
     killed: list[str] = []
@@ -962,7 +1058,7 @@ def test_cmd_stop_timeout_path_force_kills_and_sets_forced_true(tmp_path, capsys
 
     assert "claude_skills_worktree-sess" in killed
     assert "kb-launcher-sess" in killed
-    assert "sess" not in _spawn._load_registry(tmp_path)
+    assert "sess" not in _spawn._load_registry(tmp_path, "default")
 
     captured = capsys.readouterr()
     result = json.loads(captured.out)
@@ -973,7 +1069,7 @@ def test_cmd_stop_timeout_path_force_kills_and_sets_forced_true(tmp_path, capsys
 def test_cmd_stop_already_dead_session_cleans_up_registry_without_force(tmp_path, capsys):
     """Session tmux is already gone — registry cleaned, already_dead=true reported."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
 
@@ -987,7 +1083,7 @@ def test_cmd_stop_already_dead_session_cleans_up_registry_without_force(tmp_path
         _spawn.cmd_stop(ns)
 
     mock_ctrlc.assert_not_called()
-    assert "sess" not in _spawn._load_registry(tmp_path)
+    assert "sess" not in _spawn._load_registry(tmp_path, "default")
     captured = capsys.readouterr()
     result = json.loads(captured.out)
     assert result["already_dead"] is True
@@ -997,7 +1093,7 @@ def test_cmd_stop_already_dead_session_cleans_up_registry_without_force(tmp_path
 def test_cmd_stop_sends_ctrlc_to_correct_session(tmp_path):
     """Verify Ctrl-C is sent to the tmux session from the registry, not the launcher."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
     ctrlc_targets: list[str] = []
@@ -1024,7 +1120,7 @@ def test_cmd_stop_exits_1_when_session_not_in_registry(tmp_path):
 def test_cmd_stop_kills_launcher_session_after_graceful_exit(tmp_path):
     """kb-launcher-{name} is killed after the session exits gracefully."""
     registry = {"myname": {"name": "myname", "tmux_session": "proj_worktree-myname"}}
-    _spawn._save_registry(tmp_path, registry)
+    _spawn._save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns(name="myname")
     killed: list[str] = []
@@ -1057,3 +1153,114 @@ def test_build_parser_stop_with_name_sets_func():
     args = parser.parse_args(["stop", "--name", "mysess"])
     assert args.name == "mysess"
     assert args.func is _spawn.cmd_stop
+
+
+# ---------------------------------------------------------------------------
+# --session-id argument and KB_SESSION_ID env var
+# ---------------------------------------------------------------------------
+
+
+def test_build_parser_session_id_defaults_to_none():
+    """Parser leaves session_id as None; main() resolves the default."""
+    parser = _spawn._build_parser()
+    args = parser.parse_args(["list"])
+    assert args.session_id is None
+
+
+def test_build_parser_session_id_explicit_value():
+    parser = _spawn._build_parser()
+    args = parser.parse_args(["--session-id", "my-session", "list"])
+    assert args.session_id == "my-session"
+
+
+def test_main_resolves_session_id_to_default_for_non_list_subcommands(tmp_path):
+    """When --session-id and KB_SESSION_ID are absent, main() sets 'default' for spawn etc."""
+    dispatched: list[str] = []
+
+    def fake_func(args: object) -> None:
+        dispatched.append(args.session_id)  # type: ignore[attr-defined]
+
+    with patch.dict(os.environ, {}, clear=False), patch.object(_spawn, "_build_parser") as mock_bp:
+        os.environ.pop("KB_SESSION_ID", None)
+        fake_parser = MagicMock()
+        fake_args = MagicMock()
+        fake_args.session_id = None
+        fake_args.command = "kill"
+        fake_args.func = fake_func
+        fake_parser.parse_args.return_value = fake_args
+        mock_bp.return_value = fake_parser
+
+        _spawn.main(["kill", "--name", "x"])
+
+    assert dispatched == ["default"]
+
+
+def test_main_resolves_session_id_from_env_var():
+    """KB_SESSION_ID env var is used when --session-id is not supplied."""
+    dispatched: list[str] = []
+
+    def fake_func(args: object) -> None:
+        dispatched.append(args.session_id)  # type: ignore[attr-defined]
+
+    with (
+        patch.dict(os.environ, {"KB_SESSION_ID": "env-session"}, clear=False),
+        patch.object(_spawn, "_build_parser") as mock_bp,
+    ):
+        fake_parser = MagicMock()
+        fake_args = MagicMock()
+        fake_args.session_id = None
+        fake_args.command = "kill"
+        fake_args.func = fake_func
+        fake_parser.parse_args.return_value = fake_args
+        mock_bp.return_value = fake_parser
+
+        _spawn.main(["kill", "--name", "x"])
+
+    assert dispatched == ["env-session"]
+
+
+def test_main_explicit_session_id_overrides_env_var():
+    """Explicit --session-id takes priority over KB_SESSION_ID."""
+    dispatched: list[str] = []
+
+    def fake_func(args: object) -> None:
+        dispatched.append(args.session_id)  # type: ignore[attr-defined]
+
+    with (
+        patch.dict(os.environ, {"KB_SESSION_ID": "env-session"}, clear=False),
+        patch.object(_spawn, "_build_parser") as mock_bp,
+    ):
+        fake_parser = MagicMock()
+        fake_args = MagicMock()
+        fake_args.session_id = "explicit-session"
+        fake_args.command = "kill"
+        fake_args.func = fake_func
+        fake_parser.parse_args.return_value = fake_args
+        mock_bp.return_value = fake_parser
+
+        _spawn.main(["--session-id", "explicit-session", "kill", "--name", "x"])
+
+    # session_id was already set by the parser; main() should not override it.
+    assert dispatched == ["explicit-session"]
+
+
+def test_main_list_subcommand_leaves_session_id_none_when_not_supplied():
+    """For 'list', main() leaves session_id as None so all registries are shown."""
+    dispatched: list[str | None] = []
+
+    def fake_func(args: object) -> None:
+        dispatched.append(args.session_id)  # type: ignore[attr-defined]
+
+    with patch.dict(os.environ, {}, clear=False), patch.object(_spawn, "_build_parser") as mock_bp:
+        os.environ.pop("KB_SESSION_ID", None)
+        fake_parser = MagicMock()
+        fake_args = MagicMock()
+        fake_args.session_id = None
+        fake_args.command = "list"
+        fake_args.func = fake_func
+        fake_parser.parse_args.return_value = fake_args
+        mock_bp.return_value = fake_parser
+
+        _spawn.main(["list"])
+
+    assert dispatched == [None]

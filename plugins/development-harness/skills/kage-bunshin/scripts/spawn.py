@@ -8,13 +8,23 @@ Provides CLI subcommands for spawning and managing persistent claude CLI session
 via claude's built-in --worktree and --tmux flags.
 
 Usage:
-    spawn.py spawn  --name X [--model MODEL] [--max-budget N] "prompt"
-    spawn.py send   --name X "message"
-    spawn.py read   --name X
-    spawn.py status --name X
-    spawn.py list
-    spawn.py stop   --name X
-    spawn.py kill   --name X
+    spawn.py [--session-id ID] spawn  --name X [--model MODEL] [--max-budget N] "prompt"
+    spawn.py [--session-id ID] send   --name X "message"
+    spawn.py [--session-id ID] read   --name X
+    spawn.py [--session-id ID] status --name X
+    spawn.py [--session-id ID] list
+    spawn.py [--session-id ID] stop   --name X
+    spawn.py [--session-id ID] kill   --name X
+
+Session Isolation:
+    --session-id (or KB_SESSION_ID env var) scopes the registry to a single
+    orchestrator session.  Each session gets its own registry file:
+
+        ~/.dh/projects/{slug}/kage-bunshin/registry-{session_id}.json
+
+    Omitting --session-id and KB_SESSION_ID defaults to 'default' for all
+    subcommands except 'list', which then shows all registries across all
+    session IDs.
 
 Session State Directory:
     ~/.dh/projects/{slug}/kage-bunshin/
@@ -72,7 +82,6 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 _DEFAULT_MODEL = "sonnet"
-_REGISTRY_FILE = "registry.json"
 _NAME_MAX_CHARS = 30
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 # Timeout waiting for the claude tmux session to appear after spawn.
@@ -159,28 +168,34 @@ def _session_state_dir() -> Path:
 # ---------------------------------------------------------------------------
 
 
-def _registry_path(state_dir: Path) -> Path:
-    """Return the path to registry.json within the state directory.
+def _registry_path(state_dir: Path, session_id: str) -> Path:
+    """Return the path to the session-scoped registry file within the state directory.
+
+    Each orchestrator session gets its own isolated registry file named
+    ``registry-{session_id}.json``, preventing concurrent read-modify-write
+    collisions when multiple orchestrators work in the same repository.
 
     Args:
         state_dir: Session state directory.
+        session_id: Orchestrator session identifier (default ``"default"``).
 
     Returns:
-        Path to registry.json.
+        Path to ``registry-{session_id}.json``.
     """
-    return state_dir / _REGISTRY_FILE
+    return state_dir / f"registry-{session_id}.json"
 
 
-def _load_registry(state_dir: Path) -> dict[str, Any]:
+def _load_registry(state_dir: Path, session_id: str) -> dict[str, Any]:
     """Load the session registry from disk, returning an empty dict if absent.
 
     Args:
         state_dir: Session state directory.
+        session_id: Orchestrator session identifier.
 
     Returns:
         Dictionary mapping session name to session metadata.
     """
-    rp = _registry_path(state_dir)
+    rp = _registry_path(state_dir, session_id)
     if not rp.exists():
         return {}
     try:
@@ -189,24 +204,26 @@ def _load_registry(state_dir: Path) -> dict[str, Any]:
         return {}
 
 
-def _save_registry(state_dir: Path, registry: dict[str, Any]) -> None:
+def _save_registry(state_dir: Path, session_id: str, registry: dict[str, Any]) -> None:
     """Persist the session registry to disk atomically.
 
     Args:
         state_dir: Session state directory.
+        session_id: Orchestrator session identifier.
         registry: Dictionary mapping session name to session metadata.
     """
-    rp = _registry_path(state_dir)
+    rp = _registry_path(state_dir, session_id)
     tmp = rp.with_suffix(".tmp")
     tmp.write_text(json.dumps(registry, indent=2))
     tmp.replace(rp)
 
 
-def _get_session(state_dir: Path, name: str) -> dict[str, Any]:
+def _get_session(state_dir: Path, session_id: str, name: str) -> dict[str, Any]:
     """Retrieve a session entry from the registry, failing loudly if absent.
 
     Args:
         state_dir: Session state directory.
+        session_id: Orchestrator session identifier.
         name: Session name.
 
     Returns:
@@ -215,7 +232,7 @@ def _get_session(state_dir: Path, name: str) -> dict[str, Any]:
     Raises:
         SystemExit: If the named session does not exist in the registry.
     """
-    registry = _load_registry(state_dir)
+    registry = _load_registry(state_dir, session_id)
     if name not in registry:
         _die(f"session '{name}' not found. Run 'list' to see active sessions.")
     return registry[name]
@@ -390,7 +407,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     repo_root = _git_repo_root()
     repo_dir = _repo_dir_name(repo_root)
     state_dir = _session_state_dir()
-    registry = _load_registry(state_dir)
+    registry = _load_registry(state_dir, args.session_id)
 
     name: str = args.name or _slugify(args.prompt[0])
     if not name:
@@ -442,7 +459,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "repo_dir": repo_dir,
     }
     registry[name] = entry
-    _save_registry(state_dir, registry)
+    _save_registry(state_dir, args.session_id, registry)
 
     record: dict[str, Any] = {
         "name": name,
@@ -469,7 +486,7 @@ def cmd_send(args: argparse.Namespace) -> None:
         args: Parsed arguments with name and message fields.
     """
     state_dir = _session_state_dir()
-    session = _get_session(state_dir, args.name)
+    session = _get_session(state_dir, args.session_id, args.name)
 
     tmux_session = session["tmux_session"]
     if not _tmux_alive(tmux_session):
@@ -494,7 +511,7 @@ def cmd_read(args: argparse.Namespace) -> None:
         args: Parsed arguments with name field.
     """
     state_dir = _session_state_dir()
-    session = _get_session(state_dir, args.name)
+    session = _get_session(state_dir, args.session_id, args.name)
     tmux_session = session["tmux_session"]
 
     if not _tmux_alive(tmux_session):
@@ -527,7 +544,7 @@ def cmd_status(args: argparse.Namespace) -> None:
         args: Parsed arguments with name field.
     """
     state_dir = _session_state_dir()
-    session = _get_session(state_dir, args.name)
+    session = _get_session(state_dir, args.session_id, args.name)
 
     tmux_session = session["tmux_session"]
     alive = _tmux_alive(tmux_session)
@@ -557,19 +574,101 @@ def cmd_status(args: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 
-def cmd_list(_args: argparse.Namespace) -> None:
-    """List all registered sessions with live/dead status.
+def _list_session_id_registries(state_dir: Path) -> list[tuple[str, dict[str, Any]]]:
+    """Discover all registry files in state_dir and return (session_id, registry) pairs.
+
+    Globs for ``registry-*.json`` and parses each one.  Corrupt or unreadable
+    files are silently skipped.
 
     Args:
-        _args: Parsed arguments (unused).
-    """
-    state_dir = _session_state_dir()
-    registry = _load_registry(state_dir)
+        state_dir: Session state directory.
 
-    if not registry:
-        print("No sessions registered.")
+    Returns:
+        List of ``(session_id, registry_dict)`` tuples, sorted by session_id.
+    """
+    results: list[tuple[str, dict[str, Any]]] = []
+    for path in sorted(state_dir.glob("registry-*.json")):
+        # Derive session_id from the filename: registry-{session_id}.json
+        stem = path.stem  # e.g. "registry-default"
+        session_id = stem[len("registry-") :]
+        try:
+            registry = json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            registry = {}
+        results.append((session_id, registry))
+    return results
+
+
+def _print_registry_table(rows: list[dict[str, Any]]) -> None:
+    """Print a columnar table of session rows.
+
+    Args:
+        rows: List of dicts with keys: name, model, status, age, tmux_session.
+              May also include session_id when listing all registries.
+    """
+    if not rows:
         return
 
+    has_session_id = "session_id" in rows[0]
+
+    col_widths: dict[str, int] = {
+        "name": max(len(r["name"]) for r in rows),
+        "model": max(len(r["model"]) for r in rows),
+        "status": 5,
+        "age": max(len(r["age"]) for r in rows),
+    }
+    if has_session_id:
+        col_widths["session_id"] = max(len(r["session_id"]) for r in rows)
+
+    if has_session_id:
+        header = (
+            f"{'SESSION_ID':<{col_widths['session_id']}}  "
+            f"{'NAME':<{col_widths['name']}}  "
+            f"{'MODEL':<{col_widths['model']}}  "
+            f"{'STATUS':<{col_widths['status']}}  "
+            f"{'AGE':<{col_widths['age']}}  "
+            f"TMUX_SESSION"
+        )
+    else:
+        header = (
+            f"{'NAME':<{col_widths['name']}}  "
+            f"{'MODEL':<{col_widths['model']}}  "
+            f"{'STATUS':<{col_widths['status']}}  "
+            f"{'AGE':<{col_widths['age']}}  "
+            f"TMUX_SESSION"
+        )
+    print(header)
+    print("-" * len(header))
+    for r in rows:
+        if has_session_id:
+            print(
+                f"{r['session_id']:<{col_widths['session_id']}}  "
+                f"{r['name']:<{col_widths['name']}}  "
+                f"{r['model']:<{col_widths['model']}}  "
+                f"{r['status']:<{col_widths['status']}}  "
+                f"{r['age']:<{col_widths['age']}}  "
+                f"{r['tmux_session']}"
+            )
+        else:
+            print(
+                f"{r['name']:<{col_widths['name']}}  "
+                f"{r['model']:<{col_widths['model']}}  "
+                f"{r['status']:<{col_widths['status']}}  "
+                f"{r['age']:<{col_widths['age']}}  "
+                f"{r['tmux_session']}"
+            )
+
+
+def _registry_to_rows(registry: dict[str, Any], session_id: str | None = None) -> list[dict[str, Any]]:
+    """Convert a registry dict to a list of display rows.
+
+    Args:
+        registry: Dictionary mapping session name to session metadata.
+        session_id: When provided, adds a ``session_id`` key to each row.
+
+    Returns:
+        List of row dicts suitable for ``_print_registry_table``.
+    """
     rows: list[dict[str, Any]] = []
     for name, session in registry.items():
         tmux_session = session.get("tmux_session", "")
@@ -580,39 +679,54 @@ def cmd_list(_args: argparse.Namespace) -> None:
             age_str = _format_age((datetime.now(UTC) - dt).total_seconds())
         except ValueError:
             age_str = "unknown"
-        rows.append({
+        row: dict[str, Any] = {
             "name": name,
             "model": session.get("model", "?"),
             "status": "alive" if alive else "dead",
             "age": age_str,
             "worktree": session.get("worktree", False),
             "tmux_session": tmux_session,
-        })
+        }
+        if session_id is not None:
+            row["session_id"] = session_id
+        rows.append(row)
+    return rows
 
-    # Simple columnar output.
-    col_widths = {
-        "name": max(len(r["name"]) for r in rows),
-        "model": max(len(r["model"]) for r in rows),
-        "status": 5,
-        "age": max(len(r["age"]) for r in rows),
-    }
-    header = (
-        f"{'NAME':<{col_widths['name']}}  "
-        f"{'MODEL':<{col_widths['model']}}  "
-        f"{'STATUS':<{col_widths['status']}}  "
-        f"{'AGE':<{col_widths['age']}}  "
-        f"TMUX_SESSION"
-    )
-    print(header)
-    print("-" * len(header))
-    for r in rows:
-        print(
-            f"{r['name']:<{col_widths['name']}}  "
-            f"{r['model']:<{col_widths['model']}}  "
-            f"{r['status']:<{col_widths['status']}}  "
-            f"{r['age']:<{col_widths['age']}}  "
-            f"{r['tmux_session']}"
-        )
+
+def cmd_list(args: argparse.Namespace) -> None:
+    """List registered sessions with live/dead status.
+
+    When ``--session-id`` is provided (or ``KB_SESSION_ID`` is set), lists only
+    sessions in that registry.  When neither is provided, globs all
+    ``registry-*.json`` files and lists every session across all registries,
+    showing which ``SESSION_ID`` each belongs to.
+
+    Args:
+        args: Parsed arguments.  ``args.session_id`` is ``None`` when the user
+              did not supply ``--session-id`` and ``KB_SESSION_ID`` is unset.
+    """
+    state_dir = _session_state_dir()
+
+    if args.session_id is not None:
+        # Scoped list: show only this session's registry.
+        registry = _load_registry(state_dir, args.session_id)
+        if not registry:
+            print("No sessions registered.")
+            return
+        rows = _registry_to_rows(registry)
+        _print_registry_table(rows)
+        return
+
+    # Unscoped list: aggregate all registries.
+    all_pairs = _list_session_id_registries(state_dir)
+    rows = []
+    for sid, registry in all_pairs:
+        rows.extend(_registry_to_rows(registry, session_id=sid))
+
+    if not rows:
+        print("No sessions registered.")
+        return
+    _print_registry_table(rows)
 
 
 # ---------------------------------------------------------------------------
@@ -638,7 +752,7 @@ def cmd_stop(args: argparse.Namespace) -> None:
         args: Parsed arguments with name field.
     """
     state_dir = _session_state_dir()
-    session = _get_session(state_dir, args.name)
+    session = _get_session(state_dir, args.session_id, args.name)
 
     tmux_session = session.get("tmux_session", "")
     launcher_session = f"kb-launcher-{args.name}"
@@ -646,9 +760,9 @@ def cmd_stop(args: argparse.Namespace) -> None:
 
     if not tmux_session or not _tmux_alive(tmux_session):
         # Session already dead — just clean up the registry.
-        registry = _load_registry(state_dir)
+        registry = _load_registry(state_dir, args.session_id)
         registry.pop(args.name, None)
-        _save_registry(state_dir, registry)
+        _save_registry(state_dir, args.session_id, registry)
         _tmux_kill(launcher_session)
         print(json.dumps({"status": "stopped", "name": args.name, "forced": False, "already_dead": True}))
         return
@@ -665,9 +779,9 @@ def cmd_stop(args: argparse.Namespace) -> None:
     # Clean up launcher session whether or not we force-killed.
     _tmux_kill(launcher_session)
 
-    registry = _load_registry(state_dir)
+    registry = _load_registry(state_dir, args.session_id)
     registry.pop(args.name, None)
-    _save_registry(state_dir, registry)
+    _save_registry(state_dir, args.session_id, registry)
 
     print(json.dumps({"status": "stopped", "name": args.name, "forced": forced}))
 
@@ -684,15 +798,15 @@ def cmd_kill(args: argparse.Namespace) -> None:
         args: Parsed arguments with name field.
     """
     state_dir = _session_state_dir()
-    session = _get_session(state_dir, args.name)
+    session = _get_session(state_dir, args.session_id, args.name)
 
     tmux_session = session.get("tmux_session", "")
     if tmux_session:
         _tmux_kill(tmux_session)
 
-    registry = _load_registry(state_dir)
+    registry = _load_registry(state_dir, args.session_id)
     registry.pop(args.name, None)
-    _save_registry(state_dir, registry)
+    _save_registry(state_dir, args.session_id, registry)
 
     print(json.dumps({"status": "killed", "name": args.name}))
 
@@ -729,6 +843,12 @@ def _format_age(seconds: float) -> str:
 def _build_parser() -> argparse.ArgumentParser:
     """Build the top-level argument parser with all subcommands.
 
+    The ``--session-id`` flag scopes the registry to that orchestrator session,
+    preventing concurrent read-modify-write collisions.  Falls back to the
+    ``KB_SESSION_ID`` environment variable, then defaults to ``"default"`` for
+    backwards compatibility — except for the ``list`` subcommand, where the
+    default is ``None`` so that omitting ``--session-id`` lists all registries.
+
     Returns:
         Configured :class:`argparse.ArgumentParser` instance.
     """
@@ -736,6 +856,12 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="spawn.py",
         description="Kage-bunshin: bidirectional manager for persistent claude sessions.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--session-id",
+        default=None,
+        metavar="ID",
+        help=("Scope registry to this orchestrator session (env: KB_SESSION_ID; default: 'default')."),
     )
     sub = parser.add_subparsers(dest="command", metavar="COMMAND", required=True)
 
@@ -796,11 +922,30 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     """Parse arguments and dispatch to the appropriate subcommand handler.
 
+    Resolves ``session_id`` after parsing:
+
+    - If ``--session-id`` was explicitly supplied, use that value.
+    - Otherwise fall back to the ``KB_SESSION_ID`` environment variable.
+    - For all subcommands except ``list``, default to ``"default"`` when
+      neither source provides a value.
+    - For ``list``, leave ``session_id`` as ``None`` when neither source
+      provides a value so that all registries are shown.
+
     Args:
         argv: Argument list (defaults to sys.argv[1:]).
     """
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    # Resolve session_id: explicit flag > env var > subcommand default.
+    if args.session_id is None:
+        env_id = os.environ.get("KB_SESSION_ID", "").strip()
+        if env_id:
+            args.session_id = env_id
+        elif args.command != "list":
+            args.session_id = "default"
+        # else: leave as None — cmd_list shows all registries
+
     args.func(args)
 
 

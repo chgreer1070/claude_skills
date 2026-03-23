@@ -14,36 +14,39 @@ This is NOT a subagent or teammate — it is an independent CLI process with its
 All operations go through `${CLAUDE_SKILL_DIR}/scripts/spawn.py`:
 
 ```text
-spawn.py spawn  --name X [--model MODEL] [--max-budget N] "prompt"
-spawn.py send   --name X "message"
-spawn.py read   --name X
-spawn.py status --name X
-spawn.py list
-spawn.py stop   --name X          # graceful shutdown (Ctrl-C + wait)
-spawn.py kill   --name X          # force kill (last resort)
+spawn.py --session-id ID spawn  --name X [--model MODEL] [--max-budget N] "prompt"
+spawn.py --session-id ID send   --name X "message"
+spawn.py --session-id ID read   --name X
+spawn.py --session-id ID status --name X
+spawn.py --session-id ID list
+spawn.py --session-id ID stop   --name X     # graceful shutdown (Ctrl-C + wait)
+spawn.py --session-id ID kill   --name X     # force kill (last resort)
 ```
+
+The `--session-id` isolates each orchestrator's registry. Generate a UUID once per fleet and pass it on every call. Without it, defaults to `"default"`. Can also be set via `KB_SESSION_ID` environment variable.
 
 ## Quick Start
 
 ```bash
 SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
+SID=$(uuidgen)  # one UUID per fleet — isolates this orchestrator's registry
 
 # 1. Spawn a session (interactive claude in tmux + worktree)
-$SPAWN spawn --name worker-42 --model haiku \
+$SPAWN --session-id $SID spawn --name worker-42 --model haiku \
   "Load /dh:work-backlog-item #42. Execute the full work flow."
 
 # 2. Check on it
-$SPAWN status --name worker-42
+$SPAWN --session-id $SID status --name worker-42
 
 # 3. Read what's on screen
-$SPAWN read --name worker-42
+$SPAWN --session-id $SID read --name worker-42
 
 # 4. Steer mid-flight
-$SPAWN send --name worker-42 \
+$SPAWN --session-id $SID send --name worker-42 \
   "Stop current work. Prioritize the auth module instead."
 
-# 5. Clean up when done
-$SPAWN kill --name worker-42
+# 5. Graceful shutdown when done
+$SPAWN --session-id $SID stop --name worker-42
 ```
 
 ## Session Lifecycle
@@ -222,27 +225,28 @@ Spawn and control multiple coordinators simultaneously. Each returns immediately
 
 ```bash
 SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
+SID=$(uuidgen)
 ITEMS=(10 11 12 13 14 15 16 17 18 19)
 
 # Spawn all coordinators
 for ITEM in "${ITEMS[@]}"; do
-  $SPAWN spawn --name "coord-${ITEM}" --model haiku \
+  $SPAWN --session-id $SID spawn --name "coord-${ITEM}" --model haiku \
     "Load /dh:work-backlog-item #${ITEM}. Execute the full work flow."
 done
 
 # Dashboard
-$SPAWN list
+$SPAWN --session-id $SID list
 
 # Steer one mid-flight
-$SPAWN send --name coord-14 \
+$SPAWN --session-id $SID send --name coord-14 \
   "Deprioritize the UI work. Focus on the API contract first."
 
 # Read what a coordinator is showing
-$SPAWN read --name coord-12
+$SPAWN --session-id $SID read --name coord-12
 
 # Shut down the fleet
 for ITEM in "${ITEMS[@]}"; do
-  $SPAWN stop --name "coord-${ITEM}"
+  $SPAWN --session-id $SID stop --name "coord-${ITEM}"
 done
 ```
 
@@ -260,35 +264,37 @@ Used by `/groom-milestone` and `/work-milestone` to spawn parallel kage-bunshin 
 
 ```bash
 SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
+SID=$(uuidgen)
 
 for ISSUE in "${UNGROOMED_ISSUES[@]}"; do
-  $SPAWN spawn --name "groom-${ISSUE}" --model haiku \
+  $SPAWN --session-id $SID spawn --name "groom-${ISSUE}" --model haiku \
     "Load /dh:groom-backlog-item #${ISSUE}. Execute the full grooming flow."
 done
 
-$SPAWN list
-$SPAWN read --name "groom-42"
+$SPAWN --session-id $SID list
+$SPAWN --session-id $SID read --name "groom-42"
 ```
 
 ### Work Dispatch
 
 ```bash
 SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
+SID=$(uuidgen)
 
 for ISSUE in "${WAVE_ISSUES[@]}"; do
-  $SPAWN spawn --name "work-${ISSUE}" --model haiku \
+  $SPAWN --session-id $SID spawn --name "work-${ISSUE}" --model haiku \
     "Load /dh:work-backlog-item #${ISSUE}. Execute the full work flow."
 done
 
-$SPAWN list
+$SPAWN --session-id $SID list
 
 # Steer if needed
-$SPAWN send --name "work-42" \
+$SPAWN --session-id $SID send --name "work-42" \
   "The auth module has a dependency on #43. Coordinate accordingly."
 
 # Clean up after wave
 for ISSUE in "${WAVE_ISSUES[@]}"; do
-  $SPAWN stop --name "work-${ISSUE}"
+  $SPAWN --session-id $SID stop --name "work-${ISSUE}"
 done
 ```
 
