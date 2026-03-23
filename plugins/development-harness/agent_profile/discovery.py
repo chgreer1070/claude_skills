@@ -289,7 +289,7 @@ def find_agent(agent_name: str, plugins_root: Path | None = None) -> AgentEntry:
     Args:
         agent_name: Agent name in bare (``code-reviewer``) or plugin-qualified
             (``python3-development:code-reviewer``) form. Subdirectory agents
-            should be plugin-qualified (``dh:testing:analyze-test-failures``)
+            should be plugin-qualified (``dh:analyze-test-failures``)
             to avoid false-positive plugin detection.
         plugins_root: Path to ``plugins/``. When ``None``,
             :func:`get_plugins_root` resolves it automatically.

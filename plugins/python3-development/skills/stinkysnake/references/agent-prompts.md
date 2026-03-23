@@ -6,7 +6,7 @@ Pre-built prompts for delegating stinkysnake workflow phases to specialist agent
 
 <eg>
 Agent(
-  agent="python-code-reviewer",
+  agent="code-reviewer",
   prompt="Review the modernization plan at .claude/plans/stinkysnake-plan.md
 
 REVIEW CRITERIA:

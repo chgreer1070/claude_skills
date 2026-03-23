@@ -61,21 +61,21 @@ stateless handoff between stages.
 - `groom-milestone` — Groom milestone issues into dispatch plans
 - `work-milestone` — Execute milestone tasks in isolated worktrees
 
-**Workflow stages (subdirectory namespace `dh:workflows:`):**
+**Workflow stages:**
 
-- `workflows/discovery` — S1 feature and codebase understanding
-- `workflows/planning` — S2 plan generation with RT-ICA
-- `workflows/context-integration` — S3 plan validation against codebase
-- `workflows/task-decomposition` — S4 break plan into executable tasks
-- `workflows/execution` — S5 implement tasks with language specialists
-- `workflows/forensic-review` — S6 verify task completion
-- `workflows/final-verification` — S7 certify feature completion
+- `discovery` — S1 feature and codebase understanding
+- `planning` — S2 plan generation with RT-ICA
+- `context-integration` — S3 plan validation against codebase
+- `task-decomposition` — S4 break plan into executable tasks
+- `execution` — S5 implement tasks with language specialists
+- `forensic-review` — S6 verify task completion
+- `final-verification` — S7 certify feature completion
 
-**Testing (subdirectory namespace `dh:testing:`):**
+**Testing:**
 
-- `testing/comprehensive-test-review` — Review test coverage and quality
-- `testing/analyze-test-failures` — Diagnose and categorize test failures
-- `testing/test-failure-mindset` — Systematic approach to understanding test failures
+- `comprehensive-test-review` — Review test coverage and quality
+- `analyze-test-failures` — Diagnose and categorize test failures
+- `test-failure-mindset` — Systematic approach to understanding test failures
 
 **Other:**
 

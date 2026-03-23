@@ -252,7 +252,7 @@ class SkillResolver:
     def _locate_plugin_qualified(self, uri: str, plugin: str, skill_path: str, warnings: list[str]) -> Path | None:
         """Locate the skill directory for a plugin-qualified URI.
 
-        Converts colon-separated *skill_path* (e.g. ``testing:analyze-test-failures``)
+        Converts colon-separated *skill_path* (e.g. ``analyze-test-failures``)
         to slash-separated path components under ``plugins/{plugin}/skills/``.
 
         Args:
@@ -407,8 +407,8 @@ def _plugin_and_name_from_dir(skill_dir: Path, plugins_root: Path) -> tuple[str,
     returns ``("development-harness", "subagent-contract")``.
 
     For nested skill directories like
-    ``plugins/development-harness/skills/testing/analyze-test-failures``,
-    returns ``("development-harness", "testing/analyze-test-failures")``.
+    ``plugins/development-harness/skills/analyze-test-failures``,
+    returns ``("development-harness", "analyze-test-failures")``.
 
     Args:
         skill_dir: Absolute path to the skill directory (the directory

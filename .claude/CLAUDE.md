@@ -378,14 +378,14 @@ Reference other skills using activation syntax:
 ✅ `For comprehensive Astral uv documentation, use the /uv skill.`
 ❌ `See /uv/SKILL.md for uv documentation`
 
-### Subdirectory Namespaces
+### Subdirectory Namespaces — Skills Do NOT Support This
 
-Subdirectories within `skills/` or `agents/` create colon-separated namespaces for grouping related components:
+Skills in subdirectories under `skills/` silently fail to register. Subdirectory namespacing (`plugin:group:skill-name`) was a `commands/` feature only.
 
-- `skills/testing/analyze-test-failures/SKILL.md` → `/plugin:testing:analyze-test-failures`
-- `skills/workflows/discovery/SKILL.md` → `/dh:workflows:discovery`
+- `skills/testing/analyze-test-failures/SKILL.md` → **DEAD — not registered**
+- `skills/analyze-test-failures/SKILL.md` → `/plugin:analyze-test-failures` — correct
 
-Each directory level becomes a colon-separated segment in the invocation path. This is intentional grouping — do not flatten subdirectory skills to the top level. When documenting or referencing skills in subdirectories, use the full colon-separated path.
+All skill directories must sit directly under `skills/` — one level deep only. Do not create grouping subdirectories.
 
 ---
 

@@ -181,13 +181,13 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 **Workflow stages (7):**
 
-- `/dh:workflows:discovery` - S1 feature and codebase understanding
-- `/dh:workflows:planning` - S2 plan generation with RT-ICA
-- `/dh:workflows:context-integration` - S3 plan validation against codebase
-- `/dh:workflows:task-decomposition` - S4 break plan into executable tasks
-- `/dh:workflows:execution` - S5 implement tasks with language specialists
-- `/dh:workflows:forensic-review` - S6 verify task completion
-- `/dh:workflows:final-verification` - S7 certify feature completion
+- `/dh:discovery` - S1 feature and codebase understanding
+- `/dh:planning` - S2 plan generation with RT-ICA
+- `/dh:context-integration` - S3 plan validation against codebase
+- `/dh:task-decomposition` - S4 break plan into executable tasks
+- `/dh:execution` - S5 implement tasks with language specialists
+- `/dh:forensic-review` - S6 verify task completion
+- `/dh:final-verification` - S7 certify feature completion
 
 **Planning tools (4):**
 
@@ -214,9 +214,9 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 **Testing (3):**
 
-- `/dh:testing:comprehensive-test-review` - Review test coverage and quality
-- `/dh:testing:analyze-test-failures` - Diagnose and categorize test failures
-- `/dh:testing:test-failure-mindset` - Systematic approach to understanding test failures
+- `/dh:comprehensive-test-review` - Review test coverage and quality
+- `/dh:analyze-test-failures` - Diagnose and categorize test failures
+- `/dh:test-failure-mindset` - Systematic approach to understanding test failures
 
 **Other (4):**
 

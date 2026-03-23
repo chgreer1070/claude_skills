@@ -139,15 +139,15 @@ class TestPluginQualifiedResolution:
 
     def test_plugin_qualified_nested_skill_path(self, tmp_path: Path) -> None:
         plugins_root = tmp_path / "plugins"
-        skill_dir = plugins_root / "development-harness" / "skills" / "testing" / "analyze-test-failures"
+        skill_dir = plugins_root / "development-harness" / "skills" / "analyze-test-failures"
         skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text("Test failure analysis.", encoding="utf-8")
 
         resolver = SkillResolver(plugins_root)
-        skills, warnings = resolver.resolve(["dh:testing:analyze-test-failures"], "some-plugin")
+        skills, warnings = resolver.resolve(["dh:analyze-test-failures"], "some-plugin")
 
         assert len(skills) == 1
-        assert "testing" in skills[0].skill_name
+        assert "analyze-test-failures" in skills[0].skill_name
         assert warnings == []
 
     def test_plugin_qualified_missing_produces_warning(self, tmp_path: Path) -> None:

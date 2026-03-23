@@ -14,8 +14,8 @@ If <user_input/> contains a directory or file then that is what should be examin
 
 Correctness patterns for building CLI applications with Typer and Rich, focused on non-TTY environments and common failure modes. For API reference, load the dedicated skills:
 
-- `Skill(skill="python3-development:modules:typer")` — Typer CLI framework API reference
-- `Skill(skill="python3-development:modules:rich")` — Rich terminal UI API reference
+- `Skill(skill="python3-development:typer")` — Typer CLI framework API reference
+- `Skill(skill="python3-development:rich")` — Rich terminal UI API reference
 
 ## Non-TTY and Programmatic Usage
 

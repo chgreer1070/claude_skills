@@ -131,13 +131,9 @@ The plugin includes 34 skills that guide Claude's behavior:
 | `stdlib-scripting` | Stdlib-only scripting for restricted environments |
 | `ty` | Astral ty type checker guidance |
 
-Testing skills use the `/python3-development:testing:skill-name` namespace:
-
-| Skill | What It Does |
-|-------|--------------|
-| `testing:comprehensive-test-review` | Audit test quality and coverage |
-| `testing:analyze-test-failures` | Investigate failing tests systematically |
-| `testing:test-failure-mindset` | Set balanced test investigation approach |
+| `comprehensive-test-review` | Audit test quality and coverage |
+| `analyze-test-failures` | Investigate failing tests systematically |
+| `test-failure-mindset` | Set balanced test investigation approach |
 
 And more specialized skills for code review, packaging, bug fixing, and feature development.
 
@@ -152,8 +148,7 @@ The plugin provides 6 Python-specific agents:
 | `python-cli-architect` | Build CLIs with Typer and Rich |
 | `python-cli-design-spec` | Produce architecture specs for Python CLIs |
 | `python-pytest-architect` | Create and modernize test suites |
-| `python-code-reviewer` | Review Python code for quality and idioms |
-| `code-reviewer` | General code review with Python awareness |
+| `code-reviewer` | General code review with Python awareness, quality, and idioms |
 | `semantic-code-search` | Semantic search over Python codebases |
 
 ### Shared Workflow Agents (development-harness)

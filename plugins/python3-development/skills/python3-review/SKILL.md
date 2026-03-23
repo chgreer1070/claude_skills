@@ -26,6 +26,8 @@ The model performs comprehensive code review across multiple quality dimensions.
 
 ## Review Dimensions
 
+Please refer to `skills/python3-development/references/python3-standards.md` for the comprehensive list of standards. Below is a summary of the dimensions to check:
+
 ### 1. Type Safety
 
 **Check for:**

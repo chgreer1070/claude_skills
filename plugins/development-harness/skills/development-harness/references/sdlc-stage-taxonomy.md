@@ -6,17 +6,17 @@ Canonical reference for stage naming conventions in the development-harness (dh)
 
 ## Section 1: Layer 1 — Cross-Cutting Stage Names
 
-The 7 bare stage names used as workflow skill directory names under `plugins/development-harness/skills/workflows/` and as input 2 (cross-cutting stage skill) of the generic-stage-agent. These names are namespace-independent — they do not carry a plugin prefix.
+The 7 bare stage names used as workflow skill directory names under `plugins/development-harness/skills/` and as input 2 (cross-cutting stage skill) of the generic-stage-agent. These names are namespace-independent — they do not carry a plugin prefix.
 
 | stage_id | name | purpose | workflow skill path |
 |----------|------|---------|---------------------|
-| S1 | `discovery` | Understand the feature request, identify constraints, and survey the codebase state before any planning occurs. | `plugins/development-harness/skills/workflows/discovery/SKILL.md` |
-| S2 | `planning` | Produce a structured plan covering solution architecture, acceptance tests, risk assessment, and RT-ICA completeness gate. | `plugins/development-harness/skills/workflows/planning/SKILL.md` |
-| S3 | `context-integration` | Validate the S2 plan against actual codebase state, resolving gaps and updating the plan artifact before task decomposition. | `plugins/development-harness/skills/workflows/context-integration/SKILL.md` |
-| S4 | `task-decomposition` | Break the validated plan into executable, independently-delegatable task files with acceptance criteria and dependency ordering. | `plugins/development-harness/skills/workflows/task-decomposition/SKILL.md` |
-| S5 | `execution` | Implement each task using language-appropriate specialist agents; produce execution artifacts per task. | `plugins/development-harness/skills/workflows/execution/SKILL.md` |
-| S6 | `forensic-review` | Verify each executed task against its acceptance criteria; identify regressions, gaps, and quality violations. | `plugins/development-harness/skills/workflows/forensic-review/SKILL.md` |
-| S7 | `final-verification` | Certify the complete feature against the original discovery and acceptance criteria; produce a CERTIFIED or NOT_CERTIFIED verdict. | `plugins/development-harness/skills/workflows/final-verification/SKILL.md` |
+| S1 | `discovery` | Understand the feature request, identify constraints, and survey the codebase state before any planning occurs. | `plugins/development-harness/skills/discovery/SKILL.md` |
+| S2 | `planning` | Produce a structured plan covering solution architecture, acceptance tests, risk assessment, and RT-ICA completeness gate. | `plugins/development-harness/skills/planning/SKILL.md` |
+| S3 | `context-integration` | Validate the S2 plan against actual codebase state, resolving gaps and updating the plan artifact before task decomposition. | `plugins/development-harness/skills/context-integration/SKILL.md` |
+| S4 | `task-decomposition` | Break the validated plan into executable, independently-delegatable task files with acceptance criteria and dependency ordering. | `plugins/development-harness/skills/task-decomposition/SKILL.md` |
+| S5 | `execution` | Implement each task using language-appropriate specialist agents; produce execution artifacts per task. | `plugins/development-harness/skills/execution/SKILL.md` |
+| S6 | `forensic-review` | Verify each executed task against its acceptance criteria; identify regressions, gaps, and quality violations. | `plugins/development-harness/skills/forensic-review/SKILL.md` |
+| S7 | `final-verification` | Certify the complete feature against the original discovery and acceptance criteria; produce a CERTIFIED or NOT_CERTIFIED verdict. | `plugins/development-harness/skills/final-verification/SKILL.md` |
 
 ### Per-Stage Detail
 
@@ -179,7 +179,7 @@ Maps the 7 bare stage names to closest equivalents in IEEE 12207, ISO 15288, and
 
 Numbered rules for determining the correct form for any stage-related name.
 
-1. **Workflow skill directories** under `plugins/development-harness/skills/workflows/` use **bare Layer 1 stage names only**. Example: `plugins/development-harness/skills/workflows/final-verification/SKILL.md`, not `plugins/development-harness/skills/workflows/testing-final-verification/SKILL.md`.
+1. **Workflow skill directories** under `plugins/development-harness/skills/` use **bare Layer 1 stage names only**. Example: `plugins/development-harness/skills/final-verification/SKILL.md`, not `plugins/development-harness/skills/testing-final-verification/SKILL.md`.
 
 2. **Language manifest `stage_skills` keys** use **domain-prefixed Layer 2 names** when disambiguating, **bare names** when unambiguous (see Section 2 composition rules).
 

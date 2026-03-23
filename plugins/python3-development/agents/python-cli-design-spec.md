@@ -47,7 +47,7 @@ Load these before writing the spec:
 - `./references/architecture-spec-patterns.md` — standard technology stack, component templates, security, integration patterns, ADRs
 - `./references/testing-spec-guidance.md` — testing stack, coverage requirements, pytest config block
 - `./references/type-system-design-patterns.md` — type system audit, domain identifier patterns, boundary validation, anti-patterns, type contract template
-- Load `Skill(skill="python3-development:modules:typer-and-rich")` — Typer and Rich reference including table width measurement pattern (include in spec when tables are needed)
+- Load `Skill(skill="python3-development:typer-and-rich")` — Typer and Rich reference including table width measurement pattern (include in spec when tables are needed)
 - Review compliance: `./references/architecture-spec-patterns.md` § "Review Compliance Requirements" — the architecture spec MUST prescribe patterns that pass `modernpython`, `shebangpython`, and `code-reviewer` assessments on first attempt
 
 ## Large File Strategy

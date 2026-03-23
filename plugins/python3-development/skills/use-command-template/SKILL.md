@@ -68,21 +68,11 @@ Brief overview of the skill's purpose.
 Create skill in appropriate location:
 
 ```text
-plugins/{plugin-name}/skills/{category}/{skill-name}/
+plugins/{plugin-name}/skills/{skill-name}/
 └── SKILL.md
 ```
 
-### 4. Update Plugin Manifest
-
-Add skill path to `plugin.json`:
-
-```json
-{
-  "skills": [
-    "./skills/{category}/{skill-name}"
-  ]
-}
-```
+Skills must be directly under `skills/` — subdirectory nesting is not supported and causes skills to silently fail to register. Do not add a `skills` key to `plugin.json` — auto-discovery handles registration.
 
 ## Best Practices
 

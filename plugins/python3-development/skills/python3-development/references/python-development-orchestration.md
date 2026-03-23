@@ -24,7 +24,7 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 - **python-cli-architect** — Build modern CLI applications with Typer and Rich (DEFAULT for all Python code)
 - **python3-development:stdlib-scripting** — Create stdlib-only portable scripts (LAST RESORT for confirmed restricted environments only)
 - **python-pytest-architect** — Design comprehensive test suites
-- **python-code-reviewer** — Review Python code for quality and standards
+- **code-reviewer** — Review Python code for quality and standards
 - **python-cli-design-spec** — Design system architecture
 - **dh:swarm-task-planner** — Break down tasks into implementation plans
 
@@ -54,7 +54,7 @@ flowchart TD
     S1["1. Design<br>subagent_type=python3-development:python-cli-design-spec<br>Context: user requirements, any existing codebase paths<br>Output: component interfaces, module layout, CLI command tree"]
     S2["2. Write Tests<br>subagent_type=python3-development:python-pytest-architect<br>Context: architecture design file path<br>Output: tests/ directory with failing test suite"]
     S3{"3. Implement<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: tests/ path, load python3-development:typer-and-rich for python-cli-demo.py<br>Output: implementation that makes all tests pass"}
-    S4["4. Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: implementation file paths, tests/ path<br>Output: review findings with file:line references, improvement suggestions"]
+    S4["4. Review<br>subagent_type=python3-development:code-reviewer<br>Context: implementation file paths, tests/ path<br>Output: review findings with file:line references, improvement suggestions"]
     S5["5. Validate<br>Run: /python3-development:shebangpython on each script<br>Run: Activate holistic-linting skill<br>Run: uv run pytest (verify >80% coverage)<br>Check: CI config for additional validators<br>Pass criteria: all tests green, linting clean, coverage threshold met"]
     S1 -->|"Output: component interfaces, module layout, CLI command tree"| S2
     S2 -->|"Output: tests/ with failing test suite"| S3
@@ -79,7 +79,7 @@ User: "Build a CLI tool to process CSV files with progress bars"
    Context to include in the prompt: tests/ path; instruct agent to load Skill(skill="python3-development:typer-and-rich") for the python-cli-demo.py reference implementation
    Output: packages/ with implementation that makes all tests pass
 
-4. Task is Review with subagent_type="python3-development:python-code-reviewer"
+4. Task is Review with subagent_type="python3-development:code-reviewer"
    Context to include in the prompt: packages/ and tests/ file paths
    Output: Review findings with file:line references and improvement list
 
@@ -102,7 +102,7 @@ flowchart TD
     S3["3. Implementation Planning<br>subagent_type=dh:swarm-task-planner<br>Context: architecture design path, existing test patterns path<br>Output: ordered task list with file targets and acceptance criteria per task"]
     S4{"4. Implement<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: task list path, relevant existing file paths<br>Output: new feature implementation in packages/"}
     S5["5. Testing<br>subagent_type=python3-development:python-pytest-architect<br>Context: new implementation paths, existing test patterns path<br>Output: tests for new feature + integration tests in tests/"]
-    S6["6. Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: changed file paths, requirements doc path<br>Output: quality assessment against acceptance criteria, improvement list"]
+    S6["6. Review<br>subagent_type=python3-development:code-reviewer<br>Context: changed file paths, requirements doc path<br>Output: quality assessment against acceptance criteria, improvement list"]
     S7["7. Validate<br>Run: uv run pytest (verify no regressions, >80% coverage)<br>Run: Activate holistic-linting skill<br>Run: /python3-development:modernpython on changed files<br>Pass criteria: all tests green, no regressions, linting clean"]
     S1 -->|"Output: requirements doc, acceptance criteria"| S2
     S2 -->|"Output: design with integration points"| S3
@@ -123,7 +123,7 @@ flowchart TD
     S1["1. Self-Review<br>Run: /python3-development:modernpython on changed files<br>Check: no legacy typing imports (typing.List, typing.Dict, Optional)<br>Check: modern union syntax (X | Y not Union[X, Y])"]
     S2{"2. Scripts present?<br>Criterion: any .py file has shebang (#!/) line"}
     S2a["Run: /python3-development:shebangpython on each script<br>Pass criteria: PEP 723 compliance verified, shebang corrected if needed"]
-    S3["3. Agent Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: changed file paths, PR description or task description<br>Output: review findings with file:line references, severity labels (critical/major/minor)"]
+    S3["3. Agent Review<br>subagent_type=python3-development:code-reviewer<br>Context: changed file paths, PR description or task description<br>Output: review findings with file:line references, severity labels (critical/major/minor)"]
     S4{"4. Issues found with severity critical or major?"}
     S4a["Fix Issues<br>Implementation fixes: python3-development:python-cli-architect<br>Test fixes: python3-development:python-pytest-architect<br>Context: review findings doc path, file paths to fix"]
     S5["5. Re-validate<br>Run: Activate holistic-linting skill<br>Run: uv run pytest<br>Pass criteria: all review issues addressed, tests green, linting clean"]
@@ -149,7 +149,7 @@ flowchart TD
     S1a["Write Tests First<br>subagent_type=python3-development:python-pytest-architect<br>Context: file paths to be refactored, current behavior description<br>Output: tests/ capturing current behavior (all must pass before refactoring)"]
     S2["Refactor<br>subagent_type=python3-development:python-cli-architect<br>Context: file paths to refactor, tests/ path<br>Constraint: must not break existing tests — run uv run pytest after each change<br>Output: refactored implementation with same external behavior"]
     S3["Validate<br>Run: uv run pytest (coverage must equal or exceed pre-refactor baseline)<br>Pass criteria: all tests green, coverage maintained or improved"]
-    S4["Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: refactored file paths, tests/ path<br>Output: confirmation refactoring improved structure, no regressions introduced"]
+    S4["Review<br>subagent_type=python3-development:code-reviewer<br>Context: refactored file paths, tests/ path<br>Output: confirmation refactoring improved structure, no regressions introduced"]
     S5["Apply Standards<br>Run: /python3-development:modernpython on refactored files<br>Run: Activate holistic-linting skill<br>Pass criteria: linting clean, modern patterns applied"]
     S1 -->|"Tests missing"| S1a
     S1a -->|"Output: passing test suite for current behavior"| S2
@@ -168,10 +168,10 @@ The Reproduce Bug step requires the bug description verbatim and any error outpu
 ```mermaid
 flowchart TD
     S1["1. Reproduce Bug<br>subagent_type=python3-development:python-pytest-architect<br>Context: bug description verbatim, error output or stack trace, relevant file paths<br>Output: tests/test_<module>.py with failing test that isolates the bug"]
-    S2["2. Trace Root Cause<br>subagent_type=python3-development:python-code-reviewer<br>Context: failing test path, relevant source file paths<br>Output: root cause identification with file:line reference, not a fix — analysis only"]
+    S2["2. Trace Root Cause<br>subagent_type=python3-development:code-reviewer<br>Context: failing test path, relevant source file paths<br>Output: root cause identification with file:line reference, not a fix — analysis only"]
     S3{"3. Fix<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: root cause analysis path, failing test path, source file paths<br>Output: fix that makes the failing test pass"}
     S4["4. Regression Check<br>Run: uv run pytest (full suite)<br>Pass criteria: bug test passes AND no previously passing tests now fail"]
-    S5["5. Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: fixed file paths, test paths<br>Output: confirmation fix addresses root cause (not symptom), no new technical debt introduced"]
+    S5["5. Review<br>subagent_type=python3-development:code-reviewer<br>Context: fixed file paths, test paths<br>Output: confirmation fix addresses root cause (not symptom), no new technical debt introduced"]
     S6["6. Validate<br>Run: /python3-development:modernpython on fixed files<br>Run: Activate holistic-linting skill<br>Pass criteria: linting clean, modern patterns applied"]
     S1 -->|"Output: failing test isolating the bug"| S2
     S2 -->|"Output: root cause with file:line reference"| S3
@@ -326,7 +326,7 @@ If answers indicate restrictions: python3-development:stdlib-scripting
 - "Design test suite for payment processing module"
 - "Create property-based tests for data validation"
 
-### When to Use python-code-reviewer
+### When to Use code-reviewer
 
 **Use when**:
 
@@ -481,7 +481,7 @@ Orchestrator:
    Activate holistic-linting skill on packages/validator.py tests/
    uv run pytest — verify all pass, coverage >80%
 
-5. Task is Review with subagent_type="python3-development:python-code-reviewer"
+5. Task is Review with subagent_type="python3-development:code-reviewer"
    Context to include in the prompt: packages/validator.py and tests/ file paths
    Output: Quality check findings with file:line references
 
@@ -505,7 +505,7 @@ Orchestrator:
 3. Validation:
    uv run pytest — verify bug test passes and no regression
 
-4. Task is Review with subagent_type="python3-development:python-code-reviewer"
+4. Task is Review with subagent_type="python3-development:code-reviewer"
    Context to include in the prompt: packages/csv_parser.py and tests/test_csv_parser.py paths
    Output: Verification fix addresses root cause, not symptom
 
@@ -526,7 +526,7 @@ Orchestrator:
 
 <eg>
 ✅ Task is Implement with subagent_type="python3-development:python-cli-architect" — writes implementation
-✅ Task is Review with subagent_type="python3-development:python-code-reviewer" — validates it
+✅ Task is Review with subagent_type="python3-development:code-reviewer" — validates it
 </eg>
 
 ### Don't: Skip validation steps

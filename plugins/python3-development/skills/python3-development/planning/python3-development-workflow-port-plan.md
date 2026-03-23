@@ -95,7 +95,7 @@ Port agents from `gitlab-runner-management/.claude/agents/` into `plugins/python
   - `doc-drift-auditor.md`
   - `service-docs-maintainer.md`
   - `context-refinement.md`
-  - `code-reviewer.md` (or map to existing `python-code-reviewer.md` if the prompts are compatible)
+  - `code-reviewer.md` (or map to existing `code-reviewer.md` if the prompts are compatible)
 
 **Resume point:** If interrupted after Checkpoint 1, you should have a complete “bill of materials” list.
 
@@ -131,7 +131,7 @@ Pick **one canonical location** inside `plugins/python3-development/` (recommend
 
 - Templates:
   - `plugins/python3-development/skills/development/add-new-feature/templates/`
-  - `plugins/python3-development/skills/testing/comprehensive-test-review/templates/`
+  - `plugins/python3-development/skills/comprehensive-test-review/templates/`
 - Example code/assets:
   - `plugins/python3-development/skills/python3-development/assets/`
 - Helper scripts:

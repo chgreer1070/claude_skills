@@ -278,7 +278,7 @@ Delegate to a review agent with context fork to critique the plan.
 
 ### Step 4.1: Launch Plan Review Agent
 
-Delegate to `python-code-reviewer` using the prompt in [Agent Prompts](./references/agent-prompts.md#phase-4-plan-review).
+Delegate to `code-reviewer` using the prompt in [Agent Prompts](./references/agent-prompts.md#phase-4-plan-review).
 
 ### Step 4.2: Review Report Structure
 
@@ -473,7 +473,7 @@ Skill(skill: "python3-development:python3-development")  # Core patterns
 
 ```text
 Agent(subagent_type="holistic-linting:linting-root-cause-resolver", ...)  # Phase 1 linting
-Agent(subagent_type="python3-development:python-code-reviewer", ...)     # Phase 4 review
+Agent(subagent_type="python3-development:code-reviewer", ...)     # Phase 4 review
 Agent(subagent_type="python3-development:python-pytest-architect", ...)  # Phase 8 tests
 ```
 
@@ -519,7 +519,7 @@ SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
 
 ### Skill Reference Files
 
-- [Type Pattern Examples](./references/type-patterns.md) — before/after code samples for Protocol, Generic, TypeGuard, TypeAlias, TypedDict, Dataclass/Pydantic, and library modernization table
+- [Python 3 Standards](./python3-standards.md) — Shared development standards, knowledge graph, and process graph
 - [Plan Templates](./references/plan-templates.md) — document formats for modernization plan, review report, revised plan, and documentation update plan
 - [Agent Prompts](./references/agent-prompts.md) — pre-built delegation prompts for Phase 4 review agent and Phase 8 test writing agent
 

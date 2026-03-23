@@ -10,6 +10,42 @@ python_compatibility: 3.11+
 
 Python development guide for modern Python 3.11-3.14 patterns.
 
+## Domain-Specific Skill Routing
+
+Load these specialist skills when the task matches their domain.
+
+### Testing
+
+When reviewing test quality or performing test audits, load `/python3-development:comprehensive-test-review` for the full review checklist.
+
+When analyzing failing tests or debugging test failures, load `/python3-development:analyze-test-failures` for balanced investigative methodology.
+
+When setting the right mindset for approaching test failures, load `/python3-development:test-failure-mindset` for the investigative stance.
+
+### CLI and UI Libraries
+
+When building CLI tools with Typer and Rich together, load `/python3-development:typer-and-rich` for integration patterns, width handling, and working examples.
+
+When working with Typer CLI patterns specifically, load `/python3-development:typer` for command definitions, argument parsing, and Typer best practices.
+
+When working with Rich output (tables, panels, progress bars, trees), load `/python3-development:rich` for Rich component patterns.
+
+When building terminal user interfaces with Textual, load `/python3-development:textual` for TUI application patterns.
+
+### Development Workflows
+
+When creating a structured feature development task, load `/python3-development:create-feature-task` for the task template and tracking setup.
+
+When creating a new Claude Code skill from a template, load `/python3-development:use-command-template` for the skill creation workflow.
+
+### Code Quality
+
+When applying modern Python patterns or modernizing legacy code, load `/python3-development:modernpython` for Python 3.11+ patterns with PEP citations.
+
+When validating shebangs and PEP 723 inline metadata, load `/python3-development:shebangpython` for shebang correctness rules.
+
+When running progressive quality improvement (static analysis, type refinement, modernization), load `/python3-development:stinkysnake` for the quality pipeline.
+
 ## Skill Architecture
 
 ### Bundled Resources (Included in This Skill)
@@ -22,12 +58,12 @@ Python development guide for modern Python 3.11-3.14 patterns.
 - [API Reference](./references/api_reference.md) - API specifications and integration guides
 - [Python Development Orchestration](./references/python-development-orchestration.md) - Detailed workflow patterns for TDD, feature addition, refactoring, and code review
 
-**Command Templates and Guides** (`commands/`):
+**Specialist Skills** (loaded via routing section above):
 
-- Reference material for creating slash commands (NOT the actual slash commands)
-- Command templates and patterns for development
-- Testing and development workflow guides
-- See `../../commands/` directory for details
+- Testing skills: comprehensive-test-review, analyze-test-failures, test-failure-mindset
+- CLI/UI skills: typer-and-rich, typer, rich, textual
+- Development skills: create-feature-task, use-command-template
+- Quality skills: modernpython, shebangpython, stinkysnake
 
 **Scripts and Assets:**
 
@@ -55,9 +91,7 @@ Python development guide for modern Python 3.11-3.14 patterns.
 
 This skill provides modern Python 3.11+ standards, quality gates, and reference documentation for Python development.
 
-**Note on command templates**:
-
-This plugin includes **command templates** under `./commands/` as reference material. For actual invocation, prefer **skills** (e.g., `modernpython`, `shebangpython`).
+**Specialist skills**: See the Domain-Specific Skill Routing section above for loading the right skill based on your task.
 
 **Reference Documentation**:
 

@@ -2015,7 +2015,7 @@ def find_dependent_documents(target_doc: Path, skill_root: Path) -> list[Path]:
 - [ ] Document TDD RED-GREEN-REFACTOR cycle
 - [ ] Document 9-step linting resolution from linting-root-cause-resolver
 - [ ] Document spec-analyst → python-cli-design-spec → swarm-task-planner chain
-- [ ] Document python-cli-architect → python-code-reviewer workflow
+- [ ] Document python-cli-architect → code-reviewer workflow
 - [ ] Document universal Research-Analyze-Implement-Verify workflow
 
 **Validation**:

@@ -25,7 +25,7 @@ The python3-development plugin shows **strong partial alignment** with the State
 | **Stage 2: Planning**            | RT-ICA assessment, solution design, produce ARTIFACT:PLAN         | `planner-rt-ica` skill, `swarm-task-planner` agent                               | **PARTIAL** - RT-ICA exists but runs as pre-pass, not integrated stage; planning produces PLAN.md |
 | **Stage 3: Context Integration** | Ground design in codebase reality, produce contextualized plan    | `context-gathering` agent                                                        | **PARTIAL** - Adds Context Manifest to task file, not separate contextualized plan artifact       |
 | **Stage 4: Task Decomposition**  | Create atomic self-contained task files                           | `generate-task` skill, `swarm-task-planner` agent                                | **ALIGNED** - Uses CLEAR+CoVe standard, produces TASK/ files with embedded context                |
-| **Stage 5: Execution**           | Execute single task with embedded verification                    | `python-cli-architect`, `python-pytest-architect`, `python-code-reviewer` agents | **PARTIAL** - Agents execute with fresh context; verification embedded but not mandatory          |
+| **Stage 5: Execution**           | Execute single task with embedded verification                    | `python-cli-architect`, `python-pytest-architect`, `code-reviewer` agents | **PARTIAL** - Agents execute with fresh context; verification embedded but not mandatory          |
 | **Stage 6: Forensic Review**     | Independent verification of task completion                       | `feature-verifier` agent                                                         | **ALIGNED** - Goal-backward verification, 3-level checks (exists, substantive, wired)             |
 | **Stage 7: Final Verification**  | Verify feature against original goals                             | `plan-validator` agent (before execution), `feature-verifier` (after)            | **PARTIAL** - Separate roles but no final certification artifact                                  |
 
@@ -103,7 +103,7 @@ The python3-development plugin shows **strong partial alignment** with the State
 
 **Current State in Plugin**:
 
-- Agents are role-specialized: `python-cli-architect` (implementation), `python-pytest-architect` (tests), `python-code-reviewer` (review)
+- Agents are role-specialized: `python-cli-architect` (implementation), `python-pytest-architect` (tests), `code-reviewer` (review)
 - File: `./plugins/python3-development/skills/python3-development/references/python-development-orchestration.md`: Agent roles clearly defined
 
 **Gap Status**: **ALIGNED**
