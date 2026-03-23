@@ -24,6 +24,8 @@ from github import Auth, Github, GithubException
 from . import models as _models
 from .models import (
     TYPE_TO_LABEL,
+    BackendAvailability,
+    BackendStatus,
     BacklogError,
     BacklogItem,
     GitHubUnavailableError,
@@ -52,6 +54,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_HTTP_FORBIDDEN = 403
 _HTTP_NOT_FOUND = 404
 
 
@@ -1089,6 +1092,72 @@ def try_get_github(repo: str = "") -> Repository | None:
         logger.exception("try_get_github: GitHub API error for repo %r", repo)
         print(f"backlog-mcp: GitHub auth failed — {e}. Local operations continue", file=sys.stderr)
         return None
+
+
+def probe_backend_status(repo: str = "") -> BackendStatus:
+    """Probe GitHub backend availability and return a status summary.
+
+    Checks authentication, connectivity, and issue counts without raising.
+    All errors are captured into the returned ``BackendStatus`` object.
+
+    Args:
+        repo: Optional repository slug (``owner/name``).  Defaults to the
+            value resolved by ``_repo()``.
+
+    Returns:
+        BackendStatus with availability, open/total issue counts, cache
+        total count, and last sync timestamp populated from observed state.
+    """
+    cache_total_count = len(list(_models.BACKLOG_DIR.glob("*.md")))
+
+    last_sync_path = _dh_paths.state_root() / ".last_sync"
+    try:
+        last_sync = last_sync_path.read_text(encoding="utf-8").strip() if last_sync_path.exists() else ""
+    except OSError:
+        last_sync = ""
+
+    if not os.environ.get("GITHUB_TOKEN"):
+        return BackendStatus(
+            availability=BackendAvailability.NEEDS_AUTHENTICATION,
+            cache_total_count=cache_total_count,
+            last_sync=last_sync,
+            error="GITHUB_TOKEN not set",
+        )
+
+    repo_obj = try_get_github(repo)
+    if repo_obj is None:
+        return BackendStatus(
+            availability=BackendAvailability.ERROR,
+            cache_total_count=cache_total_count,
+            last_sync=last_sync,
+            error="GitHub repository unavailable — token set but connection failed",
+        )
+
+    try:
+        open_count: int | None = repo_obj.open_issues_count
+        total_count: int | None = repo_obj.get_issues(state="all").totalCount
+    except GithubException as exc:
+        if exc.status == _HTTP_FORBIDDEN:
+            return BackendStatus(
+                availability=BackendAvailability.RATE_LIMITED,
+                cache_total_count=cache_total_count,
+                last_sync=last_sync,
+                error=str(exc),
+            )
+        return BackendStatus(
+            availability=BackendAvailability.REACHABLE,
+            cache_total_count=cache_total_count,
+            last_sync=last_sync,
+            error=str(exc),
+        )
+
+    return BackendStatus(
+        availability=BackendAvailability.REACHABLE,
+        open_count=open_count,
+        total_count=total_count,
+        cache_total_count=cache_total_count,
+        last_sync=last_sync,
+    )
 
 
 # ---------------------------------------------------------------------------
