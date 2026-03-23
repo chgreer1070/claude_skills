@@ -106,7 +106,7 @@ When creating tests, follow this systematic approach:
 1. Run tests: `uv run pytest -v`
 2. Check coverage
 3. For critical code (payments, security, auth): Run mutation testing with mutmut
-4. Verify all tests have proper type hints: `uv run mypy tests/` `uv run basedpyright tests/`
+4. Verify tests type-check with the project checker: `uv run ty check tests/` (default) or `uv run mypy tests/` when the project uses mypy — do not force migration to ty
 5. Ensure all tests have comprehensive docstrings
 
 # Fixture Design Patterns
