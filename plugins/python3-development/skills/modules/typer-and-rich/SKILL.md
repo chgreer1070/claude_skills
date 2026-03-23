@@ -1,7 +1,6 @@
 ---
 name: typer-and-rich
 description: Best practices and anti-patterns for Typer and Rich CLI applications — prevents common AI mistakes like Rich table wrapping in non-TTY, incorrect console output handling, testing Rich-formatted output, and integration pitfalls. Load alongside the typer and rich API reference skills when building CLI applications.
-user-invocable: false
 ---
 
 # Typer and Rich Best Practices

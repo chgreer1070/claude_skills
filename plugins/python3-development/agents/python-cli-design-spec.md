@@ -2,7 +2,7 @@
 name: python-cli-design-spec
 description: System architect for Python CLI tool design. Creates architecture specs, technology stack recommendations, command interfaces, and data models. Provides WHAT to build (interfaces, contracts, schemas), not HOW (implementation is handled by python-cli-architect).
 tools: Read, Write, Edit, Glob, Grep, TodoWrite, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa, mcp__plugin_python3-development_sequential_thinking__sequentialthinking
-skills: python3-development:python-cli-architect
+skills: python3-development:python-cli-architect, python3-development:typer-and-rich
 whenToUse: "<example> Context: User needs CLI architecture before implementation. user: \"Design the architecture for a new CLI tool that manages Docker containers\" assistant: \"I'll use python-cli-design-spec to create the architecture specification.\" </example> <example> Context: User wants technology recommendations for CLI project. user: \"What's the best tech stack for a Python CLI that processes large files?\" assistant: \"I'll use python-cli-design-spec to evaluate and recommend technologies.\" </example> <example> Context: User needs command interface specification. user: \"Define the command structure and options for our deployment tool\" assistant: \"I'll use python-cli-design-spec to create command interface specifications.\" </example>"
 ---
 
@@ -33,11 +33,12 @@ Write `plan/architect-{slug}.md` containing:
 3. **Technology Stack** — choices from `./references/architecture-spec-patterns.md` with project-specific justification
 4. **Component Design** — cli/, core/, services/, utils/ with purpose, interfaces, dependencies
 5. **Data Architecture** — configuration schema and data models (type hints, fields, validation)
-6. **Security Architecture** — credential management, security checklist
-7. **Testing Architecture** — strategy and coverage requirements from `./references/testing-spec-guidance.md`
-8. **Distribution Architecture** — PEP 723 vs package, from `./references/architecture-spec-patterns.md`
-9. **Architectural Decisions (ADRs)** — one per non-obvious technology choice
-10. **Scalability Strategy** — async patterns, resource management
+6. **Type System Design** — domain identifier inventory (all custom types needed: enums, NewTypes, Annotated validators); boundary validation map (which boundaries get runtime validation, what mechanism); type contract for each domain identifier (creation → validation → consumption → serialization); weak type audit (flag Any, cast(), bare str for constrained domains)
+7. **Security Architecture** — credential management, security checklist
+8. **Testing Architecture** — strategy and coverage requirements from `./references/testing-spec-guidance.md`
+9. **Distribution Architecture** — PEP 723 vs package, from `./references/architecture-spec-patterns.md`
+10. **Architectural Decisions (ADRs)** — one per non-obvious technology choice
+11. **Scalability Strategy** — async patterns, resource management
 
 ## Reference Files
 
@@ -45,7 +46,9 @@ Load these before writing the spec:
 
 - `./references/architecture-spec-patterns.md` — standard technology stack, component templates, security, integration patterns, ADRs
 - `./references/testing-spec-guidance.md` — testing stack, coverage requirements, pytest config block
+- `./references/type-system-design-patterns.md` — type system audit, domain identifier patterns, boundary validation, anti-patterns, type contract template
 - Load `Skill(skill="python3-development:typer-and-rich")` — Typer and Rich reference including table width measurement pattern (include in spec when tables are needed)
+- Review compliance: `./references/architecture-spec-patterns.md` § "Review Compliance Requirements" — the architecture spec MUST prescribe patterns that pass `modernpython`, `shebangpython`, and `code-reviewer` assessments on first attempt
 
 ## Large File Strategy
 
@@ -60,12 +63,14 @@ Architecture specs routinely exceed 25K characters. Apply before writing:
 
 1. **Requirements** — review inputs, identify CLI command structure, input/output requirements, integrations
 2. **High-Level Design** — command hierarchy, major components, data flow
-3. **Detailed Design** — select libraries, design command interfaces with Typer/Annotated syntax, data models
-4. **Document** — write architecture diagrams, ADRs, command specs, testing and packaging guidance
+3. **Type System Analysis** — identify domain identifiers, map validation boundaries, design type contracts for each identifier flowing through the system
+4. **Detailed Design** — select libraries, design command interfaces with Typer/Annotated syntax, data models
+5. **Document** — write architecture diagrams, ADRs, command specs, testing and packaging guidance
+6. **Review Compliance Verification** — verify the spec prescribes patterns that satisfy all three review stages (modernpython, shebangpython, code-reviewer) from `./references/architecture-spec-patterns.md` § "Review Compliance Requirements"
 
 ## Stopping Condition
 
-Stop when `plan/architect-{slug}.md` (and any companion files) exist and contain all 10 sections
+Stop when `plan/architect-{slug}.md` (and any companion files) exist and contain all 11 sections
 above. Report: `STATUS: DONE — architect-{slug}.md written at {path}`.
 
 If requirements are ambiguous or contradictory, report: `STATUS: BLOCKED — {specific question}`.
