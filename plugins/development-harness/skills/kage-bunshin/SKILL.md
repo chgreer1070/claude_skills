@@ -19,7 +19,8 @@ spawn.py send   --name X "message"
 spawn.py read   --name X
 spawn.py status --name X
 spawn.py list
-spawn.py kill   --name X
+spawn.py stop   --name X          # graceful shutdown (Ctrl-C + wait)
+spawn.py kill   --name X          # force kill (last resort)
 ```
 
 ## Quick Start
@@ -44,6 +45,30 @@ $SPAWN send --name worker-42 \
 # 5. Clean up when done
 $SPAWN kill --name worker-42
 ```
+
+## Session Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Spawning: spawn
+    Spawning --> Idle: claude REPL initialized
+    Idle --> Working: send (prompt delivered)
+    Working --> Idle: claude finishes (❯ prompt returns)
+    Working --> Working: send (steer mid-task)
+    Idle --> Stopping: stop (sends Ctrl-C)
+    Working --> Stopping: stop (sends Ctrl-C)
+    Stopping --> Dead: session exits gracefully
+    Stopping --> Dead: timeout → force kill
+    Dead --> [*]: registry cleanup
+    Idle --> Dead: crash
+    Working --> Dead: crash
+    note right of Stopping: Shutdown hooks run here
+    note right of Dead: kill bypasses hooks — last resort only
+```
+
+**State detection via `read`:** The `❯` prompt at the last line of `capture-pane` output indicates Idle state. Absence of `❯` indicates Working state.
+
+**Shutdown:** Use `stop` for graceful shutdown (Ctrl-C → poll for exit → fallback to force kill after 30s timeout). Use `kill` only for hung/unresponsive sessions — it bypasses shutdown hooks.
 
 ## How It Works
 
@@ -134,15 +159,29 @@ $SPAWN list
 
 Prints a columnar table: NAME, MODEL, STATUS (alive/dead), AGE, TMUX_SESSION.
 
+### stop
+
+Graceful shutdown — sends Ctrl-C, waits for the session to exit, cleans up registry.
+
+```bash
+$SPAWN stop --name worker-42
+```
+
+Sends `C-c` to the claude REPL, then polls for up to 30 seconds. If the session exits within the timeout, shutdown hooks run and the session is persisted. If the timeout is exceeded, falls back to force kill.
+
+Output: `{"status": "stopped", "name": "worker-42", "forced": false}`
+
+A `TaskCompleted` hook automatically reminds the orchestrator to stop any sessions that outlive their tasks.
+
 ### kill
 
-Terminate a session and clean up.
+Force-kill a session — last resort for hung/unresponsive sessions.
 
 ```bash
 $SPAWN kill --name worker-42
 ```
 
-Kills the tmux session and updates the registry. A `TaskCompleted` hook automatically reminds the orchestrator to clean up any sessions that outlive their tasks.
+Calls `tmux kill-session` directly. Bypasses shutdown hooks and session persistence. Use only when `stop` fails or the session is unresponsive.
 
 ## Session State
 
@@ -203,7 +242,7 @@ $SPAWN read --name coord-12
 
 # Shut down the fleet
 for ITEM in "${ITEMS[@]}"; do
-  $SPAWN kill --name "coord-${ITEM}"
+  $SPAWN stop --name "coord-${ITEM}"
 done
 ```
 
@@ -249,7 +288,7 @@ $SPAWN send --name "work-42" \
 
 # Clean up after wave
 for ISSUE in "${WAVE_ISSUES[@]}"; do
-  $SPAWN kill --name "work-${ISSUE}"
+  $SPAWN stop --name "work-${ISSUE}"
 done
 ```
 

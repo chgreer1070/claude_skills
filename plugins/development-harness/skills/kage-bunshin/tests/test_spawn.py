@@ -837,3 +837,223 @@ def test_cmd_read_exits_1_when_session_not_alive(tmp_path):
         _spawn.cmd_read(ns)
 
     assert exc_info.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# _wait_for_session_exit
+# ---------------------------------------------------------------------------
+
+
+def test_wait_for_session_exit_returns_true_when_session_exits_promptly():
+    # Session is gone on the first poll.
+    with (
+        patch.object(_spawn, "_tmux_alive", return_value=False),
+        patch("time.sleep"),
+        patch("time.monotonic", side_effect=[0.0, 0.1]),
+    ):
+        result = _spawn._wait_for_session_exit("some-session", timeout=5.0)
+    assert result is True
+
+
+def test_wait_for_session_exit_returns_false_when_timeout_exceeded():
+    # Session remains alive throughout; deadline expires.
+    monotonic_values = [0.0] + [i * 0.5 for i in range(1, 70)]
+
+    with (
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch("time.sleep"),
+        patch("time.monotonic", side_effect=monotonic_values),
+    ):
+        result = _spawn._wait_for_session_exit("some-session", timeout=5.0)
+    assert result is False
+
+
+def test_wait_for_session_exit_returns_true_after_a_few_polls():
+    # Session alive for first 2 polls then gone.
+    alive_calls: list[int] = [0]
+
+    def fake_alive(_session: str) -> bool:
+        alive_calls[0] += 1
+        return alive_calls[0] < 3
+
+    with (
+        patch.object(_spawn, "_tmux_alive", side_effect=fake_alive),
+        patch("time.sleep"),
+        patch("time.monotonic", side_effect=[0.0, 0.5, 1.0, 1.5, 2.0, 2.5]),
+    ):
+        result = _spawn._wait_for_session_exit("some-session", timeout=10.0)
+    assert result is True
+
+
+# ---------------------------------------------------------------------------
+# cmd_stop
+# ---------------------------------------------------------------------------
+
+
+def _make_stop_ns(name: str = "sess") -> MagicMock:
+    ns = MagicMock()
+    ns.name = name
+    return ns
+
+
+def test_cmd_stop_graceful_exit_path_removes_registry_entry(tmp_path, capsys):
+    """Ctrl-C causes session to exit within timeout — success without force."""
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
+    _spawn._save_registry(tmp_path, registry)
+
+    ns = _make_stop_ns()
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        # Session is alive initially (liveness check), then exits after Ctrl-C.
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch.object(_spawn, "_tmux_send_ctrlc"),
+        patch.object(_spawn, "_wait_for_session_exit", return_value=True),
+        patch.object(_spawn, "_tmux_kill"),
+    ):
+        _spawn.cmd_stop(ns)
+
+    assert "sess" not in _spawn._load_registry(tmp_path)
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    assert result["status"] == "stopped"
+    assert result["name"] == "sess"
+    assert result["forced"] is False
+
+
+def test_cmd_stop_graceful_exit_path_does_not_force_kill(tmp_path):
+    """Ctrl-C causes session to exit within timeout — tmux kill-session NOT called for main session."""
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
+    _spawn._save_registry(tmp_path, registry)
+
+    ns = _make_stop_ns()
+    killed: list[str] = []
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch.object(_spawn, "_tmux_send_ctrlc"),
+        patch.object(_spawn, "_wait_for_session_exit", return_value=True),
+        patch.object(_spawn, "_tmux_kill", side_effect=killed.append),
+    ):
+        _spawn.cmd_stop(ns)
+
+    # Only the launcher session should be killed (not the claude session).
+    assert "claude_skills_worktree-sess" not in killed
+    assert "kb-launcher-sess" in killed
+
+
+def test_cmd_stop_timeout_path_force_kills_and_sets_forced_true(tmp_path, capsys):
+    """Session does not exit within timeout — force kill and forced=true in output."""
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
+    _spawn._save_registry(tmp_path, registry)
+
+    ns = _make_stop_ns()
+    killed: list[str] = []
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch.object(_spawn, "_tmux_send_ctrlc"),
+        patch.object(_spawn, "_wait_for_session_exit", return_value=False),
+        patch.object(_spawn, "_tmux_kill", side_effect=killed.append),
+    ):
+        _spawn.cmd_stop(ns)
+
+    assert "claude_skills_worktree-sess" in killed
+    assert "kb-launcher-sess" in killed
+    assert "sess" not in _spawn._load_registry(tmp_path)
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    assert result["forced"] is True
+    assert result["status"] == "stopped"
+
+
+def test_cmd_stop_already_dead_session_cleans_up_registry_without_force(tmp_path, capsys):
+    """Session tmux is already gone — registry cleaned, already_dead=true reported."""
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
+    _spawn._save_registry(tmp_path, registry)
+
+    ns = _make_stop_ns()
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        # Session is already dead.
+        patch.object(_spawn, "_tmux_alive", return_value=False),
+        patch.object(_spawn, "_tmux_send_ctrlc") as mock_ctrlc,
+        patch.object(_spawn, "_tmux_kill"),
+    ):
+        _spawn.cmd_stop(ns)
+
+    mock_ctrlc.assert_not_called()
+    assert "sess" not in _spawn._load_registry(tmp_path)
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    assert result["already_dead"] is True
+    assert result["forced"] is False
+
+
+def test_cmd_stop_sends_ctrlc_to_correct_session(tmp_path):
+    """Verify Ctrl-C is sent to the tmux session from the registry, not the launcher."""
+    registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
+    _spawn._save_registry(tmp_path, registry)
+
+    ns = _make_stop_ns()
+    ctrlc_targets: list[str] = []
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch.object(_spawn, "_tmux_send_ctrlc", side_effect=ctrlc_targets.append),
+        patch.object(_spawn, "_wait_for_session_exit", return_value=True),
+        patch.object(_spawn, "_tmux_kill"),
+    ):
+        _spawn.cmd_stop(ns)
+
+    assert ctrlc_targets == ["claude_skills_worktree-sess"]
+
+
+def test_cmd_stop_exits_1_when_session_not_in_registry(tmp_path):
+    ns = _make_stop_ns(name="ghost")
+    with patch.object(_spawn, "_session_state_dir", return_value=tmp_path), pytest.raises(SystemExit) as exc_info:
+        _spawn.cmd_stop(ns)
+    assert exc_info.value.code == 1
+
+
+def test_cmd_stop_kills_launcher_session_after_graceful_exit(tmp_path):
+    """kb-launcher-{name} is killed after the session exits gracefully."""
+    registry = {"myname": {"name": "myname", "tmux_session": "proj_worktree-myname"}}
+    _spawn._save_registry(tmp_path, registry)
+
+    ns = _make_stop_ns(name="myname")
+    killed: list[str] = []
+
+    with (
+        patch.object(_spawn, "_session_state_dir", return_value=tmp_path),
+        patch.object(_spawn, "_tmux_alive", return_value=True),
+        patch.object(_spawn, "_tmux_send_ctrlc"),
+        patch.object(_spawn, "_wait_for_session_exit", return_value=True),
+        patch.object(_spawn, "_tmux_kill", side_effect=killed.append),
+    ):
+        _spawn.cmd_stop(ns)
+
+    assert "kb-launcher-myname" in killed
+
+
+# ---------------------------------------------------------------------------
+# Argument parser — stop subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_build_parser_stop_requires_name():
+    parser = _spawn._build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["stop"])
+
+
+def test_build_parser_stop_with_name_sets_func():
+    parser = _spawn._build_parser()
+    args = parser.parse_args(["stop", "--name", "mysess"])
+    assert args.name == "mysess"
+    assert args.func is _spawn.cmd_stop

@@ -54,22 +54,23 @@ process.stdin.on('end', () => {
   }
 
   // Build reminder message
+  const spawn = `${process.env.CLAUDE_PLUGIN_ROOT || '.'}/skills/kage-bunshin/scripts/spawn.py`;
   const sessionList = sessions.map((s) => `  - ${s}`).join('\n');
+  const commands = sessions
+    .map((s) => {
+      const match = s.match(/_worktree-(.+)$/);
+      const name = match ? match[1] : s;
+      return `  uv run ${spawn} read --name ${name}  # check if idle (❯) or working\n  uv run ${spawn} stop --name ${name}  # graceful Ctrl-C shutdown`;
+    })
+    .join('\n');
   const message = [
     `Kage-bunshin worktree sessions still running (${sessions.length}):`,
     sessionList,
     '',
-    'Clean up with:',
-    sessions
-      .map((s) => {
-        // Extract the --name value: everything after the last _worktree- prefix
-        const match = s.match(/_worktree-(.+)$/);
-        const name = match ? match[1] : s;
-        return `  uv run spawn.py kill --name ${name}`;
-      })
-      .join('\n'),
+    'Check state then gracefully stop:',
+    commands,
     '',
-    'Or review all sessions: uv run spawn.py list',
+    `List all sessions: uv run ${spawn} list`,
   ].join('\n');
 
   const output = {

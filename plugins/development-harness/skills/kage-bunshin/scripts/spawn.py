@@ -13,6 +13,7 @@ Usage:
     spawn.py read   --name X
     spawn.py status --name X
     spawn.py list
+    spawn.py stop   --name X
     spawn.py kill   --name X
 
 Session State Directory:
@@ -76,6 +77,8 @@ _NAME_MAX_CHARS = 30
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 # Timeout waiting for the claude tmux session to appear after spawn.
 _SPAWN_WAIT_SECONDS = 30
+# Timeout waiting for a session to exit gracefully after Ctrl-C.
+_GRACEFUL_STOP_TIMEOUT = 30.0
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +281,35 @@ def _tmux_run_in_session(tmux_session: str, cmd: str) -> None:
     )
     if result.returncode != 0:
         _die(f"tmux send-keys to {tmux_session} failed: {result.stderr.strip()}")
+
+
+def _tmux_send_ctrlc(tmux_session: str) -> None:
+    """Send Ctrl-C to a tmux session to request graceful shutdown.
+
+    Ignores errors (session may already be exiting).
+
+    Args:
+        tmux_session: Full tmux session name.
+    """
+    subprocess.run(["tmux", "send-keys", "-t", tmux_session, "C-c", ""], capture_output=True, check=False)
+
+
+def _wait_for_session_exit(tmux_session: str, timeout: float) -> bool:
+    """Poll until a tmux session is gone or the timeout elapses.
+
+    Args:
+        tmux_session: Full tmux session name to watch.
+        timeout: Maximum seconds to wait.
+
+    Returns:
+        True if the session exited within the timeout, False otherwise.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not _tmux_alive(tmux_session):
+            return True
+        time.sleep(0.5)
+    return not _tmux_alive(tmux_session)
 
 
 # ---------------------------------------------------------------------------
@@ -584,6 +616,63 @@ def cmd_list(_args: argparse.Namespace) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: stop
+# ---------------------------------------------------------------------------
+
+
+def cmd_stop(args: argparse.Namespace) -> None:
+    """Stop a session gracefully by sending Ctrl-C and waiting for clean exit.
+
+    Sends C-c to the claude tmux session to trigger graceful shutdown
+    (session persistence, hook execution, cleanup).  Polls until the session
+    exits.  If the session does not exit within _GRACEFUL_STOP_TIMEOUT seconds,
+    the session is force-killed instead.
+
+    If the tmux session is already dead, the registry entry is cleaned up and
+    success is reported.
+
+    The launcher tmux session (kb-launcher-{name}) is also killed if it still
+    exists after the main session exits.
+
+    Args:
+        args: Parsed arguments with name field.
+    """
+    state_dir = _session_state_dir()
+    session = _get_session(state_dir, args.name)
+
+    tmux_session = session.get("tmux_session", "")
+    launcher_session = f"kb-launcher-{args.name}"
+    forced = False
+
+    if not tmux_session or not _tmux_alive(tmux_session):
+        # Session already dead — just clean up the registry.
+        registry = _load_registry(state_dir)
+        registry.pop(args.name, None)
+        _save_registry(state_dir, registry)
+        _tmux_kill(launcher_session)
+        print(json.dumps({"status": "stopped", "name": args.name, "forced": False, "already_dead": True}))
+        return
+
+    # Send Ctrl-C to request graceful shutdown.
+    _tmux_send_ctrlc(tmux_session)
+
+    exited = _wait_for_session_exit(tmux_session, _GRACEFUL_STOP_TIMEOUT)
+    if not exited:
+        # Graceful timeout exceeded — force kill.
+        _tmux_kill(tmux_session)
+        forced = True
+
+    # Clean up launcher session whether or not we force-killed.
+    _tmux_kill(launcher_session)
+
+    registry = _load_registry(state_dir)
+    registry.pop(args.name, None)
+    _save_registry(state_dir, registry)
+
+    print(json.dumps({"status": "stopped", "name": args.name, "forced": forced}))
+
+
+# ---------------------------------------------------------------------------
 # Subcommand: kill
 # ---------------------------------------------------------------------------
 
@@ -683,6 +772,13 @@ def _build_parser() -> argparse.ArgumentParser:
     # list
     p_list = sub.add_parser("list", help="List all registered sessions.")
     p_list.set_defaults(func=cmd_list)
+
+    # stop
+    p_stop = sub.add_parser(
+        "stop", help="Gracefully stop a session by sending Ctrl-C, waiting for clean exit, then cleaning up."
+    )
+    p_stop.add_argument("--name", required=True, help="Session name.")
+    p_stop.set_defaults(func=cmd_stop)
 
     # kill
     p_kill = sub.add_parser("kill", help="Kill a session and remove its registry entry.")
