@@ -190,6 +190,10 @@ Research tool preference for PEP documentation:
 
 For the mandatory quality gate sequence (linting, type checking, tests, full-file review, shebang validation), activate the `/python3-development:python-cli-architect` skill.
 
+## Diagnostic Rules
+
+**`error[unresolved-import]: Cannot resolve imported module 'X'`** — Add the directory containing module `X` to `[tool.ty.environment] extra-paths` in `pyproject.toml`; run `uv run ty check <path>` to verify; if errors persist, confirm `pyproject.toml` is the config ty is reading (a `ty.toml` in the project root takes precedence and `pyproject.toml` will be ignored).
+
 ## Standard Project Structure
 
 For project directory layout, Hatchling configuration, and package naming rules, activate the `/python3-development:python-cli-architect` skill.

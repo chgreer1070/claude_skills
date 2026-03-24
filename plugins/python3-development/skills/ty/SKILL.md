@@ -120,6 +120,10 @@ Load when the user encounters errors or unexpected behavior with ty.
 
 `references/troubleshooting.md`
 
+## Common Errors
+
+**`error[unresolved-import]: Cannot resolve imported module 'X'`** — Add the directory containing module `X` to `[tool.ty.environment] extra-paths` in `pyproject.toml`; run `uv run ty check <path>` to verify; if errors persist, confirm `pyproject.toml` is the config ty is reading (a `ty.toml` in the project root takes precedence and `pyproject.toml` will be ignored).
+
 ## Quick Reference
 
 ```bash
