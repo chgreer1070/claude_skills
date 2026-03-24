@@ -111,8 +111,11 @@ When triggered: STOP. Write the file paths and observations gathered so far into
 flowchart TD
     T{Task type?}
     T -->|"Clear requirements, known output:<br>write file, fix known error, add test"| Exec[Execution — act immediately]
+    T -->|"Known bug, CI failure, broken behavior"| Fix[Fix — reproduction first]
     T -->|"Unknown cause, unclear path:<br>debug failure, diagnose perf, flaky test"| Inv[Investigation — hypothesis first]
     Exec --> V[Verify after completion]
+    Fix --> FD[".claude/rules/fix-delegation-discipline.md<br>Reproduce → Fix → Validate against reproduction"]
+    FD --> V
     Inv --> H[Load /scientific-method:scientific-thinking] --> V
 ```
 
