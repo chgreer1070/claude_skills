@@ -517,7 +517,7 @@ async def test_backlog_view_success_returns_item_detail():
         "milestone": "",
     }
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
-        response = await _call("backlog_view", {"selector": "#42"})
+        response = await _call("backlog_view", {"selector": "#42", "summary": False})
 
     mock_view.assert_called_once()
     call_kwargs = mock_view.call_args.kwargs
@@ -575,7 +575,7 @@ async def test_backlog_view_default_includes_content():
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
-        response = await _call("backlog_view", {"selector": "#42"})
+        response = await _call("backlog_view", {"selector": "#42", "summary": False})
 
     # Assert
     call_kwargs = mock_view.call_args.kwargs
@@ -611,7 +611,7 @@ async def test_backlog_view_compact_mode_omits_body():
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
-        response = await _call("backlog_view", {"selector": "#42", "include_content": False})
+        response = await _call("backlog_view", {"selector": "#42", "include_content": False, "summary": False})
 
     # Assert
     call_kwargs = mock_view.call_args.kwargs
@@ -647,7 +647,7 @@ async def test_backlog_view_compact_mode_includes_sections_metadata():
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result):
-        response = await _call("backlog_view", {"selector": "#42", "include_content": False})
+        response = await _call("backlog_view", {"selector": "#42", "include_content": False, "summary": False})
 
     # Assert
     assert "sections_metadata" in response
@@ -664,6 +664,227 @@ async def test_backlog_view_compact_mode_includes_sections_metadata():
     assert second["name"] == "Concerns"
     assert second["num_entries"] == 3
     assert second["num_struck"] == 0
+
+
+# ---------------------------------------------------------------------------
+# backlog_view — summary mode (summary=True / summary=False)
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_view_summary_true_returns_compact_manifest():
+    """backlog_view with summary=True (default) returns 5-field routing manifest.
+
+    Tests: summary=True response shape — issue_number, title, labels, status, plan_path.
+    How: Mock operations.view_item to return a full-detail dict with body containing
+         a plan: line, labels list, issue string, and state field.
+         Call backlog_view without summary parameter (defaults to True).
+         Assert all 5 routing fields plus _summary, _full_chars, _hint are present.
+    Why: The summary manifest is the contract for token-efficient routing — agents
+         receive just enough metadata to decide whether to fetch the full body.
+    """
+    # Arrange
+    op_result = {
+        "title": "SAM Ready Feature",
+        "priority": "P1",
+        "issue": "#36",
+        "state": "open",
+        "labels": ["priority:p1", "sam-ready"],
+        "body": "## Description\nSome content\nplan: plan/P036-sam-ready.yaml\nMore content",
+        "sections": {},
+        "messages": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#36"})
+
+    # Assert — compact fields present
+    assert response["issue_number"] == 36
+    assert response["title"] == "SAM Ready Feature"
+    assert response["labels"] == ["priority:p1", "sam-ready"]
+    assert response["status"] == "open"
+    assert response["plan_path"] == "plan/P036-sam-ready.yaml"
+    assert response["_summary"] is True
+    assert isinstance(response["_full_chars"], int)
+    assert response["_full_chars"] > 0
+    assert "summary=False" in response["_hint"]
+    assert "#36" in response["_hint"]
+
+
+async def test_backlog_view_summary_true_hint_contains_selector():
+    """backlog_view summary=True _hint embeds the exact selector the caller passed.
+
+    Tests: _hint fidelity — caller can copy-paste the suggested call.
+    How: Call backlog_view with selector='My Feature Title' and summary=True.
+         Assert _hint contains that exact selector string.
+    Why: The hint is actionable only if the selector is correct for the caller's context.
+    """
+    # Arrange
+    op_result = {
+        "title": "My Feature Title",
+        "issue": "#99",
+        "state": "open",
+        "labels": [],
+        "body": "",
+        "messages": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "My Feature Title"})
+
+    # Assert
+    assert "My Feature Title" in response["_hint"]
+
+
+async def test_backlog_view_summary_true_plan_path_none_when_absent():
+    """backlog_view summary=True sets plan_path=None when no plan: line in body.
+
+    Tests: plan_path extraction when body has no plan: annotation.
+    How: Mock operations.view_item with body containing no plan: line.
+         Assert plan_path is None in the summary response.
+    Why: Callers must distinguish "has a plan" from "no plan" without parsing body.
+    """
+    # Arrange
+    op_result = {
+        "title": "No Plan Yet",
+        "issue": "#10",
+        "state": "open",
+        "labels": [],
+        "body": "## Description\nThis item has no plan file yet.",
+        "messages": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#10"})
+
+    # Assert
+    assert response["plan_path"] is None
+
+
+async def test_backlog_view_summary_true_closed_issue_status_is_closed():
+    """backlog_view summary=True maps state='closed' to status='closed'.
+
+    Tests: status field derivation for closed issues.
+    How: Mock operations.view_item with state='closed'.
+         Assert status == 'closed' in the summary response.
+    Why: Callers use status to skip further processing on closed items.
+    """
+    # Arrange
+    op_result = {
+        "title": "Resolved Item",
+        "issue": "#5",
+        "state": "closed",
+        "labels": ["resolved"],
+        "body": "",
+        "messages": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#5"})
+
+    # Assert
+    assert response["status"] == "closed"
+
+
+async def test_backlog_view_summary_false_returns_full_response():
+    """backlog_view with summary=False returns the full operations result unchanged.
+
+    Tests: summary=False pass-through — existing callers unaffected.
+    How: Mock operations.view_item to return a dict with body and sections.
+         Call backlog_view with summary=False.
+         Assert body and sections are present and _summary key is absent.
+    Why: summary=False must be a strict pass-through to preserve backward compat
+         for callers that need the full body, comments, and timeline.
+    """
+    # Arrange
+    op_result = {
+        "title": "My Feature",
+        "issue": "#42",
+        "state": "open",
+        "labels": ["priority:p1"],
+        "body": "## Groomed (2026-03-22)\n- [ ] entry one",
+        "sections": {
+            "Groomed (2026-03-22)": {
+                "num_entries": 1,
+                "num_struck": 0,
+                "entries": [{"id": "e1", "struck": False, "content": "entry one"}],
+            }
+        },
+        "messages": [],
+        "warnings": [],
+        "errors": [],
+    }
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#42", "summary": False})
+
+    # Assert — full response keys present
+    assert "body" in response
+    assert "sections" in response
+    assert response["body"] == "## Groomed (2026-03-22)\n- [ ] entry one"
+    # _summary sentinel must be absent — this is a full response
+    assert "_summary" not in response
+
+
+async def test_backlog_view_summary_true_full_chars_reflects_full_response_size():
+    """backlog_view summary=True _full_chars equals len(json.dumps(full_response)).
+
+    Tests: _full_chars accuracy — caller can rely on it for token budget decisions.
+    How: Mock operations.view_item with a known body. Compute expected _full_chars
+         by serialising the merged dict the same way the handler does.
+         Assert _full_chars matches.
+    Why: An inaccurate _full_chars defeats the purpose of the hint — callers would
+         not know whether fetching the full body is worth the token cost.
+    """
+    import json as _json_test
+
+    # Arrange
+    op_result = {
+        "title": "Budget Item",
+        "issue": "#7",
+        "state": "open",
+        "labels": [],
+        "body": "x" * 500,
+        "sections": {},
+        "messages": [],
+        "warnings": [],
+        "errors": [],
+    }
+    expected_full_chars = len(_json_test.dumps({**op_result}))
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#7"})
+
+    # Assert
+    assert response["_full_chars"] == expected_full_chars
+
+
+def test_backlog_view_summary_param_in_signature():
+    """backlog_view signature includes 'summary' parameter.
+
+    Tests: MCP tool schema completeness — 'summary' is discoverable by callers.
+    How: Inspect backlog_view function signature for summary parameter.
+    Why: MCP consumers discover available parameters through tool schema introspection.
+    """
+    import inspect
+
+    from backlog_core.server import backlog_view
+
+    sig = inspect.signature(backlog_view)
+    assert "summary" in sig.parameters
 
 
 # ---------------------------------------------------------------------------
@@ -1173,7 +1394,7 @@ async def test_backlog_view_show_non_numeric_string_passed_as_str():
             {"file_path": "f"},
         ),
         ("backlog_list", {}, "backlog_core.operations.list_items", {"items": []}),
-        ("backlog_view", {"selector": "#1"}, "backlog_core.operations.view_item", {"title": "T"}),
+        ("backlog_view", {"selector": "#1", "summary": False}, "backlog_core.operations.view_item", {"title": "T"}),
         ("backlog_sync", {}, "backlog_core.operations.sync_items", {"created": 0}),
         ("backlog_normalize", {}, "backlog_core.operations.normalize_items", {"normalized": 0}),
         ("backlog_pull", {}, "backlog_core.operations.pull_items", {"pulled": 0}),

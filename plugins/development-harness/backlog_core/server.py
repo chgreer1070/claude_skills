@@ -335,6 +335,12 @@ async def backlog_list(
 @mcp.tool
 async def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
+    summary: Annotated[
+        bool,
+        Field(
+            description="When True (default), returns a compact 5-field routing manifest (issue_number, title, labels, status, plan_path) plus _full_chars and _hint. When False, returns the full response unchanged."
+        ),
+    ] = True,
     include_content: Annotated[
         bool,
         Field(
@@ -358,12 +364,15 @@ async def backlog_view(
     Use show and since to filter entry blocks within sections.
     Use include_content=False to get a compact response with section names and
     entry counts only, omitting the full body and entry content.
+    Use summary=False to receive the full response; summary=True (default) returns
+    a 5-field routing manifest with _full_chars so the caller knows what was skipped.
 
     Returns:
-        Dict with title, priority, issue, plan, file_path, body, sections
-        metadata, and output messages/warnings. On error, dict contains an
-        error key. When include_content=False, body and sections are omitted
-        and sections_metadata (list of section name/count dicts) is included.
+        When summary=True (default): compact dict with issue_number, title, labels,
+        status, plan_path, _summary, _full_chars, and _hint.
+        When summary=False: dict with title, priority, issue, plan, file_path, body,
+        sections metadata, and output messages/warnings.
+        On error, dict contains an error key.
     """
     out = Output()
     try:
@@ -384,7 +393,33 @@ async def backlog_view(
             since=since,
             output=out,
         )
-        return {**result, **out.to_dict()}
+        full_response = {**result, **out.to_dict()}
+        if not summary:
+            return full_response
+        # Build compact routing manifest.
+        full_chars = len(_json.dumps(full_response))
+        body_text = str(result.get("body") or "")
+        plan_match = _re.search(r"^[Pp]lan:\s*(\S+)", body_text, _re.MULTILINE)
+        plan_path: str | None = plan_match.group(1) if plan_match else None
+        issue_field = str(result.get("issue") or "")
+        issue_number: int | None = None
+        num_match = _re.search(r"(\d+)", issue_field)
+        if num_match:
+            issue_number = int(num_match.group(1))
+        labels_raw = result.get("labels", [])
+        labels: list[str] = labels_raw if isinstance(labels_raw, list) else []
+        state = str(result.get("state") or "")
+        status: str = "closed" if state == "closed" else "open"
+        return {
+            "issue_number": issue_number,
+            "title": result.get("title", ""),
+            "labels": labels,
+            "status": status,
+            "plan_path": plan_path,
+            "_summary": True,
+            "_full_chars": full_chars,
+            "_hint": f"Call backlog_view(selector='{selector}', summary=False) for full body, comments, and timeline",
+        }
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
 
