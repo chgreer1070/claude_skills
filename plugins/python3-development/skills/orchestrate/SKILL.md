@@ -40,7 +40,7 @@ If you cannot fill in workflow pattern and agent chain from the guide read in St
 
 ```mermaid
 flowchart TD
-    P1["Phase 1 — Plan<br>Skill: /dh:add-new-feature<br>Args: task description<br>Produces: plan/tasks-{N}-{slug}.md"]
+    P1["Phase 1 — Plan<br>Skill: /dh:add-new-feature<br>Args: task description<br>Produces: ~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml"]
     P1 --> P1Q{"add-new-feature result?"}
     P1Q -->|"BLOCKED — plan-validator gate failed"| P1Blocked["Surface blocker to user<br>Await clarification<br>STOP"]
     P1Q -->|"PASS — task file produced"| P2

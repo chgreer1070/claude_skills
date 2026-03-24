@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 _SCRIPTS_DIR = (
     Path(__file__).resolve().parents[2]
     / "plugins"
-    / "python3-development"
+    / "development-harness"
     / "skills"
     / "implementation-manager"
     / "scripts"

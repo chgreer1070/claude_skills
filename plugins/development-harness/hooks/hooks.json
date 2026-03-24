@@ -21,15 +21,35 @@
             "timeout": 15
           }
         ]
-      }
-    ],
-    "SessionEnd": [
+      },
       {
         "hooks": [
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-kage-bunshin-child-notify.cjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "logout|other|prompt_input_exit",
+        "hooks": [
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end-kage-bunshin-cleanup.cjs\"",
-            "timeout": 12
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "logout|other|prompt_input_exit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end-kage-bunshin-child-notify.cjs\"",
+            "timeout": 5
           }
         ]
       }

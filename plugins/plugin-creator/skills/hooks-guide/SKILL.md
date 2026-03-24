@@ -14,14 +14,19 @@ flowchart TD
     Q1 -->|Cursor, Windsurf, Amp<br>or coverage gaps| Coverage["Read references/platform-coverage.md"]
 
     Q2 -->|Yes — agent frontmatter| Agent["Read references/inline-agent-hooks.md"]
-    Q2 -->|No — project or global hooks| Q3{Which language?}
+    Q2 -->|No — project or global hooks| Q3{Interacts with session data?<br>costs, workloads, duration, tracking}
 
-    Q3 -->|Node.js CJS| CJS["Read references/hooks-cjs.md"]
-    Q3 -->|Python| Py["Read references/hooks-python.md"]
-    Q3 -->|Not sure / both| Both["Read references/hooks-cjs.md<br>then references/hooks-python.md"]
+    Q3 -->|Yes — reading or writing<br>session logs or token data| SessionSchema["Load references/claude-session-log-schema-reference.md<br>before writing any code"]
+    Q3 -->|No| Q4{Which language?}
+
+    SessionSchema --> Q4
+
+    Q4 -->|Node.js CJS| CJS["Read references/hooks-cjs.md"]
+    Q4 -->|Python| Py["Read references/hooks-python.md"]
+    Q4 -->|Not sure / both| Both["Read references/hooks-cjs.md<br>then references/hooks-python.md"]
 
     Agent --> CC["Also read references/claude-code.md<br>for full event schema"]
-    Q3 --> Schema["Cross-platform concepts:<br>references/common-schema.md"]
+    Q4 --> Schema["Cross-platform concepts:<br>references/common-schema.md"]
     Copilot --> Schema
     Coverage --> Schema
 ```
@@ -45,6 +50,7 @@ For deeper Claude Code coverage, these focused skills are available:
 - `references/best-practices.md` — cross-platform conventions and anti-patterns
 - `references/platform-coverage.md` — known platforms, fetch URLs, coverage status
 - `references/hooks-lifecycle.png` — visual diagram of the full hook event sequence
+- `references/claude-session-log-schema-reference.md` — verified schema for Claude Code session JSONL logs: file locations, record structure, tool_use/tool_result pairing, usage fields, observed response sizes. Load when creating or modifying hooks that interact with session data for costs, workloads, duration, or tracking.
 
 ## Refresh Docs
 
