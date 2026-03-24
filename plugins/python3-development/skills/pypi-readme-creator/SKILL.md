@@ -645,9 +645,9 @@ with open('README.md', 'w', newline='\n') as f:
 
 See reference files for complete examples:
 
-- [./references/markdown-template.md](./references/markdown-template.md) - Modern Markdown README template
-- [./references/rst-template.rst](./references/rst-template.rst) - reStructuredText README template
-- [./references/sphinx-readme-example.md](./references/sphinx-readme-example.md) - Using sphinx-readme extension
+- `references/markdown-template.md` - Modern Markdown README template
+- `references/rst-template.rst` - reStructuredText README template
+- `references/sphinx-readme-example.md` - Using sphinx-readme extension
 
 ## Related Skills and Tools
 

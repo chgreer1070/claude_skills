@@ -43,9 +43,9 @@ For CLI tools, instruct the AI to discover arguments at runtime: "[ ] Run the co
 
 Read the reference for the content type you are writing or auditing:
 
-- Writing or reviewing **CLAUDE.md or `.claude/rules/`** → [references/memory-and-rules.md](./references/memory-and-rules.md)
-- Writing or reviewing **SKILL.md or references/** → [references/skills.md](./references/skills.md)
-- Writing or reviewing **agent definition files** → [references/agents.md](./references/agents.md)
+- Writing or reviewing **CLAUDE.md or `.claude/rules/`** → `references/memory-and-rules.md`
+- Writing or reviewing **SKILL.md or references/** → `references/skills.md`
+- Writing or reviewing **agent definition files** → `references/agents.md`
 
 ## Optimization Checklist
 

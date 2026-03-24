@@ -171,7 +171,7 @@ def _get_table_width(table: Table) -> int:
 
 For complete transformation rules, PEP references, and framework patterns, see:
 
-[Complete Modernization Guide](./references/modernization-guide.md)
+`references/modernization-guide.md`
 
 ---
 

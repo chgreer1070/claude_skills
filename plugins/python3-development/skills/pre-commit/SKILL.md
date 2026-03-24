@@ -689,7 +689,7 @@ Activate related skills for comprehensive commit workflow:
 
 ## References
 
-See [./references/pre-commit-official-docs.md](./references/pre-commit-official-docs.md) for complete official documentation links and detailed specifications.
+See `references/pre-commit-official-docs.md` for complete official documentation links and detailed specifications.
 
 ### Key Documentation
 

@@ -36,15 +36,15 @@ For deeper Claude Code coverage, these focused skills are available:
 
 ## Reference Files
 
-- [common-schema.md](./references/common-schema.md) — shared concepts, cross-platform comparison, JSON I/O, exit codes
-- [claude-code.md](./references/claude-code.md) — Claude Code hooks full reference (events, matchers, configuration)
-- [inline-agent-hooks.md](./references/inline-agent-hooks.md) — hooks, mcpServers, skills, and memory in agent frontmatter
-- [github-copilot.md](./references/github-copilot.md) — GitHub Copilot coding agent hooks
-- [hooks-cjs.md](./references/hooks-cjs.md) — Node.js CJS authoring guide and templates
-- [hooks-python.md](./references/hooks-python.md) — Python authoring guide and templates
-- [best-practices.md](./references/best-practices.md) — cross-platform conventions and anti-patterns
-- [platform-coverage.md](./references/platform-coverage.md) — known platforms, fetch URLs, coverage status
-- [hooks-lifecycle.png](./references/hooks-lifecycle.png) — visual diagram of the full hook event sequence
+- `references/common-schema.md` — shared concepts, cross-platform comparison, JSON I/O, exit codes
+- `references/claude-code.md` — Claude Code hooks full reference (events, matchers, configuration)
+- `references/inline-agent-hooks.md` — hooks, mcpServers, skills, and memory in agent frontmatter
+- `references/github-copilot.md` — GitHub Copilot coding agent hooks
+- `references/hooks-cjs.md` — Node.js CJS authoring guide and templates
+- `references/hooks-python.md` — Python authoring guide and templates
+- `references/best-practices.md` — cross-platform conventions and anti-patterns
+- `references/platform-coverage.md` — known platforms, fetch URLs, coverage status
+- `references/hooks-lifecycle.png` — visual diagram of the full hook event sequence
 
 ## Refresh Docs
 

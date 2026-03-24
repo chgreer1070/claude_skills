@@ -51,12 +51,12 @@ Load `/python3-development:specialist-skill-routing` when the task involves uv, 
 
 **Reference Documentation:**
 
-- [Python 3 Standards](./references/python3-standards.md) — Unified Python 3.11+ standards, knowledge graph, process graph, and how to amend them (consult when enforcing plugin-wide rules)
-- [User Project Conventions](./references/user-project-conventions.md) — Conventions from production projects; consult when starting or matching an existing project style
-- [Modern Python Modules](./references/modern-modules.md) - 50+ library guides with usage patterns and best practices
-- [Tool & Library Registry](./references/tool-library-registry.md) - Development tools catalog for linting, testing, and build automation
-- [API Reference](./references/api_reference.md) - API specifications and integration guides
-- [Python Development Orchestration](./references/python-development-orchestration.md) - Detailed workflow patterns for TDD, feature addition, refactoring, and code review
+- `references/python3-standards.md` — Unified Python 3.11+ standards, knowledge graph, process graph, and how to amend them (consult when enforcing plugin-wide rules)
+- `references/user-project-conventions.md` — Conventions from production projects; consult when starting or matching an existing project style
+- `references/modern-modules.md` - 50+ library guides with usage patterns and best practices
+- `references/tool-library-registry.md` - Development tools catalog for linting, testing, and build automation
+- `references/api_reference.md` - API specifications and integration guides
+- `references/python-development-orchestration.md` - Detailed workflow patterns for TDD, feature addition, refactoring, and code review
 
 **Specialist Skills** (routing commands — see **Domain-Specific Skill Routing**):
 
@@ -93,7 +93,7 @@ Load `/python3-development:specialist-skill-routing` when the task involves uv, 
 
 This skill provides modern Python 3.11+ standards, quality gates, and reference documentation for Python development.
 
-Consult [Python 3 Standards](./references/python3-standards.md) when applying shared rules for:
+Consult `references/python3-standards.md` when applying shared rules for:
 - Architecture Standards (Layered architecture, Separation of concerns)
 - Python Standards (Native type hints, Google-style docstrings, Fail-fast error handling)
 - CLI Standards (Typer/Rich)
@@ -104,11 +104,11 @@ Consult [Python 3 Standards](./references/python3-standards.md) when applying sh
 
 For the canonical development lifecycle, see `references/python3-standards.md` (Section 3).
 
-**Docstring standard** Google style (Args/Returns/Raises sections). See [User Project Conventions](./references/user-project-conventions.md) for ruff pydocstyle configuration (`convention = "google"`).
+**Docstring standard** Google style (Args/Returns/Raises sections). See `references/user-project-conventions.md` for ruff pydocstyle configuration (`convention = "google"`).
 
 **Pyproject.toml template variables**
 
-All `pyproject.toml` examples use explicit template variables (e.g., `{{project_name_from_directory_or_git_remote}}`) instead of generic placeholders. Replace every template variable with actual values before writing files. See [Tool & Library Registry sections 18–19](./references/tool-library-registry.md#18-pyprojecttoml-template-variable-reference) for variable reference, sourcing methods, and verification steps.
+All `pyproject.toml` examples use explicit template variables (e.g., `{{project_name_from_directory_or_git_remote}}`) instead of generic placeholders. Replace every template variable with actual values before writing files. See `references/tool-library-registry.md#18-pyprojecttoml-template-variable-reference` for variable reference, sourcing methods, and verification steps.
 
 ## Command Usage
 
@@ -172,7 +172,7 @@ Research tool preference for PEP documentation:
 - **Package executables**: `#!/usr/bin/env python3` (dependencies via package manager)
 - **Library modules**: No shebang (not directly executable)
 
-**See**: [PEP 723 Reference](./references/PEP723.md) for details on inline script metadata
+**See**: `references/PEP723.md` for details on inline script metadata
 
 **Pattern**:
 
@@ -255,21 +255,21 @@ When creating new Python projects, copy standard configuration files from the sk
    cp "${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/.editorconfig" "."
    ```
 
-These templates implement the patterns documented in [User Project Conventions](./references/user-project-conventions.md) and ensure all projects follow the same standards for version management, linting, formatting, and build configuration.
+These templates implement the patterns documented in `references/user-project-conventions.md` and ensure all projects follow the same standards for version management, linting, formatting, and build configuration.
 
 ## Detailed Documentation
 
 ### Reference Documentation
 
-**PEP 723 Specification**: [PEP 723 - Inline Script Metadata](./references/PEP723.md) - User-friendly guide to PEP 723 inline script metadata with examples and migration patterns
+**PEP 723 Specification**: `references/PEP723.md` - User-friendly guide to PEP 723 inline script metadata with examples and migration patterns
 
 **Exception Handling and Typer/Rich Examples**: Load `Skill(skill="python3-development:typer-and-rich")` — covers exception chain prevention, Typer exit patterns, Rich non-TTY display solutions, and working executable examples including `typer_examples/` scripts and `python-cli-demo.py`.
 
-**Module Reference**: [Modern Python Modules](./references/modern-modules.md) - Comprehensive guide to 50+ modern Python libraries with deep-dive documentation for each module including usage patterns and best practices
+**Module Reference**: `references/modern-modules.md` - Comprehensive guide to 50+ modern Python libraries with deep-dive documentation for each module including usage patterns and best practices
 
-**Tool Registry**: [Tool & Library Registry](./references/tool-library-registry.md) - Catalog of development tools, their purposes, and usage patterns for linting, testing, and build automation
+**Tool Registry**: `references/tool-library-registry.md` - Catalog of development tools, their purposes, and usage patterns for linting, testing, and build automation
 
-**API Documentation**: [API Reference](./references/api_reference.md) - API specifications, integration guides, and programmatic interface documentation
+**API Documentation**: `references/api_reference.md` - API specifications, integration guides, and programmatic interface documentation
 
 #### Navigating Large References
 
@@ -295,8 +295,8 @@ grep -i "^## " references/python-development-orchestration.md
 
 These skills are bundled with this plugin and available as slash commands:
 
-- [/python3-development:modernpython](../modernpython/SKILL.md) - Python 3.11+ patterns and PEP references
-- [/python3-development:shebangpython](../shebangpython/SKILL.md) - PEP 723 validation and shebang standards
+- `../modernpython/SKILL.md` - Python 3.11+ patterns and PEP references
+- `../shebangpython/SKILL.md` - PEP 723 validation and shebang standards
 
 ## Summary
 

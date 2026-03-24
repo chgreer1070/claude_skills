@@ -10,7 +10,7 @@ user-invocable: true
 
 This skill orchestrates specialized agents through a comprehensive plugin creation workflow. The orchestrator (you) delegates to sub-agents for research, discovery, validation, and implementation — never performing these tasks directly.
 
-**Workflow Diagram**: See [workflow-diagram.md](./references/workflow-diagram.md) for mermaid flowcharts of the complete plugin creation flow.
+**Workflow Diagram**: See `references/workflow-diagram.md` for mermaid flowcharts of the complete plugin creation flow.
 
 ---
 
@@ -512,7 +512,7 @@ The script self-validates created files.
 
 ### 3e. Advanced Features
 
-See [Advanced Plugin Features Reference](./references/advanced-features.md) for:
+See `references/advanced-features.md` for:
 
 - Dynamic context injection (`!`command`` syntax)
 - String substitutions (`$ARGUMENTS`, `${CLAUDE_SESSION_ID}`, `${CLAUDE_PLUGIN_ROOT}`)

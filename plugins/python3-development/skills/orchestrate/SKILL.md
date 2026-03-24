@@ -12,7 +12,7 @@ If `orchestrate` is empty, derive the task from the conversation so far. If no t
 
 ## Step 1 — Read the orchestration guide (MANDATORY)
 
-Read [Python Development Orchestration Guide](../python3-development/references/python-development-orchestration.md).
+Read `../python3-development/references/python-development-orchestration.md`.
 
 Do not proceed to Step 2 until this file has been read. It contains agent selection criteria, workflow patterns, quality gates, and multi-agent chaining patterns you will need to fill in Step 2.
 

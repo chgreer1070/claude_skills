@@ -28,7 +28,7 @@ Arguments: `<invocation_args/>`
 
 ## Domain Knowledge Prerequisites
 
-Load these skills at session start before executing any phase. Full skill descriptions and what each provides: [domain-knowledge-prerequisites.md](./references/domain-knowledge-prerequisites.md).
+Load these skills at session start before executing any phase. Full skill descriptions and what each provides: `references/domain-knowledge-prerequisites.md`.
 
 Required — load at session start:
 
@@ -580,7 +580,7 @@ flowchart TD
 
 ## Phase-to-Skill Mapping
 
-Full lookup table with exact invocation syntax for all 18 phase-skill pairings: [phase-skill-mapping.md](./references/phase-skill-mapping.md).
+Full lookup table with exact invocation syntax for all 18 phase-skill pairings: `references/phase-skill-mapping.md`.
 
 Key invocations:
 - Phase 1: `Skill(skill="plugin-creator:assessor")`
@@ -593,7 +593,7 @@ Key invocations:
 
 ## Error Handling
 
-14 failure modes with recovery actions: [error-handling.md](./references/error-handling.md).
+14 failure modes with recovery actions: `references/error-handling.md`.
 
 Key rules:
 - SK007 (token limit exceeded) — run `/plugin-creator:refactor-skill`; editing alone is not sufficient
@@ -605,13 +605,13 @@ Key rules:
 
 ## Example Sessions
 
-Two complete walkthroughs (new plugin full lifecycle + existing plugin with validation errors): [example-sessions.md](./references/example-sessions.md).
+Two complete walkthroughs (new plugin full lifecycle + existing plugin with validation errors): `references/example-sessions.md`.
 
 ---
 
 ## Sources
 
-- Architecture spec: [plan/architect-plugin-lifecycle.md](./../../../../plan/architect-plugin-lifecycle.md)
-- Feature context: [plan/feature-context-plugin-lifecycle.md](./../../../../plan/feature-context-plugin-lifecycle.md)
-- Plugin-creator CLAUDE.md: [plugins/plugin-creator/CLAUDE.md](./../../CLAUDE.md)
+- Architecture spec: `../../../../plan/architect-plugin-lifecycle.md`
+- Feature context: `../../../../plan/feature-context-plugin-lifecycle.md`
+- Plugin-creator CLAUDE.md: `../../CLAUDE.md`
 - GitHub Issue: #427
