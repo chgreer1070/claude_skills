@@ -102,63 +102,7 @@ Consult [Python 3 Standards](./references/python3-standards.md) when applying sh
 
 ### Python Development Process Graph
 
-The following flowchart illustrates exactly where and why each skill/agent is used in the Python development lifecycle:
-
-```mermaid
-flowchart TD
-    %% Define Styles
-    classDef trigger fill:#e1f5fe,stroke:#3b82f6,stroke-width:2px;
-    classDef plan fill:#fff3e0,stroke:#ff9800,stroke-width:2px;
-    classDef implement fill:#e8f5e9,stroke:#4caf50,stroke-width:2px;
-    classDef verify fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px;
-
-    %% Nodes
-    Start([Feature Request / Tech Debt]) ::: trigger
-
-    subgraph Planning Phase
-        DesignSpec[python-cli-design-spec<br/>Create Architecture & Interfaces] ::: plan
-        StinkySnake[stinkysnake<br/>Analyze & Plan Refactoring] ::: plan
-    end
-
-    subgraph Test-Driven Phase
-        TestArch[python-pytest-architect<br/>Write Failing Tests] ::: implement
-    end
-
-    subgraph Implementation Phase
-        CliArch[python-cli-architect<br/>Implement Core Logic] ::: implement
-        SnakePolish[snakepolish<br/>Iterative Implement & Test Loop] ::: implement
-    end
-
-    subgraph Verification Phase
-        StaticAnalysis[Ruff + type checker<br/>ty default; mypy if configured] ::: verify
-        Review[code-reviewer / python3-review<br/>Holistic Quality & Pattern Check] ::: verify
-    end
-
-    Done([Ready for Merge]) ::: trigger
-
-    %% Edges
-    Start -->|New Feature| DesignSpec
-    Start -->|Refactor Legacy| StinkySnake
-
-    DesignSpec --> TestArch
-    StinkySnake --> TestArch
-
-    TestArch -->|Tests Fail| CliArch
-    TestArch -->|Tests Fail| SnakePolish
-
-    CliArch --> StaticAnalysis
-    SnakePolish --> StaticAnalysis
-
-    StaticAnalysis -->|Pass| Review
-    StaticAnalysis -->|Fail| CliArch
-
-    Review -->|Issues Found| CliArch
-    Review -->|Approved| Done
-```
-
-**Reference documentation**
-
-- [Python 3 Standards](./references/python3-standards.md) — Same as above; load when the process graph or standards need detail.
+For the canonical development lifecycle, see `references/python3-standards.md` (Section 3).
 
 **Docstring standard** Google style (Args/Returns/Raises sections). See [User Project Conventions](./references/user-project-conventions.md) for ruff pydocstyle configuration (`convention = "google"`).
 
