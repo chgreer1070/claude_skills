@@ -1,6 +1,6 @@
 {
   "name": "agentskill-kaizen",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "Analyze Claude Code agent session transcripts to identify inefficiencies, anti-patterns, repeated mistakes, missing tooling opportunities, and user frustration signals for continuous improvement",
   "author": {
     "name": "Jamie Nelson",
@@ -23,10 +23,7 @@
         "--db-path",
         "${CLAUDE_PLUGIN_ROOT}/data/kaizen.duckdb",
         "--read-only"
-      ],
-      "env": {
-        "HOME": "$USERPROFILE"
-      }
+      ]
     },
     "kaizen-analysis": {
       "command": "uv",
