@@ -1,6 +1,6 @@
 ---
 name: plugin-creator
-description: 'Orchestrate plugin creation through a comprehensive agentic workflow: prerequisite check, user discussion, parallel research, design with verification, atomic implementation, multi-layer validation, documentation, and final verification. Use when creating a new Claude Code plugin from scratch. For existing plugin improvement, use /plugin-creator:plugin-lifecycle instead.'
+description: Use when creating a new Claude Code plugin from scratch — orchestrates prerequisite check, user discussion, parallel research, design with verification, atomic implementation, multi-layer validation, documentation, and final verification. For existing plugin improvement, use /plugin-creator:plugin-lifecycle instead.
 argument-hint: <plugin-concept>
 model: sonnet
 user-invocable: true

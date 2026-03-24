@@ -1,6 +1,6 @@
 ---
 name: python-cli-architect
-description: Reference patterns for Python CLI projects — project structure layout and task completion quality gate. Loaded automatically by the python-cli-architect agent.
+description: Use when the python-cli-architect agent needs project structure reference and task completion quality gates for Python CLI projects. Loaded automatically by the python-cli-architect agent — covers package layout, Hatchling configuration, and implementation quality criteria.
 ---
 
 # Python CLI Architect Reference

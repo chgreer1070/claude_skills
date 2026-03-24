@@ -1,6 +1,6 @@
 ---
 name: pre-commit
-description: When setting up automated code quality checks on git commit. When project has .pre-commit-config.yaml. When implementing git hooks for formatting, linting, or validation. When creating prepare-commit-msg hooks to modify commit messages. When distributing a tool as a pre-commit hook.
+description: Use when setting up automated code quality checks on git commit, configuring .pre-commit-config.yaml, implementing git hooks for formatting or linting, creating prepare-commit-msg hooks, or distributing a tool as a pre-commit hook. Covers pre-commit and prek for multi-language projects.
 ---
 
 # Pre-commit Framework
