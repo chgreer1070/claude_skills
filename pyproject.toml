@@ -117,7 +117,7 @@ testpaths = [
     "plugins/development-harness/tests_sam",
     "plugins/frustration-analyzer/tests",
     "plugins/plugin-creator/tests",
-    "plugins/python3-development/skills/implementation-manager/tests",
+    "plugins/development-harness/skills/implementation-manager/tests",
     "plugins/summarizer/tests",
     "tests",
 ]
@@ -137,7 +137,6 @@ omit = ["tests/*", "*/tests/*", "**/test_*.py"]
 source = ["**/scripts"]
 
 [tool.ty.environment]
-# Order matters: real task_format.py (python3-development) must precede symlinked copy (development-harness)
 extra-paths = [
     "./plugins/development-harness",
     "./plugins/development-harness/skills/backlog",
@@ -151,11 +150,10 @@ extra-paths = [
     "./plugins/agentskill-kaizen/tests",
     "./plugins/frustration-analyzer/tests",
     "./plugins/plugin-creator/tests",
-    "./plugins/python3-development/skills/implementation-manager/scripts",
-    "./plugins/python3-development/skills/implementation-manager/tests/test_task_status_hook",
     "./plugins/python3-development/scripts",
     "./plugins/development-harness/scripts",
     "./plugins/development-harness/skills/implementation-manager/scripts",
+    "./plugins/development-harness/skills/implementation-manager/tests/test_task_status_hook",
     "./plugins/fastmcp-creator/skills/fastmcp-creator/scripts",
     "./plugins/gitlab-skill/skills/gitlab-skill/scripts",
     "./plugins/holistic-linting/skills/holistic-linting/scripts",
@@ -204,11 +202,10 @@ too-many-positional-arguments = "ignore" # ty 0.0.17 bug: @_with_exception decor
 [tool.ty.src]
 # Exclude git symlinks (mode 120000) - on Windows without symlink support, these are
 # regular files whose content is the target path; linters parse that as Python and fail.
-# All 8 repo symlinks: 2 .py in implementation-manager, 5 .md (accessing_online_resources),
-# 1 dir (plugins/uv/skills/uv). Only the .py and dir need exclusion for Python linting.
+# All 6 repo symlinks: 5 .md (accessing_online_resources), 1 dir (plugins/uv/skills/uv).
+# Only the dir needs exclusion for Python linting.
 exclude = [
     "plugins/uv/skills/uv",
-    "plugins/development-harness/skills/implementation-manager",
 ]
 include = ["**/*.py"]
 
@@ -217,7 +214,6 @@ include = ["**/*.py"]
 # See [tool.ty.src] exclude for full list. Add new symlinked .py paths here.
 extend-exclude = [
     "plugins/uv/skills/uv",
-    "plugins/development-harness/skills/implementation-manager",
 ]
 fix = true
 line-length = 120
