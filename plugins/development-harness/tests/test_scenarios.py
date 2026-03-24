@@ -529,7 +529,9 @@ class TestLifecycles:
         Chains 4 MCP tool calls in sequence, verifying intermediate states.
         """
         # Step 1: Create item
-        mock_github["try_get_github"].return_value = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.full_name = "test-owner/test-repo"
+        mock_github["try_get_github"].return_value = mock_repo
         mock_github["create_issue_for_item"].return_value = 70
 
         create_result = await _call(
@@ -1329,6 +1331,7 @@ class TestResolveVerifiedGate:
 
         # Configure mock: no open issues, one closed issue #206
         mock_repo = MagicMock()
+        mock_repo.full_name = "test-owner/test-repo"
         mock_repo.get_issues.return_value = []
         mock_github["try_get_github"].return_value = mock_repo
 

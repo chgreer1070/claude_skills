@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import sys
 import types
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 if TYPE_CHECKING:
@@ -138,7 +138,7 @@ class TestGetParentIssueNumber:
          GitHub sub-issue that must be updated on task completion.
     """
 
-    def test_get_parent_issue_number_from_context(self, tmp_path: Path) -> None:
+    def test_get_parent_issue_number_from_context(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Returns the integer issue number when parent_issue_number is in context file.
 
         Tests: get_parent_issue_number with a context file containing parent_issue_number.
@@ -151,6 +151,8 @@ class TestGetParentIssueNumber:
         import task_status_hook as hook
 
         session_id = "test-session-abc"
+        context_dir = tmp_path / ".claude" / "context"
+        monkeypatch.setattr(hook._dh_paths, "context_dir", lambda project_root=None: context_dir)
         _make_context_file(tmp_path, session_id, "plan/tasks.md", "T1", parent_issue_number=480)
         hook_input = _make_hook_input(tmp_path, session_id)
 
@@ -160,7 +162,7 @@ class TestGetParentIssueNumber:
         # Assert
         assert result == 480
 
-    def test_get_parent_issue_number_absent(self, tmp_path: Path) -> None:
+    def test_get_parent_issue_number_absent(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Returns None when the context file lacks the parent_issue_number field.
 
         Tests: get_parent_issue_number with a context file that has no parent_issue_number.
@@ -173,6 +175,8 @@ class TestGetParentIssueNumber:
         import task_status_hook as hook
 
         session_id = "test-session-def"
+        context_dir = tmp_path / ".claude" / "context"
+        monkeypatch.setattr(hook._dh_paths, "context_dir", lambda project_root=None: context_dir)
         _make_context_file(tmp_path, session_id, "plan/tasks.md", "T1")
         hook_input = _make_hook_input(tmp_path, session_id)
 
@@ -240,7 +244,7 @@ class TestSyncCompletionToGithub:
         task_file.write_text(_TASK_YAML_WITHOUT_GITHUB_ISSUE, encoding="utf-8")
 
         mock_bc = types.ModuleType("backlog_core")
-        mock_bc_github = types.ModuleType("backlog_core.github")
+        mock_bc_github: Any = types.ModuleType("backlog_core.github")
         mock_update = MagicMock(return_value=True)
         mock_bc_github.update_task_status = mock_update
         mock_bc_github.get_github = MagicMock()
@@ -273,7 +277,7 @@ class TestSyncCompletionToGithub:
 
         mock_repo = MagicMock()
         mock_bc = types.ModuleType("backlog_core")
-        mock_bc_github = types.ModuleType("backlog_core.github")
+        mock_bc_github: Any = types.ModuleType("backlog_core.github")
         mock_get_github = MagicMock(return_value=mock_repo)
         mock_update = MagicMock(return_value=True)
         mock_bc_github.get_github = mock_get_github
@@ -310,7 +314,7 @@ class TestSyncCompletionToGithub:
 
         mock_repo = MagicMock()
         mock_bc = types.ModuleType("backlog_core")
-        mock_bc_github = types.ModuleType("backlog_core.github")
+        mock_bc_github: Any = types.ModuleType("backlog_core.github")
         mock_get_github = MagicMock(return_value=mock_repo)
         mock_update = MagicMock(side_effect=RuntimeError("GitHub API error"))
         mock_bc_github.get_github = mock_get_github
@@ -341,7 +345,7 @@ class TestSyncCompletionToGithub:
         task_file.write_text(_TASK_YAML_WITH_GITHUB_ISSUE, encoding="utf-8")
 
         mock_bc = types.ModuleType("backlog_core")
-        mock_bc_github = types.ModuleType("backlog_core.github")
+        mock_bc_github: Any = types.ModuleType("backlog_core.github")
         mock_get_github = MagicMock(side_effect=RuntimeError("No token"))
         mock_update = MagicMock()
         mock_bc_github.get_github = mock_get_github
