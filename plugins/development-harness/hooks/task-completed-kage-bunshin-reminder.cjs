@@ -136,7 +136,7 @@ process.stdin.on('end', () => {
       return `  uv run ${spawn} read --name ${name}  # check if idle (❯) or working\n  uv run ${spawn} stop --name ${name}  # graceful Ctrl-C shutdown`;
     })
     .join('\n');
-  const message = [
+  const fullMessage = [
     `Kage-bunshin worktree sessions still running (${sessions.length}):`,
     sessionList,
     '',
@@ -145,6 +145,15 @@ process.stdin.on('end', () => {
     '',
     `List all sessions: uv run ${spawn} list`,
   ].join('\n');
+
+  // Truncate to 500 chars — injected on every task completion; 51 firings × full message
+  // consumed 105K+ chars. The orchestrator needs session count and registry path only;
+  // full command listings can be found in the registry file.
+  const MAX_CHARS = 500;
+  const message =
+    fullMessage.length > MAX_CHARS
+      ? `${fullMessage.slice(0, MAX_CHARS)}\u2026[truncated \u2014 full details at: ${registryPath}]`
+      : fullMessage;
 
   const output = {
     systemMessage: message,

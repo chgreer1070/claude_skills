@@ -3,7 +3,8 @@ name: tn-verification-gate
 description: Verification gate that runs after all implementation tasks complete. Re-runs acceptance-criteria-structured check commands, compares results against T0 baseline, computes CriterionStatus per criterion, and writes ~/.dh/projects/{slug}/plan/TN-verification-{slug}.yaml with a verdict of PASS or FAIL. FAIL blocks /complete-implementation if any criterion regressed.
 tools: Read, Bash, Write, Glob, mcp__plugin_dh_backlog__artifact_register
 model: haiku
-skills: subagent-contract
+skills:
+  - subagent-contract
 ---
 
 <role>
