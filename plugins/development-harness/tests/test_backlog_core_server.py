@@ -18,7 +18,7 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from backlog_core.models import BacklogError, Output
+from backlog_core.models import BackendAvailability, BackendStatus, BacklogError, Output
 from backlog_core.server import mcp
 from fastmcp.client import Client
 
@@ -352,6 +352,144 @@ async def test_backlog_list_response_includes_pagination_key_always():
     assert "limit" in response["pagination"]
     assert "total" in response["pagination"]
     assert "has_more" in response["pagination"]
+
+
+async def test_backlog_list_response_includes_backend_key():
+    """backlog_list always includes a 'backend' key in the response root.
+
+    Tests: backend dict is present in every successful response.
+    How: Call backlog_list with mocked list_items and probe_backend_status.
+    Why: Consumers rely on backend availability signal to diagnose empty results.
+    """
+    op_result = {"items": []}
+    reachable_status = BackendStatus(
+        availability=BackendAvailability.REACHABLE,
+        open_count=47,
+        total_count=203,
+        cache_open_count=0,
+        cache_total_count=0,
+    )
+    with (
+        patch("backlog_core.operations.list_items", return_value=op_result),
+        patch("backlog_core.server._probe_backend_status", return_value=reachable_status),
+    ):
+        response = await _call("backlog_list", {})
+
+    assert "backend" in response
+    assert response["backend"]["name"] == "GitHub"
+    assert response["backend"]["availability"] == "reachable"
+    assert response["backend"]["open_count"] == 47
+    assert response["backend"]["total_count"] == 203
+
+
+async def test_backlog_list_backend_reachable_message_format():
+    """backlog_list messages includes a formatted backend status line when reachable.
+
+    Tests: human-readable backend status string with live counts.
+    How: Mock probe_backend_status to return reachable status with known counts.
+    Why: Users should see 'Backend: GitHub, Backend availability: reachable, Backend items (N open / M total)'.
+    """
+    op_result = {"items": []}
+    reachable_status = BackendStatus(
+        availability=BackendAvailability.REACHABLE,
+        open_count=178,
+        total_count=245,
+        cache_open_count=0,
+        cache_total_count=0,
+    )
+    with (
+        patch("backlog_core.operations.list_items", return_value=op_result),
+        patch("backlog_core.server._probe_backend_status", return_value=reachable_status),
+    ):
+        response = await _call("backlog_list", {})
+
+    status_messages = [m for m in response["messages"] if m.startswith("Backend:")]
+    assert len(status_messages) == 1
+    assert (
+        status_messages[0] == "Backend: GitHub, Backend availability: reachable, Backend items (178 open / 245 total)"
+    )
+
+
+async def test_backlog_list_backend_unavailable_message_format():
+    """backlog_list messages includes a formatted backend status line when unavailable.
+
+    Tests: human-readable backend status string with cache fallback counts.
+    How: Mock probe_backend_status to return needs_authentication status with cache counts.
+    Why: Users should see 'Backend: GitHub, Backend availability: needs_authentication, Backend items (--- open / --- total)[cache: N open / M total]'.
+    """
+    op_result = {"items": [{"title": "Cached item", "priority": "P1", "issue": "", "plan": ""}]}
+    unavailable_status = BackendStatus(
+        availability=BackendAvailability.NEEDS_AUTHENTICATION,
+        open_count=None,
+        total_count=None,
+        cache_open_count=0,
+        cache_total_count=300,
+        error="GITHUB_TOKEN not set",
+    )
+    with (
+        patch("backlog_core.operations.list_items", return_value=op_result),
+        patch("backlog_core.server._probe_backend_status", return_value=unavailable_status),
+    ):
+        response = await _call("backlog_list", {})
+
+    assert response["backend"]["availability"] == "needs_authentication"
+    assert response["backend"]["open_count"] is None
+    status_messages = [m for m in response["messages"] if m.startswith("Backend:")]
+    assert len(status_messages) == 1
+    assert "--- open / --- total" in status_messages[0]
+    assert "[cache:" in status_messages[0]
+
+
+async def test_backlog_list_backend_unavailable_cache_open_count_reflects_filtered_total():
+    """backlog_list sets cache_open_count to the filtered item total even when GitHub is unavailable.
+
+    Tests: cache_open_count reflects the list result, not a stale probe value.
+    How: Return 2 items from list_items with unavailable probe_backend_status.
+    Why: cache_open_count is the count of what was actually served, independent of GitHub.
+    """
+    op_result = {"items": [{"title": "Item A"}, {"title": "Item B"}]}
+    unavailable_status = BackendStatus(
+        availability=BackendAvailability.NEEDS_AUTHENTICATION,
+        open_count=None,
+        total_count=None,
+        cache_open_count=0,
+        cache_total_count=50,
+        error="GITHUB_TOKEN not set",
+    )
+    with (
+        patch("backlog_core.operations.list_items", return_value=op_result),
+        patch("backlog_core.server._probe_backend_status", return_value=unavailable_status),
+    ):
+        response = await _call("backlog_list", {})
+
+    # cache_open_count is updated to reflect the filtered item count (2)
+    assert response["backend"]["cache_open_count"] == 2
+
+
+async def test_backlog_list_backend_error_path_includes_backend_key():
+    """backlog_list BacklogError path also includes a 'backend' key.
+
+    Tests: backend field present even in error responses.
+    How: Raise BacklogError from list_items; probe_backend_status runs independently.
+    Why: Callers must always find backend availability, even when listing fails.
+    """
+    unavailable_status = BackendStatus(
+        availability=BackendAvailability.ERROR,
+        open_count=None,
+        total_count=None,
+        cache_open_count=0,
+        cache_total_count=0,
+        error="connection refused",
+    )
+    with (
+        patch("backlog_core.operations.list_items", side_effect=BacklogError("backlog dir missing")),
+        patch("backlog_core.server._probe_backend_status", return_value=unavailable_status),
+    ):
+        response = await _call("backlog_list", {})
+
+    assert "error" in response
+    assert "backend" in response
+    assert response["backend"]["availability"] == "error"
 
 
 # ---------------------------------------------------------------------------
