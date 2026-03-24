@@ -105,37 +105,6 @@ Use the MotherDuck MCP server (`execute_query` tool) for direct SQL access to JS
 
 For SQL query patterns and examples, see [DuckDB Query Patterns](./references/duckdb-queries.md).
 
-## Companion Tools
-
-### sentiment-score.py
-
-Runs VADER sentiment analysis over user messages in JSONL session transcripts. Use this when Signal 3 (User Frustration Signals) needs quantified trend data — keyword matching gives incidents, this script gives compound scores suitable for time-series comparison across sessions or projects.
-
-**Invocation:**
-
-```bash
-uv run "$SKILL_DIR/../../scripts/sentiment-score.py" score \
-  --glob-pattern "~/.claude/projects/*/*.jsonl" \
-  --output ~/.claude/kaizen/sentiment.csv
-```
-
-**Arguments:**
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--glob-pattern` / `-g` | `~/.claude/projects/*/*.jsonl` | Glob matching JSONL session files |
-| `--output` / `-o` | `~/.claude/kaizen/sentiment.csv` | CSV output path |
-| `--min-length` / `-m` | `10` | Minimum message character length to score |
-| `--session-filter` / `-s` | none | Restrict scoring to a single session ID |
-| `--db` | `~/.claude/kaizen/kaizen.duckdb` | DuckDB database path for upsert |
-| `--scope` | none | Lesson output scope — `user`, `project`, or `local` |
-
-**Output columns:** `session_id`, `timestamp`, `message_index`, `compound`, `positive`, `negative`, `neutral`, `message_length`, `message_preview`, `project_path`, `project_name`
-
-`compound` ranges from -1.0 (most negative) to +1.0 (most positive). Summary statistics (mean, median, min, max) print to stderr after the run.
-
-The script also upserts results into the DuckDB database at `--db`, enabling SQL queries over sentiment data alongside other transcript analyses.
-
 ## Process Mining Methodology
 
 Use the `kaizen-analysis` MCP server tools for analyses SQL cannot express:
