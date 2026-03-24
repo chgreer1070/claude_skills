@@ -48,7 +48,21 @@ List open backlog items with optional filters.
 | `title` | `str \| None` | `None` | Filter by title substring (case-insensitive) |
 
 Every response item includes `state` (open/closed) and `status` (workflow status from `status:*` labels).
-Returns `{items: [{title, priority, issue, plan, state, status, milestone}], messages, warnings}`.
+Returns `{items: [{title, priority, issue, plan, state, status, milestone}], backend: {...}, messages, warnings}`.
+
+The `backend` dict is always present. It reports GitHub availability status probed on every call,
+regardless of the `from_github` parameter. No automatic sync is triggered.
+
+| `backend` field | Type | Description |
+|----------------|------|-------------|
+| `name` | `str` | Backend name (`"GitHub"`) |
+| `availability` | `str` | `"reachable"` \| `"not_checked"` \| `"needs_authentication"` \| `"rate_limited"` \| `"error"` |
+| `open_count` | `int` | Live open issue count (0 when not reachable) |
+| `total_count` | `int` | Live total issue count (0 when not reachable) |
+| `cache_open_count` | `int` | Open count from local cache, same filters as `items` |
+| `cache_total_count` | `int` | Total count from local cache |
+| `last_sync` | `str` | ISO timestamp of most recent sync, empty string if never synced |
+| `error` | `str` | Error detail when availability is not `"reachable"`, otherwise `""` |
 
 Note — the CLI `--format text|json` flag has no MCP equivalent. MCP tools always return
 structured dicts (equivalent to JSON). Use `backlog_view` for detailed single-item output.

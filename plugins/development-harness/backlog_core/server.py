@@ -16,7 +16,7 @@ import time as _time
 from datetime import UTC, datetime as _datetime
 from io import StringIO as _StringIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, cast
+from typing import TYPE_CHECKING, Annotated
 
 import dh_paths as _dh_paths
 import dispatch_schema as _ds
@@ -29,12 +29,19 @@ from . import models as _models, operations
 from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .dispatch_state import DispatchStateManager as _DispatchStateManager
-from .github import IssueNode as _IssueNode, get_github as _get_github, sync_issues_graphql as _sync_issues_graphql
+from .github import (
+    IssueNode as _IssueNode,
+    get_github as _get_github,
+    probe_backend_status as _probe_backend_status,
+    sync_issues_graphql as _sync_issues_graphql,
+)
 from .models import (
     ArtifactContent,
     ArtifactEntry,
     ArtifactStatus,
     ArtifactType,
+    BackendAvailability as _BackendAvailability,
+    BackendStatus as _BackendStatus,
     BacklogError,
     DispatchItemRecord as _DispatchItemRecord,
     DispatchSpawnSummary as _DispatchSpawnSummary,
@@ -129,6 +136,42 @@ async def backlog_add(
         return {"error": str(e), **out.to_dict()}
 
 
+def _format_backend_status_message(status: _BackendStatus) -> str:
+    """Format a single-line human-readable backend status string for the messages list.
+
+    When reachable, the format is:
+        ``Backend: GitHub, Backend availability: reachable, Backend items (N open / M total)``
+
+    When unavailable (any non-reachable state), the format is:
+        ``Backend: GitHub, Backend availability: <state>, Backend items (--- open / --- total)[cache: N open / M total]``
+
+    Args:
+        status: Populated BackendStatus from probe_backend_status().
+
+    Returns:
+        Formatted status string.
+    """
+    availability_label = (
+        status.availability.value if isinstance(status.availability, _BackendAvailability) else str(status.availability)
+    )
+    if (
+        status.availability == _BackendAvailability.REACHABLE
+        and status.open_count is not None
+        and status.total_count is not None
+    ):
+        return (
+            f"Backend: {status.name}, Backend availability: {availability_label}, "
+            f"Backend items ({status.open_count} open / {status.total_count} total)"
+        )
+    cache_open = status.cache_open_count
+    cache_total = status.cache_total_count
+    return (
+        f"Backend: {status.name}, Backend availability: {availability_label}, "
+        f"Backend items (--- open / --- total)"
+        f"[cache: {cache_open} open / {cache_total} total]"
+    )
+
+
 @mcp.tool
 async def backlog_list(
     from_github: Annotated[bool, Field(description="Refresh local cache from GitHub Issues before listing")] = False,
@@ -213,38 +256,49 @@ async def backlog_list(
     """
     out = Output()
     try:
-        result = await asyncio.to_thread(
-            operations.list_items,
-            from_github=from_github,
-            label=label,
-            section=section,
-            status=status,
-            title=title_filter,
-            type_=type_,
-            topic=topic,
-            include_closed=include_closed,
-            output=out,
+        result, backend_status = await asyncio.gather(
+            asyncio.to_thread(
+                operations.list_items,
+                from_github=from_github,
+                label=label,
+                section=section,
+                status=status,
+                title=title_filter,
+                type_=type_,
+                topic=topic,
+                include_closed=include_closed,
+                output=out,
+            ),
+            asyncio.to_thread(_probe_backend_status),
         )
     except BacklogError as e:
-        return {"error": str(e), **out.to_dict()}
+        backend_status = await asyncio.to_thread(_probe_backend_status)
+        return {"error": str(e), "backend": backend_status.model_dump(), **out.to_dict()}
 
     # "items" holds list[dict[str, str | bool]] per operations.list_items return type.
-    # cast narrows from the heterogeneous value union returned by dict.get().
-    all_items = cast("list[dict[str, str | bool]]", result.get("items", []))
+    # Filter to dict elements only to narrow the heterogeneous value union.
+    raw_items = result.get("items", [])
+    all_items: list[dict[str, str | bool]] = (
+        [x for x in raw_items if isinstance(x, dict)] if isinstance(raw_items, list) else []
+    )
 
     # Apply cross-field search filter when requested.
     if search is not None:
         needle = search.casefold()
-        filtered: list[dict] = []
-        for item in all_items:
-            haystack = " ".join(
-                str(item.get(field, "") or "") for field in ("title", "section", "topic", "type")
-            ).casefold()
-            if needle in haystack:
-                filtered.append(item)
-        all_items = filtered
+        all_items = [
+            item
+            for item in all_items
+            if needle
+            in " ".join(str(item.get(field, "") or "") for field in ("title", "section", "topic", "type")).casefold()
+        ]
 
     total = len(all_items)
+
+    # ADR-5: cache_open_count reflects the same filter as the items list.
+    backend_status.cache_open_count = total
+
+    # Append the human-readable backend status line to the messages list.
+    out.info(_format_backend_status_message(backend_status))
 
     # Determine effective page limit.
     if limit > 0:
@@ -263,7 +317,6 @@ async def backlog_list(
 
     page_items = all_items[offset : offset + effective_limit]
     has_more = (offset + effective_limit) < total
-    next_offset = offset + effective_limit
 
     pagination: dict = {"offset": offset, "limit": effective_limit, "total": total, "has_more": has_more}
     response: dict = {
@@ -271,10 +324,11 @@ async def backlog_list(
         "items": page_items,
         "count": len(page_items),
         "pagination": pagination,
+        "backend": backend_status.model_dump(),
         **out.to_dict(),
     }
     if has_more:
-        response["next_call"] = f"backlog_list(offset={next_offset}, limit={effective_limit})"
+        response["next_call"] = f"backlog_list(offset={offset + effective_limit}, limit={effective_limit})"
     return response
 
 
@@ -2134,7 +2188,8 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
         if isinstance(raw, list):
             backlog_items = raw
         elif isinstance(raw, dict):
-            backlog_items = cast("list[dict]", raw.get("items", []))
+            raw_backlog = raw.get("items", [])
+            backlog_items = [x for x in raw_backlog if isinstance(x, dict)] if isinstance(raw_backlog, list) else []
     except Exception:  # noqa: BLE001
         out.warn("Could not fetch backlog items for slug matching. Continuing without fallback.")
 

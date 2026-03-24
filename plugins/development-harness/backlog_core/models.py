@@ -653,6 +653,43 @@ class ArtifactStatus(StrEnum):
     ARCHIVED = "archived"
 
 
+class BackendAvailability(StrEnum):
+    """Availability state of the GitHub backend.
+
+    Describes whether the GitHub API is reachable and authenticated, or why it
+    is not.  Used by :class:`BackendStatus` to summarise the probe result
+    returned on every ``backlog_list`` call.
+    """
+
+    REACHABLE = "reachable"
+    NOT_CHECKED = "not_checked"
+    NEEDS_AUTHENTICATION = "needs_authentication"
+    RATE_LIMITED = "rate_limited"
+    ERROR = "error"
+
+
+class BackendStatus(BaseModel):
+    """GitHub backend availability status included in every ``backlog_list`` response.
+
+    Populated by ``probe_backend_status()`` in ``backlog_core.github``.  Fields
+    default to their "unknown" states so the model is always safe to construct
+    without arguments.
+
+    Fields ``open_count`` and ``total_count`` are ``None`` when the backend was
+    not reachable.  ``cache_open_count`` and ``cache_total_count`` are derived
+    from the local list result in ``server.py``, not from the probe.
+    """
+
+    name: str = "GitHub"
+    availability: BackendAvailability = BackendAvailability.NOT_CHECKED
+    open_count: int | None = None
+    total_count: int | None = None
+    cache_open_count: int = 0
+    cache_total_count: int = 0
+    last_sync: str = ""
+    error: str = ""
+
+
 class ArtifactEntry(BaseModel):
     """A single artifact reference stored in the manifest.
 
