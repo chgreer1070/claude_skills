@@ -31,7 +31,8 @@ research/
 │   ├── picoclaw.md                    # Go AI assistant — <10MB RAM, 6 channels, runs on $10 RISC-V hardware, 18K stars
 │   ├── pinchtab.md                    # Browser control for AI agents — 12MB Go binary, HTTP API, a11y tree snapshots at 800 tokens/page (2.3K stars)
 │   ├── zeroclaw.md                    # Rust AI assistant infrastructure — sub-5MB RAM, 28+ providers, trait-driven (14.9K stars)
-│   └── zeroboot.md                    # Sub-millisecond VM fork sandbox (0.79ms p50) — Firecracker+KVM, ~265KB RSS, Python/Node SDKs, REST API (1.4K stars)
+│   ├── zeroboot.md                    # Sub-millisecond VM fork sandbox (0.79ms p50) — Firecracker+KVM, ~265KB RSS, Python/Node SDKs, REST API (1.4K stars)
+│   └── vibium.md                      # Browser automation for AI agents via WebDriver BiDi — CLI, MCP server, and client library modes
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
 │   ├── motia.md                       # Unified backend framework replacing APIs/queues/workflows/AI agents with one Step primitive (15K+ stars)
@@ -524,6 +525,7 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [happycapy.md](./agent-infrastructure/happycapy.md) | HappyCapy — browser-based agent-native computer (Claude Code → Clawdbot → GUI); isolated sandbox execution, 170K+ pre-built skills via SkillsMP, multi-agent teams (Max tier), 150+ AI models; Free/Pro $20/Max $200 per month (launched 2026-02-11) | 2026-03-13   |
 | [AutoResearchClaw.md](./agent-infrastructure/AutoResearchClaw.md) | AutoResearchClaw — 23-stage autonomous research pipeline with 4-layer citation verification, self-healing experiments (10 repair cycles), MetaClaw cross-run learning (+18.3% robustness), ACP support for Claude Code/OpenCode/Codex (6.2K stars) | 2026-03-19   |
 | [zeroboot.md](./agent-infrastructure/zeroboot.md) | Zeroboot — sub-millisecond Firecracker+KVM fork sandbox: 0.79ms p50, ~265KB RSS, 4-endpoint REST API, Python/Node SDKs, managed + self-hosted deployment (1,394 stars, v0.1.0) | 2026-03-21   |
+| [vibium.md](./agent-infrastructure/vibium.md) | Vibium — browser automation tool for AI agents via WebDriver BiDi; CLI, MCP server, and client library modes | 2026-03-24   |
 
 **Key Topics**:
 
