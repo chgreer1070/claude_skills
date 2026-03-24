@@ -39,6 +39,11 @@ Required for phases involving hooks (Phase 4: Create, Phase 5: Debug):
 
 3. `Skill(skill="plugin-creator:hooks-guide")` — 13 hook event types, exit codes, tool denial mechanisms, agent frontmatter fields
 
+Recommended for component selection and plugin configuration decisions:
+
+4. `Skill(skill="plugin-creator:component-patterns")` — component lifecycle, discovery and activation phases, decision framework for choosing commands vs skills vs agents vs hooks vs MCP servers
+5. `Skill(skill="plugin-creator:plugin-settings")` — .local.md per-project configuration pattern, YAML frontmatter parsing from hooks, configuration-driven behavior
+
 ## Workflow Overview
 
 The following diagram is the authoritative procedure for plugin lifecycle routing. Execute steps in the exact order shown, including branches, decision points, and stop conditions.

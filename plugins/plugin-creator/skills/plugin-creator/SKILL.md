@@ -56,6 +56,10 @@ flowchart TD
 
 </orchestration_rules>
 
+### Component Selection Guidance
+
+When deciding which component type to create (skill, agent, hook, MCP server, or command), use `/plugin-creator:component-patterns` for the complete decision framework covering component lifecycle, discovery and activation phases, and organization patterns.
+
 ---
 
 ## Artifact System
