@@ -21,12 +21,12 @@
 
 ```mermaid
 flowchart LR
-    P1([Phase 1\nCapture]) --> P2([Phase 2\nGrooming])
-    P2 --> P3([Phase 3\nResearch &\nArchitecture])
-    P3 --> P4([Phase 4\nPlanning])
-    P4 --> P5([Phase 5\nExecution])
-    P5 --> P6([Phase 6\nQuality Gates])
-    P6 --> P7([Phase 7\nClosure])
+    P1([Phase 1<br>Capture]) --> P2([Phase 2<br>Grooming])
+    P2 --> P3([Phase 3<br>Research &<br>Architecture])
+    P3 --> P4([Phase 4<br>Planning])
+    P4 --> P5([Phase 5<br>Execution])
+    P5 --> P6([Phase 6<br>Quality Gates])
+    P6 --> P7([Phase 7<br>Closure])
     P2 -->|BLOCKED| P2
     P3 -->|BLOCKED| P3
     P5 -->|regression| P5
@@ -52,29 +52,29 @@ Each phase produces artifacts stored via the three-primitive model defined in [B
 ```mermaid
 flowchart TD
     Start([User invokes /dh:create-backlog-item]) --> Mode{Mode?}
-    Mode -->|Guided| Q["Collect 6 fields via questions:\n1. Title\n2. Priority (P0/P1/P2/Idea)\n3. Description + verbatim_user_report\n4. Source\n5. Type\n6. How to reproduce (optional)"]
-    Mode -->|Quick| QK["Collect Priority + Description only\nverbatim_user_report = full argument string\nSource = Session observation\nType = Feature"]
-    Mode -->|--auto| Auto["Infer from description:\nPriority from urgency keywords\n(critical/required/must→P1, default P1)\nSource = Agent task\nType = Feature"]
+    Mode -->|Guided| Q["Collect 6 fields via questions:<br>1. Title<br>2. Priority (P0/P1/P2/Idea)<br>3. Description + verbatim_user_report<br>4. Source<br>5. Type<br>6. How to reproduce (optional)"]
+    Mode -->|Quick| QK["Collect Priority + Description only<br>verbatim_user_report = full argument string<br>Source = Session observation<br>Type = Feature"]
+    Mode -->|--auto| Auto["Infer from description:<br>Priority from urgency keywords<br>(critical/required/must→P1, default P1)<br>Source = Agent task<br>Type = Feature"]
 
-    Q --> Validate["Step 2: Validate inputs\nRequired: title, priority, description\nStrip implementation instructions from description"]
+    Q --> Validate["Step 2: Validate inputs<br>Required: title, priority, description<br>Strip implementation instructions from description"]
     QK --> Validate
     Auto --> Validate
 
-    Validate --> Dup{"Step 3: Duplicate detection\nScan backlog/ for case-insensitive\ntitle overlap ≤ 2 token edit distance"}
-    Dup -->|"Duplicate found (guided/quick)"| Confirm{"User confirms\nproceed?"}
-    Dup -->|"Duplicate found (--auto)"| Stop1(["STOP — duplicate detected\nNo file written"])
+    Validate --> Dup{"Step 3: Duplicate detection<br>Scan backlog/ for case-insensitive<br>title overlap ≤ 2 token edit distance"}
+    Dup -->|"Duplicate found (guided/quick)"| Confirm{"User confirms<br>proceed?"}
+    Dup -->|"Duplicate found (--auto)"| Stop1(["STOP — duplicate detected<br>No file written"])
     Dup -->|No duplicate| Compose
     Confirm -->|No| Stop2(["STOP — user declined"])
     Confirm -->|Yes| Compose
 
-    Compose["Step 4: Compose item block\nFields: Title, Source, Added (date),\nPriority, Type, Description,\nVerbatim user report (REQUIRED),\nHow to reproduce (if provided)"]
-    Compose --> Create["Step 5: backlog_add MCP tool\nCreates per-item file at\n~/.dh/projects/{slug}/backlog/"]
+    Compose["Step 4: Compose item block<br>Fields: Title, Source, Added (date),<br>Priority, Type, Description,<br>Verbatim user report (REQUIRED),<br>How to reproduce (if provided)"]
+    Compose --> Create["Step 5: backlog_add MCP tool<br>Creates per-item file at<br>~/.dh/projects/{slug}/backlog/"]
 
     Create --> Issue{"GitHub Issue?"}
-    Issue -->|"P0/P1 + user confirmed\nor --auto + --create-issue"| GH["GitHub Issue created\nissue field set in frontmatter"]
-    Issue -->|"P2/Idea or user declined\nor --auto without --create-issue"| NoGH["No GitHub Issue"]
+    Issue -->|"P0/P1 + user confirmed<br>or --auto + --create-issue"| GH["GitHub Issue created<br>issue field set in frontmatter"]
+    Issue -->|"P2/Idea or user declined<br>or --auto without --create-issue"| NoGH["No GitHub Issue"]
 
-    GH --> Done["Step 6: Confirm write\nShow title, priority, date\nNext steps:\n  /dh:groom-backlog-item {title}\n  /dh:work-backlog-item {title}"]
+    GH --> Done["Step 6: Confirm write<br>Show title, priority, date<br>Next steps:<br>  /dh:groom-backlog-item {title}<br>  /dh:work-backlog-item {title}"]
     NoGH --> Done
 ```
 
@@ -107,40 +107,40 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start([Item selected for grooming]) --> S1["Step 1: backlog_list MCP\nFilter items by scope argument"]
-    S1 --> S2{"Step 2: Validity Check\n4 sequential checks per item"}
+    Start([Item selected for grooming]) --> S1["Step 1: backlog_list MCP<br>Filter items by scope argument"]
+    S1 --> S2{"Step 2: Validity Check<br>4 sequential checks per item"}
 
-    S2 --> C1{"C1: Is the job still valid?\nDoes this item still belong\nin the backlog given current context?"}
+    S2 --> C1{"C1: Is the job still valid?<br>Does this item still belong<br>in the backlog given current context?"}
     C1 -->|"No — scope/priority/context changed"| Skip(["Report invalid — skip this item"])
-    C1 -->|Yes| C2{"C2: Evidence work already done?\ngit log + backlog_list_merged_prs + file read"}
+    C1 -->|Yes| C2{"C2: Evidence work already done?<br>git log + backlog_list_merged_prs + file read"}
     C2 -->|"Already done"| Skip
-    C2 -->|Not done| C3{"C3: Has GitHub issue?\nCheck metadata.issue or index link"}
-    C3 --> C4{"C4: Already groomed today?\ngroomed == today's date\nAND all required sections present?"}
-    C4 -->|Yes| Drift["Step 2.5: Drift Check\nMode A: Plan Drift\nMode B: Grooming Drift\nThen STOP — do not proceed to Step 3"]
-    C4 -->|No| S3["Step 3: Extract item details\ntitle, description, research questions,\nsource, suggested_location"]
+    C2 -->|Not done| C3{"C3: Has GitHub issue?<br>Check metadata.issue or index link"}
+    C3 --> C4{"C4: Already groomed today?<br>groomed == today's date<br>AND all required sections present?"}
+    C4 -->|Yes| Drift["Step 2.5: Drift Check<br>Mode A: Plan Drift<br>Mode B: Grooming Drift<br>Then STOP — do not proceed to Step 3"]
+    C4 -->|No| S3["Step 3: Extract item details<br>title, description, research questions,<br>source, suggested_location"]
 
-    S3 --> S35["Step 3.5: RT-ICA Initial Snapshot\n(Actor: orchestrator or rtica-assessor)\nCategorize info as:\nAVAILABLE / DERIVABLE / MISSING\nWrite via backlog_groom section='RT-ICA'"]
+    S3 --> S35["Step 3.5: RT-ICA Initial Snapshot<br>(Actor: orchestrator or rtica-assessor)<br>Categorize info as:<br>AVAILABLE / DERIVABLE / MISSING<br>Write via backlog_groom section='RT-ICA'"]
 
-    S35 --> S36["Step 3.6: Scope Sizing\nChoose: MINIMAL / NARROW /\nSTANDARD / FULL\nSizes the swarm agents"]
+    S35 --> S36["Step 3.6: Scope Sizing<br>Choose: MINIMAL / NARROW /<br>STANDARD / FULL<br>Sizes the swarm agents"]
 
     S36 --> Swarm
 
     subgraph Swarm [Steps 4-8: Parallel Grooming Swarm]
         direction TB
-        W1["Wave 1 (parallel):\n• fact-checker teammate\n• impact-radius teammate"]
-        W2["Wave 2 (blocked by Wave 1):\n• rtica-assessor teammate\n• issue-classifier teammate"]
-        W3["Wave 3 (blocked by Wave 2):\n• groomer teammate"]
+        W1["Wave 1 (parallel):<br>• fact-checker teammate<br>• impact-radius teammate"]
+        W2["Wave 2 (blocked by Wave 1):<br>• rtica-assessor teammate<br>• issue-classifier teammate"]
+        W3["Wave 3 (blocked by Wave 2):<br>• groomer teammate"]
         W1 --> W2
         W2 --> W3
     end
 
-    Swarm --> S85["Step 8.5: RT-ICA Final Pass\n(Actor: orchestrator or rtica-assessor)\nRe-assess ALL conditions with full swarm output\nSelf-resolution pass: attempt tool-based resolution\nfor each MISSING/DERIVABLE condition\nReplaces Step 3.5 snapshot"]
+    Swarm --> S85["Step 8.5: RT-ICA Final Pass<br>(Actor: orchestrator or rtica-assessor)<br>Re-assess ALL conditions with full swarm output<br>Self-resolution pass: attempt tool-based resolution<br>for each MISSING/DERIVABLE condition<br>Replaces Step 3.5 snapshot"]
 
     S85 --> Decision{RT-ICA result?}
-    Decision -->|"APPROVED — all AVAILABLE\nor DERIVABLE resolved"| S9["Step 9: Write groomed content\nvia backlog_groom MCP calls\n(one call per section, incremental)"]
-    Decision -->|"BLOCKED — MISSING conditions\nremain after self-resolution"| Block(["STOP — batch all MISSING\nconditions and present to user\nWait for user answers\nRe-check after responses"])
+    Decision -->|"APPROVED — all AVAILABLE<br>or DERIVABLE resolved"| S9["Step 9: Write groomed content<br>via backlog_groom MCP calls<br>(one call per section, incremental)"]
+    Decision -->|"BLOCKED — MISSING conditions<br>remain after self-resolution"| Block(["STOP — batch all MISSING<br>conditions and present to user<br>Wait for user answers<br>Re-check after responses"])
 
-    S9 --> Done["Set groomed frontmatter field\n(YYYY-MM-DD date)\nSync to GitHub issue body\nif issue exists"]
+    S9 --> Done["Set groomed frontmatter field<br>(YYYY-MM-DD date)<br>Sync to GitHub issue body<br>if issue exists"]
 ```
 
 **Swarm agents and their outputs**:
@@ -181,28 +181,28 @@ Phases 3 and 4 of the lifecycle both execute inside `/dh:add-new-feature`. The s
 
 ```mermaid
 flowchart TD
-    Start(["work-backlog-item Step 4:\nRT-ICA Checkpoint"]) --> RTICA{"RT-ICA summary\npresent in groomed content?"}
+    Start(["work-backlog-item Step 4:<br>RT-ICA Checkpoint"]) --> RTICA{"RT-ICA summary<br>present in groomed content?"}
     RTICA -->|Present| UseIt["Use existing RT-ICA"]
-    RTICA -->|Absent| RunIt["Perform RT-ICA inline\n(4-step: goal, prerequisites,\navailability, decision)"]
+    RTICA -->|Absent| RunIt["Perform RT-ICA inline<br>(4-step: goal, prerequisites,<br>availability, decision)"]
     UseIt --> Gate{RT-ICA decision?}
     RunIt --> Gate
-    Gate -->|BLOCKED| Block(["STOP — present unresolved\nconditions to user\nDo not invoke add-new-feature"])
-    Gate -->|APPROVED| Compose["work-backlog-item Step 5:\nCompose feature request\nCarry DERIVABLE items as\n'Assumptions to confirm'"]
-    Compose --> Invoke["work-backlog-item Step 6:\nSkill(skill='add-new-feature',\nargs='{composed feature request}')\nDirect skill call — not a suggestion"]
+    Gate -->|BLOCKED| Block(["STOP — present unresolved<br>conditions to user<br>Do not invoke add-new-feature"])
+    Gate -->|APPROVED| Compose["work-backlog-item Step 5:<br>Compose feature request<br>Carry DERIVABLE items as<br>'Assumptions to confirm'"]
+    Compose --> Invoke["work-backlog-item Step 6:<br>Skill(skill='add-new-feature',<br>args='{composed feature request}')<br>Direct skill call — not a suggestion"]
 
-    Invoke --> PrePhase{"Pre-Phase:\nArtifact Discovery\nartifact_list(issue_number=N)\nExisting artifacts?"}
-    PrePhase -->|Yes| Append["Append prior_artifacts block\nto each phase delegation prompt"]
+    Invoke --> PrePhase{"Pre-Phase:<br>Artifact Discovery<br>artifact_list(issue_number=N)<br>Existing artifacts?"}
+    PrePhase -->|Yes| Append["Append prior_artifacts block<br>to each phase delegation prompt"]
     PrePhase -->|No| Ph1
     Append --> Ph1
 
-    Ph1["Phase 1: Feature Research\nAgent: @dh:feature-researcher\nOutput: plan/feature-context-{slug}.md\nConstraint: WHAT/WHY only — no HOW\nArtifact registered: feature-context"]
+    Ph1["Phase 1: Feature Research<br>Agent: @dh:feature-researcher<br>Output: plan/feature-context-{slug}.md<br>Constraint: WHAT/WHY only — no HOW<br>Artifact registered: feature-context"]
 
-    Ph1 --> Ph2{"Phase 2: Codebase Analysis\nAgent: @dh:codebase-analyzer\nOptional — orchestrator judgment\nFocus: patterns, architecture,\ntesting, conventions"}
-    Ph2 -->|Invoked| Ph2Out["Output: plan/codebase/{FOCUS}.md\nper focus area\nConstraint: WHAT exists today only\nArtifact registered: codebase-analysis"]
+    Ph1 --> Ph2{"Phase 2: Codebase Analysis<br>Agent: @dh:codebase-analyzer<br>Optional — orchestrator judgment<br>Focus: patterns, architecture,<br>testing, conventions"}
+    Ph2 -->|Invoked| Ph2Out["Output: plan/codebase/{FOCUS}.md<br>per focus area<br>Constraint: WHAT exists today only<br>Artifact registered: codebase-analysis"]
     Ph2 -->|Skipped| Ph3
     Ph2Out --> Ph3
 
-    Ph3["Phase 3: Architecture Design\nAgent: resolved from language manifest\n(pyproject.toml → @python3-development:python-cli-design-spec)\nInput: feature-context + optional codebase analysis\nOutput: plan/architect-{slug}.md\nConstraint: HOW only — interfaces, contracts, models\nArtifact registered: architect"]
+    Ph3["Phase 3: Architecture Design<br>Agent: resolved from language manifest<br>(pyproject.toml → @python3-development:python-cli-design-spec)<br>Input: feature-context + optional codebase analysis<br>Output: plan/architect-{slug}.md<br>Constraint: HOW only — interfaces, contracts, models<br>Artifact registered: architect"]
 ```
 
 **Agent selection for architecture**: The skill does NOT hardcode `@python3-development:python-cli-design-spec`. It resolves the `design-spec` role from the language manifest at runtime based on project detection markers (`pyproject.toml` → Python, `package.json` → TypeScript, `Cargo.toml` → Rust, none → general-purpose fallback).
@@ -227,26 +227,26 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Ph4["Phase 4: Task Decomposition\nAgent: @dh:swarm-task-planner\nInput: architect-{slug}.md + feature-context\nOutput: plan/P{NNN}-{slug}.yaml via sam_create\nEvery task has: status, dependencies,\npriority, complexity, agent, AC (3+),\nverification steps (3+)"]
+    Ph4["Phase 4: Task Decomposition<br>Agent: @dh:swarm-task-planner<br>Input: architect-{slug}.md + feature-context<br>Output: plan/P{NNN}-{slug}.yaml via sam_create<br>Every task has: status, dependencies,<br>priority, complexity, agent, AC (3+),<br>verification steps (3+)"]
 
-    Ph4 --> Bookend{"acceptance-criteria-structured\nnon-empty?"}
-    Bookend -->|Yes| T0TN["swarm-task-planner generates\nT0 (baseline) + TN (verification)\nbookend tasks inside the plan\nT0: priority 1, deps []\nTN: deps = all non-bookend task IDs"]
+    Ph4 --> Bookend{"acceptance-criteria-structured<br>non-empty?"}
+    Bookend -->|Yes| T0TN["swarm-task-planner generates<br>T0 (baseline) + TN (verification)<br>bookend tasks inside the plan<br>T0: priority 1, deps []<br>TN: deps = all non-bookend task IDs"]
     Bookend -->|No| NoBookend["No bookend tasks generated"]
     T0TN --> Register
     NoBookend --> Register
 
-    Register["Artifact registered: task-plan\n(auto-registered by sam_create when issue set)"]
+    Register["Artifact registered: task-plan<br>(auto-registered by sam_create when issue set)"]
     Register --> Ph5
 
-    Ph5["Phase 5: Plan Validation\nAgent: @dh:plan-validator\nChecks: AC coverage, dependency DAG,\nagent assignments, verification steps,\nimpact radius coverage"]
+    Ph5["Phase 5: Plan Validation<br>Agent: @dh:plan-validator<br>Checks: AC coverage, dependency DAG,<br>agent assignments, verification steps,<br>impact radius coverage"]
     Ph5 --> ValResult{Validator returns?}
     ValResult -->|READY| Ph6
-    ValResult -->|"BLOCKED — specific gaps listed"| Fix(["Fix identified gaps\nRe-run Phase 4\nbefore retrying Phase 5"])
+    ValResult -->|"BLOCKED — specific gaps listed"| Fix(["Fix identified gaps<br>Re-run Phase 4<br>before retrying Phase 5"])
 
-    Ph6["Phase 6: Context Manifest\nAgent: @dh:context-gathering\nWrites context manifest INTO the plan\nvia sam_update (not a separate file)\nMaps each task to files, artifacts,\nexternal context it needs"]
+    Ph6["Phase 6: Context Manifest<br>Agent: @dh:context-gathering<br>Writes context manifest INTO the plan<br>via sam_update (not a separate file)<br>Maps each task to files, artifacts,<br>external context it needs"]
 
-    Ph6 --> Link["work-backlog-item Step 7:\nbacklog_update(selector='{title}',\nplan='plan/P{NNN}-{slug}.yaml')\nLinks plan to backlog item"]
-    Link --> Done(["add-new-feature complete\nReport slug + task file path\nNext: /dh:implement-feature"])
+    Ph6 --> Link["work-backlog-item Step 7:<br>backlog_update(selector='{title}',<br>plan='plan/P{NNN}-{slug}.yaml')<br>Links plan to backlog item"]
+    Link --> Done(["add-new-feature complete<br>Report slug + task file path<br>Next: /dh:implement-feature"])
 ```
 
 **Storage**: The SAM plan is created via `sam_create`, which maps to TaskBackend operations (Work Item for the plan, Sub-items for tasks). See [Backend Providers — TaskBackend Protocol](./backend-providers.md#taskbackend-protocol-912--to-be-created).
@@ -276,30 +276,30 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start(["Orchestrator invokes\n/dh:implement-feature"]) --> Status["sam_status(plan='P{N}')\nQuery plan status"]
+    Start(["Orchestrator invokes<br>/dh:implement-feature"]) --> Status["sam_status(plan='P{N}')<br>Query plan status"]
 
-    Status --> Ready{"Fetch ready tasks\n(ONCE per batch)\nbacklog_get_ready_sam_tasks\nor sam_ready"}
-    Ready -->|"No ready tasks —\nall tasks terminal"| Complete
-    Ready -->|"1 task ready"| Single["Dispatch via single Agent call\nSkill(skill='start-task',\nargs='{task_file_path} --task {T}')"]
-    Ready -->|"2+ tasks ready"| Team["TeamCreate(team_name='impl-{slug}')\nSpawn one teammate per ready task\nEach calls start-task"]
+    Status --> Ready{"Fetch ready tasks<br>(ONCE per batch)<br>backlog_get_ready_sam_tasks<br>or sam_ready"}
+    Ready -->|"No ready tasks —<br>all tasks terminal"| Complete
+    Ready -->|"1 task ready"| Single["Dispatch via single Agent call<br>Skill(skill='start-task',<br>args='{task_file_path} --task {T}')"]
+    Ready -->|"2+ tasks ready"| Team["TeamCreate(team_name='impl-{slug}')<br>Spawn one teammate per ready task<br>Each calls start-task"]
 
     Single --> Hook
     Team --> Hook
 
-    Hook["SubagentStop hook fires:\ntask_status_hook.py marks\ntask COMPLETE in plan YAML\nSyncs to GitHub sub-issue\nif github_issue field set"]
+    Hook["SubagentStop hook fires:<br>task_status_hook.py marks<br>task COMPLETE in plan YAML<br>Syncs to GitHub sub-issue<br>if github_issue field set"]
 
-    Hook --> Concerns{"Agent returned\n<concerns> block?"}
-    Concerns -->|Yes| Log["Append concerns to backlog\nvia backlog_groom"]
+    Hook --> Concerns{"Agent returned<br>&lt;concerns&gt; block?"}
+    Concerns -->|Yes| Log["Append concerns to backlog<br>via backlog_groom"]
     Concerns -->|No| BatchDone
     Log --> BatchDone
 
-    BatchDone{"All tasks in batch\ncomplete?"}
+    BatchDone{"All tasks in batch<br>complete?"}
     BatchDone -->|No| Wait["Wait for remaining agents"]
     BatchDone -->|Yes| Status
     Wait --> BatchDone
 
-    Complete(["Completion Gate:\nAll tasks show COMPLETE"])
-    Complete --> Invoke["Invoke directly:\nSkill(skill='complete-implementation',\nargs='{task_file_path}')\nExplicit invocation — not a suggestion"]
+    Complete(["Completion Gate:<br>All tasks show COMPLETE"])
+    Complete --> Invoke["Invoke directly:<br>Skill(skill='complete-implementation',<br>args='{task_file_path}')<br>Explicit invocation — not a suggestion"]
 ```
 
 **start-task internal procedure** (Actor: specialist agent):
@@ -350,14 +350,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start(["/dh:complete-implementation invoked"]) --> TN{"Pre-Phase 1: TN Verification Check\nRead TN-verification-{slug}.yaml\nAggregate: FAIL if any record\nhas status: regressed"}
-    TN -->|"Any regressed"| TNBlock(["STOP — list each criterion\nwith check_command, T0/TN stdout\nBlock completion"])
+    Start(["/dh:complete-implementation invoked"]) --> TN{"Pre-Phase 1 — TN Verification Check<br>Read TN-verification-{slug}.yaml<br>Aggregate — FAIL if any record<br>has status = regressed"}
+    TN -->|"Any regressed"| TNBlock(["STOP — list each criterion<br>with check_command, T0/TN stdout<br>Block completion"])
     TN -->|"All passed or file absent"| Artifact
 
-    Artifact{"Pre-Phase: Artifact Discovery\n(when parent issue number known)\nartifact_list(issue_number=N)\nPass manifest to QG agents"}
+    Artifact{"Pre-Phase: Artifact Discovery<br>(when parent issue number known)<br>artifact_list(issue_number=N)<br>Pass manifest to QG agents"}
 
-    Artifact --> Concerns{"Pre-Phase 1b: Process Concerns\nbacklog_view — look for\n## Concerns with unchecked items"}
-    Concerns -->|"Unchecked concerns exist"| Verify["For each concern:\nVerify by reading file/running check\nIf verified: check off + create backlog item\nIf not verified: check off as 'Not confirmed'\nUpdate via backlog_groom section='Concerns'"]
+    Artifact --> Concerns{"Pre-Phase 1b: Process Concerns<br>backlog_view — look for<br>## Concerns with unchecked items"}
+    Concerns -->|"Unchecked concerns exist"| Verify["For each concern:<br>Verify by reading file/running check<br>If verified: check off + create backlog item<br>If not verified: check off as 'Not confirmed'<br>Update via backlog_groom section='Concerns'"]
     Concerns -->|"No concerns section"| QGCreate
     Verify --> QGCreate
 ```
@@ -366,44 +366,44 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    QGCreate{"Check for existing QG plan\nsam_list(search='qg-{slug}')"}
-    QGCreate -->|"No existing plan"| Build["build_quality_gate_plan(\nslug, issue, impl_plan_address)\nfrom sam_schema.core.quality_gates\n\nsam_create(slug='qg-{slug}',\ngoal='Quality gate enforcement',\ntasks_yaml, issue)"]
-    QGCreate -->|"Existing plan —\nsome tasks remain"| Reset["Reset BLOCKED tasks to not-started\nvia sam_state per task\nRe-enter dispatch loop"]
-    QGCreate -->|"Existing plan —\nall tasks terminal"| Gate
+    QGCreate{"Check for existing QG plan<br>sam_list(search='qg-{slug}')"}
+    QGCreate -->|"No existing plan"| Build["build_quality_gate_plan(<br>slug, issue, impl_plan_address)<br>from sam_schema.core.quality_gates<br><br>sam_create(slug='qg-{slug}',<br>goal='Quality gate enforcement',<br>tasks_yaml, issue)"]
+    QGCreate -->|"Existing plan —<br>some tasks remain"| Reset["Reset BLOCKED tasks to not-started<br>via sam_state per task<br>Re-enter dispatch loop"]
+    QGCreate -->|"Existing plan —<br>all tasks terminal"| Gate
 
     Build --> Loop
     Reset --> Loop
 
     subgraph Loop [SAM Dispatch Loop]
-        Claim["sam_claim + start-task\nper ready task"] --> T1
-        T1["T1: code-reviewer\nDeps: none"]
-        T1 -->|complete| T2["T2: feature-verifier\nDeps: T1"]
-        T2 -->|complete| T3["T3: integration-checker\nDeps: T2"]
-        T3 -->|complete| T4["T4: doc-drift-auditor\nDeps: T3"]
-        T4 --> T4Post{"T4 output:\ndrift found?"}
-        T4Post -->|"Drift found"| T5["T5: service-docs-maintainer\nDeps: T4"]
-        T4Post -->|"No drift"| SkipT5["sam_state(plan, task='T5',\nstatus='skipped')"]
-        T5 --> T6["T6: context-refinement\nDeps: T5"]
+        Claim["sam_claim + start-task<br>per ready task"] --> T1
+        T1["T1: code-reviewer<br>Deps: none"]
+        T1 -->|complete| T2["T2: feature-verifier<br>Deps: T1"]
+        T2 -->|complete| T3["T3: integration-checker<br>Deps: T2"]
+        T3 -->|complete| T4["T4: doc-drift-auditor<br>Deps: T3"]
+        T4 --> T4Post{"T4 output:<br>drift found?"}
+        T4Post -->|"Drift found"| T5["T5: service-docs-maintainer<br>Deps: T4"]
+        T4Post -->|"No drift"| SkipT5["sam_state(plan, task='T5',<br>status='skipped')"]
+        T5 --> T6["T6: context-refinement<br>Deps: T5"]
         SkipT5 --> T6
     end
 
-    Loop --> Gate{"Completion Verification Gate\nsam_status(plan='{QG}')\nAll 6 tasks terminal?"}
-    Gate -->|"All complete/skipped\n(only T5 may be skipped)"| Followup
-    Gate -->|"Any non-terminal\nor unauthorized skip"| Block(["COMPLETION BLOCKED\nReport failed tasks\nTo resume: re-run\n/complete-implementation"])
+    Loop --> Gate{"Completion Verification Gate<br>sam_status(plan='{QG}')<br>All 6 tasks terminal?"}
+    Gate -->|"All complete/skipped<br>(only T5 may be skipped)"| Followup
+    Gate -->|"Any non-terminal<br>or unauthorized skip"| Block(["COMPLETION BLOCKED<br>Report failed tasks<br>To resume: re-run<br>/complete-implementation"])
 
-    Followup{"Recursive Follow-up\nRouting"}
-    Followup --> Detect["Detect follow-up files from\nT1 ARTIFACTS output or glob:\nP*-{slug}-followup-*.yaml"]
-    Detect --> Route["For each follow-up:\n1. Derive search slug from filename\n2. Search backlog via backlog_list\n3. If match: backlog_update with plan\n4. If no match: create-backlog-item --auto"]
+    Followup{"Recursive Follow-up<br>Routing"}
+    Followup --> Detect["Detect follow-up files from<br>T1 ARTIFACTS output or glob:<br>P*-{slug}-followup-*.yaml"]
+    Detect --> Route["For each follow-up:<br>1. Derive search slug from filename<br>2. Search backlog via backlog_list<br>3. If match: backlog_update with plan<br>4. If no match: create-backlog-item --auto"]
 
-    Route --> Recurse{"Recursion gate:\nBOTH conditions required"}
-    Recurse -->|"ADR-3: slug matches parent\nAND ADR-2: Priority = High"| Immediate["Recurse immediately:\nSkill('implement-feature', followup)\nThen re-run complete-implementation"]
-    Recurse -->|"Either not met"| Defer(["Defer follow-up\nOutput: 'to resume:\n/dh:work-backlog-item <title>'"])
+    Route --> Recurse{"Recursion gate:<br>BOTH conditions required"}
+    Recurse -->|"ADR-3: slug matches parent<br>AND ADR-2: Priority = High"| Immediate["Recurse immediately:<br>Skill('implement-feature', followup)<br>Then re-run complete-implementation"]
+    Recurse -->|"Either not met"| Defer(["Defer follow-up<br>Output: 'to resume:<br>/dh:work-backlog-item &lt;title&gt;'"])
 
     Immediate --> Label
     Defer --> Label
 
-    Label["Apply status:verified label\nbacklog_update(selector, verified=True)"]
-    Label --> Final["Final commit and push\nFinal Handoff Output:\n'Clear context and run:\n/dh:work-backlog-item <next-item>'"]
+    Label["Apply status:verified label<br>backlog_update(selector, verified=True)"]
+    Label --> Final["Final commit and push<br>Final Handoff Output:<br>'Clear context and run:<br>/dh:work-backlog-item &lt;next-item&gt;'"]
 ```
 
 **Input modes**: The skill accepts either a plan file path (SAM path → 6-task QG) or an issue number (proportional path → 3-task QG when issue has no linked plan).
@@ -451,7 +451,7 @@ Both operations close the GitHub Issue. The distinction lives in the structured 
 
 ```mermaid
 flowchart TD
-    Start(["work-backlog-item\nclose or resolve"]) --> Find["Step 9a: Find Item\nbacklog_view(selector='{arg}')\nExtract title"]
+    Start(["work-backlog-item<br>close or resolve"]) --> Find["Step 9a: Find Item<br>backlog_view(selector='{arg}')<br>Extract title"]
     Find --> FindErr{"Error?"}
     FindErr -->|"Zero matches"| Stop1(["STOP — No item found"])
     FindErr -->|"Multiple matches"| Pick["List all — ask user to pick"]
@@ -462,33 +462,33 @@ flowchart TD
     Route -->|resolve| Resolve
 
     subgraph Close [Close Path — Dismiss Without Completion]
-        C1["Ask user: Why dismissed?\nOptions: duplicate, out_of_scope,\nsuperseded, wontfix, blocked"]
-        C1 --> C2{"duplicate or\nsuperseded?"}
-        C2 -->|Yes| Ref["Ask: Which item does this\nduplicate / is superseded by?"]
+        C1["Ask user: Why dismissed?<br>Options: duplicate, out_of_scope,<br>superseded, wontfix, blocked"]
+        C1 --> C2{"duplicate or<br>superseded?"}
+        C2 -->|Yes| Ref["Ask: Which item does this<br>duplicate / is superseded by?"]
         C2 -->|No| C3
         Ref --> C3["Optional: additional comment"]
-        C3 --> CCall["backlog_close(\nselector, reason,\nreference, comment)\nNo checklist verification\nNo AC verification\nNo status:verified check"]
+        C3 --> CCall["backlog_close(<br>selector, reason,<br>reference, comment)<br>No checklist verification<br>No AC verification<br>No status:verified check"]
     end
 
     subgraph Resolve [Resolve Path — 5 Verification Gates]
-        R1{"9b.5: status:verified gate\n(SAM items only — has Plan field)"}
+        R1{"9b.5 — status:verified gate<br>(SAM items only — has Plan field)"}
         R1 -->|"Label present"| R2
         R1 -->|"Label absent + --force"| R2
-        R1 -->|"Label absent, no --force"| RBlock(["STOP — options:\n1. Run /complete-implementation\n2. Re-run with --force\n3. Close instead"])
+        R1 -->|"Label absent, no --force"| RBlock(["STOP — options:<br>1. Run /complete-implementation<br>2. Re-run with --force<br>3. Close instead"])
 
-        R2{"9c: Checklist verification\n(plan items only)\nRead plan, count tasks\nchecked_tasks == total_tasks?"}
+        R2{"9c: Checklist verification<br>(plan items only)<br>Read plan, count tasks<br>checked_tasks == total_tasks?"}
         R2 -->|"Incomplete"| RBlock2(["STOP — list unchecked tasks"])
         R2 -->|"100% or no plan"| R3
 
-        R3{"9d: AC verification\nSpawn general-purpose agent\nVerify each criterion with\nfile:line evidence\nReturn [PASS]/[FAIL] per criterion"}
+        R3{"9d: AC verification<br>Spawn general-purpose agent<br>Verify each criterion with<br>file:line evidence<br>Return [PASS]/[FAIL] per criterion"}
         R3 -->|"Overall FAIL"| RBlock3(["STOP — report gaps"])
         R3 -->|"Overall PASS"| R4
 
-        R4{"9e: Open PR check\ngit log --grep='Fixes #N|Closes #N'"}
-        R4 -->|"Open PR found"| PRWait(["Update local status only\nGitHub Issue will auto-close\nwhen PR merges — STOP"])
+        R4{"9e: Open PR check<br>git log --grep='Fixes #N|Closes #N'"}
+        R4 -->|"Open PR found"| PRWait(["Update local status only<br>GitHub Issue will auto-close<br>when PR merges — STOP"])
         R4 -->|"No open PR"| R5
 
-        R5["9f: backlog_resolve(\nselector, summary (required),\nplan, method, notes,\nfollow_ups, findings)"]
+        R5["9f: backlog_resolve(<br>selector, summary (required),<br>plan, method, notes,<br>follow_ups, findings)"]
     end
 ```
 
