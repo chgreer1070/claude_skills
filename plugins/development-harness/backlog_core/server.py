@@ -60,6 +60,99 @@ if TYPE_CHECKING:
 _LIST_TOKEN_BUDGET = 4_400
 _enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
 
+# Fields searched by default when no field-specific prefix is given.
+_SEARCH_FIELDS: tuple[str, ...] = ("title", "section", "topic", "type")
+
+# Minimum length for a valid /pattern/ regex term (e.g. "/x/" has length 3).
+_REGEX_SLASH_MIN_LEN = 2
+
+
+def _item_field_text(item: dict[str, str | bool], field: str) -> str:
+    """Return the casefolded text for a single field of an item dict."""
+    return str(item.get(field, "") or "").casefold()
+
+
+def _item_matches_term(item: dict[str, str | bool], term: str) -> bool:
+    """Return True if a single search term matches the item.
+
+    Supported term forms (evaluated in order):
+    - ``/pattern/`` or ``regex:pattern`` — compiled regex matched against all
+      default search fields joined with a space.
+    - ``field:value`` — substring match restricted to a named field
+      (``title``, ``section``, ``topic``, ``type``).  Unknown field names fall
+      back to full-text substring match.
+    - plain text — case-insensitive substring match across all default fields
+      (existing behaviour, fully preserved).
+    """
+    term = term.strip()
+    if not term:
+        return True
+
+    # Regex form: /pattern/ or regex:pattern
+    if (term.startswith("/") and term.endswith("/") and len(term) > _REGEX_SLASH_MIN_LEN) or term.startswith("regex:"):
+        pattern_str = term[1:-1] if term.startswith("/") else term[len("regex:") :]
+        try:
+            pattern = _re.compile(pattern_str, _re.IGNORECASE)
+        except _re.error:
+            # Invalid regex — fall through to plain substring match on the raw term.
+            pass
+        else:
+            haystack = " ".join(_item_field_text(item, f) for f in _SEARCH_FIELDS)
+            return bool(pattern.search(haystack))
+
+    # Field-specific form: field:value
+    if ":" in term:
+        field, _, value = term.partition(":")
+        field = field.strip().lower()
+        value = value.strip().casefold()
+        if field in _SEARCH_FIELDS:
+            return value in _item_field_text(item, field)
+        # Unknown field prefix — treat as plain text (fall through).
+
+    # Plain text — existing case-insensitive substring match across all fields.
+    needle = term.casefold()
+    return needle in " ".join(_item_field_text(item, f) for f in _SEARCH_FIELDS)
+
+
+def _apply_search_filter(items: list[dict[str, str | bool]], search: str) -> list[dict[str, str | bool]]:
+    """Filter items using the full-text search query syntax.
+
+    Query syntax (case-insensitive keywords):
+    - ``term1 OR term2``  — item matches if either term matches.
+    - ``term1 AND term2`` — item matches only if both terms match.
+    - Bare text without AND/OR — original substring behaviour (single term).
+
+    OR and AND keywords are whitespace-delimited and case-insensitive.  Mixed
+    AND/OR in a single query is not supported; AND takes precedence when both
+    appear.
+
+    Each individual term supports:
+    - ``/regex/`` or ``regex:pattern`` — regex match
+    - ``field:value`` — field-specific substring match
+    - plain text — substring match across all default fields
+
+    Returns:
+        Filtered list of items that match the search query.
+    """
+    search = search.strip()
+    if not search:
+        return items
+
+    # Tokenise on whitespace-delimited AND / OR operators (case-insensitive).
+    upper = search.upper()
+    if " AND " in upper:
+        # Split on first-level AND; each part is a term (may itself contain spaces
+        # for field:value terms like "title:auth deploy").
+        and_parts = _re.split(r"(?i)\s+AND\s+", search)
+        return [item for item in items if all(_item_matches_term(item, part) for part in and_parts)]
+
+    if " OR " in upper:
+        or_parts = _re.split(r"(?i)\s+OR\s+", search)
+        return [item for item in items if any(_item_matches_term(item, part) for part in or_parts)]
+
+    # No operator — treat entire query as a single term (existing behaviour).
+    return [item for item in items if _item_matches_term(item, search)]
+
 
 def _parse_args() -> argparse.Namespace:
     """Parse server startup arguments.
@@ -212,9 +305,14 @@ async def backlog_list(
         str | None,
         Field(
             description=(
-                "Case-insensitive substring search across title, section, topic, and type simultaneously. "
-                "Unlike title= which only matches the title field, search= matches any of these fields. "
-                "Combine with other filters to narrow results further."
+                "Full-text search across title, section, topic, and type simultaneously. "
+                "Supports OR/AND operators (e.g. 'auth OR deploy'), "
+                "regex patterns (/pattern/ or regex:pattern), "
+                "field-specific search (title:auth, type:bug, topic:devops, section:P1), "
+                "and plain case-insensitive substring matching (existing behaviour). "
+                "OR/AND are whitespace-delimited and case-insensitive. "
+                "Mixed AND/OR in a single query is not supported; AND takes precedence. "
+                "Combine with other filters (section=, type=, topic=) to narrow results further."
             )
         ),
     ] = None,
@@ -242,7 +340,9 @@ async def backlog_list(
     Use type_ to filter by metadata.type exact match (e.g. Bug, Feature).
     Use topic to filter by metadata.topic substring match.
     Use include_closed=true to include items with terminal status (done, resolved, closed).
-    Use search to search across title, section, topic, and type simultaneously.
+    Use search for full-text search across title, section, topic, and type.
+    Search supports OR/AND operators (e.g. 'auth OR deploy'), regex (/pattern/ or regex:pattern),
+    field-specific syntax (title:auth, type:bug, topic:devops), and plain substring matching.
     Use offset and limit to paginate results. When limit=0, auto-pagination keeps the
     response under 4400 tokens (cl100k_base encoding). When has_more=true, call again
     with the offset shown in next_call.
@@ -284,13 +384,7 @@ async def backlog_list(
 
     # Apply cross-field search filter when requested.
     if search is not None:
-        needle = search.casefold()
-        all_items = [
-            item
-            for item in all_items
-            if needle
-            in " ".join(str(item.get(field, "") or "") for field in ("title", "section", "topic", "type")).casefold()
-        ]
+        all_items = _apply_search_filter(all_items, search)
 
     total = len(all_items)
 

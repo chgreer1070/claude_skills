@@ -341,6 +341,123 @@ async def test_backlog_list_search_combined_with_section_filter():
     assert len(response["items"]) == 2
 
 
+async def test_backlog_list_search_or_operator_matches_either_term():
+    """backlog_list search='auth OR deploy' matches items containing either term."""
+    items = [
+        {"title": "Auth service", "description": "", "topic": "", "type": "Feature"},
+        {"title": "Deploy pipeline", "description": "", "topic": "", "type": "Feature"},
+        {"title": "Refactor models", "description": "", "topic": "", "type": "Refactor"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth OR deploy"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    assert "Auth service" in returned_titles
+    assert "Deploy pipeline" in returned_titles
+    assert "Refactor models" not in returned_titles
+
+
+async def test_backlog_list_search_and_operator_requires_both_terms():
+    """backlog_list search='auth AND bug' only matches items containing both terms."""
+    items = [
+        {"title": "Auth bug", "description": "", "topic": "", "type": "Bug"},
+        {"title": "Auth feature", "description": "", "topic": "", "type": "Feature"},
+        {"title": "Deploy bug", "description": "", "topic": "", "type": "Bug"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth AND bug"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    assert "Auth bug" in returned_titles
+    assert "Auth feature" not in returned_titles
+    assert "Deploy bug" not in returned_titles
+
+
+async def test_backlog_list_search_regex_slash_form_matches_pattern():
+    """backlog_list search='/auth.*bug/' matches items via regex."""
+    items = [
+        {"title": "Auth token bug", "description": "", "topic": "", "type": "Bug"},
+        {"title": "Auth feature", "description": "", "topic": "", "type": "Feature"},
+        {"title": "Unrelated", "description": "", "topic": "", "type": "Refactor"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "/auth.*bug/"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    assert "Auth token bug" in returned_titles
+    assert "Auth feature" not in returned_titles
+    assert "Unrelated" not in returned_titles
+
+
+async def test_backlog_list_search_regex_prefix_form_matches_pattern():
+    """backlog_list search='regex:auth.*bug' matches items via regex: prefix form."""
+    items = [
+        {"title": "Auth token bug", "description": "", "topic": "", "type": "Bug"},
+        {"title": "Auth feature", "description": "", "topic": "", "type": "Feature"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "regex:auth.*bug"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    assert "Auth token bug" in returned_titles
+    assert "Auth feature" not in returned_titles
+
+
+async def test_backlog_list_search_field_specific_title_prefix():
+    """backlog_list search='title:auth' restricts match to the title field only."""
+    items = [
+        {"title": "Auth service", "description": "", "topic": "", "type": "Feature"},
+        {"title": "Unrelated", "description": "", "topic": "auth", "type": "Feature"},
+        {"title": "Deploy", "description": "", "topic": "", "type": "Bug"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "title:auth"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    assert "Auth service" in returned_titles
+    # "Unrelated" has auth in topic, not title — must not match title:auth
+    assert "Unrelated" not in returned_titles
+    assert "Deploy" not in returned_titles
+
+
+async def test_backlog_list_search_field_specific_type_prefix():
+    """backlog_list search='type:bug' restricts match to the type field only."""
+    items = [
+        {"title": "Auth bug fix", "description": "", "topic": "", "type": "Bug"},
+        {"title": "Bug tracker", "description": "", "topic": "", "type": "Feature"},
+        {"title": "Deploy", "description": "", "topic": "", "type": "Feature"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "type:bug"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    assert "Auth bug fix" in returned_titles
+    # "Bug tracker" has "bug" in title but type is Feature — must not match type:bug
+    assert "Bug tracker" not in returned_titles
+
+
+async def test_backlog_list_search_invalid_regex_falls_back_to_plain_text():
+    """backlog_list search='/[invalid/' falls back to plain substring match on the raw term."""
+    items = [
+        {"title": "/[invalid/ literal", "description": "", "topic": "", "type": "Feature"},
+        {"title": "Unrelated", "description": "", "topic": "", "type": "Feature"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "/[invalid/"})
+
+    # Falls back to substring match on the literal string "/[invalid/"
+    returned_titles = [item["title"] for item in response["items"]]
+    assert "/[invalid/ literal" in returned_titles
+    assert "Unrelated" not in returned_titles
+
+
 async def test_backlog_list_response_includes_pagination_key_always():
     """backlog_list always includes a pagination key in a successful response."""
     op_result = {"items": [{"title": "X", "description": "", "topic": "", "type": "Bug"}]}
