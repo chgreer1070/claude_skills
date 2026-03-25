@@ -131,7 +131,7 @@ class TestWorkBacklogItem:
         write_test_item("View Issue Test", issue="#42")
         mock_github["view_enrich_from_github"].return_value = False
 
-        result = await _call("backlog_view", {"selector": "#42"})
+        result = await _call("backlog_view", {"selector": "#42", "summary": False})
 
         assert result["title"] == "View Issue Test"
         assert isinstance(result["priority"], str)
@@ -145,7 +145,7 @@ class TestWorkBacklogItem:
     async def test_view_by_title_substring(self, backlog_dir, mock_github, write_test_item):
         write_test_item("My Unique Title Item")
 
-        result = await _call("backlog_view", {"selector": "Unique Title"})
+        result = await _call("backlog_view", {"selector": "Unique Title", "summary": False})
 
         assert result["title"] == "My Unique Title Item"
         assert isinstance(result["file_path"], str)
@@ -451,7 +451,7 @@ class TestBacklogItemGroomer:
 
         target = next(i for i in list_result["items"] if "Groomer View" in i["title"])
 
-        view_result = await _call("backlog_view", {"selector": target["title"]})
+        view_result = await _call("backlog_view", {"selector": target["title"], "summary": False})
 
         assert view_result["title"] == "Groomer View Target"
         assert "body" in view_result
@@ -1140,7 +1140,9 @@ class TestCompactBacklogView:
         )
         mock_github["view_enrich_from_github"].return_value = False
 
-        result = await _call("backlog_view", {"selector": "Compact View Test Item", "include_content": False})
+        result = await _call(
+            "backlog_view", {"selector": "Compact View Test Item", "include_content": False, "summary": False}
+        )
 
         assert "error" not in result
         assert "sections_metadata" in result, "Compact mode must include sections_metadata"
@@ -1182,7 +1184,9 @@ class TestCompactBacklogView:
         write_test_item("Metadata Preserved Item", priority="P1", issue="#77")
         mock_github["view_enrich_from_github"].return_value = False
 
-        result = await _call("backlog_view", {"selector": "Metadata Preserved Item", "include_content": False})
+        result = await _call(
+            "backlog_view", {"selector": "Metadata Preserved Item", "include_content": False, "summary": False}
+        )
 
         assert "error" not in result
         assert result["title"] == "Metadata Preserved Item"
@@ -1216,7 +1220,14 @@ class TestCompactBacklogView:
         mock_github["view_enrich_from_github"].return_value = False
 
         result = await _call(
-            "backlog_view", {"selector": "Pagination Compact Item", "include_content": False, "offset": 5, "limit": 3}
+            "backlog_view",
+            {
+                "selector": "Pagination Compact Item",
+                "include_content": False,
+                "summary": False,
+                "offset": 5,
+                "limit": 3,
+            },
         )
 
         assert "error" not in result
@@ -1236,7 +1247,7 @@ class TestCompactBacklogView:
         write_test_item("Default Full View Item")
         mock_github["view_enrich_from_github"].return_value = False
 
-        result = await _call("backlog_view", {"selector": "Default Full View Item"})
+        result = await _call("backlog_view", {"selector": "Default Full View Item", "summary": False})
 
         assert "error" not in result
         assert "body" in result, "Default mode must include 'body' key"
@@ -1297,7 +1308,7 @@ class TestResolveVerifiedGate:
         await _call("backlog_update", {"selector": "#200", "plan": "plan/test-plan.md"})
 
         # View item — should return labels (empty, no verified label)
-        view_result = await _call("backlog_view", {"selector": "#200"})
+        view_result = await _call("backlog_view", {"selector": "#200", "summary": False})
 
         assert view_result["title"] == "Verified Gate Test"
         assert isinstance(view_result["labels"], list)
@@ -1341,7 +1352,7 @@ class TestResolveVerifiedGate:
         mock_github["resolve_github_issue"].return_value = None
 
         # View confirms no plan
-        view_result = await _call("backlog_view", {"selector": "#202"})
+        view_result = await _call("backlog_view", {"selector": "#202", "summary": False})
         assert view_result.get("plan", "") == ""
 
         # Resolve succeeds without verified label — no plan means no gate
