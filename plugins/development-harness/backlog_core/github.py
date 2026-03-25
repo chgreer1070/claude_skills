@@ -455,7 +455,7 @@ def _parse_search_pr_node(raw: dict[str, Any]) -> SearchPRNode | None:
 # ---------------------------------------------------------------------------
 
 
-def _graphql_request(repo: Repository, query: str, variables: dict[str, object] | None = None) -> dict[str, object]:
+def _graphql_request(repo: Repository, query: str, variables: dict[str, object] | None = None) -> dict[str, Any]:
     """Execute a raw GraphQL query using PyGithub's requester.
 
     Follows the same pattern as ``_resolve_labels_graphql``.  Raises
@@ -539,7 +539,7 @@ def _fetch_issue_graphql(repo: Repository, owner: str, repo_name: str, issue_num
     """
     data = _graphql_request(repo, _ISSUE_BY_NUMBER_QUERY, {"owner": owner, "repo": repo_name, "number": issue_number})
     repo_data = data.get("repository") or {}
-    raw_issue = repo_data.get("issue") if isinstance(repo_data, dict) else None  # type: ignore[union-attr]
+    raw_issue = repo_data.get("issue") if isinstance(repo_data, dict) else None
     if raw_issue is None:
         raise BacklogError(f"GraphQL error: Could not resolve to issue #{issue_number}")
     return _parse_issue_node(raw_issue)
@@ -595,7 +595,7 @@ def _fetch_issues_graphql(
         }
         data = _graphql_request(repo, _ISSUES_LIST_QUERY, variables)
         repo_data = data.get("repository") or {}
-        issues_conn = repo_data.get("issues") if isinstance(repo_data, dict) else None  # type: ignore[union-attr]
+        issues_conn = repo_data.get("issues") if isinstance(repo_data, dict) else None
         if not isinstance(issues_conn, dict):
             break
         nodes = issues_conn.get("nodes") or []
@@ -709,7 +709,7 @@ def _create_issue_graphql(
     """
     variables: dict[str, object] = {"repositoryId": repo_node_id, "title": title, "body": body, "labelIds": label_ids}
     data = _graphql_request(repo, _CREATE_ISSUE_MUTATION, variables)
-    raw_issue = data.get("createIssue", {}).get("issue", {})  # type: ignore[union-attr]
+    raw_issue = data.get("createIssue", {}).get("issue", {})
     return {
         "id": str(raw_issue.get("id", "")),
         "number": int(raw_issue.get("number", 0)),
@@ -774,7 +774,7 @@ def _add_comment_graphql(repo: Repository, issue_node_id: str, body: str) -> str
         BacklogError: On GraphQL errors.
     """
     data = _graphql_request(repo, _ADD_COMMENT_MUTATION, {"subjectId": issue_node_id, "body": body})
-    comment_node = data.get("addComment", {}).get("commentEdge", {}).get("node", {})  # type: ignore[union-attr]
+    comment_node = data.get("addComment", {}).get("commentEdge", {}).get("node", {})
     return str(comment_node.get("id", ""))
 
 
@@ -806,7 +806,7 @@ def _fetch_issue_comments_graphql(
             "after": cursor,
         }
         data = _graphql_request(repo, _ISSUE_COMMENTS_QUERY, variables)
-        issue_data = (data.get("repository") or {}).get("issue") or {}  # type: ignore[union-attr]
+        issue_data = (data.get("repository") or {}).get("issue") or {}
         comments_data = issue_data.get("comments") or {}
         nodes: list[dict[str, object]] = list(comments_data.get("nodes") or [])
         comments.extend(
@@ -972,7 +972,7 @@ def _fetch_milestones_graphql(
     variables: dict[str, object] = {"owner": owner, "repo": repo_name, "states": states or ["OPEN", "CLOSED"]}
     data = _graphql_request(repo, _LIST_MILESTONES_QUERY, variables)
     repo_data = data.get("repository") or {}
-    milestones_conn = repo_data.get("milestones") if isinstance(repo_data, dict) else None  # type: ignore[union-attr]
+    milestones_conn = repo_data.get("milestones") if isinstance(repo_data, dict) else None
     if not isinstance(milestones_conn, dict):
         return []
     nodes = milestones_conn.get("nodes") or []
@@ -1276,7 +1276,7 @@ def check_open_prs_for_issue(issue_num: int, repo: str = "") -> list[PullRequest
         repository = get_github(repo)
         search_query = f"repo:{repo} is:pr is:open #{issue_num}"
         data = _graphql_request(repository, _SEARCH_PRS_QUERY, {"query": search_query, "first": 20})
-        nodes = (data.get("search") or {}).get("nodes") or []  # type: ignore[union-attr]
+        nodes = (data.get("search") or {}).get("nodes") or []
         prs: list[PullRequestRef] = []
         for raw in nodes:
             if isinstance(raw, dict):
@@ -1693,7 +1693,7 @@ def get_task_issues(repo: Repository, parent_issue_number: int, output: Output |
             repo, _SUB_ISSUES_QUERY, {"owner": owner, "repo": repo_name, "number": parent_issue_number, "first": 100}
         )
         repo_data = data.get("repository") or {}
-        parent_issue = repo_data.get("issue") if isinstance(repo_data, dict) else None  # type: ignore[union-attr]
+        parent_issue = repo_data.get("issue") if isinstance(repo_data, dict) else None
         if parent_issue is None:
             return []
         sub_issues_conn = parent_issue.get("subIssues") if isinstance(parent_issue, dict) else None
