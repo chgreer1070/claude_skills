@@ -8,7 +8,9 @@ user-invocable: true
 
 ## Purpose
 
-This skill inserts a mandatory RT-ICA checkpoint into planning workflows. For every goal (top-level and each decomposed sub-goal), the model MUST:
+RT-ICA surfaces what the executor needs to know before it can act without stopping.
+
+For every goal (top-level and each decomposed sub-goal), the model should:
 
 1. Reverse-think prerequisites from the goal
 2. Assess information completeness for each prerequisite
@@ -16,14 +18,36 @@ This skill inserts a mandatory RT-ICA checkpoint into planning workflows. For ev
 
 <core_rule>
 
-**No planning, delegation, scheduling, or solution design may begin until RT-ICA has been performed on:**
+RT-ICA should be performed before planning, delegation, or solution design on:
 
 1. The overall goal/request
 2. Each decomposed goal or sub-goal that could fail due to missing information
 
-**If ANY required condition is MISSING, the model MUST stop and request only the missing information.**
+If any required condition is MISSING, stop and request only the missing information.
 
 </core_rule>
+
+## Complexity Model
+
+Task complexity is not implementation difficulty — it is the ratio of project-specific knowledge required to context window available.
+
+Training data provides craft knowledge (language patterns, framework APIs, tooling). That is free. What consumes context budget is everything specific to this project: schemas, conventions, constraints, interfaces, user preferences, existing system behavior. That knowledge must be loaded before the agent can act.
+
+**This changes how RT-ICA results inform task design:**
+
+```mermaid
+flowchart TD
+    RTICA["RT-ICA conditions enumerated"] --> Measure["Estimate knowledge payload:<br>how much project-specific context<br>must be loaded to satisfy conditions?"]
+    Measure --> Ratio{Knowledge payload<br>vs context window?}
+    Ratio -->|"< 40% of window<br>Room to work"| Proceed["Single task — execute directly"]
+    Ratio -->|"40-70% of window<br>Tight but workable"| Combine["Look for steps sharing<br>the same knowledge payload —<br>combine them into one task"]
+    Combine --> Proceed
+    Ratio -->|"> 70% of window<br>No room to implement"| Decompose["Decompose into subtasks<br>that each need a smaller<br>subset of the knowledge"]
+```
+
+**Step combining:** When two steps need the same project knowledge loaded, combining them is nearly free — the knowledge is loaded once, both steps execute in the remaining space. Splitting them wastes context by loading the same knowledge twice. Step boundaries belong where **information gaps** exist, not where implementation boundaries happen to fall.
+
+**Dynamic vs static constraints:** RT-ICA produces dynamic constraints — discovered fresh from the current goal, disposable after use. These provide visibility into edges that would cause problems if crossed blindly: scope creep, missing user opinions, abstract requirements that need to become definite. This is different from static process constraints (hardcoded gates, enforcement hooks, "MUST do X before Y" rules baked into workflow definitions) which carry maintenance cost and go stale. RT-ICA's value is turning the abstract into the definite for each specific task.
 
 ## Activation Triggers
 
@@ -232,17 +256,27 @@ After RT-ICA APPROVED decision, produce a plan that includes:
 
 <guardrails>
 
-The model MUST NOT:
+RT-ICA exists to prevent hallucinated constraints. Without it, models fill knowledge gaps with training data patterns — inventing requirements and presenting them as facts. These guardrails protect that function.
 
-- Fabricate unknown inputs
-- Silently assume missing requirements
-- Begin planning with MISSING conditions (unless user explicitly requests assumption-based planning)
+**Redirection rule:**
 
-The model MUST:
+When you notice yourself generating a value, constraint, or requirement that you cannot source from the input material — that impulse is a discovery, not a mistake. It reveals a gap. Redirect it:
+
+1. The unsourced content becomes a new MISSING condition
+2. Add it to the unknowns list with what you were about to fill in as a suggested default
+3. Continue the assessment
+
+Speculation is the signal that refinement is needed. The goal is not to suppress gap-filling — it is to catch it happening and route it into the unknowns list instead of into the plan as fact.
+
+**Reflection checkpoint:** Before writing each condition's status (AVAILABLE / DERIVABLE / MISSING), pause and reflect using the sequential-thinking MCP. For each condition, the thinking step should answer: "Can I source this from the input material, or am I generating it from training patterns?" This external reflection makes the redirection rule structural — the pause is a tool call, not an internal decision that can be skipped.
+
+**Never present unsourced content as verified.** Plan with MISSING conditions only when the user explicitly requests assumption-based planning.
+
+**Best practice:**
 
 - Keep missing-input questions minimal and high signal
 - Prefer early validation tasks for DERIVABLE items
-- Block planning when information is insufficient
+- Block planning when information is insufficient — localize the block to affected tasks where possible, not the entire plan
 
 </guardrails>
 

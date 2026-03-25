@@ -191,7 +191,9 @@ Defines a plugin mission statement — purpose, values, anti-patterns, and trade
 /mission-statement <plugin-path>
 ```
 
-#### `/rt-ica`
+#### `/rt-ica` (moved to development-harness)
+
+This skill has moved to the `development-harness` plugin. Use `/dh:rt-ica` instead.
 
 Mandatory pre-planning checkpoint (Reverse Thinking — Information Completeness Assessment). Blocks planning until all prerequisites are verified. Use before creating plans, delegating to agents, or defining acceptance criteria.
 

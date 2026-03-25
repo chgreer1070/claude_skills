@@ -47,7 +47,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 
 | Stage | Command | Purpose |
 |-------|---------|---------|
-| Starting complex task | `/plugin-creator:rt-ica` | High Quality Details |
+| Starting complex task | `/dh:rt-ica` | High Quality Details |
 | Delegating to sub-agent | `/delegate` | Enforces delegation framework |
 | Reviewing agent output | `/hallucination-detector:hallucination-audit` | Checks hallucinations, unverified causality |
 | Claiming task complete | `/verify` | Runs "Is It Done?" checklist |

@@ -369,7 +369,7 @@ flowchart TD
 
 Entry condition: Research gate passed.
 
-1. Task is prerequisite check with Skill(skill="plugin-creator:rt-ica")
+1. Task is prerequisite check with Skill(skill="dh:rt-ica")
    Context to include in the prompt: research-FINDINGS.md, plugin concept, user requirements from discuss-CONTEXT.md
    Output: APPROVED or BLOCKED verdict — if BLOCKED, resolve blockers before proceeding
 
