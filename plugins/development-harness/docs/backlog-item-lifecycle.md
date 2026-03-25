@@ -15,6 +15,25 @@
 
 **Last verified**: 2026-03-25
 
+## Governing Design Constraint: Context-Fit Complexity
+
+This lifecycle is structured according to the [Context-Fit Complexity Model](./sdlc-layers/layer-0/context-fit-complexity.md). Phase boundaries, node contracts, and step granularity follow the model's core equation:
+
+```text
+Complexity = context required for (knowledge loading + uncertainty resolution + execution)
+             relative to context available
+```
+
+**How to read node contracts through the context-fit lens:**
+
+- **Inputs column** = the knowledge payload the agent must load. When inputs come from a single prior node, the knowledge is already in scope — zero-overhead execution. When inputs require 5 artifacts from 3 sources, the knowledge payload is large — candidate for scale-out.
+- **Outputs column** = what persists as durable findings for downstream consumption. Transient context (intermediate research, failed attempts, verbose logs) should be garbage-collected — only the durable output survives.
+- **Edge Conditions column** = the uncertainty resolution gate. Each condition is an observable fact that determines the next node. When all conditions are AVAILABLE, uncertainty cost is zero. When conditions require tool verification, uncertainty adds to the context budget.
+
+**Optimization principle:** When adjacent nodes share the same knowledge payload, combining them reduces handoff overhead without increasing complexity. When a single node's knowledge payload exceeds comfortable working context, slicing at knowledge-boundary seams produces subtasks that each fit. The goal is context-fit right-sizing — not minimum steps, not maximum parallelism, but each agent receiving exactly the context it needs to act reliably.
+
+**Why:** "Stateless" in SAM (Stateless Agent Methodology) means each agent receives complete context, acts, and terminates. The context-fit model formalizes what "complete context" means. This lifecycle document is the map of how that context flows from idea to implementation. Optimizing the lifecycle means finding better context fits so fewer steps are needed to reach implementation.
+
 ---
 
 > [!IMPORTANT]
