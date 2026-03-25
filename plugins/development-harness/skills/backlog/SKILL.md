@@ -46,6 +46,12 @@ List open backlog items with optional filters.
 | `section` | `str \| None` | `None` | Filter by priority section: `P0`, `P1`, `P2`, or `Ideas` |
 | `status` | `str \| None` | `None` | Filter by status (e.g. `"needs-grooming"`, `"status:in-progress"`) |
 | `title` | `str \| None` | `None` | Filter by title substring (case-insensitive) |
+| `type` | `str \| None` | `None` | Filter by metadata.type — case-insensitive exact match (e.g. `"Bug"`, `"Feature"`). Items without metadata.type are excluded when active. |
+| `topic` | `str \| None` | `None` | Filter by metadata.topic — case-insensitive substring match. Items without metadata.topic are excluded when active. |
+| `include_closed` | `bool` | `False` | Include items with closed/done/resolved status (excluded by default) |
+| `search` | `str \| None` | `None` | Full-text search across title, section, topic, and type simultaneously. Supports OR/AND operators (e.g. `"auth OR deploy"`), regex patterns (`/pattern/` or `regex:pattern`), field-specific search (`title:auth`, `type:bug`, `topic:devops`, `section:P1`), and plain case-insensitive substring matching. OR/AND are whitespace-delimited and case-insensitive. Mixed AND/OR in a single query is not supported; AND takes precedence. Combine with other filters to narrow results further. |
+| `offset` | `int` | `0` | Skip the first N items from the filtered result set (for pagination) |
+| `limit` | `int` | `0` | Maximum items to return. `0` = auto-paginate within 4400 token budget (cl100k_base). When `has_more=true` in the response, call again with the `offset` from `next_call`. |
 
 Every response item includes `state` (open/closed) and `status` (workflow status from `status:*` labels).
 Returns `{items: [{title, priority, issue, plan, state, status, milestone}], backend: {...}, messages, warnings}`.
