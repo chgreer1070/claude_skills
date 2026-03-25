@@ -114,7 +114,7 @@ How each platform maps to the development harness core concepts:
 
 4. **Implement GitHub first, define interfaces for others** -- the existing `ArtifactBackend` Protocol and `GitHubArtifactProvider` demonstrate the pattern. New backends implement the same Protocol. Interfaces are defined during architecture; implementations are added incrementally.
 
-5. **`read_artifact_content` is always filesystem-based** -- manifests store references (paths), content lives in plan files on disk. This method does not vary by backend.
+5. **Backend is responsible for durable content storage** -- manifests store a `content_ref` (a backend-opaque identifier, not a filesystem path). The backend implementation resolves `content_ref` to bytes using its own native primitive (e.g., a GitHub Gist ID, a GitLab Snippet ID, a Supabase storage object key). Local filesystem is a valid implementation only for `LocalYamlTaskProvider` in single-machine, non-distributed use. Any backend intended for sandbox, CI, or distributed agent access must store content remotely.
 
 ## Implementation Roadmap
 
@@ -124,38 +124,219 @@ Three Protocol abstractions are needed, one per subsystem:
 
 Defined in `backlog_core/artifact_provider.py`. `GitHubArtifactProvider` is the current implementation.
 
-Methods: `get_manifest`, `set_manifest`, `read_artifact_content`
+```python
+@runtime_checkable
+class ArtifactBackend(Protocol):
+    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+        """Return the artifact manifest for the given issue/item.
+
+        The manifest is a structured list of registered artifacts with their
+        type, content_ref, status, and agent. The backend retrieves this from
+        wherever it stores structured metadata (e.g. issue body section,
+        attachment key, table row).
+
+        Must return an empty manifest (not raise) when no manifest exists yet.
+        """
+        ...
+
+    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+        """Persist the artifact manifest for the given issue/item.
+
+        The backend writes the manifest to its native structured metadata store.
+        This operation must be atomic — a partial write must not corrupt an
+        existing manifest. Backends should use compare-and-swap or a transaction
+        if the platform supports it.
+        """
+        ...
+
+    def store_artifact_content(self, artifact_type: str, path: str, content: str) -> str:
+        """Store artifact content durably and return a content_ref.
+
+        The backend persists `content` using its native content storage primitive
+        (e.g. create/update a Gist, Snippet, or storage object). Returns a
+        `content_ref` string that is opaque to callers but sufficient for the
+        backend to retrieve the content later via `read_artifact_content`.
+
+        Must be idempotent: calling with the same type+path updates in place
+        rather than creating a new entry. The returned content_ref must remain
+        stable across updates.
+
+        Content stored here must be accessible from any environment that has
+        valid backend credentials — not just the machine where this method ran.
+        """
+        ...
+
+    def read_artifact_content(self, content_ref: str) -> str:
+        """Retrieve artifact content by content_ref.
+
+        The backend resolves `content_ref` (returned by a prior
+        `store_artifact_content` call) to the original content string.
+        Must work from any environment with valid backend credentials.
+
+        Raises ContentNotFoundError if the ref is invalid or the content
+        has been deleted from the backend.
+        """
+        ...
+```
 
 ### IssueBackend Protocol (to be created)
 
 Abstracts the backlog/issue operations currently hardcoded to GitHub in `backlog_core/github.py` and `backlog_core/operations.py`. The current GitHub implementation uses `sync_issues_graphql` as the bulk fetch primitive; the Protocol interface expresses this as `list_issues`.
 
-Expected methods (derived from current `backlog_core` operations):
+```python
+class IssueBackend(Protocol):
+    def get_issue(self, number: int) -> IssueData:
+        """Return a single issue/item by its backend-assigned identifier.
 
-- `get_issue(number) -> IssueData`
-- `create_issue(title, body, labels, ...) -> IssueData`
-- `update_issue(number, ...) -> None`
-- `close_issue(number) -> None`
-- `list_issues(state, labels, ...) -> list[IssueData]`
-- `add_label(number, label) -> None`
-- `remove_label(number, label) -> None`
-- `create_sub_issue(parent, title, body, ...) -> IssueData`
-- `list_sub_issues(parent) -> list[IssueData]`
-- `sync_status(number, status) -> None`
+        Must include title, body, labels/status, and any structured metadata
+        fields the backend supports. Raises IssueNotFoundError if absent.
+        """
+        ...
+
+    def create_issue(self, title: str, body: str, labels: list[str], **kwargs) -> IssueData:
+        """Create a new issue/item and return it with its assigned identifier.
+
+        The backend assigns a stable numeric or string identifier. All
+        subsequent operations reference this identifier, not the title.
+        """
+        ...
+
+    def update_issue(self, number: int, **kwargs) -> None:
+        """Update mutable fields on an existing issue/item.
+
+        Implementations must accept unknown kwargs gracefully — callers may
+        pass fields the backend does not support. Unsupported fields are
+        silently ignored (not an error).
+        """
+        ...
+
+    def close_issue(self, number: int) -> None:
+        """Mark an issue/item as closed/resolved in the backend."""
+        ...
+
+    def list_issues(self, state: str, labels: list[str], since: str | None = None) -> list[IssueData]:
+        """Return all issues/items matching the given filters.
+
+        `since` is an ISO 8601 datetime string for incremental sync. Backends
+        that support incremental fetch must honour it; backends that do not
+        may return all matching items and let the caller filter by updated_at.
+
+        This is the bulk fetch primitive — implementations should use the most
+        efficient query mechanism the platform provides (e.g. GraphQL cursor
+        pagination, SQL WHERE clause, REST ?updated_after param).
+        """
+        ...
+
+    def add_label(self, number: int, label: str) -> None:
+        """Attach a label/tag to an issue/item. No-op if already present."""
+        ...
+
+    def remove_label(self, number: int, label: str) -> None:
+        """Remove a label/tag from an issue/item. No-op if not present."""
+        ...
+
+    def create_sub_issue(self, parent: int, title: str, body: str, **kwargs) -> IssueData:
+        """Create a child item under the given parent and return it.
+
+        Backends that do not support native sub-issues must emulate the
+        relationship (e.g. via a label, a linked-item relation, or a
+        custom field). The relationship must be traversable via
+        `list_sub_issues`.
+        """
+        ...
+
+    def list_sub_issues(self, parent: int) -> list[IssueData]:
+        """Return all child items of the given parent item."""
+        ...
+
+    def sync_status(self, number: int, status: str) -> None:
+        """Set the workflow status of an issue/item.
+
+        Status values are backend-agnostic strings (e.g. "in-progress",
+        "done"). The backend maps these to its native status/state field.
+        Backends with fixed state machines (e.g. Linear) must map to the
+        nearest equivalent state; unmappable values raise StatusMappingError.
+        """
+        ...
+```
 
 ### TaskBackend Protocol (to be created)
 
-Abstracts SAM task storage currently implemented as local YAML files in `sam_schema/`.
+Abstracts SAM task storage currently implemented as local YAML files in `sam_schema/`. The local YAML implementation (`LocalYamlTaskProvider`) is a valid backend for single-machine use only — it cannot be accessed from sandboxes, CI runners, or distributed agents without filesystem access. Any deployment requiring environment portability must use a remote-backed implementation.
 
-Expected methods (derived from current `sam_schema` operations):
+```python
+class TaskBackend(Protocol):
+    def list_plans(self) -> list[PlanSummary]:
+        """Return summary metadata for all plans visible to this backend.
 
-- `list_plans() -> list[PlanSummary]`
-- `read_plan(plan_id) -> PlanData`
-- `read_task(plan_id, task_id) -> TaskData`
-- `claim_task(plan_id, task_id) -> bool`
-- `update_task_status(plan_id, task_id, status) -> None`
-- `get_ready_tasks(plan_id) -> list[TaskData]`
-- `create_plan(slug, goal, tasks) -> PlanData`
+        For remote backends, this fetches from the authoritative remote store.
+        For local backends, this scans the local plan directory.
+        Must not require filesystem access to succeed on remote backends.
+        """
+        ...
+
+    def read_plan(self, plan_id: str) -> PlanData:
+        """Return the full plan including all task definitions.
+
+        plan_id is the backend-assigned stable identifier (e.g. issue number,
+        slug, or UUID). Raises PlanNotFoundError if absent.
+
+        Remote backends must serve this from the remote store, not a local
+        cache, to ensure consistency across distributed agents.
+        """
+        ...
+
+    def read_task(self, plan_id: str, task_id: str) -> TaskData:
+        """Return a single task from the given plan.
+
+        task_id is the task key within the plan (e.g. "T1", "T03"). Raises
+        TaskNotFoundError if the plan exists but the task does not.
+        """
+        ...
+
+    def claim_task(self, plan_id: str, task_id: str) -> bool:
+        """Atomically claim a task for execution. Returns True if claimed.
+
+        A task may only be claimed if its current status is "not-started".
+        The backend must use its platform's atomic primitive (e.g. conditional
+        write, compare-and-swap, optimistic locking) to prevent two agents
+        claiming the same task concurrently.
+
+        Returns False (not raises) if the task is already claimed or in a
+        terminal state. Callers must check the return value.
+        """
+        ...
+
+    def update_task_status(self, plan_id: str, task_id: str, status: str) -> None:
+        """Update the status of a task to one of the recognised SAM states.
+
+        Valid statuses: not-started, in-progress, complete, failed, skipped.
+        The backend persists this durably so other agents see the update
+        immediately without requiring a local file or cache refresh.
+        """
+        ...
+
+    def get_ready_tasks(self, plan_id: str) -> list[TaskData]:
+        """Return all tasks whose dependencies are satisfied and status is not-started.
+
+        The backend evaluates the dependency graph and returns only tasks that
+        are unblocked. This must be computed from the authoritative store, not
+        a local snapshot, to avoid race conditions in parallel execution.
+        """
+        ...
+
+    def create_plan(self, slug: str, goal: str, tasks: list[TaskDefinition], **kwargs) -> PlanData:
+        """Persist a new plan with its task definitions and return it.
+
+        The backend assigns a stable plan_id and stores all task definitions
+        durably. The plan must be readable by `read_plan` from any environment
+        immediately after this call returns.
+
+        kwargs may include issue_number (to link the plan to a backlog item),
+        acceptance_criteria, and other plan-level metadata fields.
+        """
+        ...
+```
 
 ### Composition
 

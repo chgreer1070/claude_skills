@@ -213,6 +213,10 @@ SOURCE: Experimental validation (2026-02-02). Context-gathering: 4/4 correct. Ex
 
 ---
 
+- Scratch Directory Convention: `.claude/rules/scratch-directory.md`
+
+---
+
 - Language Conventions: `.claude/rules/language-conventions.md`
 
 ---
