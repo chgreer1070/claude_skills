@@ -130,6 +130,9 @@ class IssueCommentNode(TypedDict):
     id: str
     body: str
     url: str
+    author: str
+    created_at: str
+    updated_at: str
 
 
 class MilestoneFullNode(TypedDict):
@@ -318,9 +321,31 @@ query GetIssueComments($owner: String!, $repo: String!, $number: Int!, $first: I
   repository(owner: $owner, name: $repo) {
     issue(number: $number) {
       comments(first: $first, after: $after) {
-        nodes { id body url }
+        nodes {
+          id
+          body
+          url
+          author { login }
+          createdAt
+          updatedAt
+        }
         pageInfo { hasNextPage endCursor }
       }
+    }
+  }
+}
+"""
+
+_COMMENT_BY_ID_QUERY = """
+query GetComment($id: ID!) {
+  node(id: $id) {
+    ... on IssueComment {
+      id
+      body
+      url
+      author { login }
+      createdAt
+      updatedAt
     }
   }
 }
@@ -778,6 +803,27 @@ def _add_comment_graphql(repo: Repository, issue_node_id: str, body: str) -> str
     return str(comment_node.get("id", ""))
 
 
+def _parse_comment_node(node: dict[str, object]) -> IssueCommentNode:
+    """Parse a raw GraphQL comment dict into a typed IssueCommentNode.
+
+    Args:
+        node: Raw dict from GraphQL response comments.nodes[] or node() query.
+
+    Returns:
+        IssueCommentNode with all fields populated.
+    """
+    raw_author = node.get("author")
+    author = str(raw_author["login"]) if isinstance(raw_author, dict) and "login" in raw_author else ""  # ty: ignore[invalid-argument-type]
+    return IssueCommentNode(
+        id=str(node.get("id", "")),
+        body=str(node.get("body", "")),
+        url=str(node.get("url", "")),
+        author=author,
+        created_at=str(node.get("createdAt", "")),
+        updated_at=str(node.get("updatedAt", "")),
+    )
+
+
 def _fetch_issue_comments_graphql(
     repo: Repository, owner: str, repo_name: str, issue_number: int
 ) -> list[IssueCommentNode]:
@@ -790,7 +836,8 @@ def _fetch_issue_comments_graphql(
         issue_number: Issue number (positive integer).
 
     Returns:
-        List of ``IssueCommentNode`` dicts with ``id``, ``body``, ``url`` fields.
+        List of ``IssueCommentNode`` dicts with ``id``, ``body``, ``url``,
+        ``author``, ``created_at``, and ``updated_at`` fields.
 
     Raises:
         BacklogError: On GraphQL errors.
@@ -809,15 +856,35 @@ def _fetch_issue_comments_graphql(
         issue_data = (data.get("repository") or {}).get("issue") or {}
         comments_data = issue_data.get("comments") or {}
         nodes: list[dict[str, object]] = list(comments_data.get("nodes") or [])
-        comments.extend(
-            IssueCommentNode(id=str(node.get("id", "")), body=str(node.get("body", "")), url=str(node.get("url", "")))
-            for node in nodes
-        )
+        comments.extend(_parse_comment_node(node) for node in nodes)
         page_info: dict[str, object] = comments_data.get("pageInfo") or {}
         if not page_info.get("hasNextPage"):
             break
         cursor = str(page_info.get("endCursor") or "")
     return comments
+
+
+def _fetch_comment_by_id_graphql(repo: Repository, comment_node_id: str) -> IssueCommentNode:
+    """Fetch a single comment by its GraphQL node ID.
+
+    Args:
+        repo: PyGithub Repository object (provides requester transport).
+        comment_node_id: GraphQL node ID of the comment (e.g. ``IC_kwDO...``).
+
+    Returns:
+        IssueCommentNode with all fields populated.
+
+    Raises:
+        BacklogError: If the node is not found or is not an IssueComment, or on
+            GraphQL errors.
+    """
+    data = _graphql_request(repo, _COMMENT_BY_ID_QUERY, {"id": comment_node_id})
+    node = data.get("node")
+    if node is None or not isinstance(node, dict):
+        raise BacklogError(f"GraphQL error: Could not resolve comment node {comment_node_id!r}")
+    if "id" not in node:
+        raise BacklogError(f"GraphQL error: Node {comment_node_id!r} is not an IssueComment")
+    return _parse_comment_node(node)
 
 
 def _update_issue_comment_graphql(repo: Repository, comment_node_id: str, body: str) -> None:

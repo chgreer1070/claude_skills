@@ -1440,6 +1440,56 @@ async def backlog_comment_issue(
 
 
 @mcp.tool
+async def backlog_list_comments(
+    issue_number: Annotated[int, Field(description="GitHub issue number (without #)")],
+    limit: Annotated[int, Field(description="Maximum comments to return")] = 20,
+    offset: Annotated[int, Field(description="Number of comments to skip")] = 0,
+) -> dict:
+    """List comments on a GitHub issue.
+
+    Returns:
+        Dict with comments (list of {id, author, created_at, updated_at, preview}),
+        count, has_more, and output messages/warnings.
+        On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.list_comments, issue_number=issue_number, limit=limit, offset=offset, output=out
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_read_comment(
+    issue_number: Annotated[int, Field(description="GitHub issue number (without #)")],
+    comment_id: Annotated[
+        int,
+        Field(
+            description="REST comment database ID (integer). Use the GitHub REST API or issue comment list to obtain this ID."
+        ),
+    ],
+) -> dict:
+    """Read the full body of a single comment on a GitHub issue.
+
+    Returns:
+        Dict with id (GraphQL node ID), author, created_at, updated_at,
+        body (full Markdown — no truncation), and output messages/warnings.
+        On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.read_comment, issue_number=issue_number, comment_id=comment_id, output=out
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
 async def backlog_list_projects(
     owner: Annotated[str | None, Field(description="GitHub owner (org or user). Defaults to repo owner")] = None,
     limit: Annotated[int, Field(description="Maximum projects to return")] = 20,

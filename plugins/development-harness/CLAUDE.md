@@ -16,6 +16,7 @@ Language-agnostic development process harness that orchestrates feature developm
 - Every stage produces a file-based artifact (stateless handoff)
 - Human escalation follows ARL constraint analysis, not arbitrary checkpoints
 - Without a language manifest, the harness falls back to general-purpose agents
+- Task complexity is context-fit under uncertainty — see [Context-Fit Complexity Model](./docs/sdlc-layers/layer-0/context-fit-complexity.md)
 
 ---
 

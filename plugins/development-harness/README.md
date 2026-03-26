@@ -483,6 +483,7 @@ Restart your Claude Code session after installation to load all components.
 
 ## References
 
+- [Context-Fit Complexity Model](./docs/sdlc-layers/layer-0/context-fit-complexity.md) — Task complexity as context sufficiency: decomposition, constraint economics, progressive disclosure
 - SAM methodology: <https://github.com/bitflight-devops/stateless-agent-methodology>
 - Flow experiments: <https://github.com/Jamie-BitFlight/sam-flow-experiments>
 - ARL provenance: <https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/research/arl/PROVENANCE.md>

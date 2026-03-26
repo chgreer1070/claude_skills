@@ -34,6 +34,29 @@ Complexity = context required for (knowledge loading + uncertainty resolution + 
 
 **Why:** "Stateless" in SAM (Stateless Agent Methodology) means each agent receives complete context, acts, and terminates. The context-fit model formalizes what "complete context" means. This lifecycle document is the map of how that context flows from idea to implementation. Optimizing the lifecycle means finding better context fits so fewer steps are needed to reach implementation.
 
+### Knowledge Reuse vs Knowledge Gathering
+
+Every lifecycle execution generates knowledge — codebase patterns discovered during grooming, architecture decisions made during planning, domain constraints surfaced during research. The context-fit optimization question for each piece of knowledge is: should it be gathered fresh each time, or stored for retrieval by relationship?
+
+**Gathered knowledge** is discovered by agents during execution — file reads, web searches, codebase analysis. It costs context budget every time. It is always fresh but always expensive.
+
+**Stored knowledge** lives in a persistent graph — the groomed item's sections, the architect spec, the artifact manifest, the backlog item's dependencies and cross-references. It costs retrieval by key or relationship, not discovery. It can go stale but is cheap to access.
+
+**The optimization:**
+
+- When the same knowledge is gathered by multiple agents across multiple items (e.g., "what testing framework does this project use?", "what is the module boundary for backlog_core?"), that knowledge is a candidate for the persistent graph. Store it once, retrieve by relationship.
+- When knowledge is item-specific and changes between executions (e.g., "what files did the architect spec identify?", "what are the acceptance criteria for this task?"), it belongs in the artifact flow — passed as node contract Inputs, not stored globally.
+- When knowledge is both reusable AND volatile (e.g., "what is the current state of the codebase?"), use progressive disclosure — store the stable structure, gather the volatile details on demand.
+
+**Practical signals for what to store vs gather:**
+
+- If a gathering agent runs the same Grep/Read pattern across 3+ items → store the result as a codebase-analysis artifact, reference by relationship
+- If an agent needs domain context that was already produced by a prior phase of a different item → cross-reference via the artifact manifest, do not re-discover
+- If the grooming swarm's fact-checker verifies the same claim across multiple items → store the verification as a reusable finding, not per-item
+- If the swarm-task-planner makes the same decomposition pattern for similar features → extract the pattern as a template, not a one-off plan
+
+The node contracts in this document support this: the Inputs column shows what knowledge each node needs. When that knowledge is the same across many executions of the same node, it belongs in the persistent graph. When it varies per execution, it belongs in the artifact flow.
+
 ---
 
 > [!IMPORTANT]

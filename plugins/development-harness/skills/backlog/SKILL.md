@@ -11,7 +11,7 @@ Skills and agents invoke MCP tools or the CLI — no direct `Write`/`Edit` on pe
 
 ## Primary Interface (MCP)
 
-All 10 tools return a `dict`. On error the dict contains an `"error"` key. On success it
+All 12 tools return a `dict`. On error the dict contains an `"error"` key. On success it
 contains result data keys plus `messages: list[str]` and `warnings: list[str]` (always present,
 may be empty). Always check for `"error"` before consuming result fields.
 
@@ -204,6 +204,35 @@ lacking GitHub Issues by creating them. Merges by section, keeping the longer ve
 
 Returns `{pulled, messages, warnings}` for bulk pull; `{file_path, messages, warnings}` for single-item pull.
 
+### `backlog_list_comments`
+
+List comments on a GitHub issue with pagination. Returns a `preview` (first 200 characters)
+per comment — use `backlog_read_comment` to fetch the full body of a specific comment.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `issue_number` | `int` | required | GitHub issue number (without `#`) |
+| `limit` | `int` | `20` | Maximum comments to return |
+| `offset` | `int` | `0` | Number of comments to skip (for pagination) |
+
+Returns `{comments: [{id, author, created_at, updated_at, preview}], count, has_more, messages, warnings}`.
+
+When `has_more=True`, call again with `offset += limit` to retrieve the next page.
+
+### `backlog_read_comment`
+
+Read the full body of a single comment. The `id` field from `backlog_list_comments` is the
+integer REST comment ID to pass here.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `issue_number` | `int` | required | GitHub issue number (without `#`) |
+| `comment_id` | `int` | required | REST comment database ID (integer from `backlog_list_comments`) |
+
+Returns `{id, author, created_at, updated_at, body, messages, warnings}`.
+
+`body` is the full Markdown comment — no truncation.
+
 ## Return Value Contract
 
 All tools return a `dict`. Callers must handle both shapes:
@@ -226,7 +255,7 @@ uv run fastmcp call plugins/development-harness/.mcp.json <tool_name> [key=value
 
 Available tools mirror the MCP tools: `backlog_add`, `backlog_list`, `backlog_view`,
 `backlog_sync`, `backlog_close`, `backlog_resolve`, `backlog_update`, `backlog_groom`,
-`backlog_normalize`, `backlog_pull`.
+`backlog_normalize`, `backlog_pull`, `backlog_list_comments`, `backlog_read_comment`.
 
 ## Environment
 
