@@ -171,16 +171,18 @@ def _discover_via_env() -> str | None:
 def _discover_via_git() -> str | None:
     """Parse the ``origin`` remote URL via GitPython to extract ``owner/repo``.
 
-    Uses :class:`git.Repo` with ``search_parent_directories=True`` to locate
-    the repository, then reads the ``origin`` remote URL and applies regex
-    patterns for SSH SCP, SSH protocol, and HTTPS URL formats.
+    Opens :class:`git.Repo` at :data:`_REPO_ROOT` (resolved project root from
+    :func:`dh_paths.infer_project_root`, ``DH_PROJECT_ROOT``, etc.), with
+    ``search_parent_directories=True`` so a subdirectory of a worktree still
+    resolves.  Does **not** use the process cwd — MCP stdio servers often
+    start with cwd outside the user's repository (plugin cache, ``/``, IDE).
 
     Returns:
         Validated ``owner/repo`` slug, or ``None`` when no git repository is
         found, there is no ``origin`` remote, or the URL cannot be parsed.
     """
     try:
-        repo = git.Repo(search_parent_directories=True)
+        repo = git.Repo(_REPO_ROOT, search_parent_directories=True)
         url = repo.remote().url
     except (git.InvalidGitRepositoryError, git.NoSuchPathError, ValueError):
         return None

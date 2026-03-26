@@ -32,12 +32,13 @@ plugin cache cwd, IDEs). Checked in order by :func:`infer_project_root` when
     CURSOR_PROJECT_ROOT=/path/to/repo      # when the Cursor host sets it
     CLAUDE_PROJECT_DIR=/path/to/repo       # when the Claude Code host sets it
 
-MCP layout is split by host: **Claude Code** uses ``.mcp.json`` with
-``${CLAUDE_PLUGIN_ROOT}`` in script paths. **Cursor** uses ``.cursor-plugin/plugin.json``
-pointing at ``.mcp.cursor.json``, which sets ``DH_PROJECT_ROOT`` to
-``${workspaceFolder}`` and runs scripts with paths relative to the plugin root
-(see Cursor plugin + MCP docs). Shared ``infer_project_root()`` consumes whichever
-env the active host sets.
+MCP layout: **Claude Code** uses ``.claude-plugin/plugin.json`` (and may merge
+``.mcp.json``) with ``${CLAUDE_PLUGIN_ROOT}`` in script paths. **Cursor** uses
+``.cursor-plugin/plugin.json`` with the **same** script path variable:
+``${CLAUDE_PLUGIN_ROOT}/scripts/...`` — Cursor resolves ``./scripts/...`` against
+``${workspaceFolder}``, not the plugin install dir. **Cursor** sets
+``DH_PROJECT_ROOT`` to ``${workspaceFolder}`` for the open repo. Shared
+``infer_project_root()`` consumes whichever env the active host sets.
 """
 
 from __future__ import annotations

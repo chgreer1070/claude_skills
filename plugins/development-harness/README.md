@@ -453,7 +453,7 @@ Restart your Claude Code session after installation to load all components.
 
 ### Cursor IDE
 
-This plugin also ships a **Cursor-native** manifest (`.cursor-plugin/plugin.json`) and **`.mcp.cursor.json`**, which sets `DH_PROJECT_ROOT` to `${workspaceFolder}` and uses script paths relative to the plugin root. Cursor loads that MCP file when the manifest’s `mcpServers` points at it (see [Cursor Plugins reference](https://cursor.com/docs/reference/plugins.md)). The shared **`.mcp.json`** remains for **Claude Code** (`${CLAUDE_PLUGIN_ROOT}`) only.
+The **`.cursor-plugin/plugin.json`** manifest is for Cursor (see [Plugins reference](https://cursor.com/docs/reference/plugins.md)). MCP entries mirror **Claude Code** for the script path: **`${CLAUDE_PLUGIN_ROOT}/scripts/...`**, because Cursor resolves **`./scripts/...` against `${workspaceFolder}`** (the open project), which points at the wrong tree (e.g. `vm-flightsimulator/scripts/...` instead of the installed plugin). **`DH_PROJECT_ROOT`** is set to **`${workspaceFolder}`** so backlog/SAM resolve the **git repo** you have open. If your Cursor build does not set **`CLAUDE_PLUGIN_ROOT`** for this plugin, override the MCP `args` in **`.cursor/mcp.json`** with an absolute path to `scripts/run_backlog_server.py` under your plugin install, or report the gap to Cursor.
 
 ---
 
