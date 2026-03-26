@@ -451,6 +451,10 @@ For full Python specialist support, also install:
 
 Restart your Claude Code session after installation to load all components.
 
+### Cursor IDE
+
+This plugin also ships a **Cursor-native** manifest (`.cursor-plugin/plugin.json`) and **`.mcp.cursor.json`**, which sets `DH_PROJECT_ROOT` to `${workspaceFolder}` and uses script paths relative to the plugin root. Cursor loads that MCP file when the manifest’s `mcpServers` points at it (see [Cursor Plugins reference](https://cursor.com/docs/reference/plugins.md)). The shared **`.mcp.json`** remains for **Claude Code** (`${CLAUDE_PLUGIN_ROOT}`) only.
+
 ---
 
 ## Requirements

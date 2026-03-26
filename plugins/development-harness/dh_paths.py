@@ -32,10 +32,12 @@ plugin cache cwd, IDEs). Checked in order by :func:`infer_project_root` when
     CURSOR_PROJECT_ROOT=/path/to/repo      # when the Cursor host sets it
     CLAUDE_PROJECT_DIR=/path/to/repo       # when the Claude Code host sets it
 
-Hosts may inject these; the bundled plugin ``.mcp.json`` does not hardcode any
-single product's variable. If your MCP runner expands placeholders, you can set
-``DH_PROJECT_ROOT`` to ``${workspaceFolder}`` (Cursor/VS Code style) in merged
-MCP config.
+MCP layout is split by host: **Claude Code** uses ``.mcp.json`` with
+``${CLAUDE_PLUGIN_ROOT}`` in script paths. **Cursor** uses ``.cursor-plugin/plugin.json``
+pointing at ``.mcp.cursor.json``, which sets ``DH_PROJECT_ROOT`` to
+``${workspaceFolder}`` and runs scripts with paths relative to the plugin root
+(see Cursor plugin + MCP docs). Shared ``infer_project_root()`` consumes whichever
+env the active host sets.
 """
 
 from __future__ import annotations
@@ -220,10 +222,10 @@ def infer_project_root(cwd: Path | None = None) -> Path:
     except subprocess.CalledProcessError as exc:
         msg = (
             "Could not resolve the git project root: process cwd is not inside a repository "
-            "and no project path was found. Ensure the MCP host sets WORKSPACE_FOLDER_PATHS "
-            "(VS Code / Cursor) or pass --project-dir when starting the backlog server. "
-            "You can set DH_PROJECT_ROOT in MCP env (e.g. ${workspaceFolder} if your host "
-            "expands it), or set CURSOR_PROJECT_ROOT / CLAUDE_PROJECT_DIR when using those CLIs."
+            "and no project path was found. If you use Cursor, ensure the backlog MCP entry "
+            "is merged from config that expands ${workspaceFolder} (see .cursor/mcp.json or "
+            "plugin .mcp.json env). Otherwise set DH_PROJECT_ROOT, WORKSPACE_FOLDER_PATHS, "
+            "CURSOR_PROJECT_ROOT, or CLAUDE_PROJECT_DIR, or pass --project-dir."
         )
         raise RuntimeError(msg) from exc
 
