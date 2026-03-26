@@ -27,7 +27,6 @@ dev = [
     "hypothesis>=6.0.0",
     "matplotlib>=3.10.8",
     "mcp[cli]>=1.26.0",
-    "mypy>=1.19.1",
     "pandas>=3.0.0",
     "panel>=1.8.10",
     "pm4py>=2.7.0",
