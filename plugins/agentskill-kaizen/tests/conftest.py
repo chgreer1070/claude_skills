@@ -36,13 +36,23 @@ if TYPE_CHECKING:
 
 
 class _StubMCP:
-    """Minimal FastMCP stand-in that makes @mcp.tool a no-op decorator."""
+    """Minimal FastMCP stand-in that makes @mcp.tool / @mcp.resource no-op decorators."""
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         pass
 
     def tool(self, *args: object, **kwargs: object) -> Callable[..., object]:
         """Return a no-op decorator (or decorate the function directly)."""
+
+        def decorator(fn: object) -> object:
+            return fn
+
+        if args and callable(args[0]):
+            return args[0]
+        return decorator
+
+    def resource(self, *args: object, **kwargs: object) -> Callable[..., object]:
+        """Same passthrough as ``tool`` for ``@mcp.resource(uri)``."""
 
         def decorator(fn: object) -> object:
             return fn

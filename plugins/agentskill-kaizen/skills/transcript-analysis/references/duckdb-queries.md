@@ -2,7 +2,17 @@
 
 SQL patterns for querying Claude Code JSONL transcripts via the MotherDuck MCP server (`execute_query` tool). All queries use DuckDB dialect.
 
-**Path substitution:** Replace `/path/to/*.jsonl` in all queries below with the actual transcript glob path from the Data Location section of the parent skill (e.g., `~/.claude/projects/-home-user-repos-myproject/*.jsonl`).
+**Storage model:** Session data lives in **JSONL files on disk**. DuckDB here is only the **query engine** (`read_ndjson_auto`, aggregates, etc.). The MCP server uses `:memory:`; SQL must use **absolute** paths to JSONL (see `docs/cross-platform-notes.md` for tilde/`args` pitfalls).
+
+**Path substitution:** Replace `/path/to/*.jsonl` in all queries below with the **absolute** transcript glob path from the Data Location section of the parent skill. Do not rely on `~` inside SQL strings — the MotherDuck server does not expand it.
+
+## Arbitrary queries (not limited to this cookbook)
+
+1. Load the field reference: **`kaizen-analysis` MCP** — tool `get_transcript_jsonl_schema`, or **`resources/read`** URI `kaizen://session-log/schema` (same markdown), or **Read** [jsonl-schema.md](./jsonl-schema.md) / [session-log-schema.md](./session-log-schema.md) from the plugin.
+2. Compose **any** DuckDB SQL against `read_ndjson_auto('ABSOLUTE/GLOB/*.jsonl', columns={line: 'JSON'})` using `json_extract`, `json_extract_string`, `->`, `->>`, and `LATERAL unnest(...)` for arrays — match paths and shapes from the schema doc.
+3. Run SQL via **`kaizen-duckdb` MCP** `execute_query`.
+
+The sections below are **examples** (tool misuse, frustration, etc.), not an exhaustive list of what you may select or filter.
 
 ## Loading JSONL Data
 
