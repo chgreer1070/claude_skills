@@ -607,6 +607,63 @@ def _handle_update_groomed(
         update_item_metadata(filepath, {"metadata": {"last_synced": now_iso()}}, output=out)
 
 
+def _handle_batch_groomed(
+    item: BacklogItem, sections: dict[str, str], repo: str, output: Output | None = None
+) -> list[str]:
+    """Write multiple groomed sections atomically: local writes first, then GitHub sync.
+
+    Phase 1: Loop through sections and call _write_groomed_to_item_file for each.
+    Phase 2: If item has an issue, loop through sections and call _write_groomed_to_github
+             for each. All GitHub API calls occur after all local writes complete.
+             Sets last_synced timestamp after any successful GitHub sync.
+
+    Args:
+        item: BacklogItem with file_path set.
+        sections: Mapping of section name to raw content (entry-block wrapping applied automatically).
+        repo: GitHub repo slug (e.g. "owner/repo").
+        output: Optional Output aggregator.
+
+    Returns:
+        List of section names that were written locally.
+
+    Raises:
+        BacklogError: If item has no file_path.
+    """
+    out = output or Output()
+    if not item.file_path:
+        raise BacklogError("Item has no file path")
+    filepath = Path(item.file_path)
+    added_date = item.added if hasattr(item, "added") and item.added else "0000-00-00"
+
+    # Phase 1: Local writes — all sections before any GitHub API call.
+    written: list[str] = []
+    for section_name, content in sections.items():
+        _write_groomed_to_item_file(
+            filepath,
+            content,
+            section_name,
+            output=out,
+            entry_id=None,
+            replace_section=False,
+            reason=None,
+            added_date=added_date,
+            append=False,
+        )
+        written.append(section_name)
+    out.info(f"Updated {filepath.name} with {len(written)} groomed section(s)")
+
+    # Phase 2: GitHub sync — only after all local writes succeed.
+    if item.issue:
+        github_synced = False
+        for section_name, content in sections.items():
+            synced = _write_groomed_to_github(item.issue, content, section_name, repo, output=out)
+            github_synced = github_synced or synced
+        if github_synced:
+            update_item_metadata(filepath, {"metadata": {"last_synced": now_iso()}}, output=out)
+
+    return written
+
+
 def _overwrite_body_from_github(filepath: Path, issue_body: str) -> None:
     """Replace the body of a local cache file with content from GitHub issue body.
 
@@ -2081,6 +2138,74 @@ def _apply_issue_status_labels(
 # ---------------------------------------------------------------------------
 
 
+def _apply_groomed_update(
+    item: BacklogItem,
+    result: dict[str, str | int | bool | list[str]],
+    groomed_file: str | None,
+    groomed_content: str | None,
+    section: str | None,
+    content: str | None,
+    repo: str,
+    output: Output,
+    *,
+    entry_id: str | None,
+    replace_section: bool,
+    reason: str | None,
+    append: bool,
+    sections: dict[str, str] | None,
+) -> dict[str, str | int | bool | list[str] | dict[str, str | int | bool]]:
+    """Apply groomed content update (batch or single-section) and return result dict.
+
+    Extracted from update_item to keep cyclomatic complexity within limit.
+
+    Args:
+        item: Resolved BacklogItem with file_path set.
+        result: Partial result dict already containing ``title`` key.
+        groomed_file: Path to groomed content file (single-section path).
+        groomed_content: Raw groomed content string (single-section path).
+        section: Section name for single-section update.
+        content: Content string for single-section update.
+        repo: GitHub repo slug.
+        output: Output aggregator (never None here).
+        entry_id: Entry block ID for targeted replacement.
+        replace_section: When True, replace the full section.
+        reason: Reason string for entry-block operations.
+        append: When True and section is set, append content.
+        sections: Batch mapping of section name to raw content.
+
+    Returns:
+        Completed result dict with groomed_updated and optional sections_written.
+
+    Raises:
+        BacklogError: If item has no file_path.
+        ValidationError: If resolved single-section content is empty.
+    """
+    if not item.file_path:
+        raise BacklogError("Item has no file path")
+
+    if sections is not None:
+        if sections:
+            written = _handle_batch_groomed(item, sections, repo, output=output)
+            return {**result, "sections_written": written, "groomed_updated": True, **output.to_dict()}
+        return {**result, "sections_written": [], "groomed_updated": False, **output.to_dict()}
+
+    groomed_content_val, section_name = _resolve_groomed_content(section, content, groomed_content, groomed_file)
+    if not groomed_content_val.strip():
+        raise ValidationError("No groomed content provided")
+    _handle_update_groomed(
+        item,
+        groomed_content_val,
+        section_name,
+        repo,
+        output=output,
+        entry_id=entry_id,
+        replace_section=replace_section,
+        reason=reason,
+        append=append,
+    )
+    return {**result, "groomed_updated": True, **output.to_dict()}
+
+
 def update_item(
     selector: str,
     plan: str | None = None,
@@ -2101,11 +2226,36 @@ def update_item(
     reason: str | None = None,
     verified: bool = False,
     append: bool = False,
+    sections: dict[str, str] | None = None,
 ) -> dict[str, str | int | bool | list[str] | dict[str, str | int | bool]]:
     """Update item: add Plan, set status:in-progress, create issue, apply verified label, or write groomed content.
 
+    Args:
+        selector: Item selector (title, issue ref, or file path).
+        plan: Plan string to apply to the item.
+        status: Status string to set (e.g. "in-progress").
+        create_issue: Create a GitHub issue for the item if absent.
+        groomed_file: Path to a file containing groomed content.
+        groomed_content: Raw groomed content string.
+        section: Section name for single-section update.
+        content: Content for single-section update (requires section).
+        groomed: When True with no other content args, mark item as groomed.
+        title: New title to rename the item.
+        description: New description string.
+        repo: GitHub repo slug (e.g. "owner/repo").
+        output: Optional Output aggregator.
+        entry_id: Entry block ID for targeted replacement.
+        replace_section: When True, replace the full section instead of appending.
+        reason: Reason string for entry-block operations.
+        verified: When True, apply the verified status label.
+        append: When True and section is set, append rather than replace.
+        sections: Mapping of section name to raw content for batch writes.
+            Mutually exclusive with groomed_file, groomed_content, section/content.
+            An empty dict is a no-op (returns success with sections_written=[]).
+
     Returns:
-        Dict with update results.
+        Dict with update results. When sections is provided, includes
+        ``sections_written: list[str]`` and ``groomed_updated: bool``.
     """
     out = output or Output()
     items = parse_backlog()
@@ -2127,25 +2277,23 @@ def update_item(
         _update_item_description(item, description, output=out)
         result["description_updated"] = True
 
-    has_groomed = groomed or groomed_file or groomed_content or (section and content)
+    has_groomed = groomed or groomed_file or groomed_content or (section and content) or (sections is not None)
     if has_groomed:
-        if not item.file_path:
-            raise BacklogError("Item has no file path")
-        groomed_content_val, section_name = _resolve_groomed_content(section, content, groomed_content, groomed_file)
-        if not groomed_content_val.strip():
-            raise ValidationError("No groomed content provided")
-        _handle_update_groomed(
+        return _apply_groomed_update(
             item,
-            groomed_content_val,
-            section_name,
-            repo,
+            result,
+            groomed_file=groomed_file,
+            groomed_content=groomed_content,
+            section=section,
+            content=content,
+            repo=repo,
             output=out,
             entry_id=entry_id,
             replace_section=replace_section,
             reason=reason,
             append=append,
+            sections=sections,
         )
-        return {**result, "groomed_updated": True, **out.to_dict()}
 
     if plan:
         _apply_plan_to_item(item, plan, repo, output=out)
@@ -2183,14 +2331,30 @@ def groom_item(
     replace_section: bool = False,
     reason: str | None = None,
     append: bool = False,
+    sections: dict[str, str] | None = None,
 ) -> dict[str, str | int | bool | list[str] | dict[str, str | int | bool]]:
     """Write groomed content into per-item file. Delegates to update_item.
+
+    Args:
+        selector: Item selector (title, issue ref, or file path).
+        groomed_file: Path to a file containing groomed content.
+        groomed_content: Raw groomed content string.
+        section: Section name for single-section update.
+        content: Content for single-section update (requires section).
+        repo: GitHub repo slug (e.g. "owner/repo").
+        output: Optional Output aggregator.
+        entry_id: Entry block ID for targeted replacement.
+        replace_section: When True, replace the full section instead of appending.
+        reason: Reason string for entry-block operations.
+        append: When True and section is set, append rather than replace.
+        sections: Mapping of section name to raw content for batch writes.
+            Mutually exclusive with groomed_file, groomed_content, section/content.
 
     Returns:
         Dict with groom results.
     """
     out = output or Output()
-    has_input = groomed_file or groomed_content or (section and content)
+    has_input = groomed_file or groomed_content or (section and content) or sections
     items = parse_backlog()
     item = find_item(items, selector)
     if not item:
@@ -2211,6 +2375,7 @@ def groom_item(
         replace_section=replace_section,
         reason=reason,
         append=append,
+        sections=sections,
     )
 
 
