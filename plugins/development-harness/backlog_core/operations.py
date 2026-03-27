@@ -445,10 +445,12 @@ def _write_groomed_to_item_file(
     """
     text = filepath.read_text(encoding="utf-8")
     if not text.startswith("---"):
-        raise ValidationError("Item file has no frontmatter")
+        msg = "Item file has no frontmatter"
+        raise ValidationError(msg)
     parts = text.split("---", 2)
     if len(parts) < MIN_FRONTMATTER_PARTS:
-        raise ValidationError("Malformed item file")
+        msg = "Malformed item file"
+        raise ValidationError(msg)
     fm_text, body = parts[1].strip(), parts[2].strip()
     today_str = today()
     if section_name:
@@ -631,7 +633,8 @@ def _handle_batch_groomed(
     """
     out = output or Output()
     if not item.file_path:
-        raise BacklogError("Item has no file path")
+        msg = "Item has no file path"
+        raise BacklogError(msg)
     filepath = Path(item.file_path)
     added_date = item.added if hasattr(item, "added") and item.added else "0000-00-00"
 
@@ -1981,7 +1984,8 @@ def close_item(
     out = output or Output()
     reason = reason.strip().lower()
     if reason not in VALID_CLOSE_REASONS:
-        raise ValidationError(f"Invalid close reason: {reason!r}. Valid reasons: {', '.join(VALID_CLOSE_REASONS)}")
+        msg = f"Invalid close reason: {reason!r}. Valid reasons: {', '.join(VALID_CLOSE_REASONS)}"
+        raise ValidationError(msg)
     items = parse_backlog()
     item = find_item(items, selector)
     if not item:
@@ -2001,13 +2005,15 @@ def close_item(
                 out.warn(f"    {pr.url}")
             out.warn(f"\nIssue {issue_ref} will auto-close when a PR merges with 'Fixes {issue_ref}'.")
             out.warn("Use force=True to close anyway.")
-            raise BacklogError(f"Open PRs reference issue {issue_ref}. Use force=True to close anyway.")
+            msg = f"Open PRs reference issue {issue_ref}. Use force=True to close anyway."
+            raise BacklogError(msg)
 
     today()
 
     filepath_str = item.file_path
     if not filepath_str:
-        raise BacklogError("Item has no file path")
+        msg = "Item has no file path"
+        raise BacklogError(msg)
     raw = item.raw_body
     already_closed = any(marker in raw for marker in ("**Status**: CLOSED", "**Status**: DONE", "**Completed**:"))
     if already_closed:
@@ -2054,7 +2060,8 @@ def resolve_item(
     """
     out = output or Output()
     if not summary.strip():
-        raise ValidationError("summary is required (what was done)")
+        msg = "summary is required (what was done)"
+        raise ValidationError(msg)
     items = parse_backlog()
     item = find_item(items, selector)
     if not item:
@@ -2074,13 +2081,15 @@ def resolve_item(
                 out.warn(f"    {pr.url}")
             out.warn("\nResolving will close the issue and orphan these PRs.")
             out.warn("Use force=True to resolve anyway.")
-            raise BacklogError(f"Open PRs reference issue {issue_ref}. Use force=True to resolve anyway.")
+            msg = f"Open PRs reference issue {issue_ref}. Use force=True to resolve anyway."
+            raise BacklogError(msg)
 
     today()
 
     filepath_str = item.file_path
     if not filepath_str:
-        raise BacklogError("Item has no file path")
+        msg = "Item has no file path"
+        raise BacklogError(msg)
     raw = item.raw_body
     already_done = any(marker in raw for marker in ("**Status**: DONE", "**Completed**:", "**Resolved**:"))
     if already_done:
@@ -2181,7 +2190,8 @@ def _apply_groomed_update(
         ValidationError: If resolved single-section content is empty.
     """
     if not item.file_path:
-        raise BacklogError("Item has no file path")
+        msg = "Item has no file path"
+        raise BacklogError(msg)
 
     if sections is not None:
         if sections:
@@ -2191,7 +2201,8 @@ def _apply_groomed_update(
 
     groomed_content_val, section_name = _resolve_groomed_content(section, content, groomed_content, groomed_file)
     if not groomed_content_val.strip():
-        raise ValidationError("No groomed content provided")
+        msg = "No groomed content provided"
+        raise ValidationError(msg)
     _handle_update_groomed(
         item,
         groomed_content_val,
@@ -2411,7 +2422,8 @@ def _apply_strike(text: str, entry_id: str, reason: str, section: str | None) ->
             continue
         struck = strike_entry_block(match.group(0), reason)
         return text[: match.start()] + struck + text[match.end() :]
-    raise ValueError(f"Entry '{entry_id}' not found")
+    msg = f"Entry '{entry_id}' not found"
+    raise ValueError(msg)
 
 
 def strike_entry(
@@ -2443,7 +2455,8 @@ def strike_entry(
     if not item:
         raise ItemNotFoundError(selector)
     if not item.file_path:
-        raise BacklogError("Item has no file path")
+        msg = "Item has no file path"
+        raise BacklogError(msg)
 
     filepath = Path(item.file_path)
     text = filepath.read_text(encoding="utf-8")
@@ -2490,7 +2503,8 @@ def normalize_items(dry_run: bool = False, output: Output | None = None) -> dict
     """
     out = output or Output()
     if not _models.BACKLOG_DIR.exists():
-        raise BacklogError(f"{_models.BACKLOG_DIR} not found")
+        msg = f"{_models.BACKLOG_DIR} not found"
+        raise BacklogError(msg)
     pattern = re.compile(r"^(p0|p1|p2|ideas|completed)-[a-z0-9-]+\.md$", re.IGNORECASE)
     files = sorted(f for f in _models.BACKLOG_DIR.glob("*.md") if pattern.match(f.name))
     if not files:
@@ -2666,11 +2680,13 @@ def pull_by_selector(
 
     issue_ref = item.issue
     if not issue_ref:
-        raise BacklogError(f"Item '{item.title}' has no linked GitHub issue. Use backlog_pull() for bulk pull.")
+        msg = f"Item '{item.title}' has no linked GitHub issue. Use backlog_pull() for bulk pull."
+        raise BacklogError(msg)
 
     issue_num_str = parse_issue_selector(issue_ref)
     if not issue_num_str:
-        raise BacklogError(f"Could not parse issue number from '{issue_ref}'")
+        msg = f"Could not parse issue number from '{issue_ref}'"
+        raise BacklogError(msg)
 
     result = pull_single_issue(get_github(repo), int(issue_num_str), output=out, diff_mode=diff)
     filepath = result.get("file_path")
@@ -3094,7 +3110,8 @@ def list_merged_prs(
                 "head_branch": pr.head.ref if pr.head else "",
             })
     except GithubException as e:
-        raise BacklogError(f"GitHub API error fetching pull requests: {e}") from e
+        msg = f"GitHub API error fetching pull requests: {e}"
+        raise BacklogError(msg) from e
     return {"pull_requests": prs, "count": len(prs), **out.to_dict()}
 
 
@@ -3126,7 +3143,8 @@ def list_milestones(
     out = output or Output()
     valid_states = {"open", "closed", "all"}
     if state not in valid_states:
-        raise ValidationError(f"state must be one of {sorted(valid_states)!r}, got {state!r}")
+        msg = f"state must be one of {sorted(valid_states)!r}, got {state!r}"
+        raise ValidationError(msg)
     repository = get_github(repo)
     owner, repo_name = repository.full_name.split("/", 1)
     state_map = {"open": ["OPEN"], "closed": ["CLOSED"], "all": ["OPEN", "CLOSED"]}
@@ -3219,7 +3237,8 @@ def create_milestone(
     """
     out = output or Output()
     if not title.strip():
-        raise ValidationError("title must be non-empty")
+        msg = "title must be non-empty"
+        raise ValidationError(msg)
 
     due_on_dt: datetime | None = None
     if due_on is not None:
@@ -3230,9 +3249,8 @@ def create_milestone(
             except ValueError:
                 continue
         else:
-            raise ValidationError(
-                f"due_on must be ISO 8601 (e.g. '2026-06-30' or '2026-06-30T00:00:00Z'), got {due_on!r}"
-            )
+            msg = f"due_on must be ISO 8601 (e.g. '2026-06-30' or '2026-06-30T00:00:00Z'), got {due_on!r}"
+            raise ValidationError(msg)
 
     repository = get_github(repo)
     ms = repository.create_milestone(
@@ -3364,14 +3382,16 @@ def list_issues(
     """
     out = output or Output()
     if state not in _VALID_ISSUE_STATES:
-        raise ValidationError(f"Invalid state {state!r}: must be one of {sorted(_VALID_ISSUE_STATES)}")
+        msg = f"Invalid state {state!r}: must be one of {sorted(_VALID_ISSUE_STATES)}"
+        raise ValidationError(msg)
     try:
         gh_repo = get_github(repo)
         milestone_number = _resolve_milestone_number(gh_repo, milestone, out)
         label_names = _resolve_label_names(labels)
         issue_list = _collect_issues(gh_repo, state, label_names, milestone_number, limit)
     except (GithubException, BacklogError) as e:
-        raise BacklogError(f"GitHub API error fetching issues: {e}") from e
+        msg = f"GitHub API error fetching issues: {e}"
+        raise BacklogError(msg) from e
     return {"issues": issue_list, "count": len(issue_list), **out.to_dict()}
 
 
@@ -3397,9 +3417,11 @@ def comment_issue(
     """
     out = output or Output()
     if issue_number <= 0:
-        raise ValidationError("issue_number must be a positive integer")
+        msg = "issue_number must be a positive integer"
+        raise ValidationError(msg)
     if not body.strip():
-        raise ValidationError("body must not be empty")
+        msg = "body must not be empty"
+        raise ValidationError(msg)
     try:
         gh_repo = get_github(repo)
         owner, repo_name = gh_repo.full_name.split("/", 1)
@@ -3407,7 +3429,8 @@ def comment_issue(
         comment_node_id = _add_comment_graphql(gh_repo, issue_node["id"], body)
         out.info(f"  Comment added to issue #{issue_number}")
     except (GithubException, BacklogError) as e:
-        raise BacklogError(f"GitHub API error adding comment: {e}") from e
+        msg = f"GitHub API error adding comment: {e}"
+        raise BacklogError(msg) from e
     return {"issue_number": issue_number, "comment_id": comment_node_id, "comment_url": "", **out.to_dict()}
 
 
@@ -3440,13 +3463,15 @@ def list_comments(
     """
     out = output or Output()
     if issue_number <= 0:
-        raise ValidationError("issue_number must be a positive integer")
+        msg = "issue_number must be a positive integer"
+        raise ValidationError(msg)
     try:
         gh_repo = get_github(repo)
         owner, repo_name = gh_repo.full_name.split("/", 1)
         all_comments = _fetch_issue_comments_graphql(gh_repo, owner, repo_name, issue_number)
     except (GithubException, BacklogError) as e:
-        raise BacklogError(f"GitHub API error fetching comments: {e}") from e
+        msg = f"GitHub API error fetching comments: {e}"
+        raise BacklogError(msg) from e
 
     window = all_comments[offset : offset + limit]
     has_more = len(all_comments) > offset + limit
@@ -3507,9 +3532,11 @@ def read_comment(
     """
     out = output or Output()
     if issue_number <= 0:
-        raise ValidationError("issue_number must be a positive integer")
+        msg = "issue_number must be a positive integer"
+        raise ValidationError(msg)
     if comment_id <= 0:
-        raise ValidationError("comment_id must be a positive integer")
+        msg = "comment_id must be a positive integer"
+        raise ValidationError(msg)
     try:
         gh_repo = get_github(repo)
         # Resolve the REST integer comment ID to a GraphQL node ID.
@@ -3518,7 +3545,8 @@ def read_comment(
         node_id: str = str(pygithub_comment.node_id)
         comment = _fetch_comment_by_id_graphql(gh_repo, node_id)
     except (GithubException, BacklogError) as e:
-        raise BacklogError(f"GitHub API error reading comment: {e}") from e
+        msg = f"GitHub API error reading comment: {e}"
+        raise BacklogError(msg) from e
     return {
         "id": comment["id"],
         "author": comment["author"],
@@ -3708,14 +3736,16 @@ def _resolve_owner_node_id(gh_repo: Repository, resolved_owner: str) -> str:
     id_raw = _graphql_request(gh_repo, id_query, {"owner": resolved_owner})
     owner_id_val = id_raw.get("repositoryOwner")
     if not owner_id_val or not isinstance(owner_id_val, dict):
-        raise BacklogError(f"Owner '{resolved_owner}' not found via GraphQL")
+        msg = f"Owner '{resolved_owner}' not found via GraphQL"
+        raise BacklogError(msg)
     owner_id_dict: dict[str, object] = {str(k): v for k, v in owner_id_val.items()}
     owner_id_query_data: _OwnerIdQueryData = _OwnerIdQueryData(
         repositoryOwner=_OwnerIdNode(id=str(owner_id_dict.get("id", "")))
     )
     owner_id_node = owner_id_query_data["repositoryOwner"]
     if owner_id_node is None:
-        raise BacklogError(f"Owner '{resolved_owner}' not found via GraphQL")
+        msg = f"Owner '{resolved_owner}' not found via GraphQL"
+        raise BacklogError(msg)
     return owner_id_node["id"]
 
 
@@ -3737,11 +3767,13 @@ def _create_project_v2_node(gh_repo: Repository, owner_id: str, title: str) -> _
     create_raw = _graphql_request(gh_repo, mutation, variables)
     create_pv2_val = create_raw.get("createProjectV2")
     if not create_pv2_val or not isinstance(create_pv2_val, dict):
-        raise BacklogError(f"Unexpected GraphQL response for createProjectV2: {create_raw!r}")
+        msg = f"Unexpected GraphQL response for createProjectV2: {create_raw!r}"
+        raise BacklogError(msg)
     create_pv2_dict: dict[str, object] = {str(k): v for k, v in create_pv2_val.items()}
     project_node_val = create_pv2_dict.get("projectV2")
     if not project_node_val or not isinstance(project_node_val, dict):
-        raise BacklogError(f"Unexpected GraphQL response for createProjectV2: {create_raw!r}")
+        msg = f"Unexpected GraphQL response for createProjectV2: {create_raw!r}"
+        raise BacklogError(msg)
     project_node_dict: dict[str, object] = {str(k): v for k, v in project_node_val.items()}
     pn_number = project_node_dict.get("number")
     created_pv2: _CreatedProjectV2 = _CreatedProjectV2(
@@ -3781,7 +3813,8 @@ def create_project(
     """
     out = output or Output()
     if not title.strip():
-        raise ValidationError("title must not be empty")
+        msg = "title must not be empty"
+        raise ValidationError(msg)
     gh_repo = get_github(repo)
     resolved_owner = owner or gh_repo.owner.login
     owner_id = _resolve_owner_node_id(gh_repo, resolved_owner)
