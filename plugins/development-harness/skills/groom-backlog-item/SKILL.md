@@ -587,6 +587,28 @@ mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", groomed_content="
 Note — `--groomed-file {path}` and stdin pipe (`< {file}`) patterns have no MCP equivalent.
 Provide groomed content inline via the `groomed_content` parameter.
 
+**Batch pattern: sections dict (preferred when writing 3+ sections at once)**
+
+When the groomer produces all subsections at the end of Step 8, write them in a single call
+using the `sections` parameter instead of one call per section. This produces a single GitHub
+sync rather than one sync per section:
+
+```text
+mcp__plugin_dh_backlog__backlog_groom(
+    selector="{item title}",
+    sections={
+        "Reproducibility": "{reproducibility section text}",
+        "Priority": "{priority section text}",
+        "Files": "{files section text}",
+        "Implementation notes": "{notes section text}"
+    }
+)
+```
+
+Use the batch pattern when all subsections are ready simultaneously (end of swarm). Use the
+incremental pattern (`section` + `content`) when writing sections as they become available
+mid-workflow (e.g., Fact-Check after Step 4, RT-ICA after Step 5).
+
 **Valid section names** — top-level: `Fact-Check`, `RT-ICA`, `Impact Radius`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
 
 The backlog script updates `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md` with merged sections, sets `groomed` in frontmatter, and syncs to the GitHub issue when the item has one.
