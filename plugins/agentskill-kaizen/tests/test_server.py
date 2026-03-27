@@ -1,11 +1,15 @@
-"""Comprehensive test suite for the kaizen-analysis MCP server.
+"""Unit and direct-call tests for the kaizen-analysis MCP server module.
+
+Covers helpers and tools invoked on the imported module. MCP protocol coverage
+(list_tools, call_tool, read_resource) lives in ``test_server_mcp.py`` using
+``Client(mcp)`` in-memory transport.
 
 Tests cover:
 - Helper functions: _read_jsonl, _extract_tools_from_records, _resolve_glob,
   _build_event_log, _extract_user_text, _extract_tool_sequences_impl,
   _resolve_sequences
-- Resource: kaizen://session-log/schema (session log markdown)
-- Async MCP tools: get_transcript_jsonl_schema, extract_tool_sequences,
+- Session log schema helpers and resource function
+- Async MCP tools (direct call): get_transcript_jsonl_schema, extract_tool_sequences,
   discover_process_model, check_conformance, find_frequent_patterns,
   detect_frustration_signals, cluster_sessions
 - Edge cases: empty globs, malformed JSONL, zero tool calls,
@@ -20,7 +24,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
-import server as kaizen_server  # conftest.py stubs fastmcp before this runs
+import server as kaizen_server
 
 if TYPE_CHECKING:
     from collections.abc import Generator
