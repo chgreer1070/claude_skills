@@ -279,11 +279,9 @@ The flag works with both single-section writes and the batch `sections` paramete
 
 - Validity check fails (C1-C4) — item skipped with report.
 - RT-ICA BLOCKED — STOP, present MISSING conditions to user, wait for answers.
-- No validation step exists between groomer output and Step 9 write (audit Finding 6 — groomer output written directly, no quality gate on groomer sections).
+- Advisory AC overlap check: `_check_ac_overlap()` in `operations.py` issues a non-blocking warning when the Acceptance Criteria section is written and the description already contains checkbox items or acceptance headers (`## Acceptance`, `### Acceptance Criteria`). This fires for both single-section and batch `sections` writes.
 
 **Transition to next phase**: No explicit invocation of the next skill. The groomed item is available for `/dh:work-backlog-item` to pick up. Transition from grooming to milestone grouping is not mentioned (audit Finding 9 Gap B).
-
-**Missing reference files**: The SKILL.md references `./references/issue-classification.md` and `./references/groomer-agent.md` — neither file exists on disk.
 
 **Recommended completeness check before Phase 3**: The RT-ICA presence check in `work-backlog-item` Step 4 does not verify full grooming completeness. The recommended approach before entering Phase 3 is to verify presence of the RT-ICA section AND the Acceptance Criteria section AND the Description section. An item missing acceptance criteria would enter planning with incomplete information, producing a plan that cannot be validated against its own acceptance criteria.
 
@@ -761,7 +759,13 @@ Each grooming section requires a separate `backlog_groom` call with `section` an
 
 ### Gap 2: Description / Groomed Section Overlap (Session observation)
 
-The item's initial `## Description` body and the groomed `### Output / Evidence` / `### Decision` subsections frequently contain overlapping content. No deduplication or handoff mechanism exists.
+The item's initial `## Description` body and groomed subsections (especially `### Acceptance Criteria`) frequently contain overlapping content.
+
+**Convention enforced as of #1077:**
+- `backlog_groom` emits an advisory warning in `output.warnings` when writing an "Acceptance Criteria" section and the item's description contains checkboxes (`- [ ]`) or an `## Acceptance` / `### Acceptance Criteria` header.
+- The groomer agent prompt (`references/groomer-agent.md`) includes an explicit DESCRIPTION / AC SEPARATION instruction to prevent restatement.
+
+The warning is advisory — the write still proceeds. No suppression mechanism exists; the warning fires on every qualifying `backlog_groom` call.
 
 ### Gap 3: No Auto-Advance After Grooming (Session observation)
 

@@ -559,6 +559,28 @@ def _write_groomed_to_github(
         return updated
 
 
+_AC_CHECKBOX_RE = re.compile(r"^- \[[ xX]\]", re.MULTILINE)
+_AC_HEADER_RE = re.compile(r"^#{2,3}\s+Acceptance", re.MULTILINE | re.IGNORECASE)
+_AC_OVERLAP_MSG = (
+    "Description contains AC-like content (checkboxes or Acceptance header found). "
+    "Verify the Acceptance Criteria section does not duplicate the description."
+)
+
+
+def _check_ac_overlap(item: BacklogItem, output: Output) -> None:
+    """Warn if item description contains checkbox or Acceptance-header patterns.
+
+    Advisory only — does not block the write.
+
+    Args:
+        item: BacklogItem whose raw_body will be inspected.
+        output: Output aggregator to receive the warning.
+    """
+    body = item.raw_body or ""
+    if _AC_CHECKBOX_RE.search(body) or _AC_HEADER_RE.search(body):
+        output.warn(_AC_OVERLAP_MSG)
+
+
 def _handle_update_groomed(
     item: BacklogItem,
     groomed_content_val: str,
@@ -582,6 +604,9 @@ def _handle_update_groomed(
     issue_ref = item.issue
 
     added_date = item.added if hasattr(item, "added") and item.added else "0000-00-00"
+
+    if section_name == "Acceptance Criteria":
+        _check_ac_overlap(item, out)
 
     # Step 1: Write to GitHub FIRST (canonical source of truth), but only if
     # the item already has an issue. Groom must not create a new issue as a
@@ -655,6 +680,9 @@ def _handle_batch_groomed(
         )
         written.append(section_name)
     out.info(f"Updated {filepath.name} with {len(written)} groomed section(s)")
+
+    if "Acceptance Criteria" in sections:
+        _check_ac_overlap(item, out)
 
     # Phase 2: GitHub sync — only after all local writes succeed.
     if item.issue:

@@ -34,6 +34,8 @@ Agent(
 
 SCOPE BOUNDARY — Problem space and outcomes only. Do NOT include implementation steps, architecture decisions, code design, or proposed solutions. Those belong in the SAM planning phase (add-new-feature / architect spec), which runs AFTER grooming. Groomed output describes: (1) what the problem is and where it lives, (2) what success looks like, (3) how the specialist will know they have reached it. Acceptance criteria must be observable checks — not implementation steps.
 
+DESCRIPTION / AC SEPARATION — The item description is the problem statement: what is wrong, where it lives, and why it matters. Acceptance Criteria are the verifiable success conditions: observable checks that confirm the problem is resolved. Do not restate or paraphrase the description inside Acceptance Criteria. If the description already contains checkboxes or an Acceptance header, treat them as informal notes — write formal, non-overlapping ACs that complement rather than duplicate them.
+
 Item title: {item title}
 Item description: {item description}
 Item source: {item source}
@@ -72,6 +74,8 @@ Agent(
   prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header). The groomer agent does NOT perform classification or root-cause analysis — it receives these as inputs and incorporates them into groomed output.
 
 SCOPE BOUNDARY — Problem space and outcomes only. Do NOT include implementation steps, architecture decisions, code design, or proposed solutions. Those belong in the SAM planning phase (add-new-feature / architect spec), which runs AFTER grooming. Groomed output describes: (1) what the problem is and where it lives, (2) what success looks like, (3) how the specialist will know they have reached it. Acceptance criteria must be observable checks — not implementation steps.
+
+DESCRIPTION / AC SEPARATION — The item description is the problem statement: what is wrong, where it lives, and why it matters. Acceptance Criteria are the verifiable success conditions: observable checks that confirm the problem is resolved. Do not restate or paraphrase the description inside Acceptance Criteria. If the description already contains checkboxes or an Acceptance header, treat them as informal notes — write formal, non-overlapping ACs that complement rather than duplicate them.
 
 Item title: {item title}
 Item description: {item description}
