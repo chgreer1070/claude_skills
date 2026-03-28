@@ -224,19 +224,24 @@ def _output_rich_status(status_data: dict[str, object]) -> None:
 
     feature = str(status_data.get("feature", ""))
     total = status_data.get("total_tasks", 0)
-    completion = status_data.get("completion_pct", 0.0)
+    raw_completion = status_data.get("completion_pct", 0.0)
+    completion = float(raw_completion) if isinstance(raw_completion, (int, float)) else 0.0
     has_cycles = status_data.get("has_cycles", False)
 
     meta = Table(title=f"Plan: {feature}", show_header=False)
     meta.add_column("Field", style="cyan")
     meta.add_column("Value", style="green")
     meta.add_row("Total tasks", str(total))
-    meta.add_row("Completion", f"{float(completion):.1f}%")  # type: ignore[arg-type]
+    meta.add_row("Completion", f"{completion:.1f}%")
     meta.add_row("Has cycles", str(has_cycles))
     console.print(meta)
 
     raw_by_status = status_data.get("by_status")
-    by_status: dict[str, int] = raw_by_status if isinstance(raw_by_status, dict) else {}  # type: ignore[assignment]
+    by_status: dict[str, int] = (
+        {str(k): int(v) for k, v in raw_by_status.items() if isinstance(v, int)}
+        if isinstance(raw_by_status, dict)
+        else {}
+    )
     if by_status:
         st_table = Table(title="By Status", show_header=True, header_style="bold")
         st_table.add_column("Status", style="cyan")

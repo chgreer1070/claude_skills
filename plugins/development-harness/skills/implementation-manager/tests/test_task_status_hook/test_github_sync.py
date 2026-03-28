@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import pytest
+    from pytest_mock import MockerFixture
 
 # ---------------------------------------------------------------------------
 # Minimal YAML task fixtures
@@ -138,20 +139,25 @@ class TestGetParentIssueNumber:
          GitHub sub-issue that must be updated on task completion.
     """
 
-    def test_get_parent_issue_number_from_context(self, tmp_path: Path) -> None:
+    def test_get_parent_issue_number_from_context(self, tmp_path: Path, mocker: MockerFixture) -> None:
         """Returns the integer issue number when parent_issue_number is in context file.
 
         Tests: get_parent_issue_number with a context file containing parent_issue_number.
-        How: Create a context file with parent_issue_number=480. Build hook_input
-             pointing to tmp_path as cwd. Call get_parent_issue_number. Assert 480.
+        How: Create a context file with parent_issue_number=480. Mock _dh_paths.context_dir
+             to return the tmp_path-based context directory. Build hook_input pointing to
+             tmp_path as cwd. Call get_parent_issue_number. Assert 480.
         Why: This is the primary success path — the orchestrator writes the parent
              issue number so the hook can sync completion to the right GitHub issue.
+             The mock is required because get_context_file_path resolves via
+             _dh_paths.context_dir() (which points to ~/.dh/...), not via cwd.
         """
         # Arrange
         import task_status_hook as hook
 
         session_id = "test-session-abc"
+        context_dir = tmp_path / ".claude" / "context"
         _make_context_file(tmp_path, session_id, "plan/tasks.md", "T1", parent_issue_number=480)
+        mocker.patch.object(hook._dh_paths, "context_dir", return_value=context_dir)
         hook_input = _make_hook_input(tmp_path, session_id)
 
         # Act
