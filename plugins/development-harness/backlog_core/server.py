@@ -755,6 +755,16 @@ async def backlog_groom(
             )
         ),
     ] = None,
+    mark_groomed: Annotated[
+        bool,
+        Field(
+            description=(
+                "When True, advance item status to groomed after content is written: set local frontmatter "
+                "status to 'groomed', remove status:needs-grooming label (idempotent), and add status:groomed "
+                "label (created if absent). Default False preserves existing behavior."
+            )
+        ),
+    ] = False,
 ) -> dict:
     """Write groomed content into a backlog item's per-item file and sync to its GitHub issue.
 
@@ -788,6 +798,7 @@ async def backlog_groom(
             reason=reason,
             append=append,
             sections=sections,
+            mark_groomed=mark_groomed,
         )
         for w in out.warnings:
             await ctx.warning(w)

@@ -2024,3 +2024,166 @@ class TestRefreshLocalCacheIncrementalSync:
         assert len(calls) >= 1
         for call in calls:
             assert call["since"] is None
+
+
+# ---------------------------------------------------------------------------
+# groom_item mark_groomed parameter
+# ---------------------------------------------------------------------------
+
+
+class TestGroomItemMarkGroomed:
+    """Tests for mark_groomed parameter on groom_item (Tests 3-7 from architecture spec)."""
+
+    def test_groom_item_mark_groomed_updates_local_status(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed=True sets local frontmatter status to 'groomed' when item has no issue.
+
+        Tests: groom_item mark_groomed updates local frontmatter status.
+        How: Write item with no issue; call groom_item with mark_groomed=True.
+        Why: Local status must advance even when there is no GitHub issue to label.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = _m.BACKLOG_DIR
+        filepath = _write_item(backlog_dir, title="Mark Groomed Local", priority="P1", topic="mark-groomed-local")
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed Local",
+            section="Description",
+            content="Groomed content.",
+            output=out,
+            mark_groomed=True,
+        )
+
+        assert "error" not in result
+        assert result.get("mark_groomed_applied") is True
+        body = filepath.read_text(encoding="utf-8")
+        assert "status: groomed" in body
+
+    def test_groom_item_mark_groomed_manages_github_labels(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed=True delegates GitHub label update to apply_status_groomed.
+
+        Tests: groom_item mark_groomed calls apply_status_groomed when item has an issue.
+        How: Write item with issue #123; mock apply_status_groomed; call with mark_groomed=True.
+        Why: GitHub label transition must be routed to the dedicated function, not implemented inline.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
+
+        backlog_dir = _m.BACKLOG_DIR
+        _write_item(backlog_dir, title="Mark Groomed Github", priority="P1", topic="mark-groomed-github", issue="#123")
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed Github",
+            section="Description",
+            content="Groomed with issue.",
+            output=out,
+            mark_groomed=True,
+        )
+
+        assert "error" not in result
+        mock_apply.assert_called_once()
+        called_item = mock_apply.call_args.args[0]
+        assert called_item.issue == "#123"
+
+    def test_groom_item_mark_groomed_false_no_status_change(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed=False (default) does not advance status or call apply_status_groomed.
+
+        Tests: groom_item mark_groomed=False preserves existing behavior unchanged.
+        How: Write item with issue; call groom_item with mark_groomed=False.
+        Why: Default False must not silently advance status on every groom call.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
+
+        backlog_dir = _m.BACKLOG_DIR
+        filepath = _write_item(
+            backlog_dir, title="Mark Groomed False", priority="P1", topic="mark-groomed-false", issue="#456"
+        )
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed False",
+            section="Description",
+            content="No status change expected.",
+            output=out,
+            mark_groomed=False,
+        )
+
+        assert "error" not in result
+        mock_apply.assert_not_called()
+        assert result.get("mark_groomed_applied") is not True
+        body = filepath.read_text(encoding="utf-8")
+        assert "status: groomed" not in body
+
+    def test_groom_item_mark_groomed_with_batch_sections(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed=True fires exactly once after batch sections are written.
+
+        Tests: groom_item mark_groomed integrates correctly with sections batch parameter.
+        How: Write item with issue; call with sections dict and mark_groomed=True.
+        Why: mark_groomed must execute once at the end, not once per section.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
+
+        backlog_dir = _m.BACKLOG_DIR
+        _write_item(backlog_dir, title="Mark Groomed Batch", priority="P1", topic="mark-groomed-batch", issue="#789")
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed Batch",
+            sections={"Effort": "S", "Acceptance Criteria": "All criteria met."},
+            output=out,
+            mark_groomed=True,
+        )
+
+        assert "error" not in result
+        assert result.get("mark_groomed_applied") is True
+        mock_apply.assert_called_once()
+
+    def test_groom_item_mark_groomed_skipped_on_error(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed is not applied when update_item returns an error.
+
+        Tests: groom_item mark_groomed skips status advance if content write fails.
+        How: Mock update_item to return error dict; call with mark_groomed=True.
+        Why: Status must not advance if the grooming write did not succeed.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mocker.patch("backlog_core.operations.update_item", return_value={"error": "some error"})
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
+
+        backlog_dir = _m.BACKLOG_DIR
+        filepath = _write_item(
+            backlog_dir, title="Mark Groomed Error", priority="P1", topic="mark-groomed-error", issue="#999"
+        )
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed Error",
+            section="Description",
+            content="This write will fail.",
+            output=out,
+            mark_groomed=True,
+        )
+
+        assert "error" in result
+        mock_apply.assert_not_called()
+        assert result.get("mark_groomed_applied") is not True
+        body = filepath.read_text(encoding="utf-8")
+        assert "status: groomed" not in body

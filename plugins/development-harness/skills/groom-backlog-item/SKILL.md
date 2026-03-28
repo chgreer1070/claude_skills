@@ -559,6 +559,8 @@ use, check the tool name and parameters:
 - `mcp__plugin_dh_backlog__backlog_groom` — writes groomed content (selector required)
 - `mcp__plugin_dh_backlog__backlog_sync` — creates GitHub issues for items missing them and pushes groomed content (no selector — operates on entire backlog)
 
+**`mark_groomed` parameter** (`bool`, default `False`): Pass `mark_groomed=True` on the final `backlog_groom` call to automatically advance the item's status from `needs-grooming` to `groomed`. When `True`, after all content writes complete: (a) the item's `metadata.status` field is set to `groomed` in the local per-item file; (b) the `status:needs-grooming` GitHub label is removed (no-op if already absent); (c) the `status:groomed` GitHub label is added to the issue (created automatically if it does not exist on the repository). When used with the `sections` batch parameter, all sections are written first and the status transition fires exactly once after the batch completes. Calling `backlog_groom` with `mark_groomed=True` multiple times is safe — if `status:groomed` is already present the label update is skipped. If the GitHub label transition fails, the local frontmatter update still applies and a warning is recorded in the result.
+
 Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are written as they become available. GitHub is canonical: when the item has an issue, the MCP tool syncs groomed content to the GitHub issue body.
 
 **Preferred: incremental section updates**
@@ -601,13 +603,20 @@ mcp__plugin_dh_backlog__backlog_groom(
         "Priority": "{priority section text}",
         "Files": "{files section text}",
         "Implementation notes": "{notes section text}"
-    }
+    },
+    mark_groomed=True
 )
 ```
 
+Pass `mark_groomed=True` on the final `backlog_groom` call to automatically advance the item's
+status from `needs-grooming` to `groomed`. Using `sections` combined with `mark_groomed=True`
+is the recommended pattern — it writes all content and advances status atomically in a single
+GitHub sync.
+
 Use the batch pattern when all subsections are ready simultaneously (end of swarm). Use the
 incremental pattern (`section` + `content`) when writing sections as they become available
-mid-workflow (e.g., Fact-Check after Step 4, RT-ICA after Step 5).
+mid-workflow (e.g., Fact-Check after Step 4, RT-ICA after Step 5) — omit `mark_groomed=True`
+on intermediate calls and include it only on the final call.
 
 **Valid section names** — top-level: `Fact-Check`, `RT-ICA`, `Impact Radius`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
 

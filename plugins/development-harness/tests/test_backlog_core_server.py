@@ -1244,6 +1244,30 @@ async def test_backlog_groom_backlog_error_returns_error_key():
     assert response["error"] == "item not found"
 
 
+async def test_backlog_groom_accepts_mark_groomed_parameter():
+    """backlog_groom forwards mark_groomed=True to operations.groom_item."""
+    op_result = {"title": "Feature", "synced": True}
+    with patch("backlog_core.operations.groom_item", return_value=op_result) as mock_groom:
+        await _call(
+            "backlog_groom", {"selector": "Feature", "section": "Background", "content": "Done", "mark_groomed": True}
+        )
+
+    mock_groom.assert_called_once()
+    call_kwargs = mock_groom.call_args.kwargs
+    assert call_kwargs["mark_groomed"] is True
+
+
+async def test_backlog_groom_mark_groomed_defaults_false():
+    """backlog_groom passes mark_groomed=False to groom_item when not specified."""
+    op_result = {"title": "Feature", "synced": True}
+    with patch("backlog_core.operations.groom_item", return_value=op_result) as mock_groom:
+        await _call("backlog_groom", {"selector": "Feature", "section": "Background", "content": "Done"})
+
+    mock_groom.assert_called_once()
+    call_kwargs = mock_groom.call_args.kwargs
+    assert call_kwargs["mark_groomed"] is False
+
+
 # ---------------------------------------------------------------------------
 # backlog_normalize
 # ---------------------------------------------------------------------------

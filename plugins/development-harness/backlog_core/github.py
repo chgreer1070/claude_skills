@@ -1486,6 +1486,52 @@ def apply_status_verified(item: BacklogItem, repo: str = "", output: Output | No
     out.info("  Status: verified")
 
 
+def apply_status_groomed(item: BacklogItem, repo: str = "", output: Output | None = None) -> None:
+    """Set GitHub issue label to status:groomed after grooming completes.
+
+    Adds the ``status:groomed`` label and removes ``status:needs-grooming``
+    if present (idempotent). Auto-creates the ``status:groomed`` label
+    when it does not exist (label creation stays REST per ADR-004 — no
+    GraphQL createLabel mutation). Uses fetch-then-update pattern (ADR-003)
+    for label replacement via GraphQL. Skips gracefully when the item has
+    no issue number.
+
+    Args:
+        item: BacklogItem to mark groomed. No-op when ``item.issue`` is empty.
+        repo: Repository in ``owner/repo`` format.
+        output: Optional Output collector for status/warning messages.
+
+    Raises:
+        GithubException: On GitHub API failure other than label-not-found (404).
+    """
+    if not item.issue:
+        return
+    out = output or Output()
+    repository = get_github(repo)
+    num = item.issue.lstrip("#")
+    owner, repo_name = repository.full_name.split("/", 1)
+    issue = _fetch_issue_graphql(repository, owner, repo_name, int(num))
+    current_names = [lbl["name"] for lbl in issue["labels"]]
+    if "status:groomed" in current_names:
+        out.info("  Status: already groomed")
+        return
+    # Ensure status:groomed label exists — label creation stays REST (ADR-004)
+    try:
+        repository.get_label("status:groomed")
+    except GithubException as e:
+        if e.status != _HTTP_NOT_FOUND:
+            raise
+        repository.create_label(
+            name="status:groomed", color="0075ca", description="Grooming complete — all sections written and approved"
+        )
+    # Compute desired label set: add groomed, remove needs-grooming
+    desired_names = [n for n in current_names if n != "status:needs-grooming"] + ["status:groomed"]
+    id_map = _resolve_label_ids_graphql(repository, owner, repo_name, desired_names)
+    desired_ids = [id_map[n] for n in desired_names if n in id_map]
+    _update_issue_graphql(repository, issue["id"], label_ids=desired_ids)
+    out.info("  Status: groomed")
+
+
 # ---------------------------------------------------------------------------
 # Issue queries
 # ---------------------------------------------------------------------------

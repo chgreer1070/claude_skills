@@ -259,7 +259,21 @@ flowchart TD
 
 **RT-ICA runs twice**: Step 3.5 (initial snapshot, item-level info only) and Step 8.5 (final pass, full swarm output). The Step 8.5 result replaces the Step 3.5 snapshot in the item file (same `section="RT-ICA"` call overwrites). **Why:** The initial snapshot calibrates swarm intensity — scope sizing (Step 3.6) uses the AVAILABLE/DERIVABLE/MISSING distribution to choose swarm intensity. The final pass incorporates swarm discoveries (fact-check results convert DERIVABLE to AVAILABLE, refuted claims convert AVAILABLE to MISSING).
 
-**Metadata written**: `groomed` frontmatter field set to `YYYY-MM-DD` (not nested under `metadata.`). No explicit GitHub label transition is documented in the skill source — the only documented state change is the `groomed` frontmatter field.
+**Metadata written**: `groomed` frontmatter field set to `YYYY-MM-DD` (not nested under `metadata.`). This field records when grooming occurred and is distinct from the item's status field.
+
+**Status advancement via `mark_groomed`**: Passing `mark_groomed=True` to the `backlog_groom` MCP tool triggers a status transition after all content writes complete:
+
+1. The item's `metadata.status` field is set to `groomed` in the local per-item file.
+2. The `status:needs-grooming` GitHub label is removed from the issue (no-op if already absent — it is removed as a side effect of each content sync, so it may already be gone).
+3. The `status:groomed` GitHub label is added to the issue. If the label does not exist on the repository, it is created automatically.
+
+The flag works with both single-section writes and the batch `sections` parameter. When `sections` is used with `mark_groomed=True`, all sections are written first; the status transition fires exactly once after the batch completes.
+
+**Idempotent**: Calling `backlog_groom` with `mark_groomed=True` multiple times is safe. If `status:groomed` is already present on the issue, the GitHub label update is skipped entirely. If `status:needs-grooming` was already removed, the removal is a no-op.
+
+**Error handling**: If the GitHub label transition fails, the local frontmatter update still applies and a warning is recorded in the result. Content writes are not affected.
+
+**When to use**: Pass `mark_groomed=True` on the final `backlog_groom` call when all required sections have been written and the item is approved for planning. Using the `sections` parameter to write all sections in a single call combined with `mark_groomed=True` is the recommended pattern — it writes all content and advances the status atomically.
 
 **Failure paths**:
 

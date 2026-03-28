@@ -42,6 +42,7 @@ from .github import (
     _projects_v2_create_mutation,
     _projects_v2_list_query,
     _update_issue_graphql,
+    apply_status_groomed,
     apply_status_in_progress,
     apply_status_verified,
     batch_fetch_statuses,
@@ -2343,6 +2344,7 @@ def groom_item(
     reason: str | None = None,
     append: bool = False,
     sections: dict[str, str] | None = None,
+    mark_groomed: bool = False,
 ) -> dict[str, str | int | bool | list[str] | dict[str, str | int | bool]]:
     """Write groomed content into per-item file. Delegates to update_item.
 
@@ -2360,6 +2362,10 @@ def groom_item(
         append: When True and section is set, append rather than replace.
         sections: Mapping of section name to raw content for batch writes.
             Mutually exclusive with groomed_file, groomed_content, section/content.
+        mark_groomed: When True, advance item status to groomed after content is
+            written: set local frontmatter status to 'groomed', remove
+            status:needs-grooming label (idempotent), and add status:groomed label
+            (created if absent). Default False preserves existing behavior.
 
     Returns:
         Dict with groom results.
@@ -2370,7 +2376,7 @@ def groom_item(
     item = find_item(items, selector)
     if not item:
         _pull_if_issue_selector(selector, repo, output=out)
-    return update_item(
+    result = update_item(
         selector=selector,
         plan=None,
         status=None,
@@ -2388,6 +2394,20 @@ def groom_item(
         append=append,
         sections=sections,
     )
+    if mark_groomed and "error" not in result:
+        fresh_items = parse_backlog()
+        fresh_item = find_item(fresh_items, selector)
+        if fresh_item and fresh_item.file_path:
+            update_item_metadata(Path(fresh_item.file_path), {"metadata": {"status": "groomed"}}, output=out)
+            result["mark_groomed_applied"] = True
+            out.info("  Status: groomed (local)")
+        if fresh_item and fresh_item.issue:
+            try:
+                apply_status_groomed(fresh_item, repo, output=out)
+            except GithubException as e:
+                out.warn(f"  GitHub label update failed: {e}")
+                result["mark_groomed_label_error"] = str(e)
+    return result
 
 
 # ---------------------------------------------------------------------------

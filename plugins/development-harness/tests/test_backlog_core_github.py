@@ -29,6 +29,7 @@ from backlog_core.github import (
     _parse_milestone_node,
     _parse_search_pr_node,
     _resolve_label_ids_graphql,
+    apply_status_groomed,
     apply_status_in_progress,
     batch_fetch_statuses,
     check_open_prs_for_issue,
@@ -1442,3 +1443,200 @@ class TestSyncGroomedToGithubIssue:
         # Assert
         assert result is False
         assert any("WARNING" in w for w in out.warnings)
+
+
+# ---------------------------------------------------------------------------
+# apply_status_groomed — ADR-003 fetch-then-update label pattern
+# ---------------------------------------------------------------------------
+
+
+class TestApplyStatusGroomed:
+    """apply_status_groomed uses fetch-then-update GraphQL label pattern (ADR-003).
+
+    Tests: apply_status_groomed fetches issue labels, computes desired set
+           (add status:groomed, remove status:needs-grooming), and calls
+           _update_issue_graphql with the full label ID list.
+    Why: ADR-003 requires full label ID replacement (not additive); tests verify
+         the fetch-then-compute-then-update flow, idempotency, label creation, and
+         no-issue early exit.
+    """
+
+    def test_apply_status_groomed_adds_label_removes_needs_grooming(self, mocker: MockerFixture) -> None:
+        """apply_status_groomed adds status:groomed and removes status:needs-grooming.
+
+        Tests: apply_status_groomed happy path label set computation
+        How: Issue has status:needs-grooming + priority:p1. Assert update call
+             receives status:groomed ID (LBL_g) but not needs-grooming ID (LBL_ng).
+        Why: Core behavior — groomed replaces needs-grooming in the label set.
+        """
+        # Arrange
+        issue_node = make_issue_node(
+            id="MDU6SXNzdWUx",
+            number=5,
+            labels=[make_label_node("status:needs-grooming", "LBL_ng"), make_label_node("priority:p1", "LBL_p1")],
+        )
+        mock_repo = _make_mock_repo(mocker)
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+        mock_repo.requester.graphql_query.return_value = (
+            {},
+            {
+                "data": {
+                    "repository": {
+                        "label0": {"id": "LBL_p1", "name": "priority:p1"},
+                        "label1": {"id": "LBL_g", "name": "status:groomed"},
+                    }
+                }
+            },
+        )
+
+        call_count = 0
+
+        def side_effect(repo_arg: Any, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return make_issue_by_number_response(issue_node)
+            return make_update_issue_response()
+
+        mock_gql = mocker.patch("backlog_core.github._graphql_request", side_effect=side_effect)
+        item = BacklogItem(title="Task", issue="#5", priority="P1")
+
+        # Act
+        apply_status_groomed(item)
+
+        # Assert — fetch + update both ran
+        assert call_count == 2
+        # Update call must carry groomed ID but not needs-grooming ID
+        update_call = mock_gql.call_args_list[1]
+        variables = update_call.kwargs.get("variables") or (update_call.args[2] if len(update_call.args) > 2 else None)
+        assert variables is not None
+        label_ids = variables.get("labelIds", [])
+        assert "LBL_g" in label_ids
+        assert "LBL_ng" not in label_ids
+
+    def test_apply_status_groomed_idempotent_when_already_groomed(self, mocker: MockerFixture) -> None:
+        """apply_status_groomed is a no-op when issue already has status:groomed.
+
+        Tests: apply_status_groomed idempotent — already-groomed early return
+        How: Issue already has status:groomed label; verify _update_issue_graphql
+             is NOT called (only the fetch call is made).
+        Why: Calling apply_status_groomed twice must not re-apply labels.
+        """
+        # Arrange
+        issue_node = make_issue_node(id="MDU6SXNzdWUx", number=5, labels=[make_label_node("status:groomed", "LBL_g")])
+        mock_repo = _make_mock_repo(mocker)
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+        mock_gql = mocker.patch(
+            "backlog_core.github._graphql_request", return_value=make_issue_by_number_response(issue_node)
+        )
+        item = BacklogItem(title="Task", issue="#5", priority="P1")
+        out = Output()
+
+        # Act
+        apply_status_groomed(item, output=out)
+
+        # Assert — only fetch call; no update call issued
+        assert mock_gql.call_count == 1
+        assert any("already" in m.lower() for m in out.messages)
+
+    def test_apply_status_groomed_idempotent_when_needs_grooming_already_removed(self, mocker: MockerFixture) -> None:
+        """apply_status_groomed still adds status:groomed when needs-grooming is absent.
+
+        Tests: apply_status_groomed with no needs-grooming label to remove
+        How: Issue has only priority:p1 (no needs-grooming); verify update is
+             still called and status:groomed is applied.
+        Why: Absence of needs-grooming must not prevent the groomed label being added.
+        """
+        # Arrange
+        issue_node = make_issue_node(id="MDU6SXNzdWUx", number=5, labels=[make_label_node("priority:p1", "LBL_p1")])
+        mock_repo = _make_mock_repo(mocker)
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+        mock_repo.requester.graphql_query.return_value = (
+            {},
+            {
+                "data": {
+                    "repository": {
+                        "label0": {"id": "LBL_p1", "name": "priority:p1"},
+                        "label1": {"id": "LBL_g", "name": "status:groomed"},
+                    }
+                }
+            },
+        )
+
+        call_count = 0
+
+        def side_effect(repo_arg: Any, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return make_issue_by_number_response(issue_node)
+            return make_update_issue_response()
+
+        mocker.patch("backlog_core.github._graphql_request", side_effect=side_effect)
+        item = BacklogItem(title="Task", issue="#5", priority="P1")
+
+        # Act
+        apply_status_groomed(item)
+
+        # Assert — update still ran even without needs-grooming present to remove
+        assert call_count == 2
+
+    def test_apply_status_groomed_creates_label_if_absent(self, mocker: MockerFixture) -> None:
+        """apply_status_groomed creates status:groomed label when it does not exist.
+
+        Tests: apply_status_groomed label auto-creation (ADR-004 REST exception)
+        How: get_label raises GithubException(status=404); verify create_label is
+             called with name='status:groomed' and color='0075ca'.
+        Why: ADR-004 — label creation stays REST; new repos need the label created
+             on first use.
+        """
+        from github import GithubException
+
+        # Arrange
+        issue_node = make_issue_node(
+            id="MDU6SXNzdWUx", number=5, labels=[make_label_node("status:needs-grooming", "LBL_ng")]
+        )
+        mock_repo = _make_mock_repo(mocker)
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+        mock_repo.get_label.side_effect = GithubException(404, "not found")
+        mock_repo.requester.graphql_query.return_value = (
+            {},
+            {"data": {"repository": {"label0": {"id": "LBL_g", "name": "status:groomed"}}}},
+        )
+
+        call_count = 0
+
+        def side_effect(repo_arg: Any, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return make_issue_by_number_response(issue_node)
+            return make_update_issue_response()
+
+        mocker.patch("backlog_core.github._graphql_request", side_effect=side_effect)
+        item = BacklogItem(title="Task", issue="#5", priority="P1")
+
+        # Act
+        apply_status_groomed(item)
+
+        # Assert — label was created with the correct name and color
+        mock_repo.create_label.assert_called_once_with(
+            name="status:groomed", color="0075ca", description="Grooming complete — all sections written and approved"
+        )
+
+    def test_apply_status_groomed_noop_without_issue(self, mocker: MockerFixture) -> None:
+        """apply_status_groomed is a no-op when BacklogItem has no issue number.
+
+        Tests: apply_status_groomed early-exit guard for empty issue field
+        How: Item has issue=""; verify get_github is never called.
+        Why: Items without GitHub issues cannot have labels updated — must not raise.
+        """
+        # Arrange
+        mock_get_github = mocker.patch("backlog_core.github.get_github")
+        item = BacklogItem(title="Task", issue="", priority="P1")
+
+        # Act — should not raise
+        apply_status_groomed(item)
+
+        # Assert — no GitHub API calls made
+        mock_get_github.assert_not_called()
