@@ -44,6 +44,7 @@ research/
 │   └── trio.md                        # Structured concurrency async library for Python (7K+ stars)
 ├── llm-infrastructure/                # LLM inference and serving infrastructure
 │   ├── localai.md                     # Free open-source local AI inference server, OpenAI-compatible API, no GPU required (43K+ stars)
+│   ├── openbao.md                     # OpenBao v2.5.2 — MPL-2.0 HashiCorp Vault fork: 9 auth methods, 9 secret engines, identity-based secrets for AI agents (Go 1.25.6)
 │   └── tensorzero.md                  # Industrial-grade LLM gateway with <1ms latency, fine-tuning, and A/B testing (Rust)
 ├── ml-infrastructure/                 # ML compute engines and model serving platforms
 │   ├── microgpt-playground.md         # Browser-native GPT training and inference, zero-dependency JS port of Karpathy's microgpt.py (65 stars)
@@ -58,7 +59,8 @@ research/
 │   └── logfire.md                     # Pydantic Logfire - full-stack AI observability with MCP (4K+ stars)
 ├── code-auditing/                     # Code security and quality auditing tools
 │   ├── hound.md                       # Autonomous AI security auditor with knowledge graphs
-│   └── snyk-cli-cpp-scans.md          # Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies
+│   ├── snyk-cli-cpp-scans.md          # Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies
+│   └── syft.md                        # Syft v1.42.3 — Anchore SBOM generation: 20+ ecosystem catalogers, CycloneDX/SPDX output, signed attestations, Grype integration (8.6K stars)
 ├── ai-design-tools/                   # AI-powered visual creation and design platforms
 │   ├── hedra.md                       # AI video/image/audio creation platform
 │   ├── jimeng.md                      # ByteDance SeedDance 2.0 AI video/image generation with cinematic camera control
@@ -88,8 +90,10 @@ research/
 ├── data-infrastructure/               # Real-time data platforms for analytics
 │   ├── cocoindex.md                   # Ultra-performant AI data transformation framework with Rust core, incremental processing, and dataflow model (Apache 2.0)
 │   ├── dolt.md                        # MySQL-compatible version-controlled SQL database — branch, merge, diff, clone via SQL (20.3K stars)
+│   ├── chroma.md                      # Chroma v1.5.5 — open-source vector database: 4-function API, HNSW/Spann indices, hybrid search, Rust+Python (26.9K stars)
 │   ├── motherduck.md                  # Serverless cloud DuckDB warehouse with Dual Execution and native MCP integration (36K+ stars)
-│   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
+│   ├── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
+│   └── pocketbase.md                  # Open-source Go backend in 1 file: SQLite, realtime, auth, file storage, admin UI (57K+ stars)
 ├── documentation-tools/                # Architecture documentation and living docs
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
 ├── embedded-ui-libraries/              # Embedded graphics libraries for microcontrollers and MCUs
@@ -129,6 +133,7 @@ research/
 │   ├── tmuxp.md                      # Python tmux session manager — YAML/JSON workspace configs, plugin system, freeze/replay (4.4K stars)
 │   ├── using-tmux-with-claude-code.md # tmux + Claude Code workflow guide: copy-mode, capture, multi-pane orchestration
 │   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
+│   ├── worktrunk.md                   # Worktrunk v0.33.0 — Rust CLI for git worktree management with parallel AI agent workflows, branch-name addressing, lifecycle hooks (14.8K stars)
 │   └── yume.md                        # Native desktop GUI for Claude Code CLI (Tauri + Rust)
 ├── evaluation-testing/                # Agent evaluation, testing, and harness engineering
 │   ├── harness-engineering-martin-fowler.md  # Harness engineering discipline for AI coding agents (Martin Fowler / Böckeler)
@@ -148,6 +153,8 @@ research/
 │   ├── spec-workflow-mcp.md           # Spec-driven development workflow with approval gates and real-time dashboard (3.9K stars)
 │   ├── cocoindex-code.md             # Embedded MCP server for semantic code search via AST analysis and embeddings (Apache-2.0)
 │   └── mcpskills-cli.md              # CLI that converts MCP server tools into static AI agent skills to reduce token consumption
+├── agent-orchestration/               # Multi-agent orchestration systems and frameworks
+│   └── oh-my-claudecode.md            # oh-my-claudecode — 32-agent TypeScript orchestration with smart model routing, skill system, Haiku/Sonnet/Opus tiers (13.9K stars)
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
 │   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
@@ -158,6 +165,7 @@ research/
 │   ├── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
 │   ├── ollama-subagents-web-search-claude-code.md  # Ollama native subagents and web search for Claude Code (163K+ stars)
 │   ├── oh-my-opencode.md              # code-yeongyu/oh-my-opencode — Production-scale Claude Code orchestration: Sisyphus/Atlas/Prometheus multi-agent architecture, category-based model routing, hash-anchored editing, demand-scoped MCP (37.5K stars in 4 months)
+│   ├── takt.md                        # TAKT — YAML-defined multi-agent workflows with state machine transitions, faceted prompting, 3 runner types, AI judge routing (866 stars)
 │   └── the-delegation.md             # Embodied 3D multi-agent orchestration: spatial office, NavMesh pathfinding, PM orchestrator, WebGPU (v0.1.0)
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
 │   ├── claude-code-skills-alirezarezvani.md # 170 modular skill packages for Claude Code, Codex, Gemini CLI across 9 domains (2.5K+ stars)
@@ -228,6 +236,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | [ai-data-science-team.md](./research-agent-patterns/ai-data-science-team.md) | AI Data Science Team — LangGraph supervisor + 9 specialist agents (wrangling, cleaning, visualization, SQL, H2O ML, MLflow, EDA, feature engineering, loader) with sandboxed code execution and AI Pipeline Studio Streamlit app (5K+ stars, MIT) | 2026-03-04   |
 | [oh-my-opencode.md](./research-agent-patterns/oh-my-opencode.md) | code-yeongyu/oh-my-opencode — Production-scale Claude Code orchestration: Sisyphus/Atlas/Prometheus multi-agent architecture, category-based model routing, hash-anchored editing, demand-scoped MCP (37.5K stars in 4 months) | 2026-03-06   |
 | [the-delegation.md](./research-agent-patterns/the-delegation.md) | The Delegation — Embodied 3D multi-agent orchestration: spatial office simulation with NavMesh pathfinding, PM orchestrator, LLM function calling, client approval workflow, WebGPU rendering (v0.1.0) | 2026-03-18   |
+| [takt.md](./research-agent-patterns/takt.md) | TAKT v0.33.2 — YAML-defined multi-agent workflow engine: state machine transitions, faceted prompting (persona/policy/knowledge/instruction), AI judge routing, 3 runner types (Chord parallel, Arpeggio batch, Team Leader decomposition), audit pieces for security/architecture/e2e (866 stars) | 2026-03-28   |
 
 **Key Topics**:
 
@@ -361,6 +370,7 @@ Tools and services that automate the creation of AI skills from documentation, c
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
 | [skillkit.md](./skill-generation-tools/skillkit.md)                  | SkillKit - universal package manager for AI agent skills with 15K+ skills, 32 agent support, and cross-format translation | 2026-02-08   |
+| [claude-skills-library.md](./skill-generation-tools/claude-skills-library.md) | Claude Skills Library (alirezarezvani) — 205 production-ready skills across 9 domains, 268 stdlib-only Python tools, 9-phase SKILL_PIPELINE.md quality gates, converts to 11 AI coding tool formats via single script (7.5K stars, MIT) | 2026-03-28   |
 | [skillsmp.md](./skill-generation-tools/skillsmp.md)                   | SkillsMP - open marketplace for 66,500+ AI agent skills (Claude Code, Codex CLI, ChatGPT); REST API, MCP server, SKILL.md standard (MIT) | 2026-02-23   |
 | [skrills.md](./skill-generation-tools/skrills.md)                    | Skrills - Rust skills support engine validating and syncing skills across Claude Code, Codex CLI, and Copilot CLI with 40+ MCP tools (52 stars) | 2026-02-23   |
 | [softaworks-agent-toolkit.md](./skill-generation-tools/softaworks-agent-toolkit.md) | Softaworks Agent Toolkit - 43 skills, 6 agents, 7 slash commands for Claude Code with multi-platform support (621 stars) | 2026-02-20   |
@@ -432,6 +442,7 @@ Tools and frameworks for autonomous code security auditing and vulnerability det
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------ |
 | [hound.md](./code-auditing/hound.md) | Autonomous AI security auditor using knowledge graphs, belief systems, and hypothesis-driven analysis | 2026-01-26   |
 | [snyk-cli-cpp-scans.md](./code-auditing/snyk-cli-cpp-scans.md) | Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies via `--unmanaged` flag | 2026-02-23   |
+| [syft.md](./code-auditing/syft.md) | Syft v1.42.3 — Anchore SBOM generation tool: 3-stage pipeline (source resolution → cataloging → format output), 20+ ecosystem catalogers, CycloneDX/SPDX/Syft JSON output, signed attestations, Grype integration (8.6K stars, Apache-2.0) | 2026-03-28   |
 
 **Key Topics**:
 
@@ -470,6 +481,9 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [gstack.md](./agent-frameworks/gstack.md)                             | gstack — role-specific cognition switching for Claude Code with 8 specialized skills (CEO review, eng review, paranoid code review, shipping, browser QA), compiled Bun browser binary (~100-200ms commands), accessibility-based element selection (6K+ stars, MIT) | 2026-03-13   |
 | [AutoResearchClaw.md](./agent-frameworks/AutoResearchClaw.md)         | AutoResearchClaw — fully autonomous 23-stage research pipeline converting ideas into conference-ready papers; multi-agent orchestration, 4-layer citation verification, self-healing experiments, PIVOT/REFINE/PROCEED decision logic, MetaClaw cross-run learning (MIT) | 2026-03-19   |
 | [composure.md](./agent-frameworks/composure.md)                       | Composure — multi-language code quality plugin for Claude Code: 8 skills, 8 hooks, tree-sitter + SQLite MCP knowledge graph, severity-tracked task queue, 7-language anti-pattern blocking (PolyForm Noncommercial 1.0.0) | 2026-03-23   |
+| [agentscope.md](./agent-frameworks/agentscope.md)                     | AgentScope — Alibaba Tongyi Lab multi-agent framework with actor-model parallelism, fault-tolerant Rpc agent, built-in prompt tuning, and streaming/non-streaming support (21.2K stars, Apache-2.0) | 2026-03-28   |
+| [ruflo.md](./agent-frameworks/ruflo.md)                               | Ruflo (formerly Claude Flow) — production-ready multi-agent orchestration: 100+ specialized agents, 26 CLI commands, 215+ MCP tools, RuVector self-learning layer, fault-tolerant consensus (npm ruflo@3.5.0, MIT) | 2026-03-28   |
+| [solace-agent-mesh.md](./agent-frameworks/solace-agent-mesh.md)       | Solace Agent Mesh — event-driven multi-agent AI framework with Solace Platform messaging for agent delegation, artifact sharing, and scalable peer-to-peer agent collaboration (Apache-2.0) | 2026-03-28   |
 
 **Key Topics**:
 
@@ -527,6 +541,9 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [AutoResearchClaw.md](./agent-infrastructure/AutoResearchClaw.md) | AutoResearchClaw — 23-stage autonomous research pipeline with 4-layer citation verification, self-healing experiments (10 repair cycles), MetaClaw cross-run learning (+18.3% robustness), ACP support for Claude Code/OpenCode/Codex (6.2K stars) | 2026-03-19   |
 | [zeroboot.md](./agent-infrastructure/zeroboot.md) | Zeroboot — sub-millisecond Firecracker+KVM fork sandbox: 0.79ms p50, ~265KB RSS, 4-endpoint REST API, Python/Node SDKs, managed + self-hosted deployment (1,394 stars, v0.1.0) | 2026-03-21   |
 | [vibium.md](./agent-infrastructure/vibium.md) | Vibium — browser automation tool for AI agents via WebDriver BiDi; CLI, MCP server, and client library modes | 2026-03-24   |
+| [nemoclaw.md](./agent-infrastructure/nemoclaw.md) | NVIDIA NemoClaw — alpha reference stack for running OpenClaw agents in OpenShell sandboxes with 4-layer policy-enforced isolation (network, filesystem, process, inference), multi-provider inference routing, and supply-chain verification (17.3K stars) | 2026-03-28   |
+| [trustgraph.md](./agent-infrastructure/trustgraph.md) | TrustGraph AI — event-driven knowledge graph platform: RDF triple model, multi-model storage (Cassandra+Qdrant+Garage), three RAG modes (DocumentRAG/GraphRAG/OntoRAG), Context Cores versioned bundles, Apache Pulsar pub-sub, MCP server (1.7K stars, Apache-2.0) | 2026-03-28   |
+| [fleet.md](./agent-infrastructure/fleet.md) | Fleet — open-source device management for 400K+ hosts: Go backend with MySQL/Redis, 9 MDM subsystems (Apple/Windows/Android), osquery-based telemetry, Orbit agent, EnterpriseOverrides extensibility pattern, dual MIT/commercial license (6.2K stars) | 2026-03-28   |
 
 **Key Topics**:
 
@@ -574,7 +591,25 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 
 ---
 
-### 7. API Frameworks
+### 7. Agent Orchestration
+
+**Location**: [./agent-orchestration/](./agent-orchestration/)
+
+Plugins and systems for coordinating multiple Claude Code agents with automatic routing, parallelism management, and task completion guarantees.
+
+| Document | Description | Last Updated |
+| -------- | ----------- | ------------ |
+| [oh-my-claudecode.md](./agent-orchestration/oh-my-claudecode.md) | oh-my-claudecode (OMC) — zero-config multi-agent orchestration for Claude Code: 32 specialized agents across cognitive domains, natural language task routing, automatic parallelism, Sisyphus persistent execution mode (TypeScript, MIT) | 2026-03-28 |
+
+**Key Topics**:
+
+- Natural language task routing to specialized agents
+- Automatic parallelism and completion guarantees
+- Sisyphus persistent execution for complex tasks
+
+---
+
+### 8. API Frameworks
 
 **Location**: [./api-frameworks/](./api-frameworks/)
 
@@ -628,7 +663,7 @@ High-performance API frameworks for building backend services, tool endpoints, a
 
 ---
 
-### 8. Developer Tools
+### 9. Developer Tools
 
 **Location**: [./developer-tools/](./developer-tools/)
 
@@ -692,6 +727,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [tori-cli.md](./developer-tools/tori-cli.md)           | Go-based SSH-tunneled Docker monitoring TUI with declarative alerts, multi-server dashboard, and zero network exposure | 2026-03-18   |
 | [emqutiti.md](./developer-tools/emqutiti.md)           | Go-based MQTT TUI client with multi-broker profiles, trace recording/replay, and OS keyring credential management | 2026-03-18   |
 | [claude-code-cli-power-patterns.md](./developer-tools/claude-code-cli-power-patterns.md) | 10 Claude Code CLI power patterns — session forking, PR-linked review, editor prompts, inline shell, effort levels, parallel worktrees, JSON output, context compaction, dynamic agents, CI/CD budget caps (Trigger.dev blog, March 2026) | 2026-03-24   |
+| [worktrunk.md](./developer-tools/worktrunk.md) | Worktrunk v0.33.0 — CLI for git worktree management designed for parallel AI agent workflows; branch-name addressing instead of filesystem paths, simple create/switch/remove commands, MIT OR Apache-2.0 | 2026-03-28   |
 
 **Key Topics**:
 
@@ -807,7 +843,7 @@ Developer productivity tools and workflow automation for software engineering wi
 
 ---
 
-### 9. Documentation Tools
+### 10. Documentation Tools
 
 **Location**: [./documentation-tools/](./documentation-tools/)
 
@@ -829,7 +865,7 @@ Architecture documentation, living documentation, and code-to-architecture extra
 
 ---
 
-### 10. Coding Agents
+### 11. Coding Agents
 
 **Location**: [./coding-agents/](./coding-agents/)
 
@@ -877,7 +913,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 
 ---
 
-### 11. Data Infrastructure
+### 12. Data Infrastructure
 
 **Location**: [./data-infrastructure/](./data-infrastructure/)
 
@@ -888,6 +924,8 @@ Real-time data platforms and analytics infrastructure for powering AI applicatio
 | [dolt.md](./data-infrastructure/dolt.md)                 | Dolt v1.83.0 — MySQL wire-protocol compatible version-controlled SQL database with Git semantics (branch, merge, diff, clone via SQL stored procedures), Prolly Tree O(d) diffs, and agentic memory via Beads (20.3K stars, Apache 2.0) | 2026-03-01   |
 | [motherduck.md](./data-infrastructure/motherduck.md)     | Serverless cloud DuckDB warehouse with Dual Execution engine and native MCP integration for AI agents        | 2026-02-23   |
 | [tinybird.md](./data-infrastructure/tinybird.md)         | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
+| [pocketbase.md](./data-infrastructure/pocketbase.md)     | PocketBase — open-source Go backend in 1 file: embedded SQLite with realtime subscriptions, password/OTP/OAuth2/MFA auth, file storage, admin UI, simple REST API (57.2K stars, MIT) | 2026-03-28   |
+| [chroma.md](./data-infrastructure/chroma.md)             | Chroma — open-source vector database for AI applications: Python/JavaScript/Rust clients, in-memory and persistent storage, multi-modal embeddings, metadata filtering, distance functions (17K+ stars, Apache-2.0) | 2026-03-28   |
 
 **Key Topics**:
 
@@ -904,7 +942,7 @@ Real-time data platforms and analytics infrastructure for powering AI applicatio
 
 ---
 
-### 12. Task Management
+### 13. Task Management
 
 **Location**: [./task-management/](./task-management/)
 
@@ -915,6 +953,7 @@ AI-powered task management systems designed for AI-driven development workflows.
 | [claude-task-master.md](./task-management/claude-task-master.md) | Task Master - PRD parsing, task tracking, and MCP integration for Cursor, Windsurf, Claude Code | 2026-01-26   |
 | [vibe-kanban.md](./task-management/vibe-kanban.md)               | Vibe Kanban - Kanban-style orchestration UI for parallel AI coding agent sessions with git worktree isolation | 2026-03-03   |
 | [artifact-manifest-backend-providers.md](./task-management/artifact-manifest-backend-providers.md) | Cross-platform comparison of structured metadata capabilities (GitHub, Linear, GitLab, Supabase) for ArtifactBackend provider implementations | 2026-03-22   |
+| [xyops.md](./task-management/xyops.md)                                                             | xyOps - distributed job orchestration and fleet management platform with visual workflow editor, real-time monitoring, alerting, and remote satellite agent system | 2026-03-26   |
 
 **Key Topics**:
 
@@ -928,7 +967,7 @@ AI-powered task management systems designed for AI-driven development workflows.
 
 ---
 
-### 13. Context Management
+### 14. Context Management
 
 **Location**: [./context-management/](./context-management/)
 
@@ -967,7 +1006,7 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 
 ---
 
-### 14. Async Libraries
+### 15. Async Libraries
 
 **Location**: [./async-libraries/](./async-libraries/)
 
@@ -998,7 +1037,7 @@ Python async I/O libraries and concurrency frameworks for building concurrent ap
 
 ---
 
-### 15. ML Infrastructure
+### 16. ML Infrastructure
 
 **Location**: [./ml-infrastructure/](./ml-infrastructure/)
 
@@ -1028,7 +1067,7 @@ ML compute engines, model serving platforms, and distributed computing infrastru
 
 ---
 
-### 16. Python Runtimes
+### 17. Python Runtimes
 
 **Location**: [./python-runtimes/](./python-runtimes/)
 
@@ -1053,7 +1092,7 @@ Alternative Python interpreters and runtime implementations for specialized use 
 
 ---
 
-### 17. AI Observability
+### 18. AI Observability
 
 **Location**: [./ai-observability/](./ai-observability/)
 
@@ -1078,7 +1117,7 @@ AI-native observability platforms for monitoring, debugging, and optimizing LLM 
 
 ---
 
-### 18. Rust-Python Bindings
+### 19. Rust-Python Bindings
 
 **Location**: [./rust-python-bindings/](./rust-python-bindings/)
 
@@ -1103,7 +1142,7 @@ Rust-Python interoperability libraries for building high-performance Python exte
 
 ---
 
-### 19. AI Research Tools
+### 20. AI Research Tools
 
 **Location**: [./ai-research-tools/](./ai-research-tools/)
 
@@ -1128,7 +1167,7 @@ AI research newsletters, curated resource collections, and tools for staying cur
 
 ---
 
-### 20. AI Design Tools
+### 21. AI Design Tools
 
 **Location**: [./ai-design-tools/](./ai-design-tools/)
 
@@ -1156,7 +1195,7 @@ AI-powered visual creation platforms and design intelligence tools for video, im
 
 ---
 
-### 21. Evaluation & Testing
+### 22. Evaluation & Testing
 
 **Location**: [./evaluation-testing/](./evaluation-testing/)
 
@@ -1188,7 +1227,7 @@ Harness engineering, evaluation infrastructure, and testing methodologies for AI
 
 ---
 
-### 22. LLM Infrastructure
+### 23. LLM Infrastructure
 
 **Location**: [./llm-infrastructure/](./llm-infrastructure/)
 
@@ -1199,6 +1238,7 @@ Self-hosted LLM inference servers, multi-provider gateways, and LLMOps platforms
 | [localai.md](./llm-infrastructure/localai.md) | LocalAI - free open-source local AI inference server with OpenAI-compatible API, no GPU required, 40+ backends including llama.cpp, diffusers, whisper (43K+ stars) | 2026-02-22 |
 | [tensorzero.md](./llm-infrastructure/tensorzero.md) | TensorZero - industrial-grade LLM gateway written in Rust with <1ms p99 latency, 20+ providers, fine-tuning, A/B testing, and observability (10.9K stars) | 2026-01-31 |
 | [glm5-exacto.md](./llm-infrastructure/glm5-exacto.md) | GLM-5:exacto — Z.ai's 744B-parameter open-source model (40B active MoE) via OpenRouter Exacto routing for tool-calling accuracy, 77.8% SWE-bench Verified, MIT license | 2026-03-18 |
+| [openbao.md](./llm-infrastructure/openbao.md) | OpenBao v2.5.2 — MPL-2.0 fork of HashiCorp Vault: centralized identity-based secrets management, 9 auth methods (JWT/Kubernetes/LDAP/AppRole), 9 secret engines (KV/PKI/Database/Transit/SSH), sdk/v2 + api/v2 for plugins (Go 1.25.6) | 2026-03-28 |
 
 **Key Topics**:
 
@@ -1216,7 +1256,7 @@ Self-hosted LLM inference servers, multi-provider gateways, and LLMOps platforms
 
 ---
 
-### 23. Prompt Engineering
+### 24. Prompt Engineering
 
 **Location**: [./prompt-engineering/](./prompt-engineering/)
 
@@ -1260,7 +1300,7 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 
 ---
 
-### 24. AI Writing Tools
+### 25. AI Writing Tools
 
 **Location**: [./ai-writing-tools/](./ai-writing-tools/)
 
@@ -1279,7 +1319,7 @@ Automated content generation tools that produce changelogs, release notes, blog 
 
 ---
 
-### 25. Low-Code Platforms
+### 26. Low-Code Platforms
 
 **Location**: [./low-code-platforms/](./low-code-platforms/)
 
@@ -1298,7 +1338,7 @@ No-code and low-code AI workflow builders for creating AI-powered applications a
 
 ---
 
-### 26. Claude Code Plugins
+### 27. Claude Code Plugins
 
 **Location**: [./claude-code-plugins/](./claude-code-plugins/)
 
@@ -1315,7 +1355,7 @@ Curated Claude Code plugin ecosystems, configuration repositories, and multi-plu
 - Multi-LLM backend routing (Z.ai, Kimi K2, ccproxy, OpenRouter)
 - Battle-tested plugin selection and curated skill sets
 
-### 27. Serialization Libraries
+### 28. Serialization Libraries
 
 **Location**: [./serialization-libraries/](./serialization-libraries/)
 
