@@ -56,7 +56,8 @@ research/
 ├── rust-python-bindings/              # Rust-Python interoperability and binding libraries
 │   └── pyo3.md                        # Rust bindings for Python with maturin build tooling (15K+ stars)
 ├── ai-observability/                  # AI/LLM observability and debugging platforms
-│   └── logfire.md                     # Pydantic Logfire - full-stack AI observability with MCP (4K+ stars)
+│   ├── logfire.md                     # Pydantic Logfire - full-stack AI observability with MCP (4K+ stars)
+│   └── compression-monitor.md        # Context-compression behavioral drift monitor for Claude Code agents (v0.2.1)
 ├── code-auditing/                     # Code security and quality auditing tools
 │   ├── hound.md                       # Autonomous AI security auditor with knowledge graphs
 │   ├── snyk-cli-cpp-scans.md          # Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies
@@ -1105,6 +1106,7 @@ AI-native observability platforms for monitoring, debugging, and optimizing LLM 
 | Document                                   | Description                                                                                                         | Last Updated |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [logfire.md](./ai-observability/logfire.md) | Pydantic Logfire - full-stack AI observability with OpenTelemetry, MCP server for SQL queries, token/cost tracking | 2026-02-05   |
+| [compression-monitor.md](./ai-observability/compression-monitor.md) | Ghost Lexicon + Behavioral Footprint + Semantic Drift instruments for detecting post-compression behavioral changes in Claude Code sessions | 2026-03-29   |
 
 **Key Topics**:
 
