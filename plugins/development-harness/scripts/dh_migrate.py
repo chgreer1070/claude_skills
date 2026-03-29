@@ -927,7 +927,7 @@ def _register_one(provider: GitHubArtifactProvider, rel: str, artifact_type: str
         return "FAILED"
 
     try:
-        manifest = provider.get_manifest(issue_number)  # type: ignore[union-attr]
+        manifest = provider.get_manifest(issue_number)
     except Exception as exc:  # noqa: BLE001
         err_console.print(f":cross_mark: Failed to get manifest for issue #{issue_number}: {exc}")
         return "FAILED"
@@ -951,7 +951,7 @@ def _register_one(provider: GitHubArtifactProvider, rel: str, artifact_type: str
     )
 
     try:
-        provider.set_manifest(issue_number, updated_manifest)  # type: ignore[union-attr]
+        provider.set_manifest(issue_number, updated_manifest)
     except Exception as exc:  # noqa: BLE001
         err_console.print(f":cross_mark: Failed to register {rel} on issue #{issue_number}: {exc}")
         return "FAILED"

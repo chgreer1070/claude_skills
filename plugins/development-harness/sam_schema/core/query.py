@@ -226,7 +226,7 @@ def update_plan_fields(
 
     if set_fields and task_id is not None:
         # Task-level field updates
-        update_fields(file_path, task_id, set_fields)  # type: ignore[arg-type]
+        update_fields(file_path, task_id, set_fields)
 
     if append_section_name is not None and task_id is not None and section_content:
         append_section(file_path, task_id, append_section_name, section_content)

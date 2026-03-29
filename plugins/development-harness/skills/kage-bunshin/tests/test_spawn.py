@@ -6,6 +6,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -464,7 +465,7 @@ def test_cmd_spawn_includes_worktree_flag_in_argv(tmp_path, capsys):
 
     def fake_run(cmd: list[str] | str, **kwargs: object) -> object:
         if isinstance(cmd, list) and "new-session" in cmd:
-            captured_argv.append(list(cmd))
+            captured_argv.append(cmd)  # type: ignore[arg-type]
         return fake_run_result
 
     with (

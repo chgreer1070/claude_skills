@@ -210,6 +210,9 @@ def _read_process_output(process: subprocess.Popen[bytes], timeout: int, clean_n
     accumulated_json = ""
     start_time = time.time()
 
+    if process.stdout is None:
+        return False
+
     while time.time() - start_time < timeout:
         if process.poll() is not None:
             if process.stdout is not None:

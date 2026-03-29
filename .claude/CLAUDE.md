@@ -490,6 +490,10 @@ uv run prek run --files <file>
 
 ---
 
+- Exception Handling (narrow catches, BLE001, "must not crash" anti-pattern): `.claude/rules/exception-handling.md`
+
+---
+
 ## GitHub CLI (gh) Usage
 
 <gh_cli_usage>

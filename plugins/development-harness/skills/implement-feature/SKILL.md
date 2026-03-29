@@ -72,6 +72,10 @@ When multiple tasks are simultaneously ready (non-zero `count` with 2+ tasks in 
 TeamCreate(team_name: "impl-{slug}")
 ```
 
+The team name follows the pattern `impl-{slug}` where `{slug}` is the feature slug derived
+from the task file path. This team name is reused by `complete-implementation` for QG agent
+dispatch and is shut down in the Final Step of that skill.
+
 Spawn one teammate per ready task. When only one task is ready, a single Agent call is acceptable. `TeamCreate` is the standard parallel dispatch mechanism — use it whenever 2+ tasks are ready at the same time.
 
 For each task being dispatched:
@@ -108,6 +112,55 @@ mcp__plugin_dh_backlog__backlog_groom(
 ```
 
 Concerns accumulate across all task agents. They feed into the validation stage in `/complete-implementation` — each verified concern becomes a new backlog item.
+
+4a. If a parent issue number is known, attempt contract verification against the architect spec:
+
+```text
+mcp__plugin_dh_backlog__artifact_read(issue_number=N, artifact_type="architect")
+```
+
+If `artifact_read` returns content (architect spec exists), resolve the files modified by the just-completed task:
+
+```bash
+git diff --name-only HEAD~1..HEAD
+```
+
+Then spawn the contract-verification agent:
+
+```text
+Agent(
+    subagent_type="dh:contract-verification",
+    prompt="""
+Verify the just-completed task against the architect spec.
+
+Task ID: {task_id}
+Plan: {plan_address}
+Architect spec: {architect_spec_content_or_path}
+Modified files:
+{modified_files_list}
+
+Read the architect spec's Component Design and Type System Design sections.
+For each modified file, grep for function/class definitions and extract actual signatures.
+Compare against the contracts defined in the spec.
+Report mismatches in a <concerns> block with severity CONTRACT VIOLATION (signature mismatch)
+or CONTRACT GAP (spec defines contract but implementation is silent).
+If no mismatches are found, return an empty response with no <concerns> block.
+"""
+)
+```
+
+If the contract-verification agent returns a `<concerns>` block, append each concern to the backlog item with a `CONTRACT:` prefix:
+
+```text
+mcp__plugin_dh_backlog__backlog_groom(
+    selector="#{issue}",
+    section="Concerns",
+    content="- [ ] CONTRACT: {concern text} (reported by contract-verification on {task_id})",
+    append=True
+)
+```
+
+If `artifact_read` fails or returns no content (no architect spec for this issue), skip step 4a entirely. Proportional quality gate items without an architect spec automatically skip this step with zero overhead.
 
 5. After all tasks in the current batch complete, call `mcp__plugin_dh_sam__sam_status` to
    check plan progress. If tasks remain, return to step 2 to fetch the next batch of ready

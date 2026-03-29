@@ -404,6 +404,15 @@ The 6 quality gate phases are enforced via a SAM task loop. Each phase is a task
 | T5 | Documentation Update | service-docs-maintainer |
 | T6 | Context Refinement | context-refinement |
 
+### Team Setup
+
+Check for an existing implementation team before dispatching QG agents:
+
+- `team_name = "impl-{slug}"` (same team created by `implement-feature`)
+- If the team exists (config at `~/.claude/teams/impl-{slug}/config.json`), reuse it for QG agent dispatch
+- If no team exists, create one: `TeamCreate(team_name="impl-{slug}")`
+- Store `team_name` for use in agent dispatch and the Team Shutdown step below
+
 ### Dispatch Loop
 
 Repeat until `sam_ready` returns an empty list:
@@ -429,6 +438,8 @@ If `"claimed": false`, stop — another agent is running this phase. Do not re-d
 ```text
 Skill(skill="start-task", args="plan/{QG}-qg-{slug}.yaml --task {task_id}")
 ```
+
+Pass `team_name="{team_name}"` when spawning QG agents so they join the existing implementation team.
 
 The SubagentStop hook marks the task COMPLETE after the sub-agent finishes.
 
@@ -727,6 +738,22 @@ mcp__plugin_dh_backlog__backlog_list(title="{slug}")
 Check the `issue` field on the matching item. If present and this commit resolves that issue, append `Fixes #NNN` to the commit message body (where NNN is the issue number). If no issue number is found, omit it.
 
 Push after committing. If the working tree is clean, skip this step.
+
+---
+
+## Team Shutdown
+
+After commit+push, shut down all teammates in the implementation team:
+
+1. Read `~/.claude/teams/{team_name}/config.json` to get the members list.
+2. For each member name in the `members` array, send:
+
+```text
+SendMessage(to="{name}", message={"type": "shutdown_request"})
+```
+
+3. Note: broadcast to `"*"` does not support structured shutdown messages — send individually
+   to each named member.
 
 ---
 

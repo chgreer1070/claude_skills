@@ -373,6 +373,10 @@ def register_one(
     if dry_run:
         return f"DRY-RUN: would register {candidate.artifact_type} -> issue #{candidate.issue}{content_note}"
 
+    if provider is None:
+        msg = "provider is required when dry_run is False"
+        raise ValueError(msg)
+
     # Get current manifest, upsert entry, persist
     assert provider is not None  # noqa: S101 — guarded by dry_run early return above
     manifest = provider.get_manifest(candidate.issue)
@@ -455,7 +459,7 @@ def _run_registrations(
         assert c.issue is not None  # ensured by caller filter  # noqa: S101
         try:
             if dry_run:
-                outcome = register_one(None, registry, c, dry_run=True)  # type: ignore[arg-type]
+                outcome = register_one(None, registry, c, dry_run=True)
             else:
                 assert provider is not None  # noqa: S101
                 outcome = register_one(provider, registry, c, dry_run=False)

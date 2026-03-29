@@ -43,6 +43,7 @@ from ruamel.yaml import YAML
 from sam_schema.task_format import resolve_task_id
 
 if TYPE_CHECKING:
+    # IssueNode is a TypedDict from backlog_core.github; only imported for type checking
     from backlog_core.github import IssueNode
     from github.Repository import Repository
 
@@ -575,6 +576,7 @@ def _migrate_task(
     """
     assert SamTask is not None  # noqa: S101 — guarded by _connect_github caller
     assert create_task_issue is not None  # noqa: S101 — guarded by _connect_github caller
+
     task_type = infer_task_type(task.title)
     sam = SamTask(
         task_id=task.task_id,

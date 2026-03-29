@@ -74,6 +74,8 @@ Then verify each level against the actual codebase.
 
 Read the architecture spec and task file to understand:
 
+> The backlog item's Concerns section may contain `CONTRACT:` prefixed entries added by the `contract-verification` agent after each task completed. These represent method signature or type contract mismatches against the architect spec. Review them alongside task-agent concerns when verifying the feature.
+
 - What was the feature supposed to achieve (goals)?
 - What did the tasks claim to deliver (artifacts)?
 
