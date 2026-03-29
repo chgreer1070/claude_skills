@@ -49,6 +49,15 @@ from sam_schema.readers.detect import FormatDetectionError
 _log = logging.getLogger(__name__)
 _artifact_registry = _ArtifactRegistry()
 
+_PLAN_READ_ERRORS: tuple[type[Exception], ...] = (
+    FileNotFoundError,
+    AddressingError,
+    FormatDetectionError,
+    KeyError,
+    ValueError,
+    TypeError,
+)
+
 _PLAN_DIR_SENTINEL = "plan"
 
 
@@ -131,7 +140,7 @@ def sam_read(
         # Plan-only read: return Plan metadata without TaskAssignment wrapper.
         read_result = load_plan(plan_path)
         return read_result.plan.model_dump(mode="json", by_alias=True, exclude_none=True)
-    except (FileNotFoundError, AddressingError, FormatDetectionError, KeyError, ValueError, TypeError) as exc:
+    except _PLAN_READ_ERRORS as exc:
         return {"error": str(exc)}
 
 
@@ -212,7 +221,7 @@ def sam_ready(
             "source_path": str(loaded_plan.source_path or plan_path),
             "issue": loaded_plan.issue,
         }
-    except (FileNotFoundError, AddressingError, FormatDetectionError, KeyError, ValueError, TypeError) as exc:
+    except _PLAN_READ_ERRORS as exc:
         return {"error": str(exc)}
 
 
@@ -421,7 +430,7 @@ def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None
         updated_manifest = _artifact_registry.register(manifest, entry)
         provider.set_manifest(issue_number, updated_manifest)
         _log.info("sam_create: registered task-plan artifact %s for issue #%d", plan_path, issue_number)
-    except (BacklogError, ValueError, FileNotFoundError, OSError) as exc:
+    except (BacklogError, ValueError, OSError) as exc:
         _log.warning(
             "sam_create: artifact registration failed for issue #%d (path=%s): %s",
             issue_number,

@@ -55,6 +55,7 @@ if _SAM_PACKAGES_DIR not in sys.path:
 # instead of the lazy ``object`` returned by sam_schema.__getattr__.
 from sam_schema.core.models import STATUS_MAP
 from sam_schema.core.query import claim_task as sam_claim_task, load_plan as sam_load_plan
+from sam_schema.readers.detect import FormatDetectionError
 
 if TYPE_CHECKING:
     from sam_schema.core.models import Task as SamTask
@@ -1134,7 +1135,7 @@ def validate(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
 
     try:
         tasks = _load_tasks_via_sam(task_file)
-    except Exception as exc:
+    except (FileNotFoundError, FormatDetectionError, ValueError) as exc:
         output = {"valid": False, "errors": [str(exc)], "warnings": [], "task_count": 0}
         console.print(json.dumps(output, indent=2))
         raise typer.Exit(1) from exc

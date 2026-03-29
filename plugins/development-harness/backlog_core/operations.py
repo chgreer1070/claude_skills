@@ -72,7 +72,6 @@ from .models import (
     BacklogItem,
     DuplicateItemError,
     Entry,
-    GitHubUnavailableError,
     IssueStatus,
     ItemNotFoundError,
     Output,
@@ -382,7 +381,7 @@ def _auto_register_plan_artifact(item: BacklogItem, plan: str, repo: str = "", o
         updated_manifest = registry.register(manifest, entry)
         provider.set_manifest(issue_number, updated_manifest)
         out.info(f"  Artifact registered: task-plan {plan} on issue #{issue_number}")
-    except (GitHubUnavailableError, BacklogError, GithubException) as exc:
+    except (BacklogError, GithubException) as exc:
         out.warn(f"  WARNING: Artifact registration failed for {plan} on issue #{issue_number}: {exc}")
 
 

@@ -56,6 +56,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from ruamel.yaml import YAML, YAMLError
 
 app = typer.Typer(
     name="dh_migrate", help="Migrate DH project state from legacy .claude/ layout to ~/.dh/.", no_args_is_help=True
@@ -459,8 +460,6 @@ def _read_issue_number_from_yaml(path: Path) -> int | None:
     Returns:
         Positive integer issue number, or ``None``.
     """
-    from ruamel.yaml import YAML, YAMLError  # noqa: PLC0415 — deferred import
-
     try:
         yaml = YAML(typ="safe")
         data = yaml.load(path.read_text(encoding="utf-8"))
@@ -488,8 +487,6 @@ def _read_issue_number_from_markdown_frontmatter(path: Path) -> int | None:
     Returns:
         Positive integer issue number, or ``None``.
     """
-    from ruamel.yaml import YAML, YAMLError  # noqa: PLC0415
-
     try:
         text = path.read_text(encoding="utf-8")
         if not text.startswith("---"):
@@ -579,8 +576,6 @@ def _parse_backlog_file_data(text: str) -> dict[str, object] | None:
     Returns:
         Parsed YAML dict, or ``None`` when frontmatter is absent or unparseable.
     """
-    from ruamel.yaml import YAML  # noqa: PLC0415
-
     if not text.startswith("---"):
         return None
     end = text.find("\n---", 3)
@@ -667,7 +662,6 @@ def _build_slug_index(backlog_dir: Path) -> dict[str, int]:
         without a parseable issue number are silently skipped.
     """
     from backlog_core.parsing import title_to_slug  # noqa: PLC0415
-    from ruamel.yaml import YAMLError  # noqa: PLC0415
 
     index: dict[str, int] = {}
     if not backlog_dir.is_dir():

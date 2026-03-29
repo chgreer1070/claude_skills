@@ -438,7 +438,7 @@ def main() -> None:
 
     try:
         _run_monitor(session_id=args.session_id, state_dir=state_dir, interval=args.interval, timeout=args.timeout)
-    except (OSError, json.JSONDecodeError, subprocess.CalledProcessError, KeyError, ValueError) as exc:
+    except (OSError, subprocess.CalledProcessError, KeyError, ValueError) as exc:
         _emit_error(f"unexpected error: {exc}")
         sys.exit(1)
 

@@ -2438,7 +2438,7 @@ def _migrate_queue_manifest_only(
     """
     try:
         manifest = provider.get_manifest(issue_number)
-    except (GitHubUnavailableError, BacklogError, _GithubException):
+    except (BacklogError, _GithubException):
         out.warn(f"Could not read existing manifest for issue #{issue_number}. Skipping manifest check.")
         return candidates
 
@@ -2507,7 +2507,7 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
             _ok, action_msg = _migrate_register_one(provider, rel_path, atype, issue)
             migrated += 1
             run_details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": action_msg})
-        except (GitHubUnavailableError, BacklogError, _GithubException, OSError) as exc:
+        except (BacklogError, _GithubException, OSError) as exc:
             failed += 1
             run_details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": f"FAILED: {exc}"})
 
