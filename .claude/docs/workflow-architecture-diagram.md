@@ -61,6 +61,7 @@ flowchart TD
         A7["t0-baseline-capture"]
         A8["tn-verification-gate"]
         M5["backlog_get_ready_sam_tasks(parent_issue_number)"]
+        M8["backlog_get_sam_tasks(parent_issue_number)"]
         C2["sam ready"]
         C3["sam status"]
         C4["sam claim"]
@@ -69,6 +70,7 @@ flowchart TD
         H1["task_status_hook.py SubagentStop"]
         H2["task_status_hook.py PostToolUse"]
         S2 -->|"§2.1"| M5
+        S2 -->|"§2.1"| M8
         S2 -->|"§2.1"| C2
         S2 --> C3
         S2 --> A7
@@ -263,7 +265,6 @@ Exit code 1 when: already claimed, task not found, or `status != not-started`.
 
 | Artifact | Publisher | Consumer(s) |
 |----------|-----------|-------------|
-| `.claude/backlog/{priority}-{slug}.md` | `backlog_add`, `backlog_update`, `backlog_sync` (local cache write) | `backlog_view`, `backlog_list`, `/dh:work-backlog-item` orchestrator |
 | `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md` | `backlog_add`, `backlog_sync`, `backlog_normalize` (DH state cache) | `backlog_view`, `backlog_list`, `backlog_groom` |
 | `~/.dh/projects/{slug}/plan/feature-context-{slug}.md` | `feature-researcher` | `python-cli-design-spec`, `swarm-task-planner` |
 | `~/.dh/projects/{slug}/plan/codebase/{FOCUS}.md` | `codebase-analyzer` | `swarm-task-planner` |
@@ -339,13 +340,14 @@ Context:    Declared on /implement-feature skill and /complete-implementation sk
 
 Processing sequence:
 
-1. Read `prompt` field from hook input (falls back to `tool_input.prompt`).
-2. Parse prompt for `/start-task <path> --task <id>` or `Skill(skill="start-task", args="<path> --task <id>")` pattern.
-3. If no match, fall back to `~/.dh/projects/{slug}/context/active-task-{session_id}.json`.
-4. If still no match, exit 0 silently (not a `/start-task` sub-agent).
-5. Call `sam_update_status(full_path, task_id, COMPLETE, timestamp_field="completed")`.
-6. Delete `~/.dh/projects/{slug}/context/active-task-{session_id}.json`.
-7. Call `sync_completion_to_github()` — best-effort, never changes exit code.
+1. Read `agent_transcript_path` from hook input. If absent, exit 0 (cannot correlate agent to task).
+2. Call `_extract_session_id_from_transcript(transcript_path)` — reads first 10 JSONL lines, returns the `session_id` field of the first parseable record. If not found, exit 0.
+3. Construct `~/.dh/projects/{slug}/context/active-task-{sub_agent_session_id}.json` via `dh_paths.context_dir()`. If the file does not exist, exit 0 (not a `/start-task` sub-agent).
+4. Read `task_file_path`, `task_id`, and `parent_issue_number` from the context file.
+5. If task is already `status: complete`, delete the context file and exit 0.
+6. Call `sam_update_status(full_path, task_id, COMPLETE, timestamp_field="completed")`.
+7. Delete the context file.
+8. Call `sync_completion_to_github()` — best-effort, never changes exit code.
 
 Fields written: `status: complete`, `completed: <ISO timestamp>`
 
