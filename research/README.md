@@ -445,6 +445,7 @@ Tools and frameworks for autonomous code security auditing and vulnerability det
 | [hound.md](./code-auditing/hound.md) | Autonomous AI security auditor using knowledge graphs, belief systems, and hypothesis-driven analysis | 2026-01-26   |
 | [snyk-cli-cpp-scans.md](./code-auditing/snyk-cli-cpp-scans.md) | Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies via `--unmanaged` flag | 2026-02-23   |
 | [syft.md](./code-auditing/syft.md) | Syft v1.42.3 — Anchore SBOM generation tool: 3-stage pipeline (source resolution → cataloging → format output), 20+ ecosystem catalogers, CycloneDX/SPDX/Syft JSON output, signed attestations, Grype integration (8.6K stars, Apache-2.0) | 2026-03-28   |
+| [rope.md](./code-auditing/rope.md) | Rope v1.14.0 — pure Python AST-based refactoring library; 11 operations (rename, move, extract, inline, change signature, etc.); scope-aware symbol resolution, minimal deps (pytoolconfig only), Python 3.8-3.14 support, designed for IDE embedding (2.2K stars, LGPL-3.0) | 2026-03-29   |
 
 **Key Topics**:
 
@@ -486,6 +487,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [agentscope.md](./agent-frameworks/agentscope.md)                     | AgentScope — Alibaba Tongyi Lab multi-agent framework with actor-model parallelism, fault-tolerant Rpc agent, built-in prompt tuning, and streaming/non-streaming support (21.2K stars, Apache-2.0) | 2026-03-28   |
 | [ruflo.md](./agent-frameworks/ruflo.md)                               | Ruflo (formerly Claude Flow) — production-ready multi-agent orchestration: 100+ specialized agents, 26 CLI commands, 215+ MCP tools, RuVector self-learning layer, fault-tolerant consensus (npm ruflo@3.5.0, MIT) | 2026-03-28   |
 | [solace-agent-mesh.md](./agent-frameworks/solace-agent-mesh.md)       | Solace Agent Mesh — event-driven multi-agent AI framework with Solace Platform messaging for agent delegation, artifact sharing, and scalable peer-to-peer agent collaboration (Apache-2.0) | 2026-03-28   |
+| [gitagent.md](./agent-frameworks/gitagent.md)                         | GitAgent v0.1.7 — framework-agnostic, git-native AI agent standard; define agents as git repos with AGENT.yaml spec (system prompts, tool schemas, compliance policies); exporters for Claude Code, OpenAI, LangChain, CrewAI, AutoGen; "Clone a repo, get an agent" (MIT) | 2026-03-29   |
 
 **Key Topics**:
 
@@ -732,6 +734,8 @@ Developer productivity tools and workflow automation for software engineering wi
 | [emqutiti.md](./developer-tools/emqutiti.md)           | Go-based MQTT TUI client with multi-broker profiles, trace recording/replay, and OS keyring credential management | 2026-03-18   |
 | [claude-code-cli-power-patterns.md](./developer-tools/claude-code-cli-power-patterns.md) | 10 Claude Code CLI power patterns — session forking, PR-linked review, editor prompts, inline shell, effort levels, parallel worktrees, JSON output, context compaction, dynamic agents, CI/CD budget caps (Trigger.dev blog, March 2026) | 2026-03-24   |
 | [worktrunk.md](./developer-tools/worktrunk.md) | Worktrunk v0.33.0 — CLI for git worktree management designed for parallel AI agent workflows; branch-name addressing instead of filesystem paths, simple create/switch/remove commands, MIT OR Apache-2.0 | 2026-03-28   |
+| [tui-studio.md](./developer-tools/tui-studio.md) | TUI Studio — Figma-like visual editor for terminal UI applications; drag-and-drop component placement, real-time ANSI preview, one-click code export to 6 frameworks (Ink, BubbleTea, Blessed, Textual, OpenTUI, Tview); proprietary SaaS | 2026-03-29   |
+| [pretext.md](./developer-tools/pretext.md) | Pretext v0.0.3 — DOM-free multiline text measurement and layout library; canvas-based measurement, pure arithmetic line breaking, 100% browser accuracy (7,680/7,680 tests), CJK/Arabic/Thai/BiDi support, ~19ms prepare() for 500-text batch, 0.09ms/call layout() (8K stars) | 2026-03-29   |
 
 **Key Topics**:
 
@@ -888,6 +892,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [stakpak-agent.md](./coding-agents/stakpak-agent.md) | Stakpak Agent — Rust-based DevOps AI agent (11-crate workspace); secret substitution, mTLS MCP, Warden guardrails, autopilot cron scheduling, Slack/Discord/Telegram channels, Claude/GPT/Gemini support, ACP for Zed editor (872 stars, Apache-2.0) | 2026-03-13   |
 | [1code.md](./coding-agents/1code.md) | 1Code — Electron desktop app wrapping Claude Code CLI and OpenAI Codex with git worktree isolation, tRPC router (20 namespaces), SQLite session tracking, MCP plugin management, voice input; Pro/Max tiers for background agents and sync (5.2K stars, MIT) | 2026-03-17   |
 | [maverick.md](./coding-agents/maverick.md) | Maverick — Claude Code plugin (28 skills + 4 agents) + CLI with enforcement chain (best-practice → project skill → local verify → CI → agent review → human review), three workflow modes (do-issue-solo, do-issue-guided, do-task-solo), upskill auto-generation from codebase, and AWS EC2/SQS/Lambda worker fleet for autonomous issue resolution (alpha) | 2026-03-23   |
+| [hyperagents.md](./coding-agents/hyperagents.md) | HyperAgents — Meta research framework for self-referential self-improving agents; MetaAgent iteratively modifies codebase, TaskAgent solves domains (Balrog, Genesis, IMO, Polyglot, Paper Review, Search Arena); Docker-containerized evaluation, LiteLLM multi-model support, evolutionary optimization loop (CC BY-NC-SA 4.0) | 2026-03-29   |
 
 **Key Topics**:
 
@@ -1022,6 +1027,7 @@ Python async I/O libraries and concurrency frameworks for building concurrent ap
 | [anyio.md](./async-libraries/anyio.md)     | AnyIO - backend-agnostic async concurrency library providing unified API across asyncio and Trio (426M downloads/month)  | 2026-02-04   |
 | [asyncssh.md](./async-libraries/asyncssh.md) | asyncssh v2.22.0 — asyncio-native SSH client/server with reverse tunnels (`forward_remote_port`, `connect_reverse`), SFTP, jump-host chaining, and pure-Python key management (1.7K stars, EPL-2.0/GPL-2.0) | 2026-03-01   |
 | [trio.md](./async-libraries/trio.md)       | Trio - structured concurrency async library for Python with nurseries, cancel scopes (7K+ stars, 218M downloads/month)   | 2026-02-04   |
+| [aiomqtt.md](./async-libraries/aiomqtt.md) | aiomqtt v2.5.1 — asyncio-native MQTT client wrapping paho-mqtt; async context manager + async for message iteration, MQTT 5.0/3.1.1/3.1 support, TLS/WebSocket, custom queue types, FastAPI lifespan integration, Python 3.8-3.13 (MIT) | 2026-03-29   |
 
 **Key Topics**:
 
