@@ -544,6 +544,8 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [nemoclaw.md](./agent-infrastructure/nemoclaw.md) | NVIDIA NemoClaw — alpha reference stack for running OpenClaw agents in OpenShell sandboxes with 4-layer policy-enforced isolation (network, filesystem, process, inference), multi-provider inference routing, and supply-chain verification (17.3K stars) | 2026-03-28   |
 | [trustgraph.md](./agent-infrastructure/trustgraph.md) | TrustGraph AI — event-driven knowledge graph platform: RDF triple model, multi-model storage (Cassandra+Qdrant+Garage), three RAG modes (DocumentRAG/GraphRAG/OntoRAG), Context Cores versioned bundles, Apache Pulsar pub-sub, MCP server (1.7K stars, Apache-2.0) | 2026-03-28   |
 | [fleet.md](./agent-infrastructure/fleet.md) | Fleet — open-source device management for 400K+ hosts: Go backend with MySQL/Redis, 9 MDM subsystems (Apple/Windows/Android), osquery-based telemetry, Orbit agent, EnterpriseOverrides extensibility pattern, dual MIT/commercial license (6.2K stars) | 2026-03-28   |
+| [holyclaude.md](./agent-infrastructure/holyclaude.md) | HolyClaude — containerized AI development workstation: Claude Code + web UI + 7 AI CLIs + headless browser + 50+ dev tools in one `docker compose up` (1.1K stars, MIT, v1.1.4) | 2026-03-28   |
+| [cmux.md](./agent-infrastructure/cmux.md) | cmux — Ghostty-based macOS terminal for AI coding agents: sidebar vertical tabs, visual notification rings, in-app browser with scriptable API, CLI socket for pane automation (11.1K stars, AGPL-3.0, v0.63.0) | 2026-03-28   |
 
 **Key Topics**:
 
@@ -1155,6 +1157,7 @@ AI research newsletters, curated resource collections, and tools for staying cur
 | [codewiki-google.md](./ai-research-tools/codewiki-google.md) | CodeWiki (Google) - AI-powered documentation platform: auto-generates wikis, diagrams, and Gemini chat for code repos after every commit (public preview, Nov 2025) | 2026-03-18   |
 | [the-unwind-ai.md](./ai-research-tools/the-unwind-ai.md) | The Unwind AI - AI builder newsletter with 740+ posts, companion awesome-llm-apps repo (95K+ stars, Apache 2.0)               | 2026-02-19   |
 | [samuraizer.md](./ai-research-tools/samuraizer.md) | Samuraizer - Full-stack AI knowledge base for security research: URL/PDF analysis via Gemini 2.5 Flash, semantic search, RAG chat, knowledge graph (D3.js), Telegram bot (Flask+React+SQLite, MIT) | 2026-03-25   |
+| [OpenSpace.md](./ai-research-tools/OpenSpace.md) | OpenSpace — self-evolving skills engine for AI agents: autonomous skill development, 46% token reduction via reuse, collective skill sharing across agent networks (1.7K stars, MIT, v0.1.0) | 2026-03-28   |
 
 **Key Topics**:
 
@@ -1181,6 +1184,7 @@ AI-powered visual creation platforms and design intelligence tools for video, im
 | [google-stitch.md](./ai-design-tools/google-stitch.md) | Google Stitch - AI-powered UI design tool generating app frontends (HTML/CSS, React) from text prompts or images using Gemini 2.5 models; launched Google I/O 2025 (proprietary) | 2026-03-04   |
 | [diode.md](./ai-design-tools/diode.md) | Diode - Browser-based 3D hardware simulator for building, programming, and simulating circuits with Arduino support; shut down 2022, site still operational | 2026-03-12   |
 | [open-pencil.md](./ai-design-tools/open-pencil.md) | OpenPencil v0.10.0 - Open-source Figma alternative: native .fig read/write, 87+ AI design tools, MCP server (stdio+HTTP), P2P collaboration via WebRTC+Yjs, CanvasKit WASM renderer (2.8K stars) | 2026-03-19   |
+| [omma-build.md](./ai-design-tools/omma-build.md) | Omma - Spline's AI creative studio generating interactive websites, 3D scenes, and web apps from natural language; parallel multi-agent architecture (code + 3D + media + data agents); $29/mo (launched 2026-03-24) | 2026-03-29   |
 
 **Key Topics**:
 
