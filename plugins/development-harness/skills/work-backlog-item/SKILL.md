@@ -24,20 +24,16 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 
 `<mode/>` selects the operating mode; remaining positional args (`<item_ref/>`, `$2`, ...) form the title or parameter:
 
-| `<mode/>` value | Remaining args | Mode |
-|---|---|---|
-| (empty) | — | Interactive browser |
-| `#N` | — | Issue-first: load item from GitHub Issue #N |
-| bare number (e.g. `249`) | — | Issue-first: load item from GitHub Issue #249 |
-| GitHub issue URL | — | Issue-first: extract issue number from URL |
-| `--auto` | `<item_ref/>`+ = title (or empty → auto-select first open P0/P1 item) | Autonomous — no `AskUserQuestion` calls |
-| `close` | `<item_ref/>`+ = title, `#N`, number, or URL | Dismiss without completion (reason required). ADR-9 |
-| `resolve` | `<item_ref/>`+ = title, `#N`, number, or URL | Mark DONE — completed with evidence (summary required). ADR-9 |
-| `setup-github` | — | Initialize labels, project, first milestone |
-| `--quick` | `<item_ref/>`+ = title | Skip grooming, RT-ICA, and SAM — quick one-file fix. Step Q |
-| `progress` | — | Backlog health and active milestone progress report. Step P |
-| `resume` | `<item_ref/>`+ = title or `#N` (optional) | Resume status for an in-progress plan. Step R |
-| (any other) | — | `<invocation_args/>` treated as title substring → planning |
+| `<mode/>` value | Remaining args meaning |
+|---|---|
+| (empty) | — |
+| `#N` / bare number / GitHub issue URL | issue number |
+| `--auto` | `<item_ref/>`+ = title (or empty → auto-select first open P0/P1 item) |
+| `close` / `resolve` | `<item_ref/>`+ = title, `#N`, number, or URL |
+| `setup-github` | — |
+| `--quick` | `<item_ref/>`+ = title |
+| `progress` / `resume` | `<item_ref/>`+ = title or `#N` (optional for `resume`) |
+| (any other) | `<invocation_args/>` treated as title substring |
 
 **Optional flags** (when `<mode/>` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [sdlc-layers](../../docs/sdlc-layers/).
 
@@ -66,22 +62,24 @@ All interactive `AskUserQuestion` calls are replaced with evidence-derived decis
 
 Dispatch based on `<mode/>` (the first argument word) before executing any step:
 
-| `<mode/>` value | Title source | Route |
-|---|---|---|
-| (empty) | — | Step 0 — interactive browser |
-| `#N` (starts with `#`) | issue number | Step 1b — Issue-first path |
-| bare number (e.g. `249`) | issue number | Step 1b — Issue-first path |
-| GitHub issue URL | issue number from URL | Step 1b — Issue-first path |
-| `--auto` | `<item_ref/>`+ joined (empty → auto-select first open P0/P1) | AUTO_MODE=true → Step 1 |
-| `--quick` | `<item_ref/>`+ joined | Step Q — [step-procedures.md](./references/step-procedures.md#step-q-quick-mode) |
-| `progress` | — | Step P — [step-procedures.md](./references/step-procedures.md#step-p-progress-report) |
-| `resume` | `<item_ref/>`+ joined (optional title or `#N`) | Step R — [step-procedures.md](./references/step-procedures.md#step-r-resume-report) |
-| `close` | `<item_ref/>`+ joined (title, `#N`, number, or URL) | Step 9 (close path — dismiss without completion) |
-| `resolve` | `<item_ref/>`+ joined (title, `#N`, number, or URL) | Step 9 (resolve path — mark completed with evidence) |
-| `setup-github` | — | [github-integration.md](./references/github-integration.md#setup-github-command) |
-| (any other) | `<invocation_args/>` | Title substring → Step 1 (interactive mode) |
+```mermaid
+flowchart TD
+    Start(["<mode/> value"]) --> Q1{Value?}
+    Q1 -->|"empty"| S0["Step 0 — interactive browser"]
+    Q1 -->|"#N / bare number / GitHub issue URL"| S1b["Step 1b — Issue-first path<br>title source: issue number from input"]
+    Q1 -->|"--auto"| Auto["AUTO_MODE=true → Step 1<br>title source: <item_ref/>+ joined<br>(empty → auto-select first open P0/P1)"]
+    Q1 -->|"--quick"| SQ["Step Q — quick mode<br>load ./references/step-procedures.md#step-q-quick-mode<br>title source: <item_ref/>+ joined"]
+    Q1 -->|"progress"| SP["Step P — progress report<br>load ./references/step-procedures.md#step-p-progress-report"]
+    Q1 -->|"resume"| SR["Step R — resume report<br>load ./references/step-procedures.md#step-r-resume-report<br>title source: <item_ref/>+ joined (optional)"]
+    Q1 -->|"close"| S9c["Step 9 — close path (dismiss without completion)<br>title source: <item_ref/>+ joined (title, #N, number, or URL)"]
+    Q1 -->|"resolve"| S9r["Step 9 — resolve path (mark completed with evidence)<br>title source: <item_ref/>+ joined (title, #N, number, or URL)"]
+    Q1 -->|"setup-github"| SGH["load ./references/github-integration.md#setup-github-command"]
+    Q1 -->|"any other string"| S1["Title substring → Step 1 (interactive mode)<br>title source: <invocation_args/>"]
+```
 
 **AUTO_MODE** — set when `$0` is `--auto`. All `AskUserQuestion` calls are replaced with evidence-derived decisions. See [auto-mode.md](./references/auto-mode.md) for the substitution table.
+
+## Phase 1: Locate
 
 ### Step 0: Interactive Browser (no arguments only)
 
@@ -131,50 +129,7 @@ Title = `<item_ref/>`+ joined (args after the mode flag `<mode/>`). In interacti
 
 **AUTO_MODE with no title (`<item_ref/>` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their entry (these are filtered out by `backlog_list` already).
 
-Apply the following 3-strategy fallback chain. Move to the next strategy only when the current strategy returns zero matches.
-
-```mermaid
-flowchart TD
-    Start([Title query]) --> S1
-
-    S1["Strategy 1: Substring Match<br>backlog_list(title=query)"] --> R1{Results?}
-    R1 -->|1 match| Done([Use matched item])
-    R1 -->|Multiple matches| Pick[Present list to user<br>or pick first in AUTO_MODE]
-    R1 -->|0 matches| S2
-
-    S2["Strategy 2: Filter-First<br>Derive type_hint and topic_hint from query"] --> Call2["backlog_list(type=type_hint, topic=topic_hint)<br>then substring-match query against returned titles"]
-    Call2 --> R2{Results?}
-    R2 -->|1+ matches| Done2([Use best match])
-    R2 -->|0 matches| S3
-
-    S3["Strategy 3: LLM Semantic Match<br>backlog_list() — all open items"] --> Batch["Present all titles + types + topics to LLM<br>Token budget: 245 items x ~25 tokens/item = ~6125 tokens under 10K"]
-    Batch --> LLM["LLM selects best semantic match<br>from candidate titles"]
-    LLM --> R3{Match found?}
-    R3 -->|Yes| Done3([Use LLM-selected item])
-    R3 -->|No| NoMatch([No match — offer to create via /create-backlog-item])
-```
-
-#### Strategy 2 — Type and Topic Derivation
-
-Derive filter hints from the query before calling `backlog_list`:
-
-- `type_hint`: scan query words for keyword groups (case-insensitive):
-  - `bug`, `fix`, `broken`, `error` → `Bug`
-  - `feature`, `add`, `new`, `implement` → `Feature`
-  - `refactor`, `clean`, `restructure` → `Refactor`
-  - no match → `None` (omit `type` parameter)
-- `topic_hint`: longest non-stop-word from the query, converted to kebab-case slug. If none can be derived, omit the `topic` parameter.
-
-Call `backlog_list(type=type_hint, topic=topic_hint)` (omit any `None` parameters). Then perform a case-insensitive substring match of the original query against the `title` field of each returned entry. Items whose titles contain the query substring are candidates.
-
-#### Strategy 3 — LLM Semantic Match
-
-Call `backlog_list()` with no filters to load all open items. The response includes `title`, `type`, and `topic` per item. Read the full list in the current context and select the item whose title, type, and topic best match the intent of the query. The token cost is bounded: **245 items × ~25 tokens/item ≈ 6,125 tokens (under 10K budget)**. If two or more candidates are plausible, read their per-item files via `backlog_view` before choosing.
-
-#### Zero-match handling after all 3 strategies
-
-- **Interactive mode:** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
-- **AUTO_MODE:** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(skill: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
+Before executing Step 1: load `./references/step-procedures.md`.
 
 Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
@@ -200,9 +155,29 @@ Then stop.
 
 After extracting fields, proceed to Step 2.3 (Already Implemented Check) before continuing.
 
+## Phase 2: Validate
+
 ### Step 2.3: Already Implemented Check
 
 Before planning, verify the feature/fix hasn't already been implemented (stale open issue). Full procedure (git commands, resolve calls, AUTO_MODE behavior): [step-procedures.md](./references/step-procedures.md#step-23-already-implemented-check)
+
+### Step 2.5: GitHub Issue Sync
+
+After Step 2, check for `**Issue**: #N` in the matched item. Full procedure (MCP tool calls, yes/no branching, issue creation): [github-integration.md](./references/github-integration.md#step-25-github-issue-sync)
+
+**Note:** On the Issue-first path (Step 1b), the `backlog_view` response already contains issue state — carry it forward without re-fetching.
+
+### Step 2.5a: Create GitHub Issue
+
+Full procedure: [github-integration.md](./references/github-integration.md#step-25a-create-github-issue)
+
+### Step 2.7: Set In-Progress Label
+
+Full procedure: [github-integration.md](./references/github-integration.md#step-27-set-in-progress-label)
+
+**Two-part step:** (a) Always run `mcp__plugin_dh_backlog__backlog_update` with `status="in-progress"` for the current item. (b) Run `milestone start` only on explicit user intent to start the whole milestone — it bulk-transitions all open milestone issues, not just the current one.
+
+## Phase 3: Prepare
 
 ### Step 3: Auto-Groom (if needed)
 
@@ -220,82 +195,15 @@ Skill(skill: "groom-backlog-item", args: "{item title}")
 The groom skill writes groomed content into the per-item file. Capture the groomed output (Reproducibility, Resources, Dependencies, Blockers, etc.) for use in the feature request.
 </groom_check>
 
-### Step 4: RT-ICA Checkpoint
+### Phase 3, Step 2: RT-ICA Gate
 
-<rtica_gate>
+1. Read the `## RT-ICA` section from the groomed item file at `file_path`.
+2. **Freshness check**: if the RT-ICA date in that section predates the item description's last-modified date, treat the section as absent.
+3. **Present and fresh** → use the APPROVED/BLOCKED decision from the cached result. Carry DERIVABLE items forward as "Assumptions to confirm" in the feature request.
+4. **Absent or stale** → `Skill(skill: "dh:rt-ica")`
+5. **BLOCKED** → stop. Do not proceed to Phase 4 until all MISSING conditions are resolved.
 
-Before composing the feature request, verify the groomed content (from item file or groom-backlog-item output) contains an RT-ICA summary. If absent, perform RT-ICA now:
-
-1. **Goal statement** — What completing this item achieves.
-2. **Reverse prerequisites** — Conditions required for success (enumerate each).
-3. **Availability check** — For each condition: AVAILABLE / DERIVABLE / MISSING.
-4. **Decision** — APPROVED or BLOCKED.
-
-#### Categorization Rule
-
-RT-ICA assesses INFORMATION completeness — "do we know enough to plan?"
-
-- **AVAILABLE** — information exists and is verified
-- **DERIVABLE** — information can be obtained from the codebase using tools
-- **MISSING** — information we lack that cannot be obtained with tools and requires a human decision
-
-MISSING means "we lack information that prevents planning." Implementation deliverables are NOT MISSING conditions. A condition like "sam create command exists" is a deliverable — it belongs in acceptance criteria. The RT-ICA question is "do we know what sam create needs to do?" — and if yes, it is AVAILABLE.
-
-#### Self-Resolution Pass (run before marking anything MISSING)
-
-ARL principle: resolve autonomously first, then batch the remainder to the human.
-
-For each DERIVABLE or unknown condition, attempt to resolve using tools (Grep, Read, WebSearch, Bash). Every resolution must cite the tool result. Training data answers are banned for project-specific questions — they produce hallucinations.
-
-```text
-Resolution pass:
-1. For each condition not yet AVAILABLE:
-   a. Attempt tool-based resolution (file read, grep, web fetch, command output)
-   b. Tool result found → AVAILABLE (cite the tool result)
-   c. Only training data available → condition stays on question stack
-   d. No answer found → condition stays on question stack, note what was tried
-2. Conditions resolved → proceed to APPROVED if none remain
-3. Conditions unresolved → proceed to BLOCKED batch presentation
-```
-
-**Training data asymmetry:**
-
-- Generating questions from training data: welcomed — "what are common trade-offs for X?" is a valid question to put on the stack
-- Answering project-specific questions from training data: banned — answers must come from tool results or the human
-
-#### If BLOCKED (unresolved conditions remain after self-resolution pass)
-
-Batch all remaining questions into a single presentation. For each question: include what was tried, what options were found from tool results, and trade-offs derived from those results.
-
-```text
-RT-ICA: BLOCKED
-
-The following inputs are needed before SAM planning can proceed.
-I searched for each but could not resolve them autonomously.
-
-[Category]:
-- Question: {what is unknown}
-  Tried: {tools used, what they returned}
-  Options found: {a) option with trade-off | b) option with trade-off | c) open-ended}
-
-[Category]:
-- Question: {what is unknown}
-  Tried: {tools used, what they returned}
-  Options found: {a) ... | b) ... | open-ended}
-
-Answer what you can — skip what you don't know. I will continue with whatever arrives.
-SAM planning will not be invoked with unresolved gaps.
-```
-
-After receiving answers: re-check whether remaining conditions can now be derived from the new information. If any remain unresolved, present another batch. Continue until all conditions are AVAILABLE or DERIVABLE.
-
-Do not invoke Step 5 until BLOCKED is resolved.
-
-#### If APPROVED
-
-Proceed to Step 5. Carry DERIVABLE items forward as "Assumptions to confirm" in the RT-ICA section of the feature request.
-
-</rtica_gate>
+## Phase 4: Plan
 
 ### Step 5: Compose Feature Request
 
@@ -354,42 +262,12 @@ flowchart TD
     Q -->|"No — only .md .yaml .json<br>backlog items, plan artifacts"| Skip["Skip — no code to review"]
 ```
 
-### Step 8.5a: AUTO_MODE Continuation
+### Phase 4, Step 4: Post-Planning Output
 
-**Trigger:** AUTO_MODE is set (invoked with `--auto`).
+- **Interactive mode**: load `./references/step-procedures.md#step-8-5` for the report template.
+- **AUTO_MODE**: load `./references/step-procedures.md#step-8-5a` for the continuation procedure.
 
-Skip Step 8.5 reporting. Instead, continue directly to implementation:
-
-1. Invoke implementation:
-
-   ```text
-   Skill(skill: "implement-feature", args: "{task_file_path}")
-   ```
-
-2. When all tasks complete, invoke quality gates:
-
-   ```text
-   Skill(skill: "complete-implementation", args: "{task_file_path}")
-   ```
-
-3. After completion, proceed to Step 9 resolve path to mark the item done.
-
-Do not stop for user input at any point.
-
-### Step 8.5: Report Next Steps
-
-**Trigger:** AUTO_MODE is NOT set (interactive mode only).
-
-```text
-Backlog item "{title}" is now planned.
-
-- Plan file: ~/.dh/projects/{project-slug}/plan/P{NNN}-{slug}.yaml (or .../plan/P{NNN}-{slug}/ directory)
-- To execute:      /implement-feature {slug}
-- To check status: /implementation-manager status . {slug}
-- To close when done: /work-backlog-item close {slug}
-```
-
-**Do NOT close the GitHub Issue directly.** Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages or PR bodies — issue closure is handled exclusively by `/complete-implementation` in its final commit step. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__plugin_dh_backlog__backlog_resolve` before the PR has merged.
+## Phase 5: Close/Resolve
 
 ### Step 9: Close or Resolve (ADR-9)
 
@@ -401,40 +279,24 @@ Backlog item "{title}" is now planned.
 
 Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references/close-resolve-procedure.md)
 
-## GitHub Integration
+## Reference Index
+
+### GitHub Integration
 
 `~/.dh/projects/{slug}/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. See [github-integration.md](./references/github-integration.md) for step-by-step commands and example sessions. Note: `Fixes #N` trailers are restricted to the `/complete-implementation` final commit step only.
-
-### Step 2.5: GitHub Issue Sync
-
-After Step 2, check for `**Issue**: #N` in the matched item. Full procedure (MCP tool calls, yes/no branching, issue creation): [github-integration.md](./references/github-integration.md#step-25-github-issue-sync)
-
-**Note:** On the Issue-first path (Step 1b), the `backlog_view` response already contains issue state — carry it forward without re-fetching.
-
-### Step 2.5a: Create GitHub Issue
-
-Full procedure: [github-integration.md](./references/github-integration.md#step-25a-create-github-issue)
-
-### Step 2.7: Set In-Progress Label
-
-Full procedure: [github-integration.md](./references/github-integration.md#step-27-set-in-progress-label)
-
-**Two-part step:** (a) Always run `mcp__plugin_dh_backlog__backlog_update` with `status="in-progress"` for the current item. (b) Run `milestone start` only on explicit user intent to start the whole milestone — it bulk-transitions all open milestone issues, not just the current one.
 
 ### setup-github Command
 
 **Trigger:** `<mode/>` is `setup-github`. Full setup procedure and expected output: [github-integration.md](./references/github-integration.md#setup-github-command)
 
-## Error Handling
+### Error Handling
 
 See [error-handling.md](./references/error-handling.md) for all error conditions and handling instructions.
 
-## Example Sessions
+### Example Sessions
 
 See [example-sessions.md](./references/example-sessions.md) for complete examples. GitHub-specific sessions (issue creation, setup-github): [github-integration.md](./references/github-integration.md)
 
----
-
-## Validation Plan
+### Validation Plan
 
 See [validation-plan.md](./references/validation-plan.md) for V1–V6 verification commands and the full integration test sequence.

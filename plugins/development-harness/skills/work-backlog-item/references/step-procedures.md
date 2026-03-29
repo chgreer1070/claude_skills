@@ -377,3 +377,44 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
    If `checked_tasks == 0`, report "No tasks completed yet."
    If `checked_tasks == total_tasks`, report "All tasks complete — run /work-backlog-item close {title}."
+
+---
+
+## Step 8.5a: AUTO_MODE Continuation
+
+**Trigger:** AUTO_MODE is set (invoked with `--auto`).
+
+Skip Step 8.5 reporting. Instead, continue directly to implementation:
+
+1. Invoke implementation:
+
+   ```text
+   Skill(skill: "implement-feature", args: "{task_file_path}")
+   ```
+
+2. When all tasks complete, invoke quality gates:
+
+   ```text
+   Skill(skill: "complete-implementation", args: "{task_file_path}")
+   ```
+
+3. After completion, proceed to Step 9 resolve path to mark the item done.
+
+Do not stop for user input at any point.
+
+---
+
+## Step 8.5: Report Next Steps
+
+**Trigger:** AUTO_MODE is NOT set (interactive mode only).
+
+```text
+Backlog item "{title}" is now planned.
+
+- Plan file: ~/.dh/projects/{project-slug}/plan/P{NNN}-{slug}.yaml (or .../plan/P{NNN}-{slug}/ directory)
+- To execute:      /implement-feature {slug}
+- To check status: /implementation-manager status . {slug}
+- To close when done: /work-backlog-item close {slug}
+```
+
+**Do NOT close the GitHub Issue directly.** Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages or PR bodies — issue closure is handled exclusively by `/complete-implementation` in its final commit step. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__plugin_dh_backlog__backlog_resolve` before the PR has merged.
