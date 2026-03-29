@@ -39,7 +39,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 from rich.console import Console
-from ruamel.yaml import YAML
+from ruamel.yaml import YAML, YAMLError
 from sam_schema.task_format import resolve_task_id
 
 if TYPE_CHECKING:
@@ -148,7 +148,7 @@ def _parse_frontmatter(content: str) -> dict[str, Any]:
     try:
         parsed = _YAML_SAFE.load(parts[1])
         return parsed if isinstance(parsed, dict) else {}
-    except Exception:  # noqa: BLE001
+    except YAMLError:
         return {}
 
 
@@ -574,6 +574,8 @@ def _migrate_task(
     Returns:
         Created Issue object, or None on failure.
     """
+    from backlog_core.models import BacklogError  # noqa: PLC0415
+
     assert SamTask is not None  # noqa: S101 — guarded by _connect_github caller
     assert create_task_issue is not None  # noqa: S101 — guarded by _connect_github caller
 
@@ -590,7 +592,7 @@ def _migrate_task(
     )
     try:
         return create_task_issue(repo, parent_issue, sam, description=task.title, acceptance_criteria=[], labels=labels)
-    except Exception as exc:  # noqa: BLE001
+    except (BacklogError, KeyError, ValueError) as exc:
         err_console.print(f":warning:  Failed to create issue for {task.task_id}: {exc}", style="yellow")
         return None
 
@@ -668,7 +670,7 @@ def migrate(
             console.print(f":white_check_mark: Created #{issue['number']} for {task.task_id}: {task.title}")
             n_created += 1
             created_pairs.append((task, issue["number"]))
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, KeyError, ValueError) as exc:
             err_console.print(
                 f":warning:  Created #{issue['number']} but could not write github_issue field: {exc}", style="yellow"
             )

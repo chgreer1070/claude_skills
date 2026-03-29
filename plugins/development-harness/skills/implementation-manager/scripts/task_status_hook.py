@@ -29,6 +29,7 @@ import enum
 import json
 import os
 import re
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -435,21 +436,23 @@ def sync_completion_to_github(task_file_path: Path, task_id: str, parent_issue_n
 
         # Conditional import — only after path guard
         import backlog_core.github as _bc_github  # noqa: PLC0415
+        from backlog_core.models import BacklogError, GitHubUnavailableError  # noqa: PLC0415
+        from github import GithubException  # noqa: PLC0415
 
         try:
             repo = _bc_github.get_github()
-        except Exception as e:  # noqa: BLE001
+        except (GitHubUnavailableError, GithubException) as e:
             print(f"[hook] GitHub unavailable — skipping GitHub sync: {e}", file=sys.stderr)
             return
 
         try:
             _bc_github.update_task_status(repo, github_issue, "complete")
-        except Exception as e:  # noqa: BLE001
+        except (BacklogError, GithubException) as e:
             print(f"[hook] GitHub sync update_task_status failed: {e}", file=sys.stderr)
             return
 
         print(f"[hook] Synced task {task_id} completion to GitHub issue #{github_issue}", file=sys.stderr)
-    except Exception as e:  # noqa: BLE001
+    except (ImportError, OSError, KeyError, ValueError) as e:
         print(f"[hook] GitHub sync failed: {e}", file=sys.stderr)
 
 
@@ -554,7 +557,7 @@ def _resolve_context_file_from_transcript(hook_input: dict[str, Any]) -> Path | 
 
     try:
         context_dir = _dh_paths.context_dir()
-    except Exception:  # noqa: BLE001
+    except (FileNotFoundError, subprocess.CalledProcessError, RuntimeError):
         return None
 
     context_file = context_dir / f"active-task-{sub_agent_session_id}.json"

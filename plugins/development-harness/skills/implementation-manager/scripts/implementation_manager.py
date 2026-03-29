@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Annotated, TypedDict
 
 import typer
 from rich.console import Console
-from ruamel.yaml import YAML as _YAML
+from ruamel.yaml import YAML as _YAML, YAMLError as _YAMLError
 
 # task_format.py is a sibling module in the same scripts/ directory.
 # Ensure the script directory is on sys.path for direct execution.
@@ -495,7 +495,7 @@ def parse_task_content(content: str) -> list[Task]:
         raw_block = match.group(1)
         try:
             parsed = yaml.load(io.StringIO(raw_block))
-        except Exception:  # noqa: BLE001 S112
+        except _YAMLError:
             continue
         if not isinstance(parsed, dict):
             continue
@@ -856,7 +856,7 @@ def fetch_tasks_from_github(parent_issue_number: int, feature_slug: str, cache_p
                     skills=list(sam.skills),
                 )
             )
-        except Exception as exc:  # noqa: BLE001
+        except (KeyError, TypeError, ValueError) as exc:
             sys.stderr.write(f"WARNING: Skipping sub-issue due to error: {exc}\n")
 
     # Write cache for offline fallback

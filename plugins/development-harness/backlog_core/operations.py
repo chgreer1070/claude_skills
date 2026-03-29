@@ -62,7 +62,7 @@ from .github import (
     update_task_status,
     view_enrich_from_github,
 )
-from .models import (  # noqa: F401 — DEFAULT_REPO intentionally NOT imported (mutable module global)
+from .models import (
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     MIN_FRONTMATTER_PARTS,
     VALID_CLOSE_REASONS,
@@ -382,7 +382,7 @@ def _auto_register_plan_artifact(item: BacklogItem, plan: str, repo: str = "", o
         updated_manifest = registry.register(manifest, entry)
         provider.set_manifest(issue_number, updated_manifest)
         out.info(f"  Artifact registered: task-plan {plan} on issue #{issue_number}")
-    except Exception as exc:  # noqa: BLE001
+    except (GitHubUnavailableError, BacklogError, GithubException) as exc:
         out.warn(f"  WARNING: Artifact registration failed for {plan} on issue #{issue_number}: {exc}")
 
 

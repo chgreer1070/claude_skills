@@ -300,7 +300,7 @@ def _try_parse_yaml_dict(text: str) -> dict | None:
     """
     try:
         result = load_yaml(text)
-    except Exception:  # noqa: BLE001
+    except ValueError:
         return None
     if not isinstance(result, dict):
         return None

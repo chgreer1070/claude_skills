@@ -432,13 +432,13 @@ def main() -> None:
 
     try:
         state_dir = _resolve_state_dir(args.state_dir)
-    except Exception as exc:  # noqa: BLE001
+    except OSError as exc:
         _emit_error(f"failed to resolve state directory: {exc}")
         sys.exit(1)
 
     try:
         _run_monitor(session_id=args.session_id, state_dir=state_dir, interval=args.interval, timeout=args.timeout)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, json.JSONDecodeError, subprocess.CalledProcessError, KeyError, ValueError) as exc:
         _emit_error(f"unexpected error: {exc}")
         sys.exit(1)
 

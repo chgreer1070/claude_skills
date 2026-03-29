@@ -251,7 +251,7 @@ def migrate(
                 _merge_dir(src, dest, console)
             else:
                 shutil.move(str(src), str(dest))
-        except Exception as exc:  # noqa: BLE001 — shutil.move/copytree raise varied OS-level errors
+        except OSError as exc:
             msg = f"Failed to move {src} → {dest}: {exc}"
             err_console.print(f":cross_mark: {msg}")
             errors.append(msg)
@@ -459,12 +459,12 @@ def _read_issue_number_from_yaml(path: Path) -> int | None:
     Returns:
         Positive integer issue number, or ``None``.
     """
-    try:
-        from ruamel.yaml import YAML  # noqa: PLC0415 — deferred import
+    from ruamel.yaml import YAML, YAMLError  # noqa: PLC0415 — deferred import
 
+    try:
         yaml = YAML(typ="safe")
         data = yaml.load(path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001 — YAML parse errors are not fatal here
+    except (OSError, YAMLError):
         return None
     else:
         if not isinstance(data, dict):
@@ -488,9 +488,9 @@ def _read_issue_number_from_markdown_frontmatter(path: Path) -> int | None:
     Returns:
         Positive integer issue number, or ``None``.
     """
-    try:
-        from ruamel.yaml import YAML  # noqa: PLC0415
+    from ruamel.yaml import YAML, YAMLError  # noqa: PLC0415
 
+    try:
         text = path.read_text(encoding="utf-8")
         if not text.startswith("---"):
             return None
@@ -500,7 +500,7 @@ def _read_issue_number_from_markdown_frontmatter(path: Path) -> int | None:
         fm_text = text[3:end].strip()
         yaml = YAML(typ="safe")
         data = yaml.load(fm_text)
-    except Exception:  # noqa: BLE001
+    except (OSError, YAMLError):
         return None
     else:
         if not isinstance(data, dict):
@@ -667,6 +667,7 @@ def _build_slug_index(backlog_dir: Path) -> dict[str, int]:
         without a parseable issue number are silently skipped.
     """
     from backlog_core.parsing import title_to_slug  # noqa: PLC0415
+    from ruamel.yaml import YAMLError  # noqa: PLC0415
 
     index: dict[str, int] = {}
     if not backlog_dir.is_dir():
@@ -675,7 +676,7 @@ def _build_slug_index(backlog_dir: Path) -> dict[str, int]:
     for md_file in backlog_dir.glob("*.md"):
         try:
             data = _parse_backlog_file_data(md_file.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001, S112
+        except (OSError, YAMLError):
             continue
 
         if data is None:
@@ -918,7 +919,13 @@ def _register_one(provider: GitHubArtifactProvider, rel: str, artifact_type: str
     Returns:
         One of ``"REGISTERED"``, ``"SKIPPED"``, or ``"FAILED"``.
     """
-    from backlog_core.models import ArtifactEntry, ArtifactManifest, ArtifactStatus, ArtifactType  # noqa: PLC0415
+    from backlog_core.models import (  # noqa: PLC0415
+        ArtifactEntry,
+        ArtifactManifest,
+        ArtifactStatus,
+        ArtifactType,
+        BacklogError,
+    )
 
     try:
         art_type_enum = ArtifactType(artifact_type)
@@ -928,7 +935,7 @@ def _register_one(provider: GitHubArtifactProvider, rel: str, artifact_type: str
 
     try:
         manifest = provider.get_manifest(issue_number)
-    except Exception as exc:  # noqa: BLE001
+    except BacklogError as exc:
         err_console.print(f":cross_mark: Failed to get manifest for issue #{issue_number}: {exc}")
         return "FAILED"
 
@@ -952,7 +959,7 @@ def _register_one(provider: GitHubArtifactProvider, rel: str, artifact_type: str
 
     try:
         provider.set_manifest(issue_number, updated_manifest)
-    except Exception as exc:  # noqa: BLE001
+    except BacklogError as exc:
         err_console.print(f":cross_mark: Failed to register {rel} on issue #{issue_number}: {exc}")
         return "FAILED"
     else:

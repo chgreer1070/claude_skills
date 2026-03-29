@@ -285,7 +285,7 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
             continue
         try:
             item = parse_item_file(item_text, filepath)
-        except Exception as exc:  # noqa: BLE001
+        except (KeyError, TypeError, ValueError, AttributeError, YAMLError) as exc:
             log.warning("Skipping corrupt backlog file %s: %s", filepath, exc)
             continue
         # Filename-derived section; override with metadata if available

@@ -15,6 +15,7 @@ import ast
 import importlib.metadata
 import json
 import re
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -439,7 +440,7 @@ def version_check() -> dict[str, str]:
         with urllib.request.urlopen("https://pypi.org/pypi/fastmcp/json", timeout=5) as resp:
             data = json.loads(resp.read())
         latest = data["info"]["version"]
-    except Exception as exc:  # noqa: BLE001
+    except (urllib.error.URLError, json.JSONDecodeError, KeyError, TypeError) as exc:
         latest = f"pypi-error: {exc}"
 
     up_to_date = "true" if installed == latest else "false"

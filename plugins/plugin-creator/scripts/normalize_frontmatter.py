@@ -35,6 +35,7 @@ import sys
 from pathlib import Path
 from typing import Annotated
 
+import ruamel.yaml
 import typer
 from rich import box
 from rich.console import Console
@@ -137,7 +138,7 @@ def normalize_file(path: Path) -> str | None:
     try:
         post = load_frontmatter(path)
         normalized = dump_frontmatter(post)
-    except Exception as exc:  # noqa: BLE001
+    except (ruamel.yaml.YAMLError, ValueError, UnicodeDecodeError) as exc:
         console.print(f"  :warning:  [yellow]Skipping[/yellow] {path}: {exc}")
         return None
 

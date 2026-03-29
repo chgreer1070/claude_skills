@@ -25,6 +25,7 @@ import dispatch_schema as _ds
 import tiktoken
 from fastmcp import Context, FastMCP
 from fastmcp.server.lifespan import lifespan
+from github import GithubException as _GithubException
 from pydantic import Field, ValidationError as _ValidationError
 from ruamel.yaml import YAML as _YAML, YAMLError as _YAMLError
 
@@ -1780,7 +1781,7 @@ async def dispatch_stale_check(
         current_numbers = await asyncio.to_thread(_fetch_milestone_issue_numbers)
     except GitHubUnavailableError as exc:
         return {"error": str(exc), "milestone_number": milestone_number}
-    except Exception as exc:  # noqa: BLE001
+    except (BacklogError, _GithubException) as exc:
         return {"error": f"GitHub API error: {exc}", "milestone_number": milestone_number}
 
     result = await asyncio.to_thread(_ds.detect_stale_plan, plan, current_numbers)
@@ -2000,7 +2001,7 @@ async def dispatch_conflicts(
         items = await asyncio.to_thread(_fetch_items_with_impact_radius)
     except GitHubUnavailableError as exc:
         return {"error": str(exc), "milestone_number": milestone_number}
-    except Exception as exc:  # noqa: BLE001
+    except (BacklogError, _GithubException) as exc:
         return {"error": f"GitHub API error: {exc}", "milestone_number": milestone_number}
 
     conflict_groups = await asyncio.to_thread(operations.analyze_impact_radius_conflicts, items)
@@ -2065,7 +2066,7 @@ def _migrate_extract_issue(file_path: Path) -> int | None:
     if file_path.suffix in {".yaml", ".yml"}:
         try:
             raw_data = yaml.load(text)
-        except Exception:  # noqa: BLE001
+        except _YAMLError:
             return None
     else:
         fm_match = _re.match(r"^---\r?\n(.*?)\r?\n(?:---|\.\.\.)(?:\r?\n|$)", text, _re.DOTALL)
@@ -2073,7 +2074,7 @@ def _migrate_extract_issue(file_path: Path) -> int | None:
             return None
         try:
             raw_data = yaml.load(fm_match.group(1))
-        except Exception:  # noqa: BLE001
+        except _YAMLError:
             return None
 
     if isinstance(raw_data, dict):
@@ -2437,7 +2438,7 @@ def _migrate_queue_manifest_only(
     """
     try:
         manifest = provider.get_manifest(issue_number)
-    except Exception:  # noqa: BLE001
+    except (GitHubUnavailableError, BacklogError, _GithubException):
         out.warn(f"Could not read existing manifest for issue #{issue_number}. Skipping manifest check.")
         return candidates
 
@@ -2481,7 +2482,7 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
         elif isinstance(raw, dict):
             raw_backlog = raw.get("items", [])
             backlog_items = [x for x in raw_backlog if isinstance(x, dict)] if isinstance(raw_backlog, list) else []
-    except Exception:  # noqa: BLE001
+    except (BacklogError, OSError):
         out.warn("Could not fetch backlog items for slug matching. Continuing without fallback.")
 
     candidates, filtered_count = _migrate_discover_candidates(repo_root, issue_number, backlog_items)
@@ -2506,7 +2507,7 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
             _ok, action_msg = _migrate_register_one(provider, rel_path, atype, issue)
             migrated += 1
             run_details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": action_msg})
-        except Exception as exc:  # noqa: BLE001
+        except (GitHubUnavailableError, BacklogError, _GithubException, OSError) as exc:
             failed += 1
             run_details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": f"FAILED: {exc}"})
 
@@ -2560,7 +2561,7 @@ async def artifact_migrate(
     if dry_run:
         try:
             result = await asyncio.to_thread(_migrate_dry_run, issue_number)
-        except Exception as exc:  # noqa: BLE001
+        except OSError as exc:
             return {"error": f"Discovery failed: {exc}", **out.to_dict()}
         return {**result, **out.to_dict()}
 
@@ -2568,7 +2569,7 @@ async def artifact_migrate(
         result = await asyncio.to_thread(_migrate_live_run, issue_number, out)
     except GitHubUnavailableError as exc:
         return {"error": str(exc), **out.to_dict()}
-    except Exception as exc:  # noqa: BLE001
+    except (BacklogError, _GithubException, OSError) as exc:
         return {"error": f"Migration failed: {exc}", **out.to_dict()}
 
     return {**result, **out.to_dict()}
@@ -2954,7 +2955,7 @@ async def _run_spawn_item(
                 counters.failed += 1
                 warnings.append(f"Item #{issue_num} failed: process exited with no result")
 
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, sqlite3.Error) as exc:
             error_msg = f"Spawn error: {exc}"
             await asyncio.to_thread(mgr.set_item_failed, milestone, wave_num, issue_num, error_msg)
             counters.failed += 1

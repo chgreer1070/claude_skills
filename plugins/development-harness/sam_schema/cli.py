@@ -36,7 +36,7 @@ import dh_paths
 import typer
 from rich.console import Console
 from rich.table import Table
-from ruamel.yaml import YAML
+from ruamel.yaml import YAML, YAMLError
 
 from sam_schema.core.addressing import AddressingError, parse_address, resolve_plan_address
 from sam_schema.core.models import PlanStatus, TaskStatus
@@ -54,12 +54,16 @@ from sam_schema.core.query import (
 from sam_schema.readers.detect import FormatDetectionError
 from sam_schema.writers.yaml_writer import write_plan
 
+_SYNC_ERRORS: tuple[type[Exception], ...]
 try:
+    from backlog_core.models import BacklogError
     from backlog_core.operations import sync_items as _sync_backlog
 
     _BACKLOG_CORE_AVAILABLE = True
+    _SYNC_ERRORS = (BacklogError, OSError, ValueError)
 except ImportError:
     _BACKLOG_CORE_AVAILABLE = False
+    _SYNC_ERRORS = (OSError, ValueError)
 
 app = typer.Typer(name="sam", help="SAM task/plan file interface.", no_args_is_help=True)
 
@@ -359,7 +363,7 @@ def list_plans(
             }
             if search is None or _plan_summary_matches(summary, search):
                 all_items.append(summary)
-        except Exception as exc:  # noqa: BLE001
+        except (FileNotFoundError, FormatDetectionError, ValueError, TypeError) as exc:
             typer.echo(f"Warning: skipping {candidate.name}: {exc}", err=True)
 
     total = len(all_items)
@@ -556,7 +560,7 @@ def status(
                 entry = ps.model_dump(mode="json")
                 entry["path"] = str(candidate)
                 results.append(entry)
-            except Exception as exc:  # noqa: BLE001
+            except (FileNotFoundError, FormatDetectionError, ValueError, TypeError) as exc:
                 # Skip unreadable plan files when listing all; emit to stderr
                 typer.echo(f"Warning: skipping {candidate}: {exc}", err=True)
                 continue
@@ -796,7 +800,7 @@ def validate(
         _err(str(exc))
     except FormatDetectionError as exc:
         _err(str(exc), exit_code=2)
-    except Exception as exc:  # noqa: BLE001
+    except (ValueError, TypeError) as exc:
         _output_json({"valid": False, "errors": [str(exc)], "warnings": []})
         raise typer.Exit(1) from None
 
@@ -974,7 +978,7 @@ def _migrate_one(plan_path: Path, dry_run: bool) -> tuple[Path | None, str]:
     """
     try:
         result = load_plan(plan_path)
-    except Exception:  # noqa: BLE001
+    except (FileNotFoundError, FormatDetectionError, ValueError, TypeError):
         return _migrate_one_fallback(plan_path, dry_run)
 
     source_format = result.source_format
@@ -1047,7 +1051,7 @@ def _update_backlog_refs(old_path: Path, new_path: Path, backlog_dir: Path) -> i
         _, fm_text, body = parts
         try:
             fm_data = y.load(fm_text)
-        except Exception:  # noqa: BLE001, S112
+        except YAMLError:
             continue
         if not isinstance(fm_data, dict):
             continue
@@ -1061,7 +1065,7 @@ def _update_backlog_refs(old_path: Path, new_path: Path, backlog_dir: Path) -> i
             new_raw = f"---\n{buf.getvalue()}---{body}"
             md_file.write_text(new_raw, encoding="utf-8")
             updated += 1
-        except Exception:  # noqa: BLE001, S112
+        except (YAMLError, OSError):
             continue
 
     return updated
@@ -1169,7 +1173,7 @@ def _migrate_all(plan_dir: Path, dry_run: bool, skip_sync: bool, backlog_dir: Pa
 
         try:
             written, _ = _migrate_one(plan_path, dry_run)
-        except Exception as exc:  # noqa: BLE001
+        except (FileNotFoundError, FileExistsError, FormatDetectionError, ValueError, TypeError, OSError) as exc:
             msg = f"  Error migrating {plan_path.name}: {exc}"
             typer.echo(msg, err=True)
             errors.append(msg)
@@ -1205,8 +1209,8 @@ def _attempt_backlog_sync() -> None:
     if _BACKLOG_CORE_AVAILABLE:
         try:
             _sync_backlog()
-        except Exception:  # noqa: BLE001
-            typer.echo("Warning: backlog_core sync failed; falling back to CLI.", err=True)
+        except _SYNC_ERRORS as sync_exc:
+            typer.echo(f"Warning: backlog_core sync failed; falling back to CLI. ({sync_exc})", err=True)
         else:
             typer.echo("Backlog synced to GitHub.")
             return
@@ -1224,7 +1228,7 @@ def _attempt_backlog_sync() -> None:
             typer.echo("Backlog synced to GitHub.")
         else:
             typer.echo(f"Warning: backlog sync failed (exit {proc.returncode}): {proc.stderr.strip()}", err=True)
-    except Exception as exc:  # noqa: BLE001
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as exc:
         typer.echo(f"Warning: backlog sync unavailable: {exc}", err=True)
 
 

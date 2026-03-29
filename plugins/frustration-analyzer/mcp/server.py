@@ -525,7 +525,7 @@ def _derive_session_title(file_path: str, conn: duckdb.DuckDBPyConnection | None
             text = _extract_user_text_from_value(message)
             if text and _is_human_plaintext(text):
                 return text[:80].replace("\n", " ").strip()
-    except Exception as exc:  # noqa: BLE001
+    except (duckdb.Error, ValueError, KeyError, TypeError) as exc:
         logger.debug("Could not derive session title from %s: %s", file_path, exc)
     return pathlib.Path(file_path).stem
 

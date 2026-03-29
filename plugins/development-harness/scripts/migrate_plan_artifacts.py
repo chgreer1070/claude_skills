@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 try:
-    from ruamel.yaml import YAML
+    from ruamel.yaml import YAML, YAMLError
 except ImportError:
     print("ERROR: ruamel.yaml not available. Run: uv add ruamel.yaml", file=sys.stderr)
     sys.exit(1)
@@ -170,14 +170,14 @@ def _extract_issue_from_file(file_path: Path) -> int | None:
     if file_path.suffix in {".yaml", ".yml"}:
         try:
             raw_data = _yaml.load(text)
-        except Exception:  # noqa: BLE001
+        except YAMLError:
             return None
     else:
         fm_match = re.match(r"^---\r?\n(.*?)\r?\n(?:---|\.\.\.)(?:\r?\n|$)", text, re.DOTALL)
         if fm_match:
             try:
                 raw_data = _yaml.load(fm_match.group(1))
-            except Exception:  # noqa: BLE001
+            except YAMLError:
                 return None
 
     if isinstance(raw_data, dict):
@@ -419,7 +419,7 @@ def _load_backlog_items() -> list[dict]:
                 data = fm_yaml.load(fm_match.group(1))
                 if isinstance(data, dict):
                     items.append(data)
-        except Exception:  # noqa: BLE001, S110
+        except (OSError, YAMLError):
             pass
     return items
 
@@ -465,7 +465,7 @@ def _run_registrations(
                 outcome = register_one(provider, registry, c, dry_run=False)
             log(f"  {c.rel_path}: {outcome}")
             registered += 1
-        except Exception as exc:  # noqa: BLE001
+        except (_models.BacklogError, ValueError, OSError) as exc:
             log(f"  FAILED: {c.rel_path}: {exc}")
             failed += 1
     return registered, failed
