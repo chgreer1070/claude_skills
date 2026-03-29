@@ -489,7 +489,7 @@ class TestGetRepoNodeId:
         """
         # Arrange
         repo = _make_mock_repo(mocker)
-        repo.node_id = 12345  # type: ignore[assignment]
+        object.__setattr__(repo, "node_id", 12345)
 
         # Act
         result = _get_repo_node_id(repo)
@@ -994,7 +994,7 @@ class TestIssueToLocalFields:
         )
 
         # Act
-        result = issue_to_local_fields(issue)  # type: ignore[arg-type]
+        result = issue_to_local_fields(issue)
 
         # Assert
         assert result.priority == "P0"
@@ -1010,7 +1010,7 @@ class TestIssueToLocalFields:
         issue = make_parsed_issue_node(title="Bug fix", labels=[make_label_node("type:bug", "LBL_bug")], state="OPEN")
 
         # Act
-        result = issue_to_local_fields(issue)  # type: ignore[arg-type]
+        result = issue_to_local_fields(issue)
 
         # Assert
         assert result.item_type == "Bug"
@@ -1026,7 +1026,7 @@ class TestIssueToLocalFields:
         issue = make_parsed_issue_node(state="CLOSED", labels=[])
 
         # Act
-        result = issue_to_local_fields(issue)  # type: ignore[arg-type]
+        result = issue_to_local_fields(issue)
 
         # Assert
         assert result.status == "done"
@@ -1042,7 +1042,7 @@ class TestIssueToLocalFields:
         issue = make_parsed_issue_node(state="OPEN", labels=[make_label_node("status:in-progress", "LBL_ip")])
 
         # Act
-        result = issue_to_local_fields(issue)  # type: ignore[arg-type]
+        result = issue_to_local_fields(issue)
 
         # Assert
         assert result.status == "in-progress"
@@ -1058,7 +1058,7 @@ class TestIssueToLocalFields:
         issue = make_parsed_issue_node(milestone=make_milestone_node(title="v2.0"))
 
         # Act
-        result = issue_to_local_fields(issue)  # type: ignore[arg-type]
+        result = issue_to_local_fields(issue)
 
         # Assert
         assert result.milestone == "v2.0"
@@ -1074,7 +1074,7 @@ class TestIssueToLocalFields:
         issue = make_parsed_issue_node(milestone=None)
 
         # Act
-        result = issue_to_local_fields(issue)  # type: ignore[arg-type]
+        result = issue_to_local_fields(issue)
 
         # Assert
         assert result.milestone == ""
@@ -1090,7 +1090,7 @@ class TestIssueToLocalFields:
         issue = make_parsed_issue_node(labels=[])
 
         # Act
-        result = issue_to_local_fields(issue)  # type: ignore[arg-type]
+        result = issue_to_local_fields(issue)
 
         # Assert
         assert result.priority == "P1"

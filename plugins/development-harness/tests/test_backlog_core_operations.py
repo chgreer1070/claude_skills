@@ -1975,7 +1975,15 @@ class TestRefreshLocalCacheIncrementalSync:
 
         calls: list[dict] = []
 
-        def _capture_fetch(repo_obj, owner, repo_name, state, labels=None, since=None, **kw):  # type: ignore[override]
+        def _capture_fetch(
+            repo_obj: object,
+            owner: object,
+            repo_name: object,
+            state: object,
+            labels: object = None,
+            since: object = None,
+            **kw: object,
+        ) -> list[object]:
             calls.append({"state": state, "since": since})
             return []
 
@@ -2012,7 +2020,15 @@ class TestRefreshLocalCacheIncrementalSync:
 
         calls: list[dict] = []
 
-        def _capture_fetch(repo_obj, owner, repo_name, state, labels=None, since=None, **kw):  # type: ignore[override]
+        def _capture_fetch(
+            repo_obj: object,
+            owner: object,
+            repo_name: object,
+            state: object,
+            labels: object = None,
+            since: object = None,
+            **kw: object,
+        ) -> list[object]:
             calls.append({"state": state, "since": since})
             return []
 

@@ -110,7 +110,8 @@ def test_list_labels_maps_none_description_to_empty_string(monkeypatch: pytest.M
     """list_labels maps None description to empty string."""
     # Arrange
     mock_repo = MagicMock()
-    label = _make_label("bug", description=None)  # type: ignore[arg-type]
+    label = _make_label("bug")
+    label.description = None
     mock_repo.get_labels.return_value = [label]
     monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
 

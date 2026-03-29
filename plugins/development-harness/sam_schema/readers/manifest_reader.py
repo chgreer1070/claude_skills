@@ -447,7 +447,7 @@ def _strip_bold_fields_from_prose(prose: str) -> str:
 
 
 def _build_task_dict(  # noqa: C901, PLR0912
-    entry: dict | str | int, prose_by_task: dict[str, str], body_task_blocks: dict[str, dict] | None = None
+    entry: dict | str | object, prose_by_task: dict[str, str], body_task_blocks: dict[str, dict] | None = None
 ) -> dict | None:
     """Build a raw task dict from a manifest ``tasks:`` entry.
 

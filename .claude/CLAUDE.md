@@ -490,7 +490,7 @@ uv run prek run --files <file>
 
 ---
 
-- Exception Handling (narrow catches, BLE001, "must not crash" anti-pattern): `.claude/rules/exception-handling.md`
+- Exception Handling (narrow catches, BLE001, the "must not crash" anti-pattern): `.claude/rules/exception-handling.md`
 
 ---
 

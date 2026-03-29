@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -1181,7 +1182,7 @@ class TestFullThreeTierDirectoryLayout:
         project_root, _state_home = isolated_project
 
         # Act
-        result = dir_fn(project_root)  # type: ignore[operator]
+        result = dir_fn(project_root)
 
         # Assert
         assert result.name == expected_name

@@ -363,6 +363,243 @@ Experiment 4 is the cheapest starting point — it uses only git history and pro
 
 ---
 
+## Measurement Protocol
+
+All queries verified against live session data at
+`~/.claude/projects/-home-ubuntulinuxqa2-repos-claude-skills/*.jsonl`
+using the `kaizen-duckdb` MCP `execute_query` tool (2026-03-29).
+
+Replace `PATH` in all queries with the absolute project JSONL glob path.
+Project key encoding: replace all `/` in the absolute project path with `-`.
+Example: `/home/ubuntulinuxqa2/repos/claude_skills` →
+`/home/ubuntulinuxqa2/.claude/projects/-home-ubuntulinuxqa2-repos-claude_skills/*.jsonl`
+
+### Schema notes (verified)
+
+- `type`, `sessionId`, `timestamp`, `gitBranch` — direct VARCHAR columns
+- `message.usage.input_tokens`, `message.usage.cache_read_input_tokens`,
+  `message.usage.output_tokens` — STRUCT dot access, no JSON extraction needed
+- `message.content` — JSON column; tool calls inside require
+  `unnest(from_json(message.content, '["json"]'))` to iterate
+- No `result` type records in main session files; session totals are computed
+  by summing `assistant` records
+- User message text is in `message.content::VARCHAR`
+
+---
+
+### M1 — Session labeling by timestamp (used by all experiments)
+
+Identifies session start time and branch for pre/post cohort splitting.
+Label sessions as pre/post by comparing `session_start` against the git commit
+timestamp of the instruction change under test (`git log --follow -1 --format="%aI" <file>`).
+
+```sql
+SELECT
+  sessionId,
+  MIN(timestamp) AS session_start,
+  gitBranch
+FROM read_ndjson_auto('PATH')
+WHERE timestamp IS NOT NULL
+GROUP BY sessionId, gitBranch
+ORDER BY session_start DESC
+```
+
+---
+
+### M2 — Read calls before first write per session (Experiments 1, 2, 3, 5)
+
+Measures context acquisition load: how many Read/Glob/Grep calls occur before
+the first Write or Edit in a session. Used as the proxy for "knowledge payload loaded."
+
+```sql
+WITH tool_sequence AS (
+  SELECT
+    sessionId,
+    timestamp,
+    json_extract_string(tool_item, '$.name') AS tool_name,
+    ROW_NUMBER() OVER (PARTITION BY sessionId ORDER BY timestamp) AS seq
+  FROM read_ndjson_auto('PATH'),
+    LATERAL (SELECT unnest(from_json(message.content, '["json"]')) AS tool_item)
+  WHERE type = 'assistant'
+    AND json_extract_string(tool_item, '$.type') = 'tool_use'
+    AND json_extract_string(tool_item, '$.name')
+        IN ('Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash')
+),
+first_write AS (
+  SELECT sessionId, MIN(seq) AS first_write_seq
+  FROM tool_sequence
+  WHERE tool_name IN ('Write', 'Edit')
+  GROUP BY sessionId
+)
+SELECT
+  t.sessionId,
+  COUNT(*) AS reads_before_first_write,
+  f.first_write_seq AS first_write_position
+FROM tool_sequence t
+JOIN first_write f ON t.sessionId = f.sessionId
+WHERE t.tool_name IN ('Read', 'Glob', 'Grep')
+  AND t.seq < f.first_write_seq
+GROUP BY t.sessionId, f.first_write_seq
+ORDER BY reads_before_first_write DESC
+```
+
+---
+
+### M3 — Token cost per session (Experiments 2, 3, 8, 9)
+
+Sums token usage across all assistant turns in a session.
+`cache_read` tokens are the amortized context reuse signal for C8/C9.
+
+```sql
+SELECT
+  sessionId,
+  SUM(message.usage.input_tokens)             AS total_input,
+  SUM(message.usage.cache_read_input_tokens)  AS total_cache_read,
+  SUM(message.usage.output_tokens)            AS total_output,
+  COUNT(*)                                    AS turns
+FROM read_ndjson_auto('PATH')
+WHERE type = 'assistant'
+  AND message.usage.input_tokens IS NOT NULL
+GROUP BY sessionId
+ORDER BY turns DESC
+```
+
+---
+
+### M4 — User correction and denial signals (Experiments 1, 5, 6, 7)
+
+Detects user corrections and tool denials. These are post-failure signals:
+the user observed non-compliant or incorrect behavior and acted.
+
+```sql
+SELECT
+  sessionId,
+  timestamp,
+  CASE
+    WHEN message.content::VARCHAR LIKE '%Request interrupted by user for tool use%'
+      THEN 'tool_denial'
+    WHEN message.content::VARCHAR LIKE '%Request interrupted by user%'
+      THEN 'interrupt'
+    WHEN message.content::VARCHAR LIKE '%User denied%'
+      THEN 'denied'
+  END AS signal_type
+FROM read_ndjson_auto('PATH')
+WHERE type = 'user'
+  AND message.content IS NOT NULL
+  AND (
+    message.content::VARCHAR LIKE '%Request interrupted by user%'
+    OR message.content::VARCHAR LIKE '%User denied%'
+  )
+ORDER BY sessionId, timestamp
+```
+
+---
+
+### M5 — Bash tool misuse rate (Experiments 1, 4)
+
+Identifies Bash calls that violate the "use built-in tools" instruction.
+Each violation type maps to a specific instruction in CLAUDE.md.
+
+```sql
+WITH bash_calls AS (
+  SELECT
+    sessionId,
+    timestamp,
+    json_extract_string(tool_item, '$.input.command') AS command
+  FROM read_ndjson_auto('PATH'),
+    LATERAL (SELECT unnest(from_json(message.content, '["json"]')) AS tool_item)
+  WHERE type = 'assistant'
+    AND json_extract_string(tool_item, '$.name') = 'Bash'
+    AND json_extract_string(tool_item, '$.type') = 'tool_use'
+)
+SELECT
+  sessionId,
+  command,
+  CASE
+    WHEN regexp_matches(command, '^\s*ls\b')              THEN 'use_glob'
+    WHEN regexp_matches(command, '\bgrep\b')              THEN 'use_grep'
+    WHEN regexp_matches(command, '\bfind\b.*-name')       THEN 'use_glob'
+    WHEN regexp_matches(command, '\bcat\b\s+\S+\.\w+')   THEN 'use_read'
+    WHEN regexp_matches(command, '\bhead\b|\btail\b')     THEN 'use_read'
+    WHEN regexp_matches(command, '\bsed\b|\bawk\b')       THEN 'use_edit'
+  END AS violation_type
+FROM bash_calls
+WHERE command IS NOT NULL
+  AND violation_type IS NOT NULL
+ORDER BY sessionId, timestamp
+```
+
+---
+
+### M6 — Tool call sequence per session (Experiments 3, 9, 10)
+
+Produces the full ordered tool sequence for a session.
+Used to reconstruct whether agents followed prescribed workflow order,
+and to compare decomposition strategies by tool pattern.
+
+```sql
+SELECT
+  sessionId,
+  timestamp,
+  json_extract_string(tool_item, '$.name')         AS tool_name,
+  json_extract_string(tool_item, '$.input.file_path') AS file_path,
+  json_extract_string(tool_item, '$.input.command')   AS command,
+  ROW_NUMBER() OVER (PARTITION BY sessionId ORDER BY timestamp) AS step
+FROM read_ndjson_auto('PATH'),
+  LATERAL (SELECT unnest(from_json(message.content, '["json"]')) AS tool_item)
+WHERE type = 'assistant'
+  AND json_extract_string(tool_item, '$.type') = 'tool_use'
+ORDER BY sessionId, step
+```
+
+---
+
+### How to tag sessions to conditions
+
+Session logs do not contain experiment condition labels.
+Two approaches to assign sessions to conditions:
+
+**Timestamp split (pre/post instruction change):**
+1. Run `git log --follow -1 --format="%aI" .claude/CLAUDE.md` (or the relevant file)
+   to get the exact commit timestamp of the instruction change
+2. Use M1 to get `session_start` per session
+3. Sessions with `session_start < commit_timestamp` are the pre-instruction cohort;
+   sessions with `session_start >= commit_timestamp` are the post-instruction cohort
+
+**Explicit tagging (for forward experiments):**
+Include a recognizable tag in the first user prompt of each experimental session,
+e.g. `[EXP:C5-progressive-2026-04-01]`. Retrieve it with:
+
+```sql
+SELECT DISTINCT sessionId
+FROM read_ndjson_auto('PATH')
+WHERE type = 'user'
+  AND message.content::VARCHAR LIKE '%[EXP:C5-progressive%'
+```
+
+Explicit tagging is the only reliable method when conditions are applied within
+the same time window. Timestamp split only works when conditions are separated
+in time (e.g., before and after a CLAUDE.md change).
+
+---
+
+### Experiment-to-metric mapping
+
+| Experiment | Metrics needed | Query(s) |
+|---|---|---|
+| 1 (context-fit vs impl difficulty) | reads_before_write, correction count | M1, M2, M4 |
+| 2 (three-term sufficiency) | reads_before_write, correction count, turn count | M1, M2, M4 |
+| 3 (knowledge vs code boundaries) | reads_before_write, token cost | M1, M2, M3 |
+| 4 (volatile constraint cost) | bash misuse rate, git log | M1, M5 |
+| 5 (progressive disclosure) | token cost, correction count by cohort | M1, M3, M4 |
+| 6 (garbage collection) | token growth across turns, correction count | M1, M3, M4 |
+| 7 (structured reality contact) | tool sequence (when blocking issue hit) | M1, M6 |
+| 8 (session economics) | cache_read vs input token ratio | M1, M3 |
+| 9 (spectrum regions) | token cost, tool sequence | M1, M3, M6 |
+| 10 (iterative discovery) | token cost across iterations | M1, M3 |
+
+---
+
 ## Relationship to Existing Artifacts
 
 - Codified model: [context-fit-complexity.md](./sdlc-layers/layer-0/context-fit-complexity.md)
