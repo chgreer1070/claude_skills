@@ -1,6 +1,6 @@
 # Step Procedures Reference
 
-Detailed procedure content for Steps 0, 1, 1b, 2.3, 5, Q, P, and R.
+Detailed procedure content for Steps 1.1, 1.2, 1.3, 2.1, 4.1, 4.5, 4.5a, Q, P, and R.
 
 ---
 
@@ -78,7 +78,9 @@ are plausible, read their per-item files via `backlog_view` before choosing.
 
 ---
 
-## Step 1b: Completed Issue Discovery
+<a id="step-1-2-completed-issue-discovery"></a>
+
+## Step 1.2: Completed Issue Discovery
 
 When an issue is found to be already closed (`state: closed`), gather evidence before closing the local backlog item:
 
@@ -129,7 +131,9 @@ When an issue is found to be already closed (`state: closed`), gather evidence b
 
 ---
 
-## Step 2.3: Already Implemented Check
+<a id="step-2-1-already-implemented-check"></a>
+
+## Step 2.1: Already Implemented Check
 
 Before planning work, verify the described feature/fix hasn't already been implemented:
 
@@ -154,7 +158,9 @@ If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
 
 ---
 
-## Step 0: Interactive Browser
+<a id="step-1-1-interactive-browser"></a>
+
+## Step 1.1: Interactive Browser
 
 1. Call the `mcp__plugin_dh_backlog__backlog_list` tool.
 
@@ -202,7 +208,9 @@ If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
 
 ---
 
-## Step 5: Feature Request Template
+<a id="step-4-1-feature-request-template"></a>
+
+## Step 4.1: Feature Request Template
 
 Build this string for `add-new-feature`:
 
@@ -380,7 +388,9 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 ---
 
-## Step 8.5a: AUTO_MODE Continuation
+<a id="step-4-5a-auto-mode-continuation"></a>
+
+## Step 4.5a: AUTO_MODE Continuation
 
 **Trigger:** AUTO_MODE is set (invoked with `--auto`).
 
@@ -404,7 +414,9 @@ Do not stop for user input at any point.
 
 ---
 
-## Step 8.5: Report Next Steps
+<a id="step-4-5-post-planning-output"></a>
+
+## Step 4.5: Post-Planning Output
 
 **Trigger:** AUTO_MODE is NOT set (interactive mode only).
 
