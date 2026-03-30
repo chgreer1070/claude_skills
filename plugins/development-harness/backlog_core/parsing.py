@@ -267,6 +267,10 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, object], dict[str, str], st
             {k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()} if post.metadata else {}
         )
         body: str = post.content or ""
+    except YAMLError:
+        # Structural YAML corruption (e.g. duplicate keys, bad anchors) cannot be
+        # recovered via text-split; propagate so callers can log and skip the file.
+        raise
     except (ValueError, KeyError, TypeError):
         parts = text.split("---", 2)
         fm, body = {}, parts[2].strip() if len(parts) >= MIN_FRONTMATTER_PARTS else text

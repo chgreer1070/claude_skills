@@ -137,8 +137,18 @@ class TestBacklogItemModelDump:
     def test_model_dump_contains_all_expected_keys(self) -> None:
         item = BacklogItem()
         result = item.model_dump()
-        expected_keys = {"title", "description", "type_", "section", "metadata", "sections"}
+        expected_keys = {"title", "description", "metadata", "sections"}
         assert expected_keys.issubset(result.keys())
+
+    def test_model_dump_excludes_type_(self) -> None:
+        item = BacklogItem(type_="bug")
+        result = item.model_dump()
+        assert "type_" not in result
+
+    def test_model_dump_excludes_section(self) -> None:
+        item = BacklogItem(section="P1")
+        result = item.model_dump()
+        assert "section" not in result
 
     def test_model_dump_excludes_file_path(self) -> None:
         item = BacklogItem(file_path="/some/path.md")

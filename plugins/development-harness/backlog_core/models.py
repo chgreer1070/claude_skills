@@ -573,8 +573,8 @@ class BacklogItem(BaseModel):
 
     title: str = ""
     description: str = ""
-    type_: str = ""
-    section: str = ""
+    type_: str = Field(default="", exclude=True)
+    section: str = Field(default="", exclude=True)
     file_path: str = Field(default="", exclude=True)
     skip: bool = Field(default=False, exclude=True)
     metadata: BacklogItemMetadata = Field(default_factory=BacklogItemMetadata)

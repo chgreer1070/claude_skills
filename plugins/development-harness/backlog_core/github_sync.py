@@ -40,6 +40,20 @@ _SECTION_HEADING: dict[str, str] = {
 # Reverse lookup: heading text (lowercased) -> section key
 _HEADING_TO_KEY: dict[str, str] = {v.lower(): k for k, v in _SECTION_HEADING.items()}
 
+
+def heading_to_section_key(heading_text: str) -> str | None:
+    """Return the BacklogItem.sections key for a markdown heading text, or None if unknown.
+
+    Args:
+        heading_text: Heading text with ``##`` prefix stripped and whitespace trimmed.
+
+    Returns:
+        Normalised section key (e.g. ``"fact_check"``) or ``None`` when the heading
+        does not correspond to a known section.
+    """
+    return _HEADING_TO_KEY.get(heading_text.lower())
+
+
 # Canonical render order for GroomedData subsections (heading text as stored in the dict)
 _GROOMED_SUBSECTION_ORDER: list[str] = [
     "Priority",

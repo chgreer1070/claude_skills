@@ -41,6 +41,7 @@ if str(_HARNESS_DIR) not in sys.path:
 
 import typer
 from backlog_core.entry_blocks import parse_entries
+from backlog_core.github_sync import heading_to_section_key
 from backlog_core.models import BacklogItem, GroomedData, Section
 from backlog_core.parsing import extract_sections, parse_item_file
 from backlog_core.yaml_io import load_item, load_item_text, save_item
@@ -151,10 +152,14 @@ def _build_sections(item: BacklogItem) -> dict[str, Section | GroomedData]:
 
     for heading, body in raw_sections.items():
         if heading.startswith("## Groomed"):
-            result[heading] = _parse_groomed_data(heading, body)
+            result["groomed"] = _parse_groomed_data(heading, body)
         else:
+            heading_text = heading.lstrip("#").strip()
+            section_key = heading_to_section_key(heading_text)
+            if section_key is None:
+                continue
             entries = parse_entries(body, show="all", added_date=item.metadata.added or "0000-00-00")
-            result[heading] = Section(entries=entries)
+            result[section_key] = Section(entries=entries)
 
     return result
 
