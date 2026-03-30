@@ -15,6 +15,7 @@ import backlog_core.operations as ops
 import pytest
 from backlog_core.models import (
     BacklogItem,
+    BacklogItemMetadata,
     DuplicateItemError,
     IssueStatus,
     ItemNotFoundError,
@@ -1153,10 +1154,12 @@ class TestListItemsFilterType:
         """Items without metadata.type are excluded when type_ filter is active.
 
         Tests: absent-type exclusion.
-        How: One item has no type_; filter by 'Feature'.
+        How: One item has empty item_type in metadata; filter by 'Feature'.
         Why: Items missing metadata.type must not appear in typed-filter results.
         """
-        no_type_item = BacklogItem(title="Untyped work", section="P2", skip=False, type_="")
+        no_type_item = BacklogItem(
+            title="Untyped work", section="P2", skip=False, metadata=BacklogItemMetadata(item_type="")
+        )
         mocker.patch("backlog_core.operations.parse_backlog", return_value=[no_type_item])
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
@@ -1355,10 +1358,12 @@ class TestBuildListEntryTypeTopicFields:
         """Items without metadata.type and metadata.topic have empty string values in response dict.
 
         Tests: empty-field handling in _build_list_entry.
-        How: Create item with no type_ or topic set.
+        How: Create item with empty item_type and topic in metadata.
         Why: Consumers must receive consistent dict shape regardless of metadata presence.
         """
-        item = BacklogItem(title="Plain item", section="P2", skip=False)
+        item = BacklogItem(
+            title="Plain item", section="P2", skip=False, metadata=BacklogItemMetadata(item_type="", topic="")
+        )
         mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 

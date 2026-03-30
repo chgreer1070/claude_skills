@@ -679,7 +679,13 @@ class BacklogItem(BaseModel):
         self.added = resolved_added
         self.status = resolved_status
         self.plan = resolved_plan
-        self.item_type = resolved_item_type or "Feature"
+        resolved_type = resolved_item_type or "Feature"
+        self.item_type = resolved_type
+        # type_ is the BacklogItem-level alias for metadata.item_type — keep in sync
+        # so YAML-loaded items (which have type_='' on disk but metadata.item_type set)
+        # expose the correct value via item.type_.  Invariant: after construction,
+        # item.type_ == item.item_type == item.metadata.item_type.
+        self.type_ = resolved_type
         self.groomed = resolved_groomed
         self.last_synced = resolved_last_synced
         self.research_first = resolved_research_first

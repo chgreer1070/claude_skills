@@ -2161,6 +2161,13 @@ def view_item(
         data.pop("sections", None)
         if body:
             data["sections_metadata"] = _build_sections_compact(body)
+        elif item and item.sections:
+            # YAML items have no raw body; build compact metadata from structured sections.
+            yaml_sections = _build_sections_from_yaml_item(item)
+            data["sections_metadata"] = [
+                {"name": name, "num_entries": sec["num_entries"], "num_struck": sec["num_struck"]}
+                for name, sec in yaml_sections.items()
+            ]
 
     return {**data, **out.to_dict()}
 
@@ -2730,7 +2737,7 @@ def groom_item(
         Dict with groom results.
     """
     out = output or Output()
-    has_input = groomed_file or groomed_content or (section and content) or sections
+    has_input = groomed_file or groomed_content or (section and content) or sections is not None
     items = parse_backlog()
     item = find_item(items, selector)
     if not item:

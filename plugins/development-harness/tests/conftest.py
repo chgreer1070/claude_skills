@@ -14,9 +14,13 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
+
+if TYPE_CHECKING:
+    from backlog_core.models import Section
 
 # Ensure backlog_core package is importable when running tests from repo root.
 # The package lives at plugins/development-harness/ (not installed as editable
@@ -105,14 +109,17 @@ def mock_github(monkeypatch):
 
 
 @pytest.fixture
-def write_test_item(backlog_dir):
-    """Factory: create per-item file with valid frontmatter in test backlog_dir.
+def write_test_item(backlog_dir: Path) -> object:
+    """Factory: create per-item ``.yaml`` file loadable by yaml_io in test backlog_dir.
+
+    Creates pure-YAML backlog item files via ``yaml_io.save_item()``, replacing the
+    legacy ``build_backlog_frontmatter`` + ``.md`` approach.
 
     Usage::
 
         filepath = write_test_item("My Title", priority="P0", issue="#42")
 
-    Returns the Path to the created file.
+    Returns the Path to the created ``.yaml`` file.
     """
 
     def _write(
@@ -122,15 +129,29 @@ def write_test_item(backlog_dir):
         description: str = "Test item",
         status: str = "open",
         type_val: str = "Feature",
+        sections: dict[str, Section] | None = None,
     ) -> Path:
-        from backlog_core.parsing import build_backlog_frontmatter, title_to_slug
+        from backlog_core.models import BacklogItem, BacklogItemMetadata
+        from backlog_core.parsing import title_to_slug
+        from backlog_core.yaml_io import save_item
 
         slug = title_to_slug(title)
-        filepath = backlog_dir / f"{priority.lower()}-{slug}.md"
-        fm = build_backlog_frontmatter(
-            title, description, "test", "2026-01-01", priority, type_val, status, issue, "", ""
+        filepath = backlog_dir / f"{priority.lower()}-{slug}.yaml"
+        item = BacklogItem(
+            title=title,
+            description=description,
+            metadata=BacklogItemMetadata(
+                source="test",
+                added="2026-01-01",
+                priority=priority,
+                item_type=type_val,
+                status=status,
+                issue=issue,
+                topic=slug,
+            ),
+            sections=sections or {},
         )
-        filepath.write_text(fm, encoding="utf-8")
+        save_item(item, filepath)
         return filepath
 
     return _write

@@ -1242,21 +1242,25 @@ class TestCompactBacklogView:
         """Scenario C1a: backlog_view(include_content=False) returns sections_metadata list.
 
         Tests: compact mode response shape
-        How: write item with groomed section content, call backlog_view with
-             include_content=False, assert sections_metadata is a list of dicts
-             with name/num_entries/num_struck keys.
+        How: write item with groomed section content via yaml_io (YAML format),
+             call backlog_view with include_content=False, assert sections_metadata
+             is a list of dicts with name/num_entries/num_struck keys.
         Why: callers that only need a section inventory should not pay the cost
              of transferring full body content.
         """
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import load_item, save_item
+
         filepath = write_test_item("Compact View Test Item")
-        # Append a section with entries so sections_metadata is non-empty
-        filepath.write_text(
-            filepath.read_text(encoding="utf-8")
-            + "\n### Groomed (2026-03-22)\n\n"
-            + "- [2026-03-22] First entry content.\n"
-            + "- [2026-03-22] Second entry content.\n",
-            encoding="utf-8",
+        # Add a structured section with entries (YAML format — not raw markdown append)
+        item = load_item(filepath)
+        item.sections["Groomed (2026-03-22)"] = Section(
+            entries=[
+                Entry(id="2026-03-22", content="First entry content."),
+                Entry(id="2026-03-22", content="Second entry content."),
+            ]
         )
+        save_item(item, filepath)
         mock_github["view_enrich_from_github"].return_value = False
 
         result = await _call(
@@ -1328,14 +1332,16 @@ class TestCompactBacklogView:
              when they are supplied, preserving backward compatibility for callers
              that always pass pagination params.
         """
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import load_item, save_item
+
         filepath = write_test_item("Pagination Compact Item")
-        filepath.write_text(
-            filepath.read_text(encoding="utf-8")
-            + "\n### Groomed (2026-03-22)\n\n"
-            + "- [2026-03-22] Entry one.\n"
-            + "- [2026-03-22] Entry two.\n",
-            encoding="utf-8",
+        # Add a structured section with entries (YAML format — not raw markdown append)
+        item = load_item(filepath)
+        item.sections["Groomed (2026-03-22)"] = Section(
+            entries=[Entry(id="2026-03-22", content="Entry one."), Entry(id="2026-03-22", content="Entry two.")]
         )
+        save_item(item, filepath)
         mock_github["view_enrich_from_github"].return_value = False
 
         result = await _call(
