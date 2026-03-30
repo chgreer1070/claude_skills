@@ -137,31 +137,28 @@ class TestBacklogItemModelDump:
     def test_model_dump_contains_all_expected_keys(self) -> None:
         item = BacklogItem()
         result = item.model_dump()
-        expected_keys = {
-            "title",
-            "description",
-            "source",
-            "added",
-            "priority",
-            "item_type",
-            "issue",
-            "plan",
-            "research_first",
-            "files",
-            "suggested_location",
-            "section",
-            "file_path",
-            "skip",
-            "groomed",
-            "last_synced",
-            "raw_body",
-        }
+        expected_keys = {"title", "description", "type_", "section", "metadata", "sections"}
         assert expected_keys.issubset(result.keys())
 
-    def test_model_dump_skip_default_is_false(self) -> None:
+    def test_model_dump_excludes_file_path(self) -> None:
+        item = BacklogItem(file_path="/some/path.md")
+        result = item.model_dump()
+        assert "file_path" not in result
+
+    def test_model_dump_excludes_skip(self) -> None:
+        item = BacklogItem(skip=True)
+        result = item.model_dump()
+        assert "skip" not in result
+
+    def test_model_dump_excludes_raw_body(self) -> None:
+        """raw_body has been removed from BacklogItem; it must not appear in dumps."""
         item = BacklogItem()
         result = item.model_dump()
-        assert result["skip"] is False
+        assert "raw_body" not in result
+
+    def test_model_dump_skip_accessible_directly(self) -> None:
+        item = BacklogItem()
+        assert item.skip is False
 
 
 # ---------------------------------------------------------------------------

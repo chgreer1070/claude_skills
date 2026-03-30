@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Literal, TypedDict
 
 import git
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 from typing_extensions import TypedDict as ExtTypedDict
 
 # ---------------------------------------------------------------------------
@@ -415,7 +415,139 @@ class Entry(BaseModel):
     struck: bool = False
     struck_reason: str = ""
     struck_at: str = ""
-    raw: str = ""
+
+    @model_validator(mode="after")
+    def _validate_struck_requires_struck_at(self) -> Entry:
+        """Require struck_at to be non-empty when struck is True.
+
+        Returns:
+            The validated Entry instance.
+
+        Raises:
+            ValueError: When struck is True but struck_at is empty.
+        """
+        if self.struck and not self.struck_at:
+            raise ValueError("struck_at must be non-empty when struck is True")
+        return self
+
+
+class GroomedData(BaseModel):
+    """Structured grooming data for a backlog item.
+
+    Holds the grooming date and named subsections produced during grooming.
+    """
+
+    date: str = ""
+    subsections: dict[str, str] = Field(default_factory=dict)
+
+
+class Section(BaseModel):
+    """A named section within a backlog item containing an ordered list of entries."""
+
+    entries: list[Entry] = Field(default_factory=list)
+
+
+_VALID_PRIORITIES = {"P0", "P1", "P2", "Ideas", "completed"}
+_VALID_TYPES = {"Feature", "Bug", "Refactor", "Docs", "Chore"}
+_VALID_STATUSES = {"open", "done", "in-progress", "needs-grooming"}
+_ADDED_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+class BacklogItemMetadata(BaseModel):
+    """Typed metadata fields for a backlog item, persisted to YAML frontmatter.
+
+    All fields default to empty strings.  Field-level validators reject
+    non-empty values that fall outside the allowed set, so empty strings
+    always pass (items can be partially initialised during parsing).
+    """
+
+    source: str = "Not specified"
+    added: str = ""
+    priority: str = ""
+    item_type: str = Field(default="Feature", alias="type", serialization_alias="type")
+    status: str = ""
+    issue: str = ""
+    last_synced: str = ""
+    groomed: str = ""
+    plan: str = ""
+    topic: str = ""
+    research_first: str = ""
+    files: str = ""
+    suggested_location: str = ""
+
+    model_config = {"populate_by_name": True}
+
+    @field_validator("priority")
+    @classmethod
+    def _validate_priority(cls, v: str) -> str:
+        """Allow empty or one of the known priority labels.
+
+        Args:
+            v: Raw priority value from input.
+
+        Returns:
+            Validated priority string.
+
+        Raises:
+            ValueError: When v is non-empty and not in the allowed set.
+        """
+        if v and v not in _VALID_PRIORITIES:
+            raise ValueError(f"priority must be one of {sorted(_VALID_PRIORITIES)}, got {v!r}")
+        return v
+
+    @field_validator("item_type", mode="before")
+    @classmethod
+    def _validate_item_type(cls, v: str) -> str:
+        """Allow empty or one of the known item type labels.
+
+        Args:
+            v: Raw item type value from input.
+
+        Returns:
+            Validated item type string.
+
+        Raises:
+            ValueError: When v is non-empty and not in the allowed set.
+        """
+        if v and v not in _VALID_TYPES:
+            raise ValueError(f"type must be one of {sorted(_VALID_TYPES)}, got {v!r}")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status(cls, v: str) -> str:
+        """Allow empty or one of the known status values.
+
+        Args:
+            v: Raw status value from input.
+
+        Returns:
+            Validated status string.
+
+        Raises:
+            ValueError: When v is non-empty and not in the allowed set.
+        """
+        if v and v not in _VALID_STATUSES:
+            raise ValueError(f"status must be one of {sorted(_VALID_STATUSES)}, got {v!r}")
+        return v
+
+    @field_validator("added")
+    @classmethod
+    def _validate_added(cls, v: str) -> str:
+        """Allow empty or a YYYY-MM-DD date string.
+
+        Args:
+            v: Raw added date value from input.
+
+        Returns:
+            Validated added date string.
+
+        Raises:
+            ValueError: When v is non-empty and does not match YYYY-MM-DD.
+        """
+        if v and not _ADDED_DATE_RE.match(v):
+            raise ValueError(f"added must be YYYY-MM-DD or empty, got {v!r}")
+        return v
 
 
 class BacklogItem(BaseModel):
@@ -424,30 +556,132 @@ class BacklogItem(BaseModel):
     Replaces the untyped ``dict`` that was previously passed between functions.
     All fields default to empty/falsy values so items can be constructed
     incrementally during parsing.
+
+    The ``metadata`` sub-model holds all YAML-persisted metadata fields.
+    Backward-compatible flat fields (``priority``, ``issue``, etc.) are
+    declared as ``exclude=True`` so they remain valid constructor parameters
+    and are kept in sync with ``metadata`` via the ``_sync_metadata``
+    model validator, but are omitted from ``model_dump()`` serialisation.
+
+    ``file_path`` and ``skip`` are runtime-only fields also excluded from
+    YAML serialisation.
+
+    Invariant: after construction, every flat accessor field has the same
+    value as its counterpart in ``metadata``.  Use either access form;
+    they are always equivalent (``item.priority == item.metadata.priority``).
     """
 
     title: str = ""
     description: str = ""
-    source: str = "Not specified"
-    added: str = ""
-    priority: str = ""
-    item_type: str = "Feature"
-    issue: str = ""
-    plan: str = ""
-    research_first: str = ""
-    files: str = ""
-    suggested_location: str = ""
-
     type_: str = ""
-    topic: str = ""
-
     section: str = ""
-    file_path: str = ""
-    skip: bool = False
-    status: str = ""
-    groomed: str = ""
-    last_synced: str = ""
-    raw_body: str = ""
+    file_path: str = Field(default="", exclude=True)
+    skip: bool = Field(default=False, exclude=True)
+    metadata: BacklogItemMetadata = Field(default_factory=BacklogItemMetadata)
+    sections: dict[str, Section | GroomedData] = Field(default_factory=dict)
+
+    # ------------------------------------------------------------------
+    # Backward-compatible flat accessor fields (excluded from serialisation)
+    # These accept the values that callers previously passed directly to
+    # BacklogItem(...) before the metadata sub-model was introduced.
+    # After the _sync_metadata validator runs they mirror metadata.
+    # ------------------------------------------------------------------
+
+    priority: str = Field(default="", exclude=True)
+    issue: str = Field(default="", exclude=True)
+    source: str = Field(default="", exclude=True)
+    added: str = Field(default="", exclude=True)
+    status: str = Field(default="", exclude=True)
+    plan: str = Field(default="", exclude=True)
+    item_type: str = Field(default="", exclude=True)
+    groomed: str = Field(default="", exclude=True)
+    last_synced: str = Field(default="", exclude=True)
+    research_first: str = Field(default="", exclude=True)
+    files: str = Field(default="", exclude=True)
+    suggested_location: str = Field(default="", exclude=True)
+    topic: str = Field(default="", exclude=True)
+
+    @model_validator(mode="after")
+    def _sync_metadata(self) -> BacklogItem:
+        """Synchronise flat accessor fields and the metadata sub-model.
+
+        Priority chain (first non-empty value wins per field):
+        1. Flat field value supplied at construction time
+        2. Value already present in ``metadata``
+        3. Default (empty string / "Not specified" for source)
+
+        After this validator runs the flat fields are updated to reflect
+        ``metadata`` so that both access forms are equivalent.
+
+        ``section`` is also used to seed ``metadata.priority`` when
+        ``priority`` is not supplied directly.
+
+        Returns:
+            The validated BacklogItem instance with flat fields and metadata
+            in sync.
+        """
+        meta = self.metadata
+
+        # Helper: apply a flat-field value to metadata when it is non-empty
+        # and the metadata field is still at its default (empty/unset).
+        def _apply(flat_val: str, meta_attr: str, default: str = "") -> str:
+            """Return the resolved value and update metadata in place.
+
+            Args:
+                flat_val: Value supplied via the flat field.
+                meta_attr: Attribute name on BacklogItemMetadata to update.
+                default: Sentinel value that counts as "not set" on metadata.
+
+            Returns:
+                The resolved value after merging flat field and metadata.
+            """
+            meta_val: str = getattr(meta, meta_attr)
+            if flat_val and (not meta_val or meta_val == default):
+                setattr(meta, meta_attr, flat_val)
+                return flat_val
+            return meta_val
+
+        # section seeds metadata.priority when neither flat priority nor
+        # metadata.priority are set.
+        if self.section and not self.priority and not meta.priority:
+            meta.priority = self.section
+
+        resolved_priority = _apply(self.priority, "priority")
+        resolved_issue = _apply(self.issue, "issue")
+        resolved_source = _apply(self.source, "source", default="Not specified")
+        resolved_added = _apply(self.added, "added")
+        resolved_status = _apply(self.status, "status")
+        resolved_plan = _apply(self.plan, "plan")
+        resolved_item_type = _apply(self.item_type, "item_type", default="Feature")
+        resolved_groomed = _apply(self.groomed, "groomed")
+        resolved_last_synced = _apply(self.last_synced, "last_synced")
+        resolved_research_first = _apply(self.research_first, "research_first")
+        resolved_files = _apply(self.files, "files")
+        resolved_suggested_location = _apply(self.suggested_location, "suggested_location")
+        resolved_topic = _apply(self.topic, "topic")
+
+        # type_ is an alias for metadata.item_type — treat as an override.
+        if self.type_:
+            meta.item_type = self.type_
+            resolved_item_type = self.type_
+
+        # Reflect the resolved values back to the flat fields so both access
+        # forms are always equivalent.
+        self.priority = resolved_priority
+        self.issue = resolved_issue
+        self.source = resolved_source or "Not specified"
+        self.added = resolved_added
+        self.status = resolved_status
+        self.plan = resolved_plan
+        self.item_type = resolved_item_type or "Feature"
+        self.groomed = resolved_groomed
+        self.last_synced = resolved_last_synced
+        self.research_first = resolved_research_first
+        self.files = resolved_files
+        self.suggested_location = resolved_suggested_location
+        self.topic = resolved_topic
+
+        return self
 
 
 class Output(BaseModel):
