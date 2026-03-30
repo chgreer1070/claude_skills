@@ -13,30 +13,40 @@ All logic originates from: `.claude/skills/backlog/scripts/backlog.py`
 
 Each agent MUST read the full source file and extract ONLY the functions assigned to their module.
 
+## I/O Modules (post-YAML migration)
+
+Local file I/O is handled by two dedicated modules:
+
+- `yaml_io.py` — pure-YAML read/write for backlog items (`.yaml` format). Primary path for all
+  new items. Uses `ruamel.yaml` directly; no `python-frontmatter` dependency.
+- `github_sync.py` — GitHub issue body parsing (extracts sections, groomed data). Replaces the
+  parsing functions that reconstructed local `.md` bodies from GitHub issue bodies.
+
 ## Dependency: frontmatter_utils
 
-`backlog.py` imports `frontmatter_utils` from `plugins/plugin-creator/scripts/`.
-This import path must be set up in `parsing.py` (the only module that uses it directly).
+`frontmatter_utils.py` wraps `python-frontmatter` with a `ruamel.yaml` round-trip handler.
+It is retained for:
 
-```python
-import sys
-from pathlib import Path
+- `parsing.py` — legacy `.md` file parsing via `loads_frontmatter` / `dump_frontmatter`.
+  The `.md` path (`parse_item_file`) is kept for backward compatibility and migration tooling.
+- `agent_profile/parser.py` — reads agent `.md` files with YAML frontmatter via `load_frontmatter`.
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
-sys.path.insert(0, str(_REPO_ROOT / "plugins" / "plugin-creator" / "scripts"))
-from frontmatter_utils import dump_frontmatter, loads_frontmatter
-```
+New code should use `yaml_io.py` (for backlog items) or `ruamel.yaml` directly. Do not add new
+callers of `frontmatter_utils`.
 
 ## Module Dependency Graph
 
 ```text
-models.py          ← standalone, no imports from other mcp modules
-parsing.py         ← imports from models
-github.py          ← imports from models, parsing
-operations.py      ← imports from models, parsing, github
-dispatch_state.py  ← imports from models (DispatchItemRecord, DispatchWaveRecord); no MCP awareness
-server.py          ← imports from models, operations, dispatch_state
-backlog.py         ← imports from operations (thin CLI wrapper)
+models.py             ← standalone, no imports from other mcp modules
+frontmatter_utils.py  ← wraps python-frontmatter with ruamel.yaml; used by parsing.py and agent_profile/
+yaml_io.py            ← pure-YAML read/write for .yaml backlog items; imports from models, parsing
+github_sync.py        ← GitHub issue body parsing; imports from models, parsing
+parsing.py            ← imports from models, frontmatter_utils; re-exports loads_frontmatter/dump_frontmatter
+github.py             ← imports from models, parsing
+operations.py         ← imports from models, parsing, github, yaml_io
+dispatch_state.py     ← imports from models (DispatchItemRecord, DispatchWaveRecord); no MCP awareness
+server.py             ← imports from models, operations, dispatch_state
+backlog.py            ← imports from operations (thin CLI wrapper)
 ```
 
 ## Output Pattern
@@ -120,26 +130,34 @@ All constants, all exception classes, all Pydantic models.
 
 ## Module: parsing.py
 
-**Responsibility**: File parsing, item search, slug generation, frontmatter building, body section utilities, view helpers, normalize helpers.
+**Responsibility**: File parsing, item search, slug generation, body section utilities, view helpers, normalize helpers.
 
-**Functions extracted from backlog.py**:
+**Current active functions** (post-YAML migration):
 
-- Date helpers: `_today()` → `today()`, `_now_iso()` → `now_iso()`
-- Slug/title: `_title_to_slug()` → `title_to_slug()`, `_normalize_issue_title()` → `normalize_issue_title()`, `_infer_type()` → `infer_type()`
-- Selector: `_parse_issue_selector()` → `parse_issue_selector()`
-- Item parsing: `_parse_item_file()` → `parse_item_file()`, `_parse_backlog_from_directory()` → `parse_backlog_from_directory()`, `parse_backlog()`
-- Item search: `find_item()`, `_find_fuzzy_duplicates()` → `find_fuzzy_duplicates()`
+- Date helpers: `today()`, `now_iso()`
+- Slug/title: `title_to_slug()`, `normalize_issue_title()`, `infer_type()`
+- Selector: `parse_issue_selector()`
+- Item parsing: `parse_item_file()` (legacy `.md` path — deprecated, kept for migration tooling),
+  `parse_backlog_from_directory()`, `parse_backlog()`
+- Item search: `find_item()`, `find_fuzzy_duplicates()`
 - Item filtering: `items_needing_issues()`, `items_with_issues()`
-- Frontmatter: `_build_backlog_frontmatter()` → `build_backlog_frontmatter()`, `build_issue_body()`, `_build_issue_body_from_file()` → `build_issue_body_from_file()`
-- Body utilities: `_extract_body_field_pairs()`, `_apply_field_to_result()`, `_merge_field_into_result()`, `_parse_body_extra_fields()`, `_extract_groomed_section()`, `_build_body_extra_only()`, `_append_or_replace_section()`
-- Section merging: `_extract_description_from_issue_body()`, `_extract_sections()`, `_reconstruct_body_from_sections()`, `_merge_sections()`
-- View helper: `_view_result_from_local_item()` → `view_result_from_local_item()`
-- Normalize helper: `_extract_normalize_metadata()` → `extract_normalize_metadata()`
+- Issue body: `build_issue_body()`, `build_issue_body_from_file()`
+- Body utilities (still used by `operations.py` and `github.py`): `extract_body_field_pairs()`,
+  `apply_field_to_result()`, `merge_field_into_result()`, `parse_body_extra_fields()`,
+  `extract_groomed_section()`, `build_body_extra_only()`, `append_or_replace_section()`,
+  `reconstruct_body_from_sections()`, `merge_sections()`
+- Section extraction (used by `github_sync.py`): `extract_sections()`, `extract_groomed_section()`
+- View helper: `view_result_from_local_item()`
+- Normalize helper: `extract_normalize_metadata()`
 
-**Exports**: All functions listed above (without leading underscores).
-Also re-exports `loads_frontmatter` and `dump_frontmatter` from `frontmatter_utils` for use by other modules.
+**Deprecated / legacy**: `build_backlog_frontmatter()` — builds `.md` frontmatter; superseded by
+`yaml_io.save_item()` for new items. Retained because test coverage depends on it.
 
-**Imports from other modules**: `from .models import ...` (constants only).
+**Exports**: All functions above (without leading underscores).
+Also re-exports `loads_frontmatter` and `dump_frontmatter` from `frontmatter_utils` for backward
+compatibility with `operations.py` callers.
+
+**Imports from other modules**: `from .models import ...`, `from .frontmatter_utils import ...`.
 
 ---
 

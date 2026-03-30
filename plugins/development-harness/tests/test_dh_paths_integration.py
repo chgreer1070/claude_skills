@@ -904,6 +904,129 @@ class TestManifestSectionRoundTrip:
         assert not parsed.artifacts[0].path.startswith("/")
         assert "plan/architect-consolidate-dh-paths.md" in rendered
 
+    def test_parse_manifest_section_returns_empty_manifest_when_absent(self) -> None:
+        """Verify parse_manifest_section returns an empty manifest when no section is present.
+
+        Tests: parse_manifest_section early-return on missing delimiters
+        How: Pass plain body without artifact-manifest delimiters; verify empty artifact list
+        Why: No manifest section is valid state — first registration adds the section
+        """
+        # Arrange
+        body = "## Some Issue\n\nNo artifact manifest here."
+
+        # Act
+        result = parse_manifest_section(body, 42)
+
+        # Assert
+        assert result.issue_number == 42
+        assert result.artifacts == []
+
+    def test_parse_table_row_skips_rows_with_too_few_columns(self) -> None:
+        """Verify _parse_table_row skips table rows that have fewer than 5 columns.
+
+        Tests: _parse_table_row short-row guard (line 71-72)
+        How: Embed a 3-column row inside a valid manifest; verify it is not parsed
+        Why: Malformed rows must be silently skipped to preserve manifest integrity
+        """
+        # Arrange — create a body with a short row embedded in a valid manifest table
+        body_with_short_row = (
+            "<!-- artifact-manifest:begin -->\n"
+            "| Type | Path | Status | Agent | Created |\n"
+            "|------|------|--------|-------|----------|\n"
+            "| only | two-cols |\n"
+            "<!-- artifact-manifest:end -->"
+        )
+
+        # Act
+        result = parse_manifest_section(body_with_short_row, 7)
+
+        # Assert — short row produces no artifacts
+        assert result.artifacts == []
+
+    def test_parse_table_row_skips_unknown_artifact_type(self) -> None:
+        """Verify _parse_table_row skips rows with an unrecognised artifact_type value.
+
+        Tests: _parse_table_row ValueError handling on unknown ArtifactType
+        How: Embed a row with an invented type string; verify it is dropped
+        Why: Unknown types must not cause an unhandled exception or corrupt the manifest
+        """
+        # Arrange
+        body_with_unknown_type = (
+            "<!-- artifact-manifest:begin -->\n"
+            "| Type | Path | Status | Agent | Created |\n"
+            "|------|------|--------|-------|----------|\n"
+            "| unknown-invented-type | plan/x.md | current | agent | 2026-01-01T00:00:00Z |\n"
+            "<!-- artifact-manifest:end -->"
+        )
+
+        # Act
+        result = parse_manifest_section(body_with_unknown_type, 7)
+
+        # Assert — unknown type row is skipped
+        assert result.artifacts == []
+
+    def test_parse_table_row_uses_current_status_for_unknown_status_value(self) -> None:
+        """Verify _parse_table_row defaults status to CURRENT for unrecognised status strings.
+
+        Tests: _parse_table_row ValueError fallback on unknown ArtifactStatus
+        How: Embed a valid row with an invented status; verify status defaults to CURRENT
+        Why: Unknown status values should not silently discard the entire entry
+        """
+        # Arrange
+        body_with_unknown_status = (
+            "<!-- artifact-manifest:begin -->\n"
+            "| Type | Path | Status | Agent | Created |\n"
+            "|------|------|--------|-------|----------|\n"
+            "| feature-context | plan/fc.md | invented-status | agent | 2026-01-01T00:00:00Z |\n"
+            "<!-- artifact-manifest:end -->"
+        )
+
+        # Act
+        result = parse_manifest_section(body_with_unknown_status, 7)
+
+        # Assert — entry preserved with CURRENT status
+        assert len(result.artifacts) == 1
+        assert result.artifacts[0].status == ArtifactStatus.CURRENT
+
+    def test_replace_manifest_in_body_delimiter_only_fallback(self) -> None:
+        """Verify replace_manifest_in_body handles body with delimiter but no heading.
+
+        Tests: replace_manifest_in_body fallback path when heading is absent (lines 193-194)
+        How: Build body with delimiters but no '## Artifact Manifest' heading; call replace
+        Why: Some bodies may have the block inserted without the heading line
+        """
+        # Arrange — body has the delimiter block but NOT the '## Artifact Manifest' heading
+        # directly before it (heading is elsewhere or absent)
+        delimiter_only_body = (
+            "## Other Section\n\n"
+            "Some content.\n\n"
+            "<!-- artifact-manifest:begin -->\n"
+            "| Type | Path | Status | Agent | Created |\n"
+            "|------|------|--------|-------|----------|\n"
+            "| feature-context | plan/old.md | current | agent | 2026-01-01T00:00:00Z |\n"
+            "<!-- artifact-manifest:end -->"
+        )
+        new_manifest = ArtifactManifest(
+            issue_number=7,
+            artifacts=[
+                ArtifactEntry(
+                    artifact_type=ArtifactType.ARCHITECT,
+                    path="plan/new.md",
+                    status=ArtifactStatus.CURRENT,
+                    agent="agent",
+                    created_at="2026-03-22T00:00:00Z",
+                )
+            ],
+        )
+        rendered = render_manifest_section(new_manifest)
+
+        # Act
+        updated = replace_manifest_in_body(delimiter_only_body, rendered)
+
+        # Assert — new entry present; old entry absent
+        assert "plan/new.md" in updated
+        assert "plan/old.md" not in updated
+
 
 # ---------------------------------------------------------------------------
 # Grep audit: no hardcoded old paths in production code

@@ -10,12 +10,18 @@ from backlog_core.parsing import (
     _parse_frontmatter,
     append_or_replace_section,
     build_backlog_frontmatter,
+    build_body_extra_only,
     build_issue_body,
     build_issue_body_from_file,
+    extract_body_field_pairs,
+    extract_description_from_issue_body,
     find_fuzzy_duplicates,
     find_item,
+    infer_type,
+    merge_sections,
     normalize_issue_title,
     parse_item_file,
+    reconstruct_body_from_sections,
     title_to_slug,
     view_result_from_local_item,
 )
@@ -1512,3 +1518,304 @@ Body of valid item.
 
         # Assert — no crash, empty result
         assert items == []
+
+
+# ---------------------------------------------------------------------------
+# infer_type
+# ---------------------------------------------------------------------------
+
+
+class TestInferType:
+    """Tests for infer_type(description, title) -> str.
+
+    Verifies the keyword heuristic that assigns an issue type label.
+    """
+
+    def test_infer_type_bug_keyword_in_title(self) -> None:
+        assert infer_type("", "fix the broken parser") == "type:bug"
+
+    def test_infer_type_bug_keyword_in_description(self) -> None:
+        assert infer_type("vulnerability in auth module", "") == "type:bug"
+
+    def test_infer_type_feature_keyword_add(self) -> None:
+        assert infer_type("", "add new command") == "type:feature"
+
+    def test_infer_type_feature_keyword_implement(self) -> None:
+        assert infer_type("implement the new pipeline", "") == "type:feature"
+
+    def test_infer_type_refactor_keyword(self) -> None:
+        assert infer_type("refactor the models layer", "") == "type:refactor"
+
+    def test_infer_type_refactor_keyword_consolidate(self) -> None:
+        assert infer_type("consolidate parsing utilities", "") == "type:refactor"
+
+    def test_infer_type_docs_keyword(self) -> None:
+        assert infer_type("update readme with new examples", "") == "type:docs"
+
+    def test_infer_type_docs_keyword_docs(self) -> None:
+        assert infer_type("", "docs: clarify architecture") == "type:docs"
+
+    def test_infer_type_default_returns_feature(self) -> None:
+        # No matching keyword — falls back to "type:feature"
+        assert infer_type("some unrelated task", "unrelated work") == "type:feature"
+
+
+# ---------------------------------------------------------------------------
+# extract_body_field_pairs
+# ---------------------------------------------------------------------------
+
+
+class TestExtractBodyFieldPairs:
+    """Tests for extract_body_field_pairs(body) -> list[tuple[str, str]].
+
+    Verifies field extraction from body text before the first ## heading.
+    """
+
+    def test_extract_body_field_pairs_single_field(self) -> None:
+        body = "**Source**: internal"
+
+        result = extract_body_field_pairs(body)
+
+        assert result == [("Source", "internal")]
+
+    def test_extract_body_field_pairs_stops_at_heading(self) -> None:
+        body = "**Source**: internal\n\n## Groomed\n\n**Priority**: P0"
+
+        result = extract_body_field_pairs(body)
+
+        assert result == [("Source", "internal")]
+
+    def test_extract_body_field_pairs_multiline_value(self) -> None:
+        body = "**Required work**:\nline one\nline two"
+
+        result = extract_body_field_pairs(body)
+
+        assert len(result) == 1
+        key, val = result[0]
+        assert key == "Required work"
+        assert "line one" in val
+        assert "line two" in val
+
+    def test_extract_body_field_pairs_trailing_field_without_heading(self) -> None:
+        # Field at end of body (no ## heading follows) must still be captured
+        body = "**Files**: src/module.py"
+
+        result = extract_body_field_pairs(body)
+
+        assert result == [("Files", "src/module.py")]
+
+    def test_extract_body_field_pairs_empty_body_returns_empty_list(self) -> None:
+        assert extract_body_field_pairs("") == []
+
+    def test_extract_body_field_pairs_no_bold_fields_returns_empty_list(self) -> None:
+        body = "Just plain text without bold field markers."
+
+        assert extract_body_field_pairs(body) == []
+
+
+# ---------------------------------------------------------------------------
+# build_body_extra_only
+# ---------------------------------------------------------------------------
+
+
+class TestBuildBodyExtraOnly:
+    """Tests for build_body_extra_only(...) -> str.
+
+    Verifies conditional inclusion of extra body fields.
+    """
+
+    def test_build_body_extra_only_includes_suggested_when_provided(self) -> None:
+        result = build_body_extra_only("src/utils.py", "", "", "", "", "")
+
+        assert "**Suggested location**: src/utils.py" in result
+
+    def test_build_body_extra_only_includes_research_when_provided(self) -> None:
+        result = build_body_extra_only("", "Is this safe?", "", "", "", "")
+
+        assert "**Research first**: Is this safe?" in result
+
+    def test_build_body_extra_only_includes_decision_when_provided(self) -> None:
+        result = build_body_extra_only("", "", "Yes or no?", "", "", "")
+
+        assert "**Decision needed**: Yes or no?" in result
+
+    def test_build_body_extra_only_includes_files_when_provided(self) -> None:
+        result = build_body_extra_only("", "", "", "main.py", "", "")
+
+        assert "**Files**: main.py" in result
+
+    def test_build_body_extra_only_includes_required_work_when_provided(self) -> None:
+        result = build_body_extra_only("", "", "", "", "refactor parsing", "")
+
+        assert "**Required work**" in result
+        assert "refactor parsing" in result
+
+    def test_build_body_extra_only_includes_groomed_section_when_provided(self) -> None:
+        result = build_body_extra_only("", "", "", "", "", "## Groomed (2026-01-01)\n\nContent")
+
+        assert "## Groomed" in result
+
+    def test_build_body_extra_only_all_empty_returns_empty_string(self) -> None:
+        result = build_body_extra_only("", "", "", "", "", "")
+
+        assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# extract_description_from_issue_body
+# ---------------------------------------------------------------------------
+
+
+class TestExtractDescriptionFromIssueBody:
+    """Tests for extract_description_from_issue_body(body) -> str."""
+
+    def test_extract_description_from_section_heading(self) -> None:
+        body = "## Description\n\nThis is the description text."
+
+        result = extract_description_from_issue_body(body)
+
+        assert result == "This is the description text."
+
+    def test_extract_description_fallback_to_first_paragraph(self) -> None:
+        # No ## Description heading — should fall back to first non-empty, non-heading, non-list line
+        body = "Some opening paragraph.\n\n## Other Section\n\ncontent"
+
+        result = extract_description_from_issue_body(body)
+
+        assert result == "Some opening paragraph."
+
+    def test_extract_description_skips_headings_in_fallback(self) -> None:
+        body = "## Heading\n\nFirst paragraph below heading."
+
+        result = extract_description_from_issue_body(body)
+
+        assert result == "First paragraph below heading."
+
+    def test_extract_description_skips_list_items_in_fallback(self) -> None:
+        body = "- list item\n\nActual paragraph."
+
+        result = extract_description_from_issue_body(body)
+
+        assert result == "Actual paragraph."
+
+    def test_extract_description_returns_stripped_body_when_all_headings(self) -> None:
+        body = "## Only headings here"
+
+        result = extract_description_from_issue_body(body)
+
+        # Falls through to body.strip() at line 740
+        assert result == body.strip()
+
+
+# ---------------------------------------------------------------------------
+# merge_sections / reconstruct_body_from_sections
+# ---------------------------------------------------------------------------
+
+
+class TestMergeSections:
+    """Tests for merge_sections(local_body, github_body) -> tuple[str, bool]."""
+
+    def test_merge_sections_returns_local_unmodified_when_github_empty(self) -> None:
+        local = "## Story\n\nAs a user..."
+
+        result, modified = merge_sections(local, "")
+
+        assert result == local
+        assert modified is False
+
+    def test_merge_sections_appends_github_only_sections(self) -> None:
+        local = "## Story\n\nAs a user..."
+        github = "## New Section\n\nGitHub-only content."
+
+        result, modified = merge_sections(local, github)
+
+        assert modified is True
+        assert "## New Section" in result
+        assert "GitHub-only content." in result
+
+    def test_merge_sections_keeps_longer_version_of_existing_section(self) -> None:
+        local = "## Description\n\nShort."
+        github = "## Description\n\nMuch longer description from GitHub issue body."
+
+        result, modified = merge_sections(local, github)
+
+        assert modified is True
+        assert "Much longer description from GitHub issue body." in result
+
+    def test_merge_sections_keeps_local_when_local_is_longer(self) -> None:
+        local = "## Description\n\nA very long local description that should be preserved."
+        github = "## Description\n\nShort."
+
+        result, modified = merge_sections(local, github)
+
+        assert modified is False
+        assert result == local
+
+    def test_merge_sections_no_modification_when_content_identical(self) -> None:
+        body = "## Description\n\nIdentical content."
+
+        result, modified = merge_sections(body, body)
+
+        assert modified is False
+        assert result == body
+
+
+class TestReconstructBodyFromSections:
+    """Tests for reconstruct_body_from_sections(local, github, result) -> str."""
+
+    def test_reconstruct_preserves_local_order(self) -> None:
+        local = {"## A": "content a", "## B": "content b"}
+        github = {"## A": "content a"}
+        result_sections = {"## A": "content a", "## B": "content b"}
+
+        body = reconstruct_body_from_sections(local, github, result_sections)
+
+        # ## A must appear before ## B
+        assert body.index("## A") < body.index("## B")
+
+    def test_reconstruct_appends_github_only_sections(self) -> None:
+        local = {"## A": "content a"}
+        github = {"## A": "content a", "## GitHub Only": "new content"}
+        result_sections = {"## A": "content a", "## GitHub Only": "new content"}
+
+        body = reconstruct_body_from_sections(local, github, result_sections)
+
+        assert "## GitHub Only" in body
+        assert "new content" in body
+
+    def test_reconstruct_handles_empty_section_content(self) -> None:
+        # When content is empty, heading is emitted without a blank-line + content block
+        local = {"## Empty": ""}
+        github: dict[str, str] = {}
+        result_sections = {"## Empty": ""}
+
+        body = reconstruct_body_from_sections(local, github, result_sections)
+
+        assert "## Empty" in body
+
+    def test_reconstruct_body_ends_with_newline(self) -> None:
+        local = {"## Section": "body"}
+        github: dict[str, str] = {}
+        result_sections = {"## Section": "body"}
+
+        body = reconstruct_body_from_sections(local, github, result_sections)
+
+        assert body.endswith("\n")
+
+
+# ---------------------------------------------------------------------------
+# find_fuzzy_duplicates edge cases (empty title guard)
+# ---------------------------------------------------------------------------
+
+
+class TestFindFuzzyDuplicatesEdgeCases:
+    """Tests for edge-case branches in find_fuzzy_duplicates."""
+
+    def test_find_fuzzy_duplicates_skips_items_with_empty_title(self) -> None:
+        # Items with no title should be silently skipped (line 400 coverage)
+        items = [BacklogItem(title="", file_path="/tmp/no-title.md"), BacklogItem(title="SAM", file_path="/tmp/b.md")]
+
+        matches = find_fuzzy_duplicates("SAM", items)
+
+        # Only the titled item can match
+        assert all(t != "" for t, _, _ in matches)
