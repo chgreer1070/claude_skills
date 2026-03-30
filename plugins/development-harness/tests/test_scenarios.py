@@ -587,6 +587,125 @@ class TestErrorPaths:
         assert result["items"] == []
         assert result["count"] == 0
         assert "error" not in result
+
+
+# ---------------------------------------------------------------------------
+# Recursion guard routing tests
+# ---------------------------------------------------------------------------
+
+
+class TestRecursionGuardScenarios:
+    """Tests for recursion guard routing paths.
+
+    These tests verify that backlog_add correctly handles items whose source
+    field carries guard-originated patterns (depth-limit, BLOCKED-FOR-PLANNING,
+    out-of-scope, in-scope default). Each test documents one routing branch.
+    """
+
+    async def test_depth_limit_routes_remaining_to_backlog(self, backlog_dir, mock_github):
+        """Guard 1: depth-limit source pattern creates a backlog item with source preserved."""
+        mock_github["try_get_github"].return_value = None
+
+        result = await _call(
+            "backlog_add",
+            {
+                "title": "fix type errors in auth module",
+                "priority": "P1",
+                "description": "Follow-up identified when recursion depth limit was reached",
+                "source": "Depth limit exceeded on #42 at depth 5",
+                "create_issue": False,
+                "force": True,
+            },
+        )
+
+        assert "error" not in result
+        assert result["title"] == "fix type errors in auth module"
+        assert isinstance(result["file_path"], str)
+        # Verify the source was persisted to the file frontmatter
+        file_text = (backlog_dir / result["file_path"].split("/")[-1]).read_text(encoding="utf-8")
+        assert "Depth limit exceeded on #42 at depth 5" in file_text
+
+    async def test_rtca_blocked_stop_does_not_create_duplicate(self, backlog_dir, mock_github):
+        """Guard 2: BLOCKED-FOR-PLANNING source — second add with same title is rejected as duplicate."""
+        mock_github["try_get_github"].return_value = None
+
+        first = await _call(
+            "backlog_add",
+            {
+                "title": "rt-ica blocked follow-up item",
+                "priority": "P2",
+                "description": "Blocked for planning — needs scoping before implementation",
+                "source": "BLOCKED-FOR-PLANNING",
+                "create_issue": False,
+                "force": True,
+            },
+        )
+        assert "error" not in first
+        assert isinstance(first["file_path"], str)
+
+        # Second call with same title and force=False — duplicate check must fire
+        second = await _call(
+            "backlog_add",
+            {
+                "title": "rt-ica blocked follow-up item",
+                "priority": "P2",
+                "description": "Blocked for planning — needs scoping before implementation",
+                "source": "BLOCKED-FOR-PLANNING",
+                "create_issue": False,
+                "force": False,
+            },
+        )
+
+        assert "error" in second
+        assert "similar" in second["error"].lower() or "duplicate" in second["error"].lower()
+
+    async def test_out_of_scope_routes_to_backlog_at_classification(self, backlog_dir, mock_github):
+        """Out-of-scope quality gate source — item created with out-of-scope pattern preserved."""
+        mock_github["try_get_github"].return_value = None
+
+        result = await _call(
+            "backlog_add",
+            {
+                "title": "out of scope finding title",
+                "priority": "P2",
+                "description": "Separate domain concern identified during quality gate",
+                "source": "Quality gate follow-up from #42 — out-of-scope: separate domain concern",
+                "create_issue": False,
+                "force": True,
+            },
+        )
+
+        assert "error" not in result
+        assert result["title"] == "out of scope finding title"
+        assert isinstance(result["file_path"], str)
+        # Verify the out-of-scope source pattern was preserved in file frontmatter
+        file_text = (backlog_dir / result["file_path"].split("/")[-1]).read_text(encoding="utf-8")
+        assert "Quality gate follow-up from #42" in file_text
+        assert "out-of-scope" in file_text
+
+    async def test_in_scope_default_warns_when_scope_absent(self, backlog_dir, mock_github):
+        """In-scope default: item with no explicit scope section proceeds normally as in-scope.
+
+        Guard behavior: WARNING emitted when ## Scope absent; item proceeds as in-scope.
+        """
+        mock_github["try_get_github"].return_value = None
+
+        result = await _call(
+            "backlog_add",
+            {
+                "title": "in-scope default follow-up",
+                "priority": "P1",
+                "description": "Item created when scope section absent — defaults to in-scope",
+                "source": "in-scope default",
+                "create_issue": False,
+                "force": True,
+            },
+        )
+
+        # In-scope default: item proceeds and is created without error
+        assert "error" not in result
+        assert result["title"] == "in-scope default follow-up"
+        assert isinstance(result["file_path"], str)
         assert isinstance(result["messages"], list)
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)

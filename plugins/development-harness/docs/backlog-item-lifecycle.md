@@ -571,7 +571,11 @@ flowchart TD
     P6_DETECT -->|"No follow-up files"| P6_APPLY_VERIFIED
     P6_DETECT -->|"Follow-up files exist"| P6_ROUTE["For each follow-up:<br>1. Derive search slug from filename<br>2. Search backlog via backlog_list<br>3. If match: backlog_update with plan<br>4. If no match: create-backlog-item --auto"]
 
-    P6_ROUTE --> P6_RECURSE{"Recursion gate:<br>BOTH conditions required<br>1. follow-up slug matches parent (ADR-3)<br>2. follow-up priority = High (ADR-2)"}
+    P6_ROUTE --> P6_DEPTH_GUARD{depth >= 5?}
+    P6_DEPTH_GUARD -->|"Yes — limit reached"| P6_DEPTH_STOP["RECURSION DEPTH LIMIT REACHED<br>Route remaining to backlog"]
+    P6_DEPTH_GUARD -->|"No — continue"| P6_RTCA_GUARD{BLOCKED-FOR-PLANNING?}
+    P6_RTCA_GUARD -->|"Yes — blocked"| P6_RTCA_STOP["RECURSION STOPPED — RT-ICA BLOCKED<br>Resume: /dh:work-backlog-item"]
+    P6_RTCA_GUARD -->|"No — proceed"| P6_RECURSE{"Recursion gate:<br>BOTH conditions required<br>1. follow-up slug matches parent (ADR-3)<br>2. follow-up priority = High (ADR-2)"}
     P6_RECURSE -->|"Both conditions met"| P6_RECURSE_IMMEDIATE["Recurse immediately:<br>Skill('implement-feature', followup)<br>Then re-run complete-implementation"]
     P6_RECURSE -->|"Either condition not met"| P6_DEFER(["Defer follow-up<br>Output: 'to resume:<br>/dh:work-backlog-item &lt;title&gt;'"])
 
@@ -609,6 +613,10 @@ flowchart TD
 | P6_FOLLOWUP | orchestrator | QG plan state | follow-up routing decision | always → P6_DETECT |
 | P6_DETECT | orchestrator | T1 ARTIFACTS output, glob `P*-{slug}-followup-*.yaml` | follow-up file list | always → P6_ROUTE |
 | P6_ROUTE | orchestrator + `backlog_list` + `backlog_update` or `create-backlog-item` MCP | follow-up files, backlog state | follow-ups linked or created | always → P6_RECURSE |
+| P6_DEPTH_GUARD | orchestrator | `{recursion_depth}`, `DH_RECURSIVE_REVIEW_TASK_DEPTH` (=5) | depth comparison result | depth >= 5 → P6_DEPTH_STOP; depth < 5 → P6_RTCA_GUARD |
+| P6_DEPTH_STOP | orchestrator | in-scope follow-up titles, parent issue number, depth count | systemic design issue warning; `backlog_add` per remaining in-scope finding | terminal for recursion path |
+| P6_RTCA_GUARD | orchestrator | plan artifact (BLOCKED-FOR-PLANNING signal) | RT-ICA status determination | BLOCKED → P6_RTCA_STOP; not BLOCKED → P6_RECURSE |
+| P6_RTCA_STOP | orchestrator | blocking gaps from planner-rt-ica artifact, followup backlog item title | RT-ICA BLOCKED message with gap list and resume instruction | terminal for this follow-up; continues to next follow-up if any |
 | P6_RECURSE | orchestrator | follow-up slug, follow-up priority, parent slug | recursion gate evaluation | slug matches parent AND priority=High → P6_RECURSE_IMMEDIATE, either not met → P6_DEFER |
 | P6_RECURSE_IMMEDIATE | orchestrator | follow-up plan path | `Skill('implement-feature', followup)` then re-run `complete-implementation` | always → P6_APPLY_VERIFIED |
 | P6_DEFER | orchestrator | follow-up title | deferred follow-up message | always → P6_APPLY_VERIFIED |
@@ -628,6 +636,12 @@ flowchart TD
 **T5 skip condition**: After T4 completes, orchestrator inspects T4 output for `## Findings` section. If "No documentation drift detected" or empty findings → skip T5 via `sam_state(status='skipped')`. Otherwise T5 proceeds. **Why:** Documentation update has no value when no drift exists. Other QG tasks (code review, feature verification, integration check) always have verification value even if the implementation is perfect — but running `service-docs-maintainer` on a codebase with no drift would produce no changes.
 
 **Recursive follow-up routing** requires BOTH conditions: (1) the follow-up slug matches the parent feature slug (ADR-3), and (2) the follow-up priority is High (ADR-2). **Why:** Slug matching prevents unrelated bugs found during review from hijacking the current feature's quality gates. Priority gating prevents low-priority same-feature follow-ups from delaying completion.
+
+**Depth guard**: The recursion counter `{recursion_depth}` is initialized to 0 at skill invocation and increments by 1 before each call to `implement-feature`. When `{recursion_depth}` reaches `DH_RECURSIVE_REVIEW_TASK_DEPTH = 5`, Guard 1 fires: all remaining in-scope follow-ups are routed to the backlog with a systemic design issue warning and recursion stops. The counter resets between separate `/complete-implementation` invocations — it is not persisted.
+
+**RT-ICA BLOCKED stop**: Guard 2 checks whether the follow-up's linked planner-rt-ica artifact contains `BLOCKED-FOR-PLANNING`. If so, the follow-up is not recursed and the user receives the blocking conditions with a resume instruction: `/dh:work-backlog-item {title}`. Remaining follow-ups continue processing.
+
+**Out-of-scope routing**: A follow-up task file with `## Scope: out-of-scope` is routed to the backlog via `backlog_add` at the Classify step (Step 3) and never reaches the recursion gate. This prevents out-of-scope findings from blocking the current implementation cycle.
 
 **complete-implementation does NOT invoke work-backlog-item close/resolve**. After quality gates pass, it: (1) applies `status:verified` label, (2) commits and pushes, (3) outputs a handoff message telling the user to run `/dh:work-backlog-item <next-item>`. The explicit instruction to resolve the current item is absent from the output (audit Finding 9 Gap D — partially resolved).
 

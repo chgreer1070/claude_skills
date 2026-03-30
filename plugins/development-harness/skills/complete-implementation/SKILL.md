@@ -532,6 +532,19 @@ If absent, no additional output is needed — the feature proceeds normally.
 
 ## Recursive Follow-up Handling
 
+## Constants
+
+`DH_RECURSIVE_REVIEW_TASK_DEPTH = 5`
+
+Maximum number of recursive review-implement-verify cycles permitted within a single
+top-level `/complete-implementation` invocation. When `{recursion_depth}` reaches this
+value, Guard 1 fires: all remaining in-scope follow-ups are routed to the backlog and
+recursion stops.
+
+Initialization: `{recursion_depth}` is set to `0` at skill invocation. It increments by 1
+before each call to `Skill(skill="implement-feature")` in the recursion path. A re-run
+of `/complete-implementation` on the same task file starts `{recursion_depth}` at `0`.
+
 After all six phases complete, route any follow-up task files created by Phase 1 (code-reviewer) to the backlog before deciding on recursion. This ensures no follow-up file is orphaned when the orchestrator skips recursion.
 
 ### Step 1: Detect Follow-up Files
@@ -577,10 +590,10 @@ flowchart TD
     R1 -->|Zero results| S2["Strategy 2 — filter-first<br>backlog_list(topic='{slug}')"]
     S2 --> R2{Results?}
     R2 -->|One or more matches| UseS2["Use Strategy 2 result"]
-    R2 -->|Zero results| NoMatch["No match found<br>→ proceed to Step 3 (create new item)"]
-    UseS1 --> Step3["Step 3: Link or Create"]
-    UseS2 --> Step3
-    NoMatch --> Step3
+    R2 -->|Zero results| NoMatch["No match found<br>→ proceed to Step 4 (create new item)"]
+    UseS1 --> Step4["Step 4: Link or Create"]
+    UseS2 --> Step4
+    NoMatch --> Step4
 ```
 
 **Strategy 1 — substring via `title=`**
@@ -607,15 +620,44 @@ this an effective second-pass filter when title substring fails.
 
 If Strategy 2 returns one or more items, use the first match.
 
-If both strategies return zero results, treat as "no match found" and proceed to Step 3.
+If both strategies return zero results, treat as "no match found" and proceed to Step 4.
 
 **Error handling**: If either `mcp__plugin_dh_backlog__backlog_list` call fails, log the error, skip
-that strategy, and continue to the next strategy (or to Step 3 as "no match found" if all
+that strategy, and continue to the next strategy (or to Step 4 as "no match found" if all
 strategies fail). If the follow-up filename does not match the expected
 `P{NNN}-{slug}-followup-{k}.yaml` pattern, log a warning and use the full filename (without
 directory prefix and `.yaml` extension) as the derived slug.
 
-### Step 3: Link or Create Backlog Item
+### Step 3: Classify Follow-up Findings
+
+For each follow-up file, read its `## Scope` field:
+
+- If `## Scope` is absent: default to **in-scope** and emit:
+  `WARNING: No ## Scope section in {followup_path}. Defaulting to in-scope.`
+- If `## Scope: out-of-scope`: route immediately to backlog via `backlog_add` and
+  continue to the next follow-up. Do NOT proceed to Step 4 for this follow-up.
+
+```mermaid
+flowchart TD
+    Q{"Does the finding touch<br>the same design goals/intent/outcomes<br>as the current task?"}
+    Q -->|"Yes — linting, tests, docs,<br>same design outcomes"| InScope["IN-SCOPE<br>Proceed to Step 4"]
+    Q -->|"No — separate system/domain<br>OR perceived impact warrants<br>own grooming and research"| OutScope["OUT-OF-SCOPE<br>Route to backlog via backlog_add<br>Continue to next follow-up"]
+```
+
+Out-of-scope backlog_add call pattern:
+
+```text
+backlog_add(
+    title="{derived_title}",
+    body="Quality gate follow-up from #{issue_number}",
+    labels=["type:task"],
+    source="Quality gate follow-up from #{issue_number} — out-of-scope: {followup_path}"
+)
+```
+
+Output: `Out-of-scope finding routed to backlog: {title}`
+
+### Step 4: Link or Create Backlog Item
 
 Based on Step 2 result, for each follow-up file:
 
@@ -642,7 +684,65 @@ mcp__plugin_dh_backlog__backlog_update(selector="{derived_title}", plan="{follow
 - If `mcp__plugin_dh_backlog__backlog_update` fails after creation (title mismatch between what `dh:create-backlog-item` produced and what `update` searched for): re-invoke `mcp__plugin_dh_backlog__backlog_list()`, find the most recently added item, and retry `mcp__plugin_dh_backlog__backlog_update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
 - If `dh:create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `mcp__plugin_dh_backlog__backlog_update` on the duplicate's title to attach the plan.
 
-### Step 4: Recursion Gate
+### Step 5: Recursion Gate
+
+### Guard 1: Depth check
+
+Before evaluating conditions, check the recursion counter:
+
+```text
+If {recursion_depth} >= DH_RECURSIVE_REVIEW_TASK_DEPTH (5):
+
+  Output:
+  RECURSION DEPTH LIMIT REACHED — Systemic Design Issue Detected
+  Follow-up task: {followup_task_file_path}
+  Depth: {recursion_depth} (limit: {DH_RECURSIVE_REVIEW_TASK_DEPTH})
+
+  For all remaining in-scope follow-ups (including this one):
+    backlog_add(
+        title="{derived_title}",
+        body="Depth limit exceeded — review cycle stopped at depth {recursion_depth}",
+        labels=["type:task"],
+        source="Depth limit exceeded on #{issue_number} at depth {recursion_depth}"
+    )
+
+  Stop recursion. Proceed to the Apply status:verified Label step.
+```
+
+If `{recursion_depth}` < 5: continue to Guard 2.
+
+### Guard 2: RT-ICA BLOCKED check
+
+Check whether the follow-up's underlying planner-rt-ica output contains the BLOCKED signal.
+The signal is the string `BLOCKED-FOR-PLANNING` in the planner-rt-ica output artifact
+(NOT in implement-feature's direct output — implement-feature emits no BLOCKED signal).
+
+To check: read the plan artifact linked to the follow-up's backlog item and search for
+`BLOCKED-FOR-PLANNING`.
+
+```text
+If the planner-rt-ica artifact for this follow-up contains BLOCKED-FOR-PLANNING:
+
+  Output:
+  RECURSION STOPPED — RT-ICA BLOCKED
+  Follow-up task: {followup_task_file_path}
+  Depth: {recursion_depth}
+  Blocking conditions: {blocking_conditions_from_artifact}
+  Resume: /dh:work-backlog-item {followup_backlog_item_title}
+
+  Stop for this follow-up. Continue to next follow-up if any remain.
+  Do not apply status:verified label for the blocked follow-up.
+```
+
+If no BLOCKED-FOR-PLANNING signal: continue to Condition 1 (ADR-3).
+
+**Evaluation order for each in-scope follow-up:**
+1. Guard 1: depth check (`{recursion_depth} >= 5` → stop all)
+2. Guard 2: RT-ICA BLOCKED check (`BLOCKED-FOR-PLANNING` in plan artifact → stop this follow-up)
+3. Condition 1 (ADR-3): slug match
+4. Condition 2 (ADR-2): High priority
+5. Both Conditions 1 and 2 met → increment depth, recurse
+6. Either not met → defer to backlog
 
 For each follow-up file, evaluate two conditions. BOTH must be true for recursion.
 
@@ -651,6 +751,8 @@ For each follow-up file, evaluate two conditions. BOTH must be true for recursio
 **Condition 2 -- High priority (ADR-2)**: Read the follow-up file content and extract the `## Priority` section. Only `High` qualifies for immediate recursion.
 
 **If BOTH conditions are met** -- recurse immediately:
+
+Increment {recursion_depth} by 1 before invoking implement-feature.
 
 ```text
 Skill(skill="implement-feature", args="{followup_task_file_path}")
