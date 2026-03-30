@@ -192,6 +192,18 @@ mcp__plugin_dh_backlog__backlog_groom(
 
 If `artifact_read` fails or returns no content (no architect spec for this issue), skip step 4a entirely. Proportional quality gate items without an architect spec automatically skip this step with zero overhead.
 
+4b. Shut down the completed teammate
+
+After concerns and contract verification are handled for a task, send a shutdown request to the agent if it was dispatched as a teammate via `TeamCreate`:
+
+```text
+SendMessage(to="{teammate_name}", message={"type": "shutdown_request"})
+```
+
+This terminates the teammate immediately rather than leaving it idle. Idle teammates emit periodic notifications and hold resources without contributing further work.
+
+**Skip when**: the agent was dispatched via a single `Agent` call (not `TeamCreate`) — subagents terminate automatically when their prompt completes.
+
 5. After all tasks in the current batch complete, call `mcp__plugin_dh_sam__sam_status` to
    check plan progress. If tasks remain, return to step 2 to fetch the next batch of ready
    tasks. Do NOT call `sam_ready` again until the previous batch is fully dispatched.

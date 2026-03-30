@@ -19,8 +19,10 @@ Local file I/O is handled by two dedicated modules:
 
 - `yaml_io.py` — pure-YAML read/write for backlog items (`.yaml` format). Primary path for all
   new items. Uses `ruamel.yaml` directly; no `python-frontmatter` dependency.
-- `github_sync.py` — GitHub issue body parsing (extracts sections, groomed data). Replaces the
-  parsing functions that reconstructed local `.md` bodies from GitHub issue bodies.
+- `github_sync.py` — bidirectional GitHub issue body conversion. `render_issue_body` serialises a
+  `BacklogItem` to GitHub markdown; `parse_issue_body` reconstructs a `BacklogItem` from issue
+  body text; `merge_item` merges local and remote items with conflict resolution rules. Uses
+  `entry_blocks.py` for timestamped div block handling.
 
 ## Dependency: frontmatter_utils
 
@@ -34,14 +36,19 @@ It is retained for:
 New code should use `yaml_io.py` (for backlog items) or `ruamel.yaml` directly. Do not add new
 callers of `frontmatter_utils`.
 
+**Bulk migration**: `scripts/migrate_backlog_to_yaml.py` converts an existing backlog directory
+from `.md` frontmatter files to `.yaml` format in-place. It uses `yaml_io.load_item` and
+`yaml_io.save_item` and deletes the source `.md` file after a successful write.
+
 ## Module Dependency Graph
 
 ```text
 models.py             ← standalone, no imports from other mcp modules
 frontmatter_utils.py  ← wraps python-frontmatter with ruamel.yaml; used by parsing.py and agent_profile/
-yaml_io.py            ← pure-YAML read/write for .yaml backlog items; imports from models, parsing
-github_sync.py        ← GitHub issue body parsing; imports from models, parsing
 parsing.py            ← imports from models, frontmatter_utils; re-exports loads_frontmatter/dump_frontmatter
+entry_blocks.py       ← timestamped entry block parse/render/rewrite; imports from models, parsing
+yaml_io.py            ← pure-YAML read/write for .yaml backlog items; imports from models, parsing
+github_sync.py        ← GitHub issue body conversion (render/parse/merge); imports from models, parsing, entry_blocks
 github.py             ← imports from models, parsing
 operations.py         ← imports from models, parsing, github, yaml_io
 dispatch_state.py     ← imports from models (DispatchItemRecord, DispatchWaveRecord); no MCP awareness
@@ -57,6 +64,23 @@ Functions that previously used `typer.echo()` for status/progress messages must 
 # In models.py — ALL models use Pydantic BaseModel
 from pydantic import BaseModel, Field
 
+class Entry(BaseModel):
+    """Timestamped addressable content entry within a section."""
+    id: str                        # ISO timestamp used as primary key
+    content: str
+    struck: bool = False
+    struck_at: str = ""
+    struck_reason: str = ""
+
+class Section(BaseModel):
+    """A section containing a list of timestamped entries."""
+    entries: list[Entry] = Field(default_factory=list)
+
+class GroomedData(BaseModel):
+    """Structured groomed section with a date and named subsections."""
+    date: str = ""
+    subsections: dict[str, str] = Field(default_factory=dict)
+
 class BacklogItem(BaseModel):
     """Parsed backlog item — replaces untyped dict."""
     title: str = ""
@@ -64,17 +88,20 @@ class BacklogItem(BaseModel):
     source: str = "Not specified"
     added: str = ""
     priority: str = ""
+    status: str = ""
     item_type: str = "Feature"
     issue: str = ""
     plan: str = ""
-    research_first: str = ""
-    files: str = ""
-    suggested_location: str = ""
     section: str = ""
     file_path: str = ""
     skip: bool = False
-    groomed: str = ""
     last_synced: str = ""
+    sections: dict[str, Section | GroomedData] = Field(default_factory=dict)
+
+# Notes:
+# - `file_path` and `skip` are excluded from YAML serialisation (yaml_io.save_item).
+# - `sections` holds Entry-bearing sections ("fact_check", "rt_ica", "issue_classification")
+#   plus a "groomed" key (GroomedData). Populated by github_sync.parse_issue_body.
 
 class Output(BaseModel):
     messages: list[str] = Field(default_factory=list)
@@ -118,7 +145,7 @@ Functions that previously raised `typer.Exit(1)` must instead raise one of:
 - Constants: `BACKLOG_DIR`, `DEFAULT_REPO`, `SECTION_RE`, `SKIP_STATUS`, `GITHUB_ISSUE_URL_RE`, `GITHUB_ISSUE_TITLE_TRUNCATE`, `MIN_FRONTMATTER_PARTS`, `TYPE_TO_LABEL`, `ROLE_MAP`, `BENEFIT_MAP`, `FUZZY_DUPLICATE_THRESHOLD`, `_COMMIT_PREFIX_RE`, `_FIELD_TO_INDEX`
 - Add new: `PRIORITY_SECTIONS` dict mapping priority strings to section headings (from the `add` command)
 - Exception classes: `BacklogError`, `ItemNotFoundError`, `DuplicateItemError`, `GitHubUnavailableError`, `ValidationError`
-- Pydantic models: `BacklogItem`, `Output`, `IssueStatus`, `PullRequestRef`, `ViewItemResult`, `IssueLocalFields`
+- Pydantic models: `Entry`, `Section`, `GroomedData`, `BacklogItem`, `Output`, `IssueStatus`, `PullRequestRef`, `ViewItemResult`, `IssueLocalFields`
 
 **Exports** (public API):
 All constants, all exception classes, all Pydantic models.
@@ -157,6 +184,77 @@ Also re-exports `loads_frontmatter` and `dump_frontmatter` from `frontmatter_uti
 compatibility with `operations.py` callers.
 
 **Imports from other modules**: `from .models import ...`, `from .frontmatter_utils import ...`.
+
+---
+
+## Module: entry_blocks.py
+
+**Responsibility**: Parse, render, rewrite, and diff timestamped HTML div entry blocks embedded in
+GitHub issue section bodies. Each entry is identified by an ISO timestamp used as a primary key.
+
+**Public functions**:
+
+- Wrap: `wrap_entry(content)` — wraps content in a new timestamped `<div><sub>…</sub></div>` block
+- Wrap with specific timestamp: `wrap_entry_with_timestamp(content, timestamp)` — for legacy migration and overwrites
+- Parse: `parse_entries(section_body, show, since, added_date)` — parses all entry blocks from a section body string; `show` accepts `"all"`, `"last"`, `"first"`, `"struck"`, positive/negative int
+- Strike: `strike_entry(entry_raw, reason)` — wraps entry content in a `<details>` struck block
+- Rewrite: `rewrite_section(existing_body, new_content, entry_id, replace, reason, added_date)` — orchestrates append, targeted-entry replace, or full-replace-and-strike operations
+- Diff: `generate_diff(local, remote)` — git-diff-style comparison of entry blocks between two section bodies
+
+**Imports from other modules**: `from .models import Entry`, `from .parsing import now_iso`
+
+---
+
+## Module: yaml_io.py
+
+**Responsibility**: Pure-YAML read/write for `.yaml` backlog item files. Primary I/O path for all
+new items. Provides a format-detecting reader that falls back to the legacy `.md` parser during
+transition.
+
+**Public API** (`__all__`): `detect_format`, `load_item`, `load_item_text`, `save_item`
+
+- `detect_format(path)` — returns `"yaml"` or `"legacy_md"` based on file suffix; raises `ValueError` for unsupported extensions
+- `load_item(path)` — reads `BacklogItem` from `.yaml` or `.md` file; `.md` emits `DeprecationWarning`
+- `load_item_text(text, path)` — parses `BacklogItem` from in-memory string; format determined by `path` suffix; file need not exist on disk
+- `save_item(item, path)` — serialises `BacklogItem` to YAML; excludes `file_path` and `skip`; line-wrapping disabled
+
+**Key behaviours**:
+- Uses `ruamel.yaml` (typ="safe" for reads, typ="rt" for writes); no `python-frontmatter` dependency
+- `.md` load path delegates to `parsing.parse_item_file()` and emits `DeprecationWarning`
+
+**Imports from other modules**: `from .models import BacklogItem`, `from .parsing import parse_item_file`
+
+---
+
+## Module: github_sync.py
+
+**Responsibility**: Bidirectional conversion between `BacklogItem` and GitHub issue body markdown.
+Operations layer never writes raw markdown body strings directly — they go through this adapter.
+
+**Public API** (`__all__`): `render_issue_body`, `parse_issue_body`, `merge_item`
+
+- `render_issue_body(item)` — serialises `BacklogItem` to GitHub markdown; embeds metadata in an
+  invisible `<!-- backlog-metadata: -->` HTML comment; renders description, entry-bearing sections,
+  and groomed section in canonical order
+- `parse_issue_body(body, existing)` — reconstructs `BacklogItem` from issue body text; extracts
+  metadata comment for priority/type/status/added; maps `## Section` headings to typed section
+  models; non-body fields are carried over from `existing` when provided
+- `merge_item(local, remote)` — merges remote into local; local metadata is authoritative; sections
+  are merged per-entry (struck state wins over active; longer content wins on tie; unique entries
+  from either side are preserved)
+
+**Known section keys** (BacklogItem.sections):
+- `"fact_check"` → `## Fact-Check`
+- `"rt_ica"` → `## RT-ICA`
+- `"issue_classification"` → `## Issue Classification`
+- `"groomed"` → `## Groomed (date)` (GroomedData type, not Section)
+
+**Dependency direction**: `models ← parsing ← entry_blocks ← github_sync` (must remain acyclic;
+do not import from `github.py`, `operations.py`, or `server.py`)
+
+**Imports from other modules**: `from .entry_blocks import parse_entries`,
+`from .models import BacklogItem, Entry, GroomedData, Section`,
+`from .parsing import extract_sections`
 
 ---
 
@@ -208,6 +306,7 @@ compatibility with `operations.py` callers.
 - `from .models import ...`
 - `from .parsing import ...`
 - `from .github import ...`
+- `from .yaml_io import ...`
 
 ---
 

@@ -165,9 +165,25 @@ Required fields: `title`, `priority`, `description`.
 
 ### Step 3: Duplicate Detection
 
-Call `mcp__plugin_dh_backlog__backlog_list(search="{title}")` to search for existing items with similar titles.
+**Search syntax note**: `backlog_list(search=...)` is a multi-keyword boolean substring search — NOT semantic and NOT fuzzy. Exact title strings miss semantically related items with different wording. Always search with OR-joined key concepts extracted from the title, not the full title string.
 
-If a match is found within edit distance ≤ 2 tokens (same first 3 words), report:
+Extract 2–4 key concept words from the title and join with ` OR `:
+
+```text
+# Title: "Formalise IssueBackend Protocol and audit BacklogItem field portability"
+# Key concepts: IssueBackend, backend protocol, backend abstraction, field portability
+search = "IssueBackend OR backend protocol OR backend abstraction"
+```
+
+Call:
+
+```text
+mcp__plugin_dh_backlog__backlog_list(search="{concept1} OR {concept2} OR {concept3}")
+```
+
+Also supports `field:value` syntax (`title:auth`, `type:bug`) and regex (`/pattern/`) for narrower checks.
+
+If a match is found with overlapping concepts, report:
 
 ```text
 Possible duplicate: "{existing title}" already exists in {section}.

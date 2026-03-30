@@ -4,6 +4,16 @@
 **Repository**: `/home/user/claude_skills`
 **Spec**: `.claude/skills/backlog/backlog_core/ARCHITECTURE.md`
 
+> **Note (2026-03-30)**: This audit was generated before the YAML migration (P964). Several
+> findings are superseded:
+> - FIND-21: `raw_body` field removed from `BacklogItem` in P964 — ARCHITECTURE.md updated in T4.
+> - FIND-12: `build_backlog_frontmatter` (which used `import frontmatter`) is now deprecated;
+>   retained only for test coverage. The `frontmatter` package dependency noted here is legacy.
+> - New modules added in P964 (`yaml_io.py`, `github_sync.py`, `entry_blocks.py`) and new models
+>   (`Entry`, `Section`, `GroomedData`) are documented in ARCHITECTURE.md as of T5.
+>
+> All other findings remain valid unless explicitly addressed in a subsequent audit.
+
 **Analyzed Files**:
 
 - Implementation: `backlog_core/__init__.py`, `backlog_core/models.py`, `backlog_core/parsing.py`, `backlog_core/github.py`, `backlog_core/operations.py`, `backlog_core/server.py`
