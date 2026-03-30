@@ -396,3 +396,350 @@ class TestImportNoCycles:
             source_file = getattr(models_mod, "__file__", "") or ""
             content = Path(source_file).read_text(encoding="utf-8") if source_file else ""
             assert "github_sync" not in content, "models.py must not import github_sync"
+
+
+# ---------------------------------------------------------------------------
+# render_issue_body — empty description branch (line 145)
+# ---------------------------------------------------------------------------
+
+
+class TestRenderIssueBodyEmptyDescription:
+    """render_issue_body: items with no description omit the Description section."""
+
+    def test_render_no_description_omits_section(self) -> None:
+        """render_issue_body with empty description does not include ## Description.
+
+        When description is empty the Description heading must not appear so
+        the rendered body stays clean and round-trippable.
+        """
+        # Arrange
+        item = _make_item(description="")
+
+        # Act
+        body = render_issue_body(item)
+
+        # Assert
+        assert "## Description" not in body
+
+    def test_render_with_description_includes_section(self) -> None:
+        """render_issue_body with non-empty description includes ## Description.
+
+        Contrasts with empty-description case to confirm the conditional branch.
+        """
+        # Arrange
+        item = _make_item(description="A meaningful description.")
+
+        # Act
+        body = render_issue_body(item)
+
+        # Assert
+        assert "## Description" in body
+        assert "A meaningful description." in body
+
+    def test_render_empty_sections_no_section_headings(self) -> None:
+        """render_issue_body with no sections and no description only has metadata.
+
+        Items with no sections must render only the metadata comment block.
+        Verifies the empty-sections branch in render_issue_body.
+        """
+        # Arrange
+        item = _make_item(description="", sections={})
+
+        # Act
+        body = render_issue_body(item)
+
+        # Assert
+        assert "## Fact-Check" not in body
+        assert "## RT-ICA" not in body
+        assert "## Groomed" not in body
+
+
+# ---------------------------------------------------------------------------
+# parse_issue_body — no metadata block (line 179)
+# ---------------------------------------------------------------------------
+
+
+class TestParseIssueBodyNoMetadata:
+    """parse_issue_body: body without backlog-metadata comment returns defaults."""
+
+    def test_parse_body_without_metadata_comment(self) -> None:
+        """parse_issue_body on body with no metadata comment returns BacklogItem.
+
+        The metadata block is optional; missing it must not raise.
+        """
+        # Arrange
+        body = "## Description\n\nSome plain description.\n"
+
+        # Act
+        result = parse_issue_body(body)
+
+        # Assert
+        assert isinstance(result, BacklogItem)
+
+    def test_parse_body_without_metadata_uses_base_priority(self) -> None:
+        """parse_issue_body with no metadata comment inherits existing priority.
+
+        When metadata comment is absent, base.priority is used as-is.
+        """
+        # Arrange
+        body = "## Description\n\nNo metadata here.\n"
+        existing = _make_item(priority="P0")
+
+        # Act
+        result = parse_issue_body(body, existing)
+
+        # Assert
+        assert result.priority == "P0"
+
+    def test_parse_metadata_block_with_non_matching_line(self) -> None:
+        """parse_issue_body skips malformed lines in the metadata comment.
+
+        Lines that do not match key: value format must be silently skipped.
+        The metadata block regex requires matching lines — a blank or free-form
+        line must not raise and must not pollute the result dict.
+        """
+        # Arrange — metadata block with a non-matching line
+        body = (
+            "<!-- backlog-metadata:\n"
+            "priority: P2\n"
+            "  \n"  # blank line inside block — no key:value
+            "type: Feature\n"
+            "-->\n\n"
+            "## Description\n\nBody.\n"
+        )
+
+        # Act
+        result = parse_issue_body(body)
+
+        # Assert — valid lines still parse; blank line is skipped
+        assert result.priority == "P2"
+        assert result.item_type == "Feature"
+
+
+# ---------------------------------------------------------------------------
+# parse_issue_body — unknown heading skipped (line 250)
+# ---------------------------------------------------------------------------
+
+
+class TestParseIssueBodyUnknownHeading:
+    """parse_issue_body: unknown ## headings are silently skipped."""
+
+    def test_parse_unknown_heading_does_not_raise(self) -> None:
+        """parse_issue_body ignores ## headings that are not in _HEADING_TO_KEY.
+
+        Unknown headings must be skipped so that bodies with extra sections
+        (Story, Acceptance Criteria) do not break parsing.
+        """
+        # Arrange
+        body = (
+            "<!-- backlog-metadata:\n"
+            "priority: P1\n"
+            "type: Feature\n"
+            "status: open\n"
+            "added: 2026-01-01\n"
+            "-->\n\n"
+            "## Story\n\nAs a developer.\n\n"
+            "## Acceptance Criteria\n\n- [ ] Done\n"
+        )
+
+        # Act
+        result = parse_issue_body(body)
+
+        # Assert
+        assert isinstance(result, BacklogItem)
+        # No sections created for Story or Acceptance Criteria
+        assert "story" not in result.sections
+        assert "acceptance_criteria" not in result.sections
+
+    def test_parse_issue_body_existing_carries_non_body_fields(self) -> None:
+        """parse_issue_body with existing carries over title, issue, source, plan.
+
+        Non-body fields from the existing item must appear in the returned item.
+        """
+        # Arrange
+        body = "<!-- backlog-metadata:\npriority: P0\ntype: Bug\nstatus: open\nadded: 2026-01-01\n-->\n"
+        existing = BacklogItem(
+            title="My Existing Title", issue="#77", source="jira", plan="plan/task.yaml", file_path="/some/path.yaml"
+        )
+
+        # Act
+        result = parse_issue_body(body, existing)
+
+        # Assert
+        assert result.title == "My Existing Title"
+        assert result.issue == "#77"
+        assert result.source == "jira"
+        assert result.plan == "plan/task.yaml"
+        assert result.file_path == "/some/path.yaml"
+
+
+# ---------------------------------------------------------------------------
+# merge_item — remote-only and local-only section keys (lines 359, 361)
+# ---------------------------------------------------------------------------
+
+
+class TestMergeItemSectionPresence:
+    """merge_item: sections present only on one side are preserved."""
+
+    def test_remote_only_section_added_to_merged(self) -> None:
+        """merge_item includes a section that exists only in the remote item.
+
+        When the remote has a section the local lacks, it must appear in the merged
+        result so content added on GitHub is not lost.
+        """
+        # Arrange
+        local = _make_item(sections={})
+        remote_entries = [Entry(id="2026-01-01T10:00:00Z", content="remote only fact")]
+        remote = _make_item(sections={"fact_check": Section(entries=remote_entries)})
+
+        # Act
+        merged = merge_item(local, remote)
+
+        # Assert
+        assert "fact_check" in merged.sections
+
+    def test_local_only_section_kept_in_merged(self) -> None:
+        """merge_item retains a section that exists only in the local item.
+
+        Local-only sections must not be dropped during merge.
+        """
+        # Arrange
+        local_entries = [Entry(id="2026-01-01T10:00:00Z", content="local only rt-ica")]
+        local = _make_item(sections={"rt_ica": Section(entries=local_entries)})
+        remote = _make_item(sections={})
+
+        # Act
+        merged = merge_item(local, remote)
+
+        # Assert
+        assert "rt_ica" in merged.sections
+
+
+# ---------------------------------------------------------------------------
+# merge_item — type mismatch branch (lines 367-369)
+# ---------------------------------------------------------------------------
+
+
+class TestMergeItemTypeMismatch:
+    """merge_item: type mismatch between local and remote section uses local."""
+
+    def test_type_mismatch_local_section_wins(self) -> None:
+        """merge_item uses local value when local is Section and remote is GroomedData.
+
+        When a key maps to incompatible types in local and remote, local is
+        authoritative per the documented merge rules.
+        """
+        # Arrange
+        local_entries = [Entry(id="2026-01-01T10:00:00Z", content="fact")]
+        local_sec = Section(entries=local_entries)
+        remote_groomed = GroomedData(date="2026-01-01", subsections={"Priority": "High"})
+        local = _make_item(sections={"fact_check": local_sec})
+        remote = _make_item(sections={"fact_check": remote_groomed})
+
+        # Act
+        merged = merge_item(local, remote)
+
+        # Assert
+        merged_sec = merged.sections.get("fact_check")
+        assert isinstance(merged_sec, Section)
+        assert len(merged_sec.entries) == 1
+
+
+# ---------------------------------------------------------------------------
+# _merge_entries — same struck state, longer content wins (AC11)
+# ---------------------------------------------------------------------------
+
+
+class TestMergeEntriesSameStruckState:
+    """_merge_entries: same struck state — longer content wins; local wins on tie."""
+
+    def test_longer_remote_content_wins_when_both_active(self) -> None:
+        """_merge_entries picks remote entry when remote content is longer and both active.
+
+        Used to reconcile GitHub edits that extend existing entries.
+        """
+        # Arrange
+        eid = "2026-01-01T10:00:00Z"
+        local_entries = [Entry(id=eid, content="short")]
+        remote_entries = [Entry(id=eid, content="much longer remote content here")]
+        local = _make_item(sections={"fact_check": Section(entries=local_entries)})
+        remote = _make_item(sections={"fact_check": Section(entries=remote_entries)})
+
+        # Act
+        merged = merge_item(local, remote)
+        sec = merged.sections.get("fact_check")
+
+        # Assert
+        assert isinstance(sec, Section)
+        assert "much longer remote content here" in sec.entries[0].content
+
+    def test_equal_content_local_wins_on_tie(self) -> None:
+        """_merge_entries picks local entry when content lengths are equal.
+
+        Local is authoritative on tie so idempotent merges are stable.
+        """
+        # Arrange
+        eid = "2026-01-01T10:00:00Z"
+        local_entries = [Entry(id=eid, content="same")]
+        remote_entries = [Entry(id=eid, content="same")]
+        local = _make_item(sections={"fact_check": Section(entries=local_entries)})
+        remote = _make_item(sections={"fact_check": Section(entries=remote_entries)})
+
+        # Act
+        merged = merge_item(local, remote)
+        sec = merged.sections.get("fact_check")
+
+        # Assert — local wins on tie; both have "same" but we confirm no error
+        assert isinstance(sec, Section)
+        assert sec.entries[0].content == "same"
+
+
+# ---------------------------------------------------------------------------
+# _merge_groomed — local date authoritative, remote-only keys preserved (AC12)
+# ---------------------------------------------------------------------------
+
+
+class TestMergeGroomedDateAndKeys:
+    """_merge_groomed: local date is authoritative; remote-only keys are preserved."""
+
+    def test_local_date_is_authoritative(self) -> None:
+        """merge_item uses local GroomedData.date even when remote has different date.
+
+        The grooming date is set by the local author and must not be overwritten
+        by GitHub content that may lag behind.
+        """
+        # Arrange
+        local_groomed = GroomedData(date="2026-03-20", subsections={"Priority": "High"})
+        remote_groomed = GroomedData(date="2026-03-01", subsections={"Priority": "High"})
+        local = _make_item(sections={"groomed": local_groomed})
+        remote = _make_item(sections={"groomed": remote_groomed})
+
+        # Act
+        merged = merge_item(local, remote)
+        merged_groomed = merged.sections.get("groomed")
+
+        # Assert
+        assert isinstance(merged_groomed, GroomedData)
+        assert merged_groomed.date == "2026-03-20"
+
+    def test_remote_only_subsection_keys_preserved(self) -> None:
+        """_merge_groomed keeps subsection keys that exist only in remote.
+
+        Remote-only subsection keys must appear in the merged GroomedData so
+        grooming content added on GitHub is not discarded.
+        """
+        # Arrange
+        local_groomed = GroomedData(date="2026-03-01", subsections={"Priority": "High"})
+        remote_groomed = GroomedData(
+            date="2026-03-01", subsections={"Priority": "High", "Dependencies": "Needs auth module"}
+        )
+        local = _make_item(sections={"groomed": local_groomed})
+        remote = _make_item(sections={"groomed": remote_groomed})
+
+        # Act
+        merged = merge_item(local, remote)
+        merged_groomed = merged.sections.get("groomed")
+
+        # Assert
+        assert isinstance(merged_groomed, GroomedData)
+        assert "Dependencies" in merged_groomed.subsections
