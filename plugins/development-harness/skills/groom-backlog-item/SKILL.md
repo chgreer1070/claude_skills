@@ -1,6 +1,6 @@
 ---
 name: groom-backlog-item
-description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — fact-checks item claims against primary sources, runs RT-ICA per item, then spawns @backlog-item-groomer agents. Writes groomed content into per-item files in ~/.dh/projects/{slug}/backlog/. Use when preparing backlog items for planning or execution.
+description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — fact-checks item claims against primary sources, runs RT-ICA per item, then spawns @backlog-item-groomer agents. Writes groomed content via backlog MCP tools (backlog_groom, backlog_update). Use when preparing backlog items for planning or execution.
 argument-hint: <item-title-or-section-or-all>
 user-invocable: true
 ---
@@ -289,7 +289,7 @@ Then expand by searching for:
 - CI workflows that test these modules
 - Test files that exercise these systems
 
-Exclude archived and generated content: plan artifacts (under `~/.dh/projects/{slug}/plan/`), `docs/plans/`, `.claude/archive/`, `.claude/grooming-sessions/`, test fixtures. Backlog item files (`~/.dh/projects/{slug}/backlog/*.md`) are informational — they describe the problem, not the system.
+Exclude archived and generated content: plan artifacts, `docs/plans/`, `.claude/archive/`, `.claude/grooming-sessions/`, test fixtures. Backlog items (accessible via `backlog_view`) are informational — they describe the problem, not the system.
 
 **Phase 2: Impact Checklist (per system)**
 
@@ -433,9 +433,9 @@ Answer what you can — skip what you don't know.
 Grooming will not proceed to Step 9 with unresolved gaps.
 ```
 
-### Step 9: Write Groomed Content to Item Files
+### Step 9: Write Groomed Content via MCP
 
-For each item, write groomed content into the per-item file via the backlog MCP tools.
+For each item, write groomed content via the backlog MCP tools. The MCP server handles persistence and GitHub sync.
 
 **MCP tool parameters are schema-enforced.** Unlike CLI subcommands, MCP tools reject invalid parameters
 with a structured error. There is no need to verify signatures before calling. If unsure which tool to
@@ -506,7 +506,7 @@ on intermediate calls and include it only on the final call.
 
 **Valid section names** — top-level: `Fact-Check`, `RT-ICA`, `Impact Radius`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
 
-The backlog script updates `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md` with merged sections, sets `groomed` in frontmatter, and syncs to the GitHub issue when the item has one.
+The MCP server merges sections, updates the item status, and syncs to the GitHub issue when the item has one.
 
 **Bulk grooming (multiple items)** — when grooming 2+ items, optionally persist a session summary to `.claude/grooming-sessions/{YYYY-MM-DD}.md`:
 
@@ -546,7 +546,7 @@ Per-item groomed content lives in each item file; this session file holds only m
 
 ## Completion Criteria
 
-- Validity check (job still valid, problem reproducible, local file not stale) before grooming
+- Validity check (job still valid, problem reproducible, GitHub issue state current) before grooming
 - Drift Check run (Step 2.5) when item is already groomed today:
   - Mode A (Plan Drift) — item has a plan file: extract file paths from plan, compare git log since plan date, write to "Plan Drift" section, then stop
   - Mode B (Grooming Drift) — item has no plan file: extract file paths from Impact Radius / Files / Output Evidence sections, compare git log since groomed date, write to "Grooming Drift" section, then stop

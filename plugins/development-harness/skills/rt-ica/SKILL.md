@@ -118,6 +118,7 @@ Include conditions in these categories (where applicable):
 | Delivery constraints        | Timeline, release process, approvals                    |
 | Verification needs          | Tests, canaries, acceptance criteria, observability     |
 | Risks/Failure modes         | Rollback, data loss, security exposure                  |
+| Replacement coverage        | Full capability inventory of module being replaced, coverage matrix against replacement tool |
 
 </condition_categories>
 

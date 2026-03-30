@@ -1,6 +1,6 @@
 ---
 name: create-backlog-item
-description: Use when capturing a new backlog item — creates a per-item file in ~/.dh/projects/{slug}/backlog/. Three modes — guided intake (no args), quick entry (quick {title}), or fully autonomous (--auto {title}). Validates required fields, detects duplicates, and offers GitHub Issue creation for P0/P1 items.
+description: Use when capturing a new backlog item via the backlog MCP server. Three modes — guided intake (no args), quick entry (quick {title}), or fully autonomous (--auto {title}). Validates required fields, detects duplicates, and offers GitHub Issue creation for P0/P1 items.
 argument-hint: '[quick {title} | --auto {title} | <empty for guided intake>]'
 user-invocable: true
 context: fork
@@ -11,7 +11,7 @@ context: fork
 
 # Create Backlog Item
 
-Capture a new backlog item and create a per-item file in `~/.dh/projects/{slug}/backlog/`.
+Capture a new backlog item via `mcp__plugin_dh_backlog__backlog_add`. The MCP server handles persistence and GitHub Issue creation.
 
 ## PROHIBITED: Backlog Items Describe Problems, Not Solutions
 
@@ -58,7 +58,7 @@ Solutions come from investigation during grooming and planning — not at creati
 Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUserQuestion`. Instead:
 
 1. Search `research/` recursively for any file whose name or content matches the title (case-insensitive). Read the best match.
-2. Search `~/.dh/projects/{slug}/backlog/` per-item files for related items to understand existing priority patterns.
+2. Call `mcp__plugin_dh_backlog__backlog_list()` to search existing items for related titles and understand priority patterns.
 3. Derive all fields from the research file, task description, and available context:
    - **Title**: from `<item_title/>` onward
    - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
@@ -162,7 +162,7 @@ Required fields: `title`, `priority`, `description`.
 
 ### Step 3: Duplicate Detection
 
-Scan `~/.dh/projects/{slug}/backlog/` per-item files. Search item titles for case-insensitive overlap with `title`.
+Call `mcp__plugin_dh_backlog__backlog_list(search="{title}")` to search for existing items with similar titles.
 
 If a match is found within edit distance ≤ 2 tokens (same first 3 words), report:
 
@@ -259,11 +259,10 @@ Next steps:
 - Missing required field: report field name, stop.
 - Duplicate detected and user says No: stop without writing.
 - backlog script fails: report error, stop.
-- GITHUB_TOKEN not set (for P0/P1 issue creation): script reports; per-item file still written to `~/.dh/projects/{slug}/backlog/`.
+- GITHUB_TOKEN not set (for P0/P1 issue creation): MCP tool reports warning; item still created in local cache.
 
 ## Completion Criteria
 
-- backlog add invoked successfully
-- Per-item file created in `~/.dh/projects/{slug}/backlog/` (script handles)
-- GitHub Issue created and `issue` field set in per-item frontmatter (P0/P1 only, if --create-issue; script handles)
+- `backlog_add` MCP tool invoked successfully (no `error` key in response)
+- GitHub Issue created and linked (P0/P1 only, if create_issue=true; MCP tool handles)
 - Next-step commands shown to user

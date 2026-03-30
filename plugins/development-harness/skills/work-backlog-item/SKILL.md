@@ -135,20 +135,20 @@ Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
 ### Step 2: Extract Item Fields
 
-From the matched item's entry in the `mcp__plugin_dh_backlog__backlog_list` returned dict, extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in the dict (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
+From the matched item's entry in the `mcp__plugin_dh_backlog__backlog_list` returned dict, extract `title`, `plan`, `section` (priority), `issue`, and `groomed`. For detailed fields not in the list response (`description`, `source`, `added`, `research_first`, `suggested_location`), call `mcp__plugin_dh_backlog__backlog_view(selector="{title}", summary=false)` to fetch the full item from the backend.
 
-- `title` — the `title` field from JSON (required)
-- `source` — not in JSON; read from per-item file frontmatter `metadata.source` if needed (optional)
-- `added` — not in JSON; read from per-item file frontmatter `metadata.added` if needed (optional)
-- `description` — not in JSON; read from per-item file frontmatter `description` (required)
-- `research_first` — not in JSON; read from per-item file body `**Research first**:` line (optional)
-- `suggested_location` — not in JSON; read from per-item file body `**Suggested location**:` line (optional)
-- `plan` — the `plan` field from JSON (optional)
+- `title` — the `title` field from list JSON (required)
+- `plan` — the `plan` field from list JSON (optional)
+- `description` — from `backlog_view` response `description` field (required)
+- `source` — from `backlog_view` response `source` field (optional)
+- `added` — from `backlog_view` response `added` field (optional)
+- `research_first` — from `backlog_view` response body, `**Research first**:` line (optional)
+- `suggested_location` — from `backlog_view` response body, `**Suggested location**:` line (optional)
 
-If the item already has a `**Plan**:` field, report:
+If the item already has a `**Plan**:` field, extract the plan address from the YAML filename (e.g., `plan/P1079-machine-readable-inter-item-dependencies.yaml` → `P1079`). Report:
 
 ```text
-This item already has a plan at {path}. Use /implement-feature {path} to execute it.
+This item already has a plan (P{NNN}). Use /dh:implement-feature P{NNN} to execute it.
 ```
 
 Then stop.

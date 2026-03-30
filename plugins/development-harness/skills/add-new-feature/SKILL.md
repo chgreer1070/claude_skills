@@ -113,6 +113,11 @@ discovery — they contain prior investigation findings that should be incorpora
 Write feature-context-{slug}.md to dh_paths.plan_dir() with WHAT/WHY analysis — problem space, desired
 outcome, stakeholders, risks, open questions.
 Do NOT prescribe HOW to build it.
+If the feature involves replacing or migrating a local module to an external tool,
+you MUST perform a Replacement Coverage Analysis: enumerate all capabilities of the
+local module, enumerate the replacement's capabilities, and produce a coverage matrix
+(COVERED/PARTIAL/MISSING for each capability). Include the matrix in the feature-context
+document. Surface any PARTIAL or MISSING capabilities as questions.
 ```
 
 After the agent writes the feature-context file, register it as an artifact on the GitHub Issue:
