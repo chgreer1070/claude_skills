@@ -150,7 +150,7 @@ regardless.
 
 ### DN-1: {Brief title}
 
-- **Plan artifact**: ~/.dh/projects/{project-slug}/plan/architect-{slug}.md, section "{section name}"
+- **Plan artifact**: `artifact_read(issue_number={N}, artifact_type="architect")`, section "{section name}"
 - **Plan claim**: "{quoted text from plan artifact}"
 - **Actual implementation**: "{what was actually done and why}"
 - **Classification**: design-refinement | intent-divergence

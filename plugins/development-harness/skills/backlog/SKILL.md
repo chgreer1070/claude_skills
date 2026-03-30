@@ -1,6 +1,6 @@
 ---
 name: backlog
-description: Single interface for backlog items and GitHub Issues. GitHub Issues are the source of truth; ~/.dh/projects/{slug}/backlog/ per-item files are the local cache. All backlog CRUD goes through MCP tools (mcp__plugin_dh_backlog__*) in orchestrator sessions — no direct file edits. Use when creating, listing, viewing, updating, closing, resolving, grooming, or syncing backlog items and GitHub issues.
+description: Single interface for backlog items and GitHub Issues. GitHub Issues are the source of truth. All backlog CRUD goes through MCP tools (mcp__plugin_dh_backlog__*) — no direct file edits. Use when creating, listing, viewing, updating, closing, resolving, grooming, or syncing backlog items and GitHub issues.
 ---
 
 # Backlog

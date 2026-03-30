@@ -257,13 +257,13 @@ Before invoking Phase 1, check for a TN verification report produced by `tn-veri
 
 Extract `{slug}` from the task file path (`plan/P{NNN}-{slug}.yaml` — strip the `P{NNN}-` prefix and `.yaml` suffix).
 
-Read `dh_paths.plan_dir() / "TN-verification-{slug}.yaml"` (resolves to `~/.dh/projects/{project-slug}/plan/TN-verification-{slug}.yaml`).
+Read the TN-verification artifact via `artifact_read(issue_number={N}, artifact_type="TN-verification")`. Fallback: if no artifact is registered, read `dh_paths.plan_dir() / "TN-verification-{slug}.yaml"`.
 
 The file contains a list of per-criterion `BookendVerification` records — one per `acceptance-criteria-structured` entry. There is no top-level `verdict` field. Aggregate the verdict by scanning all records: the overall result is FAIL if any record has `status: regressed`; otherwise PASS.
 
 ```mermaid
 flowchart TD
-    Read["Read dh_paths.plan_dir() / TN-verification-{slug}.yaml"] --> Exists{File exists?}
+    Read["artifact_read(issue_number, 'TN-verification')<br>Fallback: dh_paths.plan_dir() / TN-verification-{slug}.yaml"] --> Exists{Artifact exists?}
     Exists -->|No| Proceed["No structured criteria — proceed to Phase 1"]
     Exists -->|Yes| Scan["Scan all per-criterion records<br>for status: regressed"]
     Scan --> AnyRegressed{Any criterion<br>has status: regressed?}
@@ -538,13 +538,13 @@ After all six phases complete, route any follow-up task files created by Phase 1
 
 Extract file paths from the `Task files:` list in the code-reviewer's ARTIFACTS output (the `STATUS: DONE` block from Phase 1).
 
-If the `Task files:` list is empty or absent, run a confirmatory glob:
+If the `Task files:` list is empty or absent, search for follow-up plans via the SAM MCP:
 
-```bash
-~/.dh/projects/{project-slug}/plan/P*-{slug}-followup-*.yaml
+```text
+mcp__plugin_dh_sam__sam_list(search="{slug}-followup")
 ```
 
-Where `{project-slug}` is computed by `dh_paths.compute_slug()` and `{slug}` is extracted from the parent task file path (`plan/P{NNN}-{slug}.yaml` -- strip `P{NNN}-` prefix and `.yaml` suffix).
+Where `{slug}` is extracted from the parent task file path (`plan/P{NNN}-{slug}.yaml` — strip `P{NNN}-` prefix and `.yaml` suffix).
 
 If both ARTIFACTS and glob return empty: skip the entire routing section (no follow-ups to route).
 

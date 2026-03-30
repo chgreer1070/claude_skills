@@ -13,7 +13,7 @@ This skill routes to the correct entry point for the development lifecycle. Read
 ## SAM Workflow Pipeline
 
 ```text
-/add-new-feature  ──>  /implement-feature  ──>  /complete-implementation
+/dh:add-new-feature  ──>  /dh:implement-feature  ──>  /dh:complete-implementation
    (planning)            (execution loop)         (quality gates)
 ```
 

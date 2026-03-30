@@ -11,12 +11,12 @@ user-invocable: true
 
 # Work Backlog Item
 
-Bridge a backlog item into the SAM planning pipeline via `/add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [sdlc-layers](../../docs/sdlc-layers/).
+Bridge a backlog item into the SAM planning pipeline via `/dh:add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [sdlc-layers](../../docs/sdlc-layers/).
 
 **Phase separation**: Grooming (Step 3) is autonomous research — the agent verifies facts, maps resources, estimates effort, and surfaces blockers. Planning (Step 6) is solution design — architecture, tasks, implementation. The human sets priorities and resolves blockers; the agent handles research and fact-checking autonomously.
 
 **SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
-Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `~/.dh/projects/{slug}/backlog/` per-item files are the local cache and are kept in sync.
+Primary source of truth is **GitHub Issues** (labels + milestone = canonical status). Local per-item files are a read cache maintained by the MCP server.
 
 When invoked with no arguments, shows an interactive browser. When invoked with `#N` or a title substring, proceeds directly to the planning workflow.
 
@@ -183,21 +183,21 @@ Full procedure: [github-integration.md](./references/github-integration.md#step-
 
 <groom_check>
 
-1. **Check if item is groomed**: Check the `groomed` field in the JSON output. If `true`, read the per-item file at `file_path` for the groomed content under `## Groomed`. Use that content.
+1. **Check if item is groomed**: Check the `groomed` field in the JSON output. If `true`, call `mcp__plugin_dh_backlog__backlog_view(selector="{title}", summary=false)` — the response `sections` dict contains all groomed content (Reproducibility, Priority, Impact, Files, Dependencies, etc.). Use that content.
 2. Search conversation context for a recent `groom-backlog-item` output matching this item.
 
-If no groomed content exists in the item file:
+If no groomed content exists:
 
 ```text
 Skill(skill: "groom-backlog-item", args: "{item title}")
 ```
 
-The groom skill writes groomed content into the per-item file. Capture the groomed output (Reproducibility, Resources, Dependencies, Blockers, etc.) for use in the feature request.
+The groom skill writes groomed content via the backlog MCP server. After grooming completes, call `backlog_view` again to retrieve the groomed sections.
 </groom_check>
 
 ### Phase 3, Step 2: RT-ICA Gate
 
-1. Read the `## RT-ICA` section from the groomed item file at `file_path`.
+1. Read the `## RT-ICA` section from the `backlog_view` response (the `sections` dict contains an `RT-ICA` key with the section content).
 2. **Freshness check**: if the RT-ICA date in that section predates the item description's last-modified date, treat the section as absent.
 3. **Present and fresh** → use the APPROVED/BLOCKED decision from the cached result. Carry DERIVABLE items forward as "Assumptions to confirm" in the feature request.
 4. **Absent or stale** → `Skill(skill: "dh:rt-ica")`
