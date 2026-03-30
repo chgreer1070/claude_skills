@@ -1609,11 +1609,7 @@ class TestPullItemsEntryAwareMerge:
             "backlog_core.operations.parse_backlog",
             return_value=[
                 BacklogItem(
-                    title="Diff Item",
-                    section="P1",
-                    issue="#42",
-                    file_path=str(backlog_dir / "p1-diff-item.md"),
-                    raw_body=f"## Description\n\n{local_entry}",
+                    title="Diff Item", section="P1", issue="#42", file_path=str(backlog_dir / "p1-diff-item.md")
                 )
             ],
         )
@@ -1661,15 +1657,7 @@ class TestPullItemsEntryAwareMerge:
         filepath = backlog_dir / "p1-struck-item.md"
         mocker.patch(
             "backlog_core.operations.parse_backlog",
-            return_value=[
-                BacklogItem(
-                    title="Struck Item",
-                    section="P1",
-                    issue="#43",
-                    file_path=str(filepath),
-                    raw_body=f"## Description\n\n{struck_entry}",
-                )
-            ],
+            return_value=[BacklogItem(title="Struck Item", section="P1", issue="#43", file_path=str(filepath))],
         )
         mocker.patch("backlog_core.operations.sync_create_missing_issues")
         mock_repo = mocker.MagicMock()

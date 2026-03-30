@@ -42,7 +42,7 @@ if str(_HARNESS_DIR) not in sys.path:
 import typer
 from backlog_core.entry_blocks import parse_entries
 from backlog_core.github_sync import heading_to_section_key
-from backlog_core.models import BacklogItem, GroomedData, Section
+from backlog_core.models import MIN_FRONTMATTER_PARTS, BacklogItem, GroomedData, Section
 from backlog_core.parsing import extract_sections, parse_item_file
 from backlog_core.yaml_io import load_item, load_item_text, save_item
 from pydantic import ValidationError
@@ -131,23 +131,24 @@ def _parse_groomed_data(groomed_heading: str, groomed_body: str) -> GroomedData:
     return GroomedData(date=date, subsections=subsections)
 
 
-def _build_sections(item: BacklogItem) -> dict[str, Section | GroomedData]:
-    """Convert a legacy item's raw_body into typed Section / GroomedData objects.
+def _build_sections(raw_body: str, item: BacklogItem) -> dict[str, Section | GroomedData]:
+    """Convert a legacy item's markdown body into typed Section / GroomedData objects.
 
     Walks every '## heading' block in raw_body:
     - '## Groomed …' blocks become GroomedData (date + ### subsections).
     - All other blocks become Section (list of Entry objects).
 
     Args:
-        item: BacklogItem parsed from a legacy .md file (raw_body populated).
+        raw_body: Raw markdown body text (content below the frontmatter ``---`` block).
+        item: BacklogItem parsed from a legacy .md file (used for metadata.added).
 
     Returns:
         Dict mapping heading string to Section or GroomedData.
     """
-    if not item.raw_body:
+    if not raw_body:
         return {}
 
-    raw_sections = extract_sections(item.raw_body)
+    raw_sections = extract_sections(raw_body)
     result: dict[str, Section | GroomedData] = {}
 
     for heading, body in raw_sections.items():
@@ -244,7 +245,9 @@ def migrate_file(md_path: Path, *, dry_run: bool = False) -> Path:
     legacy_item = parse_item_file(text, md_path)
 
     # Steps 3-4: Build structured sections and construct the new item
-    sections = _build_sections(legacy_item)
+    parts = text.split("---", 2)
+    raw_body = parts[2].strip() if len(parts) >= MIN_FRONTMATTER_PARTS else text
+    sections = _build_sections(raw_body, legacy_item)
     new_item = BacklogItem(
         title=legacy_item.title,
         description=legacy_item.description,

@@ -11,7 +11,8 @@ import logging
 import operator
 import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -33,9 +34,6 @@ from .models import (
     SamTask,
     ViewItemResult,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -286,7 +284,7 @@ def parse_item_file(text: str, path: Path) -> BacklogItem:
         BacklogItem with parsed fields from frontmatter and body.
     """
     if not text.startswith("---"):
-        return BacklogItem(raw_body=text)
+        return BacklogItem()
     fm, meta, body = _parse_frontmatter(text)
     # Research-style: name, description, metadata.*
     # Flat (legacy): title, source, added, ...
@@ -309,7 +307,6 @@ def parse_item_file(text: str, path: Path) -> BacklogItem:
         status=status_raw,
         groomed=groomed,
         last_synced=_fm_str(fm, meta, "last_synced"),
-        raw_body=body,
     )
 
 
@@ -501,23 +498,37 @@ def items_with_issues(items: list[BacklogItem]) -> list[BacklogItem]:
 def build_issue_body_from_file(item: BacklogItem) -> str | None:
     """Build GitHub issue body from local per-item file content.
 
-    Emits the file's raw body directly — all sections (Story, Description,
-    Groomed, Fact-Check, etc.) are authored in the local file and passed
-    through without synthetic header generation.
+    For ``.yaml`` items, returns None when no groomed section exists in
+    ``item.sections``.  For legacy ``.md`` items, reads the body from the
+    file referenced by ``item.file_path``.
 
-    Returns None if the body has no groomed content (i.e. no '## Groomed'
+    Returns None if the body has no groomed content (i.e. no ``## Groomed``
     section), since ungroomed items don't need their body synced to GitHub.
 
     Args:
-        item: Parsed BacklogItem with raw_body and frontmatter fields.
+        item: Parsed BacklogItem with file_path and sections populated.
 
     Returns:
         Issue body markdown string, or None if no groomed section present.
     """
-    raw_body = item.raw_body
-    if "## Groomed" not in raw_body:
+    file_path_str = item.file_path
+    has_groomed_section = "groomed" in item.sections
+
+    # For non-YAML items, require a .md file path
+    if not has_groomed_section and (not file_path_str or Path(file_path_str).suffix != ".md"):
         return None
-    return raw_body.strip() + "\n"
+    if not file_path_str:
+        return None
+
+    path = Path(file_path_str)
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8")
+    parts = text.split("---", 2)
+    body = parts[2].strip() if len(parts) >= MIN_FRONTMATTER_PARTS else text
+    if "## Groomed" not in body:
+        return None
+    return body.strip() + "\n"
 
 
 def build_issue_body(item: BacklogItem) -> str:
@@ -725,8 +736,12 @@ def view_result_from_local_item(item: BacklogItem) -> ViewItemResult:
     result.description = item.description or ""
     result.source = item.source or ""
     result.added = item.added or ""
-    if item.raw_body:
-        result.body = item.raw_body
+    if item.file_path:
+        fp = Path(item.file_path)
+        if fp.suffix == ".md" and fp.exists():
+            text = fp.read_text(encoding="utf-8")
+            parts = text.split("---", 2)
+            result.body = parts[2].strip() if len(parts) >= MIN_FRONTMATTER_PARTS else text
     result.status = item.status
     return result
 

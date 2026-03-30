@@ -89,16 +89,16 @@ def _isolate_backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 class TestCheckAcOverlapDetection:
-    """_check_ac_overlap detects the two AC-like patterns in item.raw_body."""
+    """_check_ac_overlap detects the two AC-like patterns in item.description."""
 
     def test_checkbox_unchecked_triggers_warning(self) -> None:
         """Verify an unchecked markdown checkbox triggers the advisory warning.
 
         Tests: _check_ac_overlap checkbox regex with space.
-        How: Set raw_body containing '- [ ] some task'; call; inspect warnings.
+        How: Set description containing '- [ ] some task'; call; inspect warnings.
         Why: Unchecked boxes indicate informal AC embedded in the description.
         """
-        item = BacklogItem(title="Checkbox Item", raw_body="- [ ] something to verify")
+        item = BacklogItem(title="Checkbox Item", description="- [ ] something to verify")
         out = Output()
 
         ops._check_ac_overlap(item, out)
@@ -109,10 +109,10 @@ class TestCheckAcOverlapDetection:
         """Verify a checked checkbox with lowercase 'x' triggers the warning.
 
         Tests: _check_ac_overlap checkbox regex with 'x'.
-        How: Set raw_body containing '- [x] done'; call; inspect warnings.
+        How: Set description containing '- [x] done'; call; inspect warnings.
         Why: Checked boxes are equally indicative of informal AC.
         """
-        item = BacklogItem(title="Checkbox Checked", raw_body="- [x] done already")
+        item = BacklogItem(title="Checkbox Checked", description="- [x] done already")
         out = Output()
 
         ops._check_ac_overlap(item, out)
@@ -123,10 +123,10 @@ class TestCheckAcOverlapDetection:
         """Verify a checked checkbox with uppercase 'X' triggers the warning.
 
         Tests: _check_ac_overlap checkbox regex with 'X'.
-        How: Set raw_body containing '- [X] Done'; call; inspect warnings.
+        How: Set description containing '- [X] Done'; call; inspect warnings.
         Why: Character class includes both 'x' and 'X'; must not miss uppercase.
         """
-        item = BacklogItem(title="Checkbox Upper", raw_body="- [X] Done")
+        item = BacklogItem(title="Checkbox Upper", description="- [X] Done")
         out = Output()
 
         ops._check_ac_overlap(item, out)
@@ -137,10 +137,10 @@ class TestCheckAcOverlapDetection:
         """Verify an H2 Acceptance header triggers the warning.
 
         Tests: _check_ac_overlap H2 Acceptance header regex.
-        How: Set raw_body containing '## Acceptance'; call; inspect warnings.
+        How: Set description containing '## Acceptance'; call; inspect warnings.
         Why: H2 Acceptance is the informal header pattern to detect.
         """
-        item = BacklogItem(title="H2 Header Item", raw_body="## Acceptance\nsome criteria here")
+        item = BacklogItem(title="H2 Header Item", description="## Acceptance\nsome criteria here")
         out = Output()
 
         ops._check_ac_overlap(item, out)
@@ -151,10 +151,10 @@ class TestCheckAcOverlapDetection:
         """Verify an H3 Acceptance Criteria header triggers the warning.
 
         Tests: _check_ac_overlap H3 Acceptance Criteria header regex.
-        How: Set raw_body containing '### Acceptance Criteria'; call; inspect warnings.
+        How: Set description containing '### Acceptance Criteria'; call; inspect warnings.
         Why: H3 is the formal groomed section name — duplicate in description is a conflict.
         """
-        item = BacklogItem(title="H3 Header Item", raw_body="### Acceptance Criteria\nsome text")
+        item = BacklogItem(title="H3 Header Item", description="### Acceptance Criteria\nsome text")
         out = Output()
 
         ops._check_ac_overlap(item, out)
@@ -165,10 +165,10 @@ class TestCheckAcOverlapDetection:
         """Verify the Acceptance header pattern matches case-insensitively.
 
         Tests: _check_ac_overlap re.IGNORECASE on header regex.
-        How: Set raw_body containing '## acceptance' (lowercase); inspect warnings.
+        How: Set description containing '## acceptance' (lowercase); inspect warnings.
         Why: Real items may use any capitalisation — must not miss them.
         """
-        item = BacklogItem(title="Lower Case Header", raw_body="## acceptance\ncriteria text")
+        item = BacklogItem(title="Lower Case Header", description="## acceptance\ncriteria text")
         out = Output()
 
         ops._check_ac_overlap(item, out)
@@ -179,36 +179,36 @@ class TestCheckAcOverlapDetection:
         """Verify no warning is emitted when description has no AC-like content.
 
         Tests: _check_ac_overlap negative path.
-        How: Set raw_body with plain prose and no checkboxes or Acceptance headers.
+        How: Set description with plain prose and no checkboxes or Acceptance headers.
         Why: The warning must not fire on clean descriptions.
         """
-        item = BacklogItem(title="Clean Description", raw_body="This is a clean description.\nNo AC content here.")
+        item = BacklogItem(title="Clean Description", description="This is a clean description.\nNo AC content here.")
         out = Output()
 
         ops._check_ac_overlap(item, out)
 
         assert out.warnings == []
 
-    def test_no_warning_when_raw_body_is_empty(self) -> None:
-        """Verify no warning is emitted when raw_body is empty.
+    def test_no_warning_when_description_is_empty(self) -> None:
+        """Verify no warning is emitted when description is empty.
 
-        Tests: _check_ac_overlap empty raw_body guard.
-        How: Set raw_body to empty string; call; inspect warnings.
+        Tests: _check_ac_overlap empty description guard.
+        How: Set description to empty string; call; inspect warnings.
         Why: Empty descriptions are valid; must not raise or warn.
         """
-        item = BacklogItem(title="Empty Body", raw_body="")
+        item = BacklogItem(title="Empty Body", description="")
         out = Output()
 
         ops._check_ac_overlap(item, out)
 
         assert out.warnings == []
 
-    def test_no_warning_when_raw_body_is_none(self) -> None:
-        """Verify no warning is emitted when raw_body is None.
+    def test_no_warning_when_description_is_absent(self) -> None:
+        """Verify no warning is emitted when description is absent.
 
-        Tests: _check_ac_overlap None raw_body guard.
-        How: Construct BacklogItem without raw_body; call; inspect warnings.
-        Why: raw_body may be None for items that have not been populated from disk.
+        Tests: _check_ac_overlap absent description guard.
+        How: Construct BacklogItem without description; call; inspect warnings.
+        Why: Items without descriptions are valid; must not raise or warn.
         """
         item = BacklogItem(title="None Body")
         out = Output()
@@ -224,7 +224,7 @@ class TestCheckAcOverlapDetection:
         How: Trigger warning with checkbox; compare warning string to spec literal.
         Why: MCP callers and groomer agents rely on stable warning text for detection.
         """
-        item = BacklogItem(title="Msg Check", raw_body="- [ ] some item")
+        item = BacklogItem(title="Msg Check", description="- [ ] some item")
         out = Output()
 
         ops._check_ac_overlap(item, out)
@@ -235,10 +235,10 @@ class TestCheckAcOverlapDetection:
         """Verify only one warning is emitted when both patterns are present.
 
         Tests: _check_ac_overlap single-warn deduplication.
-        How: raw_body contains both checkbox and Acceptance header; inspect warning count.
+        How: description contains both checkbox and Acceptance header; inspect warning count.
         Why: Duplicate warnings pollute the output; one advisory is sufficient.
         """
-        item = BacklogItem(title="Both Patterns", raw_body="## Acceptance\n- [ ] verify behaviour\n")
+        item = BacklogItem(title="Both Patterns", description="## Acceptance\n- [ ] verify behaviour\n")
         out = Output()
 
         ops._check_ac_overlap(item, out)
@@ -292,7 +292,7 @@ class TestHandleUpdateGroomedAcWiring:
         """Verify output.warnings contains AC overlap message end-to-end via _handle_update_groomed.
 
         Tests: _handle_update_groomed AC warning propagation to Output.
-        How: Item with checkbox in raw_body; pass explicit Output; verify warnings.
+        How: Item with checkbox in description; pass explicit Output; verify warnings.
         Why: End-to-end confirmation that the advisory reaches the caller's Output object.
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
@@ -301,7 +301,7 @@ class TestHandleUpdateGroomedAcWiring:
             title="E2E Warn Item",
             file_path=str(filepath),
             added="2026-01-01",
-            raw_body="- [ ] informal acceptance criterion",
+            description="- [ ] informal acceptance criterion",
         )
         out = Output()
 
@@ -322,7 +322,7 @@ class TestHandleUpdateGroomedAcWiring:
             title="Write Proceeds Item",
             file_path=str(filepath),
             added="2026-01-01",
-            raw_body="- [ ] criterion in description",
+            description="- [ ] criterion in description",
         )
 
         ops._handle_update_groomed(item, "Formal criterion here.", "Acceptance Criteria", repo="owner/repo")
@@ -377,7 +377,7 @@ class TestHandleBatchGroomedAcWiring:
         """Verify output.warnings contains AC overlap message end-to-end via _handle_batch_groomed.
 
         Tests: _handle_batch_groomed AC warning propagation to Output.
-        How: Item with Acceptance header in raw_body; batch includes 'Acceptance Criteria'; verify warnings.
+        How: Item with Acceptance header in description; batch includes 'Acceptance Criteria'; verify warnings.
         Why: End-to-end confirmation that the advisory reaches the caller's Output object.
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
@@ -386,7 +386,7 @@ class TestHandleBatchGroomedAcWiring:
             title="Batch E2E Warn",
             file_path=str(filepath),
             added="2026-01-01",
-            raw_body="## Acceptance\nOld informal criteria.",
+            description="## Acceptance\nOld informal criteria.",
         )
         out = Output()
 
@@ -409,7 +409,7 @@ class TestHandleBatchGroomedAcWiring:
             title="Batch Proceeds Item",
             file_path=str(filepath),
             added="2026-01-01",
-            raw_body="- [ ] informal AC in description",
+            description="- [ ] informal AC in description",
         )
 
         ops._handle_batch_groomed(

@@ -8,6 +8,7 @@ parameter and returns ``{...result, **out.to_dict()}``.
 from __future__ import annotations
 
 import contextlib
+import io
 import json
 import operator
 import re
@@ -19,7 +20,7 @@ from typing import TYPE_CHECKING, NotRequired, TypedDict
 import dh_paths as _dh_paths
 from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject  # GithubObject used only by create_milestone (ADR-004)
-from ruamel.yaml import YAMLError
+from ruamel.yaml import YAML, YAMLError
 
 from . import models as _models
 from .artifact_provider import GitHubArtifactProvider
@@ -86,7 +87,6 @@ from .models import (
 )
 from .parsing import (
     build_body_extra_only,
-    dump_frontmatter,
     extract_description_from_issue_body,
     extract_groomed_section,
     extract_normalize_metadata,
@@ -95,7 +95,6 @@ from .parsing import (
     find_item,
     items_needing_issues,
     items_with_issues,
-    loads_frontmatter,
     normalize_issue_title,
     now_iso,
     parse_backlog,
@@ -111,6 +110,50 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from github.Repository import Repository
+
+
+# ---------------------------------------------------------------------------
+# Private MD frontmatter helpers (replaces loads_frontmatter/dump_frontmatter
+# imports from parsing.py — kept local to operations.py for legacy .md paths)
+# ---------------------------------------------------------------------------
+
+
+def _md_read_frontmatter(text: str) -> tuple[dict[str, object], str]:
+    """Parse ``---``-delimited YAML frontmatter + body from a markdown string.
+
+    Args:
+        text: Markdown string with optional ``---``-delimited YAML frontmatter.
+
+    Returns:
+        Tuple of (metadata dict, body string).
+
+    Raises:
+        YAMLError: When the frontmatter block is present but contains invalid YAML.
+    """
+    parts = text.split("---", 2)
+    if len(parts) < MIN_FRONTMATTER_PARTS:
+        return {}, text
+    y = YAML()
+    y.default_flow_style = False
+    raw = y.load(parts[1]) or {}
+    return dict(raw), parts[2].strip()
+
+
+def _md_write_frontmatter(metadata: dict[str, object], body: str) -> str:
+    """Serialise metadata dict + body back to a ``---``-delimited markdown string.
+
+    Args:
+        metadata: Frontmatter metadata dict.
+        body: Markdown body string (below the frontmatter).
+
+    Returns:
+        Markdown string with YAML frontmatter block followed by the body.
+    """
+    y = YAML()
+    y.default_flow_style = False
+    buf = io.StringIO()
+    y.dump(dict(metadata), buf)
+    return f"---\n{buf.getvalue()}---\n\n{body.strip()}\n"
 
 
 def _repo(repo: str) -> str:
@@ -322,8 +365,8 @@ def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str,
         updates: Mapping of field-name → value or ``"metadata"`` → nested dict.
         set_synced: When ``True``, stamps ``metadata.last_synced`` with now.
     """
-    post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
-    meta = post.metadata or {}
+    text = filepath.read_text(encoding="utf-8")
+    meta, body = _md_read_frontmatter(text)
     for key, value in updates.items():
         if key == "metadata" and isinstance(value, dict):
             raw_nested = meta.get("metadata")
@@ -343,8 +386,7 @@ def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str,
         )
         nested_dict2["last_synced"] = now_iso()
         meta["metadata"] = nested_dict2
-    post.metadata = meta
-    filepath.write_text(dump_frontmatter(post), encoding="utf-8")
+    filepath.write_text(_md_write_frontmatter(meta, body), encoding="utf-8")
 
 
 def update_item_metadata(
@@ -790,16 +832,15 @@ def _write_groomed_to_item_file(
         added_date=added_date,
     )
     try:
-        post = loads_frontmatter(text)
-        meta_block = post.metadata.get("metadata")
+        meta, _body = _md_read_frontmatter(text)
+        meta_block = meta.get("metadata")
         if isinstance(meta_block, dict):
             updated = dict(meta_block)
             updated["groomed"] = today_str
-            post.metadata["metadata"] = updated
+            meta["metadata"] = updated
         else:
-            post.metadata["groomed"] = today_str
-        post.content = new_body
-        new_content = dump_frontmatter(post)
+            meta["groomed"] = today_str
+        new_content = _md_write_frontmatter(meta, new_body)
     except (ValueError, KeyError, TypeError, YAMLError):
         new_content = "---\n" + fm_text + "\n---\n\n" + new_body
         if "groomed:" not in fm_text:
@@ -886,10 +927,10 @@ def _check_ac_overlap(item: BacklogItem, output: Output) -> None:
     Advisory only — does not block the write.
 
     Args:
-        item: BacklogItem whose raw_body will be inspected.
+        item: BacklogItem whose description will be inspected.
         output: Output aggregator to receive the warning.
     """
-    body = item.raw_body or ""
+    body = item.description or ""
     if _AC_CHECKBOX_RE.search(body) or _AC_HEADER_RE.search(body):
         output.warn(_AC_OVERLAP_MSG)
 
@@ -1116,11 +1157,8 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
     if not text.startswith("---"):
         return None
     try:
-        post = loads_frontmatter(text)
-        fm: dict[str, object] = (
-            {k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()} if post.metadata else {}
-        )
-        body: str = post.content or ""
+        raw_meta, body = _md_read_frontmatter(text)
+        fm: dict[str, object] = {k: (v if isinstance(v, dict) else str(v)) for k, v in raw_meta.items()}
     except (ValueError, KeyError, TypeError, YAMLError):
         return None
     meta_raw = fm.get("metadata")
@@ -1133,9 +1171,7 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
         md["description"] = parsed[0]
     groomed = extract_groomed_section(body)
     new_body = build_body_extra_only(parsed[1], parsed[2], parsed[3], parsed[4], parsed[5], groomed)
-    # Re-serialise as frontmatter + body using the existing loads_frontmatter/dump_frontmatter pair
-    # (build_backlog_frontmatter removed from import — use round-trip rewrite instead)
-    post.metadata = {
+    new_meta: dict[str, object] = {
         "name": md["name"],
         "description": md["description"],
         "metadata": {
@@ -1149,8 +1185,7 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
             "groomed": md["groomed"],
         },
     }
-    post.content = new_body
-    return dump_frontmatter(post)
+    return _md_write_frontmatter(new_meta, new_body)
 
 
 def _normalize_item_file(filepath: Path, dry_run: bool, output: Output | None = None) -> bool:
@@ -1353,7 +1388,9 @@ def _pull_item_update_md(
         diff_mode is True and dry_run is True.
     """
     out = output or Output()
-    local_body: str = getattr(item, "raw_body", "") or ""
+    raw_text = filepath.read_text(encoding="utf-8")
+    raw_parts = raw_text.split("---", 2)
+    local_body = raw_parts[2].strip() if len(raw_parts) >= MIN_FRONTMATTER_PARTS else raw_text
 
     if force:
         return _pull_md_force(issue_num, title, filepath, local_body, github_body, dry_run, diff_mode, output=out)
@@ -1384,9 +1421,8 @@ def _pull_item_update_md(
         return True, diff_str
 
     final_body = _md_reconstruct_body_from_sections(local_sections, github_sections, result_sections)
-    post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
-    post.content = final_body
-    filepath.write_text(dump_frontmatter(post), encoding="utf-8")
+    md_meta, _md_old_body = _md_read_frontmatter(filepath.read_text(encoding="utf-8"))
+    filepath.write_text(_md_write_frontmatter(md_meta, final_body), encoding="utf-8")
     out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
     return True, ""
 
@@ -1411,9 +1447,8 @@ def _pull_md_force(
         out.info(f"  [dry-run] Would overwrite {filepath.name} from #{issue_num}: {title}")
         diff_str = generate_diff(local_body, github_body) if diff_mode else ""
         return True, diff_str
-    post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
-    post.content = github_body
-    filepath.write_text(dump_frontmatter(post), encoding="utf-8")
+    md_meta, _md_old_body = _md_read_frontmatter(filepath.read_text(encoding="utf-8"))
+    filepath.write_text(_md_write_frontmatter(md_meta, github_body), encoding="utf-8")
     out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
     return True, ""
 
@@ -2410,7 +2445,7 @@ def sync_push_groomed_content(
         Dict with count of pushed items.
     """
     out = output or Output()
-    groomed_items = [it for it in items_with_issues(items) if "## Groomed" in (it.raw_body or "")]
+    groomed_items = [it for it in items_with_issues(items) if "groomed" in it.sections]
     if not groomed_items:
         out.info("No items with groomed content to push.")
         return {"pushed": 0, **out.to_dict()}
@@ -2533,8 +2568,7 @@ def close_item(
     if not filepath_str:
         msg = "Item has no file path"
         raise BacklogError(msg)
-    raw = item.raw_body
-    already_closed = any(marker in raw for marker in ("**Status**: CLOSED", "**Status**: DONE", "**Completed**:"))
+    already_closed = item.status.lower() in {"closed", "done"}
     if already_closed:
         out.info("Item already closed.")
         return {"title": item.title, "already_closed": True, **out.to_dict()}
@@ -2609,8 +2643,7 @@ def resolve_item(
     if not filepath_str:
         msg = "Item has no file path"
         raise BacklogError(msg)
-    raw = item.raw_body
-    already_done = any(marker in raw for marker in ("**Status**: DONE", "**Completed**:", "**Resolved**:"))
+    already_done = item.status.lower() in {"done", "resolved", "completed"}
     if already_done:
         out.info("Item already resolved.")
         return {"title": item.title, "already_resolved": True, **out.to_dict()}

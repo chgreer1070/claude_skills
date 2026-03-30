@@ -111,15 +111,15 @@ class TestParseItemFile:
 
         assert item.description == "A test description"
 
-    def test_parse_item_file_nested_meta_body_captured_as_raw_body(self, tmp_path: Path) -> None:
-        """Body content below frontmatter is stored in raw_body for legacy .md files.
+    def test_parse_item_file_nested_meta_body_not_on_item(self, tmp_path: Path) -> None:
+        """Body content below frontmatter is no longer stored on the item.
 
-        LEGACY: tests .md parsing path — raw_body populated by parse_item_file for .md only.
+        LEGACY: raw_body has been removed; body is only accessible from the file on disk.
         """
-        # LEGACY: tests .md parsing path — raw_body populated by parse_item_file for .md files only
         item = parse_item_file(_NESTED_META_FRONTMATTER, tmp_path / "item.md")
 
-        assert "Body content here." in item.raw_body
+        # Body content is not carried on the item — only metadata fields are stored
+        assert not hasattr(item, "raw_body") or not item.raw_body  # type: ignore[attr-defined]
 
     def test_parse_item_file_flat_priority_accessible(self, tmp_path: Path) -> None:
         # When priority is a top-level flat key it is accessible
@@ -157,15 +157,15 @@ class TestParseItemFile:
 
         assert item.skip is False
 
-    def test_parse_item_file_no_frontmatter_returns_body_in_raw_body(self, tmp_path: Path) -> None:
-        """When no frontmatter is found, the full text is stored in raw_body.
+    def test_parse_item_file_no_frontmatter_returns_empty_item(self, tmp_path: Path) -> None:
+        """When no frontmatter is found, an empty BacklogItem is returned.
 
-        LEGACY: tests .md parsing path — raw_body receives entire text when no frontmatter found.
+        LEGACY: raw_body has been removed; no-frontmatter items produce an empty item.
         """
-        # LEGACY: tests .md parsing path — raw_body receives entire text when no frontmatter found
         item = parse_item_file(_NO_FRONTMATTER, tmp_path / "item.md")
 
-        assert item.raw_body == _NO_FRONTMATTER
+        # Item has no title or metadata — body is not stored on the item
+        assert item.title == ""
 
     def test_parse_item_file_no_frontmatter_title_is_empty(self, tmp_path: Path) -> None:
         item = parse_item_file(_NO_FRONTMATTER, tmp_path / "item.md")
@@ -645,22 +645,30 @@ Not yet groomed.
 """
 
 
+def _write_md_item(tmp_path: Path, title: str, body: str) -> BacklogItem:
+    """Write a minimal .md item file to tmp_path and return a BacklogItem with file_path set."""
+    content = f"---\nname: {title}\n---\n\n{body}\n"
+    path = tmp_path / f"{title.lower().replace(' ', '-')}.md"
+    path.write_text(content, encoding="utf-8")
+    return BacklogItem(title=title, file_path=str(path))
+
+
 class TestBuildIssueBodyFromFile:
     """Tests for build_issue_body_from_file(item: BacklogItem) -> str | None.
 
-    Verifies the passthrough behavior: raw_body is returned directly when
+    Verifies the passthrough behavior: body is read from item.file_path when
     it contains a '## Groomed' section, and None is returned otherwise.
     """
 
-    def test_returns_none_when_raw_body_has_no_groomed_section(self) -> None:
+    def test_returns_none_when_body_has_no_groomed_section(self, tmp_path: Path) -> None:
         """Ungroomed items return None — they should not be synced to GitHub.
 
         Tests: Gate logic for sync eligibility
-        How: Create BacklogItem with body lacking '## Groomed', call function
+        How: Create .md item with body lacking '## Groomed', call function
         Why: Ungroomed items must not push incomplete bodies to GitHub issues
         """
         # Arrange
-        item = BacklogItem(title="Ungroomed Item", description="desc", raw_body=_UNGROOMED_RAW_BODY)
+        item = _write_md_item(tmp_path, "Ungroomed Item", _UNGROOMED_RAW_BODY)
 
         # Act
         result = build_issue_body_from_file(item)
@@ -668,15 +676,15 @@ class TestBuildIssueBodyFromFile:
         # Assert
         assert result is None
 
-    def test_returns_stripped_body_plus_newline_when_groomed_present(self) -> None:
-        """Groomed items return raw_body.strip() + newline.
+    def test_returns_stripped_body_plus_newline_when_groomed_present(self, tmp_path: Path) -> None:
+        """Groomed items return file body.strip() + newline.
 
         Tests: Passthrough behavior for groomed content
-        How: Create BacklogItem with groomed body, verify output matches input
+        How: Create .md item with groomed body, verify output matches input
         Why: Body must be emitted verbatim without synthetic generation
         """
         # Arrange
-        item = BacklogItem(title="Groomed Item", description="desc", raw_body=_GROOMED_RAW_BODY)
+        item = _write_md_item(tmp_path, "Groomed Item", _GROOMED_RAW_BODY)
 
         # Act
         result = build_issue_body_from_file(item)
@@ -685,15 +693,15 @@ class TestBuildIssueBodyFromFile:
         assert result is not None
         assert result == _GROOMED_RAW_BODY.strip() + "\n"
 
-    def test_preserves_all_sections_without_duplication(self) -> None:
-        """All sections from raw_body appear exactly once in output.
+    def test_preserves_all_sections_without_duplication(self, tmp_path: Path) -> None:
+        """All sections from file body appear exactly once in output.
 
         Tests: Content integrity — no duplication or loss
         How: Count occurrences of each section header in the result
         Why: Previous bug duplicated Story headers; this is a regression guard
         """
         # Arrange
-        item = BacklogItem(title="Full Item", description="desc", raw_body=_GROOMED_RAW_BODY)
+        item = _write_md_item(tmp_path, "Full Item", _GROOMED_RAW_BODY)
 
         # Act
         result = build_issue_body_from_file(item)
@@ -705,18 +713,16 @@ class TestBuildIssueBodyFromFile:
         assert result.count("## Groomed") == 1
         assert result.count("## Fact-Check") == 1
 
-    def test_does_not_generate_synthetic_story_text(self) -> None:
+    def test_does_not_generate_synthetic_story_text(self, tmp_path: Path) -> None:
         """Output must NOT contain synthetic 'As a developer, I want to' text.
 
         Tests: Regression guard for old synthetic header bug
         How: Verify output does not contain the old template pattern
-        Why: The refactored function passes through raw_body; it must never
-             generate synthetic content like build_issue_body() does
+        Why: The function passes through file body; it must never generate
+             synthetic content like build_issue_body() does
         """
         # Arrange
-        item = BacklogItem(
-            title="Detect Duplicates", description="Implement duplicate detection", raw_body=_GROOMED_RAW_BODY
-        )
+        item = _write_md_item(tmp_path, "Detect Duplicates", _GROOMED_RAW_BODY)
 
         # Act
         result = build_issue_body_from_file(item)
@@ -727,15 +733,15 @@ class TestBuildIssueBodyFromFile:
         # The new behavior passes through whatever Story text the file already has
         assert "I want to **detect duplicates" not in result.lower()
 
-    def test_does_not_truncate_content(self) -> None:
-        """Full raw_body content is preserved — no truncation.
+    def test_does_not_truncate_content(self, tmp_path: Path) -> None:
+        """Full file body content is preserved — no truncation.
 
         Tests: No Invented Limits compliance
-        How: Verify all content from raw_body appears in result
+        How: Verify all content from file body appears in result
         Why: Truncation violates the repo's 'No Invented Limits' policy
         """
         # Arrange
-        item = BacklogItem(title="Full Content", description="desc", raw_body=_GROOMED_RAW_BODY)
+        item = _write_md_item(tmp_path, "Full Content", _GROOMED_RAW_BODY)
 
         # Act
         result = build_issue_body_from_file(item)
@@ -746,15 +752,15 @@ class TestBuildIssueBodyFromFile:
         assert "Confirmed P1" in result
         assert "Full description of the feature" in result
 
-    def test_returns_none_for_empty_raw_body(self) -> None:
-        """Empty raw_body returns None.
+    def test_returns_none_when_no_file_path(self) -> None:
+        """Item without file_path returns None.
 
-        Tests: Edge case — empty body
-        How: Create BacklogItem with empty raw_body
-        Why: Empty body has no groomed section, must return None
+        Tests: Edge case — item not backed by a file
+        How: Create BacklogItem without file_path
+        Why: No file means no body to read; must return None cleanly
         """
         # Arrange
-        item = BacklogItem(title="Empty", raw_body="")
+        item = BacklogItem(title="No File")
 
         # Act
         result = build_issue_body_from_file(item)
@@ -762,7 +768,7 @@ class TestBuildIssueBodyFromFile:
         # Assert
         assert result is None
 
-    def test_output_ends_with_single_newline(self) -> None:
+    def test_output_ends_with_single_newline(self, tmp_path: Path) -> None:
         """Output ends with exactly one trailing newline.
 
         Tests: Consistent formatting
@@ -770,7 +776,7 @@ class TestBuildIssueBodyFromFile:
         Why: GitHub markdown rendering expects clean trailing newline
         """
         # Arrange
-        item = BacklogItem(title="Trailing", raw_body="Some content\n\n## Groomed (2026-01-01)\n\nDone.\n\n\n")
+        item = _write_md_item(tmp_path, "Trailing", "Some content\n\n## Groomed (2026-01-01)\n\nDone.\n\n\n")
 
         # Act
         result = build_issue_body_from_file(item)
@@ -780,7 +786,7 @@ class TestBuildIssueBodyFromFile:
         assert result.endswith("\n")
         assert not result.endswith("\n\n")
 
-    def test_groomed_keyword_in_non_heading_position_does_not_match(self) -> None:
+    def test_groomed_keyword_in_non_heading_position_does_not_match(self, tmp_path: Path) -> None:
         """The word 'Groomed' in body text (not as ## heading) returns None.
 
         Tests: Heading-level matching specificity
@@ -788,7 +794,7 @@ class TestBuildIssueBodyFromFile:
         Why: Only the section heading indicates actual grooming status
         """
         # Arrange
-        item = BacklogItem(title="False Positive", raw_body="This item has not been Groomed yet.\n\nStill needs work.")
+        item = _write_md_item(tmp_path, "False Positive", "This item has not been Groomed yet.\n\nStill needs work.")
 
         # Act
         result = build_issue_body_from_file(item)
