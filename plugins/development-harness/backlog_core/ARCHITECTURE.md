@@ -75,7 +75,6 @@ class BacklogItem(BaseModel):
     skip: bool = False
     groomed: str = ""
     last_synced: str = ""
-    raw_body: str = ""
 
 class Output(BaseModel):
     messages: list[str] = Field(default_factory=list)

@@ -428,11 +428,10 @@ return BacklogItem(
     skip=...,
     groomed=...,
     last_synced=...,
-    raw_body=...,
 )
 ```
 
-- **Code Reality**: `item_type` is a field on `BacklogItem` (default `"Feature"`) but `parse_item_file` never reads `type` from the frontmatter or sets this field. Items parsed from disk always have `item_type = "Feature"` regardless of what their frontmatter `type:` field contains. The `extract_normalize_metadata` function (`parsing.py:849`) does read `type_val` from frontmatter, but this is only used during normalize operations, not regular parsing.
+- **Code Reality**: `item_type` is a field on `BacklogItem` (default `"Feature"`) but `parse_item_file` never reads `type` from the frontmatter or sets this field. Items parsed from disk always have `item_type = "Feature"` regardless of what their frontmatter `type:` field contains. The `extract_normalize_metadata` function (`parsing.py:849`) does read `type_val` from frontmatter, but this is only used during normalize operations, not regular parsing. The `raw_body` field was removed in the YAML migration (P964).
 - **Recommendation**: Fix `parse_item_file` to read `item_type` from frontmatter `type` key, or document the known gap in the spec.
 
 ---
