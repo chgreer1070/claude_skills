@@ -113,9 +113,8 @@ From the JSON response build the working item:
 | `status` | `status` field (extracted from `status:*` label — canonical) |
 | `milestone` | `milestone` |
 | `plan` | `plan` field, or search `body` for `**Plan**:` line |
-| `file_path` | `file_path` (local per-item file, if matched) |
 
-The `view` command automatically merges local per-item data with live GitHub issue data. If `file_path` is present, the local file supplements any missing fields (e.g. `research_first`, `suggested_location`). If no local file exists, the GitHub Issue data is sufficient.
+The `backlog_view` MCP tool merges local cache with live GitHub issue data. All fields needed for subsequent steps are available in the response — do not read local files directly.
 
 Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then continue to Step 3.
 
@@ -233,14 +232,7 @@ This runs the full SAM workflow: discovery, codebase analysis, architecture spec
 
 ### Step 7: Update Backlog with Plan Reference
 
-After `add-new-feature` completes, identify the task file it created (plan files live under `~/.dh/projects/{project-slug}/plan/`, resolved via `dh_paths.plan_dir()`):
-
-```python
-from dh_paths import plan_dir
-Glob(pattern=str(plan_dir() / "P*-{slug}*"))
-```
-
-Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
+After `add-new-feature` completes, identify the task plan it created by calling `mcp__plugin_dh_sam__sam_list(search="{slug}")` where `{slug}` is the item title lowercased with spaces replaced by hyphens. The SAM MCP server manages plan storage — do not search the filesystem directly.
 
 Call the `mcp__plugin_dh_backlog__backlog_update` tool to add the Plan:
 
@@ -283,7 +275,7 @@ Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references
 
 ### GitHub Integration
 
-`~/.dh/projects/{slug}/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. See [github-integration.md](./references/github-integration.md) for step-by-step commands and example sessions. Note: `Fixes #N` trailers are restricted to the `/complete-implementation` final commit step only.
+GitHub Issues are the source of truth. The backlog MCP server manages local caching — skills interact via MCP tools only. See [github-integration.md](./references/github-integration.md) for step-by-step commands and example sessions. Note: `Fixes #N` trailers are restricted to the `/complete-implementation` final commit step only.
 
 ### setup-github Command
 

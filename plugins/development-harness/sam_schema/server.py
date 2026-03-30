@@ -430,6 +430,21 @@ def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None
         updated_manifest = _artifact_registry.register(manifest, entry)
         provider.set_manifest(issue_number, updated_manifest)
         _log.info("sam_create: registered task-plan artifact %s for issue #%d", plan_path, issue_number)
+
+        try:
+            content = plan_path.read_text(encoding="utf-8")
+            provider.store_artifact_content(
+                issue_number, artifact_type=ArtifactType.TASK_PLAN.value, path=str(plan_path), content=content
+            )
+            _log.info("sam_create: uploaded task-plan content to GitHub issue #%d", issue_number)
+        except (BacklogError, OSError) as upload_exc:
+            _log.warning(
+                "sam_create: artifact content upload failed for issue #%d (path=%s): %s",
+                issue_number,
+                plan_path,
+                upload_exc,
+                exc_info=True,
+            )
     except (BacklogError, ValueError, OSError) as exc:
         _log.warning(
             "sam_create: artifact registration failed for issue #%d (path=%s): %s",
