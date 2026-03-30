@@ -110,6 +110,11 @@ class TestParseItemFile:
         assert item.description == "A test description"
 
     def test_parse_item_file_nested_meta_body_captured_as_raw_body(self, tmp_path: Path) -> None:
+        """Body content below frontmatter is stored in raw_body for legacy .md files.
+
+        LEGACY: tests .md parsing path — raw_body populated by parse_item_file for .md only.
+        """
+        # LEGACY: tests .md parsing path — raw_body populated by parse_item_file for .md files only
         item = parse_item_file(_NESTED_META_FRONTMATTER, tmp_path / "item.md")
 
         assert "Body content here." in item.raw_body
@@ -151,6 +156,11 @@ class TestParseItemFile:
         assert item.skip is False
 
     def test_parse_item_file_no_frontmatter_returns_body_in_raw_body(self, tmp_path: Path) -> None:
+        """When no frontmatter is found, the full text is stored in raw_body.
+
+        LEGACY: tests .md parsing path — raw_body receives entire text when no frontmatter found.
+        """
+        # LEGACY: tests .md parsing path — raw_body receives entire text when no frontmatter found
         item = parse_item_file(_NO_FRONTMATTER, tmp_path / "item.md")
 
         assert item.raw_body == _NO_FRONTMATTER

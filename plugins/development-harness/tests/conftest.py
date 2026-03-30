@@ -20,7 +20,7 @@ from unittest.mock import MagicMock
 import pytest
 
 if TYPE_CHECKING:
-    from backlog_core.models import Section
+    from backlog_core.models import GroomedData, Section
 
 # Ensure backlog_core package is importable when running tests from repo root.
 # The package lives at plugins/development-harness/ (not installed as editable
@@ -129,7 +129,7 @@ def write_test_item(backlog_dir: Path) -> object:
         description: str = "Test item",
         status: str = "open",
         type_val: str = "Feature",
-        sections: dict[str, Section] | None = None,
+        sections: dict[str, Section | GroomedData] | None = None,
     ) -> Path:
         from backlog_core.models import BacklogItem, BacklogItemMetadata
         from backlog_core.parsing import title_to_slug
