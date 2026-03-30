@@ -37,7 +37,6 @@ from .models import (
     ViewItemResult,
 )
 from .parsing import (
-    append_or_replace_section,
     build_issue_body,
     build_sam_task_body,
     build_sam_task_issue_title,
@@ -1645,6 +1644,49 @@ def issue_to_local_fields(issue: IssueNode) -> IssueLocalFields:
 # ---------------------------------------------------------------------------
 
 
+def _insert_named_section(body: str, section_name: str, content: str, today_str: str) -> str:
+    """Insert or replace *section_name* content in *body* for GitHub issue bodies.
+
+    Handles ``Fact-Check`` / ``RT-ICA`` as top-level ``##`` sections and all
+    other names as ``###`` subsections under ``## Groomed``.
+
+    Args:
+        body: Current GitHub issue body string.
+        section_name: Target section or subsection name.
+        content: New content to place in that section.
+        today_str: Today's date string (YYYY-MM-DD) for new Groomed headers.
+
+    Returns:
+        Updated body string.
+    """
+    section_lower = section_name.strip().lower()
+    if section_lower in {"fact-check", "rt-ica"}:
+        header = f"## {section_name.strip()}\n\n"
+        section_re = re.compile(
+            rf"\n## {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n## |\Z)", re.IGNORECASE | re.MULTILINE
+        )
+        if section_re.search(body):
+            new_block = header + content + "\n"
+            return section_re.sub(lambda _: f"\n{new_block}", body)
+        return body.rstrip() + "\n\n" + header + content + "\n"
+
+    sub_header = f"### {section_name.strip()}\n\n"
+    sub_re = re.compile(
+        rf"\n?### {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
+    )
+    groomed_block_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
+    gm = groomed_block_re.search(body)
+    if gm:
+        groomed_body = gm.group(2)
+        if sub_re.search(groomed_body):
+            new_groomed_body = sub_re.sub(lambda _: f"\n{sub_header}{content}\n", groomed_body)
+        else:
+            new_groomed_body = groomed_body.rstrip() + "\n\n" + sub_header + content + "\n"
+        captured = gm.group(1) + new_groomed_body + "\n"
+        return groomed_block_re.sub(lambda _: captured, body, count=1)
+    return body.rstrip() + f"\n\n## Groomed ({today_str})\n\n{sub_header}{content}\n"
+
+
 def sync_groomed_to_github_issue(
     repo_obj: Repository,
     issue_num: int,
@@ -1667,7 +1709,7 @@ def sync_groomed_to_github_issue(
             return False
         today_str = today()
         if section_name and section_name.lower() not in {"groomed", ""}:
-            new_body = append_or_replace_section(body, section_name, content)
+            new_body = _insert_named_section(body, section_name, content, today_str)
         else:
             groomed_re = re.compile(r"\n## Groomed\s*\([^)]*\)\s*\n[\s\S]*?(?=\n## |\Z)", re.MULTILINE)
             block = f"\n## Groomed ({today_str})\n\n{content}\n"

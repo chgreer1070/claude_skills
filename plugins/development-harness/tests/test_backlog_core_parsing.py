@@ -8,12 +8,9 @@ import pytest
 from backlog_core.models import BacklogItem, ViewItemResult
 from backlog_core.parsing import (
     _parse_frontmatter,
-    append_or_replace_section,
-    build_backlog_frontmatter,
     build_body_extra_only,
     build_issue_body,
     build_issue_body_from_file,
-    extract_body_field_pairs,
     extract_description_from_issue_body,
     find_fuzzy_duplicates,
     find_item,
@@ -21,7 +18,6 @@ from backlog_core.parsing import (
     merge_sections,
     normalize_issue_title,
     parse_item_file,
-    reconstruct_body_from_sections,
     title_to_slug,
     view_result_from_local_item,
 )
@@ -930,79 +926,6 @@ class TestBuildIssueBodyFromFileDict:
 
 
 # ---------------------------------------------------------------------------
-# build_backlog_frontmatter
-# ---------------------------------------------------------------------------
-
-
-class TestBuildBacklogFrontmatter:
-    """Tests for build_backlog_frontmatter(...) -> str."""
-
-    def _build(self, **kwargs: str) -> str:
-        defaults = {
-            "name": "Test Feature",
-            "description": "A new feature",
-            "source": "user",
-            "added": "2026-01-01",
-            "priority": "P1",
-            "type_val": "Feature",
-            "status": "open",
-        }
-        defaults.update(kwargs)
-        return build_backlog_frontmatter(**defaults)
-
-    def test_build_backlog_frontmatter_starts_with_dashes(self) -> None:
-        result = self._build()
-
-        assert result.startswith("---")
-
-    def test_build_backlog_frontmatter_contains_name(self) -> None:
-        result = self._build(name="My Feature")
-
-        assert "My Feature" in result
-
-    def test_build_backlog_frontmatter_contains_priority(self) -> None:
-        result = self._build(priority="P0")
-
-        assert "P0" in result
-
-    def test_build_backlog_frontmatter_contains_status(self) -> None:
-        result = self._build(status="open")
-
-        assert "open" in result
-
-    def test_build_backlog_frontmatter_contains_source(self) -> None:
-        result = self._build(source="automated")
-
-        assert "automated" in result
-
-    def test_build_backlog_frontmatter_issue_included_when_provided(self) -> None:
-        result = self._build(issue="#42")
-
-        assert "#42" in result
-
-    def test_build_backlog_frontmatter_issue_omitted_when_empty(self) -> None:
-        result = self._build()
-
-        assert "issue" not in result
-
-    def test_build_backlog_frontmatter_plan_included_when_provided(self) -> None:
-        result = self._build(plan="plan/tasks-1-test.md")
-
-        assert "plan/tasks-1-test.md" in result
-
-    def test_build_backlog_frontmatter_groomed_included_when_provided(self) -> None:
-        result = self._build(groomed="true")
-
-        assert "groomed" in result
-
-    def test_build_backlog_frontmatter_contains_topic_slug(self) -> None:
-        result = self._build(name="My New Feature")
-
-        # topic is a slug derived from the name
-        assert "my-new-feature" in result
-
-
-# ---------------------------------------------------------------------------
 # find_fuzzy_duplicates
 # ---------------------------------------------------------------------------
 
@@ -1319,31 +1242,6 @@ class TestViewResultFromLocalItem:
 
 
 # ---------------------------------------------------------------------------
-# append_or_replace_section — regex crash guard
-# ---------------------------------------------------------------------------
-
-
-class TestAppendOrReplaceSectionBackslash:
-    """Content containing regex backreference syntax must not crash re.sub."""
-
-    def test_append_or_replace_section_with_backslash_in_content(self) -> None:
-        body = "## Fact-Check\n\nOld content\n"
-        content_with_backslash = r"Score: \1 — verified"
-
-        result = append_or_replace_section(body, "Fact-Check", content_with_backslash)
-
-        assert r"\1" in result
-
-    def test_append_or_replace_section_subsection_with_backslash(self) -> None:
-        body = "## Groomed (2026-01-01)\n\n### Priority\n\nOld\n"
-        content = r"High \g<name> priority"
-
-        result = append_or_replace_section(body, "Priority", content)
-
-        assert r"\g<name>" in result
-
-
-# ---------------------------------------------------------------------------
 # SamTask parsing / building
 # ---------------------------------------------------------------------------
 
@@ -1561,59 +1459,6 @@ class TestInferType:
 
 
 # ---------------------------------------------------------------------------
-# extract_body_field_pairs
-# ---------------------------------------------------------------------------
-
-
-class TestExtractBodyFieldPairs:
-    """Tests for extract_body_field_pairs(body) -> list[tuple[str, str]].
-
-    Verifies field extraction from body text before the first ## heading.
-    """
-
-    def test_extract_body_field_pairs_single_field(self) -> None:
-        body = "**Source**: internal"
-
-        result = extract_body_field_pairs(body)
-
-        assert result == [("Source", "internal")]
-
-    def test_extract_body_field_pairs_stops_at_heading(self) -> None:
-        body = "**Source**: internal\n\n## Groomed\n\n**Priority**: P0"
-
-        result = extract_body_field_pairs(body)
-
-        assert result == [("Source", "internal")]
-
-    def test_extract_body_field_pairs_multiline_value(self) -> None:
-        body = "**Required work**:\nline one\nline two"
-
-        result = extract_body_field_pairs(body)
-
-        assert len(result) == 1
-        key, val = result[0]
-        assert key == "Required work"
-        assert "line one" in val
-        assert "line two" in val
-
-    def test_extract_body_field_pairs_trailing_field_without_heading(self) -> None:
-        # Field at end of body (no ## heading follows) must still be captured
-        body = "**Files**: src/module.py"
-
-        result = extract_body_field_pairs(body)
-
-        assert result == [("Files", "src/module.py")]
-
-    def test_extract_body_field_pairs_empty_body_returns_empty_list(self) -> None:
-        assert extract_body_field_pairs("") == []
-
-    def test_extract_body_field_pairs_no_bold_fields_returns_empty_list(self) -> None:
-        body = "Just plain text without bold field markers."
-
-        assert extract_body_field_pairs(body) == []
-
-
-# ---------------------------------------------------------------------------
 # build_body_extra_only
 # ---------------------------------------------------------------------------
 
@@ -1758,49 +1603,6 @@ class TestMergeSections:
 
         assert modified is False
         assert result == body
-
-
-class TestReconstructBodyFromSections:
-    """Tests for reconstruct_body_from_sections(local, github, result) -> str."""
-
-    def test_reconstruct_preserves_local_order(self) -> None:
-        local = {"## A": "content a", "## B": "content b"}
-        github = {"## A": "content a"}
-        result_sections = {"## A": "content a", "## B": "content b"}
-
-        body = reconstruct_body_from_sections(local, github, result_sections)
-
-        # ## A must appear before ## B
-        assert body.index("## A") < body.index("## B")
-
-    def test_reconstruct_appends_github_only_sections(self) -> None:
-        local = {"## A": "content a"}
-        github = {"## A": "content a", "## GitHub Only": "new content"}
-        result_sections = {"## A": "content a", "## GitHub Only": "new content"}
-
-        body = reconstruct_body_from_sections(local, github, result_sections)
-
-        assert "## GitHub Only" in body
-        assert "new content" in body
-
-    def test_reconstruct_handles_empty_section_content(self) -> None:
-        # When content is empty, heading is emitted without a blank-line + content block
-        local = {"## Empty": ""}
-        github: dict[str, str] = {}
-        result_sections = {"## Empty": ""}
-
-        body = reconstruct_body_from_sections(local, github, result_sections)
-
-        assert "## Empty" in body
-
-    def test_reconstruct_body_ends_with_newline(self) -> None:
-        local = {"## Section": "body"}
-        github: dict[str, str] = {}
-        result_sections = {"## Section": "body"}
-
-        body = reconstruct_body_from_sections(local, github, result_sections)
-
-        assert body.endswith("\n")
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Backlog parsing, item search, slug generation, frontmatter building, body section utilities.
+"""Backlog parsing, item search, slug generation, body section utilities.
 
 Extracted from ``backlog.py`` — pure functions with no GitHub or typer dependencies.
 """
@@ -11,22 +11,19 @@ import logging
 import operator
 import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 log = logging.getLogger(__name__)
 
-import frontmatter
 from ruamel.yaml import YAML, YAMLError
 
 # ---------------------------------------------------------------------------
 # Imports from sibling models module
 # ---------------------------------------------------------------------------
 from . import models as _models
-from .frontmatter_utils import dump_frontmatter, loads_frontmatter
 from .models import (
     BENEFIT_MAP,
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
-    FIELD_TO_INDEX as _FIELD_TO_INDEX,
     FUZZY_DUPLICATE_THRESHOLD,
     GITHUB_ISSUE_URL_RE,
     MIN_FRONTMATTER_PARTS,
@@ -41,19 +38,14 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Re-exports so other modules can ``from .parsing import loads_frontmatter``
+# Public API
 # ---------------------------------------------------------------------------
 __all__ = [
-    "append_or_replace_section",
-    "apply_field_to_result",
-    "build_backlog_frontmatter",
     "build_body_extra_only",
     "build_issue_body",
     "build_issue_body_from_file",
     "build_sam_task_body",
     "build_sam_task_issue_title",
-    "dump_frontmatter",
-    "extract_body_field_pairs",
     "extract_description_from_issue_body",
     "extract_groomed_section",
     "extract_normalize_metadata",
@@ -63,22 +55,89 @@ __all__ = [
     "infer_type",
     "items_needing_issues",
     "items_with_issues",
-    "loads_frontmatter",
-    "merge_field_into_result",
     "merge_sections",
     "normalize_issue_title",
     "now_iso",
     "parse_backlog",
     "parse_backlog_from_directory",
-    "parse_body_extra_fields",
     "parse_issue_selector",
     "parse_item_file",
     "parse_sam_task_metadata",
-    "reconstruct_body_from_sections",
     "title_to_slug",
     "today",
     "view_result_from_local_item",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Ruamel-based frontmatter helpers (replaces python-frontmatter dependency)
+# ---------------------------------------------------------------------------
+
+
+class _MdPost:
+    """Lightweight container for legacy .md frontmatter + body.
+
+    Replaces ``frontmatter.Post`` for the legacy .md code paths.
+    Both attributes are mutable so callers can patch them before serialising.
+    """
+
+    def __init__(self, metadata: dict[str, Any], content: str) -> None:
+        """Initialize post with parsed metadata dict and body content."""
+        self.metadata: dict[str, Any] = metadata
+        self.content: str = content
+
+
+def _make_yaml() -> YAML:
+    """Return a configured ruamel.yaml round-trip instance.
+
+    Returns:
+        YAML instance with wide width to prevent unwanted line-wrapping.
+    """
+    y = YAML(typ="rt")
+    y.width = 2147483647
+    y.preserve_quotes = False
+    return y
+
+
+def loads_frontmatter(text: str) -> _MdPost:
+    """Parse frontmatter + body from a markdown string using ruamel.yaml.
+
+    Raises ``YAMLError`` when the frontmatter block contains invalid YAML so
+    callers can distinguish corrupt input from absent frontmatter.
+
+    Args:
+        text: Markdown string with optional ``---``-delimited YAML frontmatter.
+
+    Returns:
+        ``_MdPost`` with *metadata* dict and *content* body string.
+
+    Raises:
+        YAMLError: When the frontmatter block is present but contains invalid YAML.
+    """
+    parts = text.split("---", 2)
+    if len(parts) < MIN_FRONTMATTER_PARTS:
+        return _MdPost({}, text)
+    y = _make_yaml()
+    raw = y.load(parts[1]) or {}
+    metadata: dict[str, Any] = dict(raw) if raw else {}
+    return _MdPost(metadata, parts[2].strip())
+
+
+def dump_frontmatter(post: _MdPost) -> str:
+    """Serialise a ``_MdPost`` back to a markdown string with ``---`` delimiters.
+
+    Args:
+        post: Post object with *metadata* dict and *content* body string.
+
+    Returns:
+        Markdown string with YAML frontmatter block followed by the body.
+    """
+    y = _make_yaml()
+    buf = io.StringIO()
+    y.dump(dict(post.metadata), buf)
+    fm_text = buf.getvalue()
+    body = post.content.strip()
+    return f"---\n{fm_text}---\n\n{body}\n"
 
 
 # ---------------------------------------------------------------------------
@@ -431,48 +490,6 @@ def items_with_issues(items: list[BacklogItem]) -> list[BacklogItem]:
 
 
 # ---------------------------------------------------------------------------
-# Frontmatter building
-# ---------------------------------------------------------------------------
-
-
-def build_backlog_frontmatter(
-    name: str,
-    description: str,
-    source: str,
-    added: str,
-    priority: str,
-    type_val: str,
-    status: str,
-    issue: str = "",
-    plan: str = "",
-    groomed: str = "",
-) -> str:
-    """Build research-style frontmatter with metadata block.
-
-    Returns:
-        YAML frontmatter string.
-    """
-    meta: dict[str, str] = {
-        "topic": title_to_slug(name),
-        "source": source or "Not specified",
-        "added": added or today(),
-        "priority": priority,
-        "type": type_val,
-        "status": status,
-    }
-    if issue:
-        meta["issue"] = issue
-    if plan:
-        meta["plan"] = plan
-    if groomed:
-        meta["groomed"] = groomed
-    post = frontmatter.Post(
-        "", name=name.replace('"', "'"), description=(description or "").replace('"', "'"), metadata=meta
-    )
-    return dump_frontmatter(post)
-
-
-# ---------------------------------------------------------------------------
 # Issue body building
 # ---------------------------------------------------------------------------
 
@@ -541,77 +558,6 @@ def build_issue_body(item: BacklogItem) -> str:
     return "\n\n".join(sections) + "\n"
 
 
-# ---------------------------------------------------------------------------
-# Body field extraction / merging
-# ---------------------------------------------------------------------------
-
-
-def extract_body_field_pairs(body: str) -> list[tuple[str, str]]:
-    """Extract (key, value) pairs from body until first ## heading. Stops at ## Groomed or ## .
-
-    Returns:
-        List of (key, value) tuples.
-    """
-    field_re = re.compile(r"^\*\*([^*]+)\*\*:\s*(.*)$", re.DOTALL)
-    pairs: list[tuple[str, str]] = []
-    current_key = ""
-    current_val: list[str] = []
-    for line in body.splitlines():
-        if line.startswith("## "):
-            if current_key:
-                pairs.append((current_key, "\n".join(current_val).strip()))
-            return pairs
-        m = field_re.match(line)
-        if m:
-            if current_key:
-                pairs.append((current_key, "\n".join(current_val).strip()))
-            current_key = m.group(1).strip()
-            current_val = [m.group(2).strip()] if m.group(2).strip() else []
-        elif current_key:
-            current_val.append(line)
-    if current_key:
-        pairs.append((current_key, "\n".join(current_val).strip()))
-    return pairs
-
-
-def apply_field_to_result(key_lower: str, val: str) -> tuple[str, str, str, str, str, str]:
-    """Return (desc, suggested, research, decision, files_val, required_work) with val applied to the matching key.
-
-    Returns:
-        Tuple of (desc, suggested, research, decision, files_val, required_work).
-    """
-    result: list[str] = ["", "", "", "", "", ""]
-    if key_lower in _FIELD_TO_INDEX:
-        result[_FIELD_TO_INDEX[key_lower]] = val
-    return (result[0], result[1], result[2], result[3], result[4], result[5])
-
-
-def merge_field_into_result(
-    key: str, val: str, desc: str, suggested: str, research: str, decision: str, files_val: str, required_work: str
-) -> tuple[str, str, str, str, str, str]:
-    """Merge one field (key, val) into result tuple.
-
-    Returns:
-        Updated (desc, suggested, research, decision, files_val, required_work).
-    """
-    d, s, r, dec, f, req = apply_field_to_result(key.lower(), val)
-    return (d or desc, s or suggested, r or research, dec or decision, f or files_val, req or required_work)
-
-
-def parse_body_extra_fields(body: str) -> tuple[str, str, str, str, str, str]:
-    """Extract Description, Suggested location, Research first, Decision needed, Files, Required work from body.
-
-    Returns:
-        Tuple of (desc, suggested, research, decision, files_val, required_work).
-    """
-    desc, suggested, research, decision, files_val, required_work = "", "", "", "", "", ""
-    for key, val in extract_body_field_pairs(body):
-        desc, suggested, research, decision, files_val, required_work = merge_field_into_result(
-            key, val, desc, suggested, research, decision, files_val, required_work
-        )
-    return desc, suggested, research, decision, files_val, required_work
-
-
 def extract_groomed_section(body: str) -> str:
     """Extract full ## Groomed (date) ... section from body.
 
@@ -644,76 +590,6 @@ def build_body_extra_only(
     if groomed_section:
         parts.append(groomed_section)
     return "\n\n".join(parts) + "\n" if parts else ""
-
-
-def _build_section_block(header: str, existing_body: str, new_content: str, *, append: bool) -> str:
-    """Build section block content, optionally appending to existing body.
-
-    Returns:
-        Complete section block string (header + body + trailing newline).
-    """
-    body_text = existing_body.rstrip() + "\n" + new_content if append and existing_body else new_content
-    return header + body_text + "\n"
-
-
-def _replace_groomed_subsection(body: str, section_name: str, content: str, *, append: bool) -> str:
-    """Replace or append a ### subsection under ## Groomed.
-
-    Returns:
-        Updated body string.
-    """
-    sub_header = f"### {section_name.strip()}\n\n"
-    # [^\n]* absorbs trailing text like ": BLOCKED" on the heading line.
-    sub_re = re.compile(
-        rf"\n?### {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
-    )
-    groomed_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
-    match = groomed_re.search(body)
-    if match:
-        groomed_body = match.group(2)
-        sub_match = sub_re.search(groomed_body)
-        if sub_match:
-            new_block = _build_section_block(sub_header, sub_match.group(1), content, append=append)
-            new_groomed_body = sub_re.sub(lambda _: f"\n{new_block}", groomed_body)
-        else:
-            new_groomed_body = groomed_body.rstrip() + "\n\n" + sub_header + content + "\n"
-        captured = match.group(1) + new_groomed_body + "\n"
-        return groomed_re.sub(lambda _: captured, body, count=1)
-    groomed_header = f"## Groomed ({today()})"
-    return body.rstrip() + "\n\n" + groomed_header + "\n\n" + sub_header + content + "\n"
-
-
-def append_or_replace_section(body: str, section_name: str, content: str, *, append: bool = False) -> str:
-    """Append or replace a section in body. section_name: Fact-Check, RT-ICA, or groomed subsection (Reproducibility, Priority, etc.).
-
-    When ``append=True`` and the section already exists, the new content is
-    appended after the existing section content (separated by a newline) instead
-    of replacing it.  When the section does not yet exist the behaviour is
-    identical regardless of ``append``.
-
-    Returns:
-        Updated body string.
-    """
-    content = content.strip()
-    if not content:
-        return body
-    section_lower = section_name.strip().lower()
-    if section_lower in {"fact-check", "rt-ica"}:
-        header = f"## {section_name.strip()}\n\n"
-        # [^\n]* absorbs trailing text like ": BLOCKED" on the heading line.
-        # Using \s* instead would silently fail on headings with suffixes.
-        section_re = re.compile(
-            rf"\n## {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n## |\Z)", re.IGNORECASE | re.MULTILINE
-        )
-        existing_match = section_re.search(body)
-        if existing_match:
-            new_block = _build_section_block(header, existing_match.group(1), content, append=append)
-            return section_re.sub(lambda _: f"\n{new_block}", body)
-        return body.rstrip() + "\n\n" + header + content + "\n"
-    # Treat known groomed subsections AND any unrecognized section name as a
-    # ### subsection under ## Groomed.  Previous code silently dropped unknown
-    # section names (returned body unchanged), violating "no silent data loss".
-    return _replace_groomed_subsection(body, section_name, content, append=append)
 
 
 # ---------------------------------------------------------------------------
@@ -773,32 +649,6 @@ def extract_sections(text: str) -> dict[str, str]:
     return sections
 
 
-def reconstruct_body_from_sections(
-    local_sections: dict[str, str], github_sections: dict[str, str], result_sections: dict[str, str]
-) -> str:
-    """Reconstruct body from merged sections, preserving local order then appending GitHub-only sections.
-
-    Args:
-        local_sections: Original local section map (preserves order).
-        github_sections: GitHub section map (source of new sections).
-        result_sections: Merged result to render from.
-
-    Returns:
-        Reconstructed body string ending with newline.
-    """
-    seen: set[str] = set()
-    parts: list[str] = []
-    for heading in local_sections:
-        content = result_sections[heading]
-        parts.append(f"{heading}\n\n{content}" if content else heading)
-        seen.add(heading)
-    for heading in github_sections:
-        if heading not in seen:
-            content = result_sections[heading]
-            parts.append(f"{heading}\n\n{content}" if content else heading)
-    return "\n\n".join(parts) + "\n"
-
-
 def merge_sections(local_body: str, github_body: str) -> tuple[str, bool]:
     """Merge GitHub issue body into local body by section.
 
@@ -834,7 +684,17 @@ def merge_sections(local_body: str, github_body: str) -> tuple[str, bool]:
     if not modified:
         return local_body, False
 
-    return reconstruct_body_from_sections(local_sections, github_sections, result_sections), True
+    seen: set[str] = set()
+    parts: list[str] = []
+    for heading in local_sections:
+        content = result_sections[heading]
+        parts.append(f"{heading}\n\n{content}" if content else heading)
+        seen.add(heading)
+    for heading in github_sections:
+        if heading not in seen:
+            content = result_sections[heading]
+            parts.append(f"{heading}\n\n{content}" if content else heading)
+    return "\n\n".join(parts) + "\n", True
 
 
 # ---------------------------------------------------------------------------

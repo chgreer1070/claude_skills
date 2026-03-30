@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, NotRequired, TypedDict
 import dh_paths as _dh_paths
 from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject  # GithubObject used only by create_milestone (ADR-004)
+from ruamel.yaml import YAMLError
 
 from . import models as _models
 from .artifact_provider import GitHubArtifactProvider
@@ -84,7 +85,6 @@ from .models import (
     ViewItemResult,
 )
 from .parsing import (
-    append_or_replace_section,
     build_body_extra_only,
     dump_frontmatter,
     extract_description_from_issue_body,
@@ -99,10 +99,8 @@ from .parsing import (
     normalize_issue_title,
     now_iso,
     parse_backlog,
-    parse_body_extra_fields,
     parse_issue_selector,
     parse_sam_task_metadata,
-    reconstruct_body_from_sections,
     title_to_slug,
     today,
     view_result_from_local_item,
@@ -177,6 +175,113 @@ class ListCommentsResult(TypedDict):
     messages: list[str]
     warnings: list[str]
     errors: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Legacy .md body section helpers (groomed subsection manipulation)
+# ---------------------------------------------------------------------------
+
+
+def _md_build_section_block(header: str, existing_body: str, new_content: str, *, append: bool) -> str:
+    """Build section block content, optionally appending to existing body.
+
+    Returns:
+        Complete section block string (header + body + trailing newline).
+    """
+    body_text = existing_body.rstrip() + "\n" + new_content if append and existing_body else new_content
+    return header + body_text + "\n"
+
+
+def _md_replace_groomed_subsection(body: str, section_name: str, content: str, *, append: bool) -> str:
+    """Replace or append a ### subsection under ## Groomed in a legacy .md body.
+
+    Args:
+        body: Current markdown body string.
+        section_name: Name of the ### subsection (e.g. ``Priority``).
+        content: New content for the subsection.
+        append: When ``True`` and the subsection exists, append rather than replace.
+
+    Returns:
+        Updated body string.
+    """
+    sub_header = f"### {section_name.strip()}\n\n"
+    sub_re = re.compile(
+        rf"\n?### {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
+    )
+    groomed_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
+    match = groomed_re.search(body)
+    if match:
+        groomed_body = match.group(2)
+        sub_match = sub_re.search(groomed_body)
+        if sub_match:
+            new_block = _md_build_section_block(sub_header, sub_match.group(1), content, append=append)
+            new_groomed_body = sub_re.sub(lambda _: f"\n{new_block}", groomed_body)
+        else:
+            new_groomed_body = groomed_body.rstrip() + "\n\n" + sub_header + content + "\n"
+        captured = match.group(1) + new_groomed_body + "\n"
+        return groomed_re.sub(lambda _: captured, body, count=1)
+    groomed_header = f"## Groomed ({today()})"
+    return body.rstrip() + "\n\n" + groomed_header + "\n\n" + sub_header + content + "\n"
+
+
+def _md_append_or_replace_section(body: str, section_name: str, content: str, *, append: bool = False) -> str:
+    """Append or replace a named section in a legacy .md body.
+
+    Handles ``Fact-Check`` and ``RT-ICA`` as top-level ``##`` sections; treats
+    all other names as ``###`` subsections under ``## Groomed``.
+
+    Args:
+        body: Current markdown body string.
+        section_name: Section name (e.g. ``Fact-Check``, ``Priority``).
+        content: New section content.
+        append: When ``True`` and the section exists, append rather than replace.
+
+    Returns:
+        Updated body string.
+    """
+    content = content.strip()
+    if not content:
+        return body
+    section_lower = section_name.strip().lower()
+    if section_lower in {"fact-check", "rt-ica"}:
+        header = f"## {section_name.strip()}\n\n"
+        section_re = re.compile(
+            rf"\n## {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n## |\Z)", re.IGNORECASE | re.MULTILINE
+        )
+        existing_match = section_re.search(body)
+        if existing_match:
+            new_block = _md_build_section_block(header, existing_match.group(1), content, append=append)
+            return section_re.sub(lambda _: f"\n{new_block}", body)
+        return body.rstrip() + "\n\n" + header + content + "\n"
+    return _md_replace_groomed_subsection(body, section_name, content, append=append)
+
+
+def _md_reconstruct_body_from_sections(
+    local_sections: dict[str, str], github_sections: dict[str, str], result_sections: dict[str, str]
+) -> str:
+    """Reconstruct body from merged sections for legacy .md format.
+
+    Preserves local section order, then appends GitHub-only sections.
+
+    Args:
+        local_sections: Original local section map (preserves order).
+        github_sections: GitHub section map (source of new sections).
+        result_sections: Merged result to render from.
+
+    Returns:
+        Reconstructed body string ending with newline.
+    """
+    seen: set[str] = set()
+    parts: list[str] = []
+    for heading in local_sections:
+        content = result_sections[heading]
+        parts.append(f"{heading}\n\n{content}" if content else heading)
+        seen.add(heading)
+    for heading in github_sections:
+        if heading not in seen:
+            content = result_sections[heading]
+            parts.append(f"{heading}\n\n{content}" if content else heading)
+    return "\n\n".join(parts) + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -611,7 +716,7 @@ def _compute_md_groomed_body(
     """
     if section_name:
         if append:
-            return append_or_replace_section(body, section_name, groomed_content, append=True)
+            return _md_append_or_replace_section(body, section_name, groomed_content, append=True)
         existing_section_body = _extract_subsection_body(body, section_name)
         rewritten = rewrite_section_entries(
             existing_body=existing_section_body,
@@ -621,7 +726,7 @@ def _compute_md_groomed_body(
             reason=reason,
             added_date=added_date,
         )
-        return append_or_replace_section(body, section_name, rewritten)
+        return _md_append_or_replace_section(body, section_name, rewritten)
     groomed_section = f"## Groomed ({today_str})\n\n{groomed_content.strip()}"
     groomed_re = re.compile(r"\n## Groomed\s*\([^)]*\)\s*\n[\s\S]*?(?=\n## |\Z)", re.MULTILINE)
     if groomed_re.search(body):
@@ -695,7 +800,7 @@ def _write_groomed_to_item_file(
             post.metadata["groomed"] = today_str
         post.content = new_body
         new_content = dump_frontmatter(post)
-    except (ValueError, KeyError, TypeError):
+    except (ValueError, KeyError, TypeError, YAMLError):
         new_content = "---\n" + fm_text + "\n---\n\n" + new_body
         if "groomed:" not in fm_text:
             new_content = new_content.replace("---\n", f'---\ngroomed: "{today_str}"\n', 1)
@@ -949,6 +1054,53 @@ def _pull_if_issue_selector(selector: str, repo: str, output: Output | None = No
         pull_single_issue(get_github(repo), int(issue_num), output=output)
 
 
+def _parse_md_body_extra_fields(body: str) -> tuple[str, str, str, str, str, str]:
+    """Extract bold-key fields from legacy .md body until first ## heading.
+
+    Parses lines of the form ``**Key**: value`` appearing before any ``##``
+    heading and returns the six named fields used by the normalisation step.
+
+    Args:
+        body: Markdown body string from a legacy .md backlog item.
+
+    Returns:
+        Tuple of (desc, suggested, research, decision, files_val, required_work).
+    """
+    field_map = {
+        "description": 0,
+        "suggested location": 1,
+        "research first": 2,
+        "decision needed": 3,
+        "files": 4,
+        "required work": 5,
+    }
+    field_re = re.compile(r"^\*\*([^*]+)\*\*:\s*(.*)$", re.DOTALL)
+    result: list[str] = ["", "", "", "", "", ""]
+    current_key = ""
+    current_val: list[str] = []
+
+    def _flush() -> None:
+        if current_key and current_key.lower() in field_map:
+            result[field_map[current_key.lower()]] = "\n".join(current_val).strip()
+
+    for line in body.splitlines():
+        if line.startswith("## "):
+            _flush()
+            current_key = ""
+            break
+        m = field_re.match(line)
+        if m:
+            _flush()
+            current_key = m.group(1).strip()
+            current_val = [m.group(2).strip()] if m.group(2).strip() else []
+        elif current_key:
+            current_val.append(line)
+    else:
+        _flush()
+
+    return (result[0], result[1], result[2], result[3], result[4], result[5])
+
+
 def _build_normalized_content(filepath: Path, output: Output | None = None) -> str | None:
     """Build normalized content for one file.
 
@@ -969,14 +1121,14 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
             {k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()} if post.metadata else {}
         )
         body: str = post.content or ""
-    except (ValueError, KeyError, TypeError):
+    except (ValueError, KeyError, TypeError, YAMLError):
         return None
     meta_raw = fm.get("metadata")
     meta: dict[str, str] = {str(k): str(v) for k, v in meta_raw.items()} if isinstance(meta_raw, dict) else {}
     md = extract_normalize_metadata(fm, meta)
     if not md["name"]:
         return None
-    parsed = parse_body_extra_fields(body)
+    parsed = _parse_md_body_extra_fields(body)
     if parsed[0] and not md["description"]:
         md["description"] = parsed[0]
     groomed = extract_groomed_section(body)
@@ -1231,7 +1383,7 @@ def _pull_item_update_md(
             diff_str = generate_diff(local_body, github_body)
         return True, diff_str
 
-    final_body = reconstruct_body_from_sections(local_sections, github_sections, result_sections)
+    final_body = _md_reconstruct_body_from_sections(local_sections, github_sections, result_sections)
     post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
     post.content = final_body
     filepath.write_text(dump_frontmatter(post), encoding="utf-8")
