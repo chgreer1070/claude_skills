@@ -81,7 +81,19 @@ User request, problem statement, or feature description in any format.
 
 ## Output
 
-File at `.planning/harness/DISCOVERY.md` using this template:
+Artifact registered via MCP:
+
+```text
+artifact_register(
+    issue_number={issue},
+    artifact_type="feature-context",
+    path="plan/feature-context-{slug}.md",
+    agent="discovery",
+    content="{full DISCOVERY markdown below}"
+)
+```
+
+The content parameter contains the full discovery document using this template:
 
 ```markdown
 # ARTIFACT:DISCOVERY

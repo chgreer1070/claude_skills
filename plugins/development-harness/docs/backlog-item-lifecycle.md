@@ -126,7 +126,7 @@ flowchart TD
     P1_CONFIRM -->|"Yes — proceed anyway"| P1_COMPOSE
 
     P1_COMPOSE["Step 4: Compose item block<br>Fields: Title, Source, Added (date),<br>Priority, Type, Description,<br>Verbatim user report (REQUIRED),<br>How to reproduce (if provided)"]
-    P1_COMPOSE --> P1_ADD["Step 5: backlog_add MCP tool<br>Creates per-item file at<br>~/.dh/projects/{slug}/backlog/"]
+    P1_COMPOSE --> P1_ADD["Step 5: backlog_add MCP tool<br>Registers backlog item via MCP<br>(stored in project state directory)"]
 
     P1_ADD --> P1_ISSUE{"GitHub Issue?"}
     P1_ISSUE -->|"P0/P1 + user confirmed<br>or --auto + --create-issue"| P1_GH_CREATE["GitHub Issue created<br>issue field set in frontmatter"]
@@ -151,7 +151,7 @@ flowchart TD
 | P1_STOP_DUP | orchestrator | duplicate detection result | error report (no file written) | terminal |
 | P1_STOP_DECLINE | orchestrator | user decline | error report | terminal |
 | P1_COMPOSE | orchestrator | validated fields | item block (title, source, added, priority, type, description, verbatim_user_report, how_to_reproduce) | always → P1_ADD |
-| P1_ADD | `backlog_add` MCP | item block | per-item file at `~/.dh/projects/{slug}/backlog/`, `issue` field if created | always → P1_ISSUE |
+| P1_ADD | `backlog_add` MCP | item block | registered backlog item (project state managed by MCP server), `issue` field if created | always → P1_ISSUE |
 | P1_ISSUE | orchestrator | priority, user preference, `--create-issue` flag | issue creation decision | P0/P1 + confirmed → P1_GH_CREATE, otherwise → P1_NO_GH |
 | P1_GH_CREATE | `backlog_add` MCP | item fields | GitHub Issue number, `issue` frontmatter field | always → P1_DONE |
 | P1_NO_GH | orchestrator | — | no issue created | always → P1_DONE |
@@ -350,7 +350,7 @@ flowchart TD
 
 **Storage**: Feature context and architecture specs are registered as Documents via the artifact manifest system. See [Backend Providers — SAM Storage Model](./backend-providers.md#sam-storage-model) for the document lifecycle.
 
-**All paths are state-relative**: Resolved via `dh_paths.plan_dir()` → `~/.dh/projects/{project-slug}/plan/`. NOT repo-relative.
+**Artifact access is MCP-first**: Consumers retrieve artifacts via `artifact_read(issue_number, artifact_type)` and register them via `artifact_register(issue_number, artifact_type, path, agent, content)`. Task plans are accessed via `sam_read(plan, task)`. The MCP servers resolve storage internally — consumers never construct filesystem paths.
 
 **No feasibility gate exists** between RT-ICA APPROVED and SAM planning invocation. The transition from "do we have enough information?" to "start planning" is direct — no assessment of technical feasibility, effort/value, risk, or alternative approaches (audit Finding 1).
 

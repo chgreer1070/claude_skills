@@ -176,6 +176,29 @@ Full procedure: [github-integration.md](./references/github-integration.md#step-
 
 **Two-part step:** (a) Always run `mcp__plugin_dh_backlog__backlog_update` with `status="in-progress"` for the current item. (b) Run `milestone start` only on explicit user intent to start the whole milestone — it bulk-transitions all open milestone issues, not just the current one.
 
+### Step 2.8: Discovery Gate
+
+Before grooming or planning, check whether a structured discovery artifact exists.
+
+```mermaid
+flowchart TD
+    InProgress([Step 2.7 complete — label set]) --> HasIssue{"Item has GitHub<br>Issue number?"}
+    HasIssue -->|"No"| SkipGate["Skip discovery gate<br>Proceed to Step 3"]
+    HasIssue -->|"Yes — issue #{N}"| TypeCheck{"Labels include<br>'type:fix' or 'type:bug'?"}
+    TypeCheck -->|"Yes — fix/bug type"| SkipGate
+    TypeCheck -->|"No — feature/refactor/other"| CheckArtifact["artifact_list(<br>issue_number={N},<br>artifact_type='feature-context')"]
+    CheckArtifact --> HasDiscovery{"count > 0?"}
+    HasDiscovery -->|"Yes"| Proceed["Discovery exists<br>Proceed to Step 3"]
+    HasDiscovery -->|"No"| InvokeDiscovery["Invoke: Skill(skill='dh:discovery')<br>Wait for user confirmation loop<br>Then proceed to Step 3"]
+    SkipGate --> Continue([Step 3 — Auto-Groom])
+    Proceed --> Continue
+    InvokeDiscovery --> Continue
+```
+
+The discovery skill runs its full interactive confirmation loop (WHO/WHAT/WHEN/WHY gathering)
+and registers the result as a `feature-context` artifact. After completion, Step 3 (Auto-Groom)
+will detect the artifact and pass it to the grooming swarm.
+
 ## Phase 3: Prepare
 
 ### Step 3: Auto-Groom (if needed)
@@ -208,7 +231,7 @@ The groom skill writes groomed content via the backlog MCP server. After groomin
 
 Build the feature request string for `add-new-feature`. If `--stack` was specified, append a "Stack profile" line. If `--language` is not `python`, invoke the corresponding language plugin (e.g., `/typescript-development:add-new-feature`).
 
-**Impact Radius requirement**: Before composing, read the `## Impact Radius` section from the groomed item file (populated by `groom-backlog-item` Step 3.5). Include it in the feature request so the planner creates tasks for every affected component.
+**Impact Radius requirement**: Before composing, extract the Impact Radius from the `backlog_view(selector=f"#{issue_number}", summary=false)` response. The `sections` dict in the response contains an `"Impact Radius"` key (populated by `groom-backlog-item` Step 3.5). Include it in the feature request so the planner creates tasks for every affected component.
 
 **Ecosystem Completeness Constraint**: The plan produced by `add-new-feature` MUST include tasks for every item listed in the Impact Radius, or explicitly document why an item is excluded. A feature is not complete when the core code works — it is complete when:
 
@@ -218,7 +241,7 @@ Build the feature request string for `add-new-feature`. If `--stack` was specifi
 - The old interface is deprecated or removed (if this item replaces something)
 - CI/config files listed in Impact Radius are updated and validated
 
-If the groomed item has no `## Impact Radius` section, trigger `groom-backlog-item` for that item before continuing (Step 3 already handles this for ungroomed items — this handles the case where grooming ran before Step 3.5 existed). Do not skip to Step 6 with a missing impact radius — the planner will produce an incomplete plan.
+If the `backlog_view` response `sections` dict has no `"Impact Radius"` key, trigger `groom-backlog-item` for that item before continuing (Step 3 already handles this for ungroomed items — this handles the case where grooming ran before Step 3.5 existed). Do not skip to Step 6 with a missing impact radius — the planner will produce an incomplete plan.
 
 Template: [step-procedures.md](./references/step-procedures.md#step-5-feature-request-template)
 

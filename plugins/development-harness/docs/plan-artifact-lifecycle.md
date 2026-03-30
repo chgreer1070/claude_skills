@@ -35,9 +35,9 @@ Plan artifacts fall into two categories based on their origin and the rules gove
 
 These artifacts capture the human's original intent. Agents must NEVER modify them.
 
-| Artifact | Location | Created by |
+| Artifact | Access | Created by |
 |---|---|---|
-| Backlog items | `~/.dh/projects/{slug}/backlog/*.md` | Human (via `/create-backlog-item`) |
+| Backlog items | Via `backlog_view(selector)` or `backlog_list()` MCP tools | Human (via `/create-backlog-item`) |
 | Grooming output | Embedded in backlog item under `## Groomed` | Human (via grooming session) |
 | Fact-check results | Embedded in backlog item under `## Fact-Check` | Human or agent (captures human-verified facts) |
 | RT-ICA assessments | Embedded in backlog item under `## RT-ICA` | Agent (captures human-approved assessment) |
@@ -48,13 +48,13 @@ These artifacts capture the human's original intent. Agents must NEVER modify th
 
 These artifacts are produced by agents during planning phases. They may be updated, but updates must stay within the intent established by human-decision artifacts.
 
-| Artifact | Location | Created by | Updated by |
+| Artifact | Access | Created by | Updated by |
 |---|---|---|---|
-| Feature context | `~/.dh/projects/{slug}/plan/feature-context-{slug}.md` | `feature-researcher` agent | `context-refinement` agent |
-| Codebase analysis | `~/.dh/projects/{slug}/plan/codebase/{FOCUS}.md` | `codebase-analyzer` agent | Not updated (informational snapshot) |
-| Architecture spec | `~/.dh/projects/{slug}/plan/architect-{slug}.md` | `python-cli-design-spec` agent | `context-refinement` agent |
-| Task plan | `~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml` or `~/.dh/projects/{slug}/plan/P{NNN}-{slug}/` | `swarm-task-planner` agent | Status fields by hooks; Context Manifest by `context-refinement` |
-| Context Manifest | Embedded in task file | `context-gathering` agent | `context-refinement` agent (existing behavior) |
+| Feature context | `artifact_read(issue_number, 'feature-context')` | `feature-researcher` agent | `context-refinement` agent |
+| Codebase analysis | `artifact_read(issue_number, 'codebase-analysis')` | `codebase-analyzer` agent | Not updated (informational snapshot) |
+| Architecture spec | `artifact_read(issue_number, 'architect')` | `python-cli-design-spec` agent | `context-refinement` agent |
+| Task plan | `sam_read(plan="P{NNN}")` | `swarm-task-planner` agent | Status fields by hooks; Context Manifest by `context-refinement` |
+| Context Manifest | Embedded in task file (via `sam_read`) | `context-gathering` agent | `context-refinement` agent (existing behavior) |
 
 ---
 
@@ -132,7 +132,7 @@ During task execution, agents record divergence observations in the task file un
 
 ### DN-1: {Brief title}
 
-- **Plan artifact**: ~/.dh/projects/{project-slug}/plan/architect-{slug}.md, section "{section name}"
+- **Plan artifact**: `artifact_read(issue_number={N}, artifact_type="architect")`, section "{section name}"
 - **Plan claim**: "{quoted text from plan artifact}"
 - **Actual implementation**: "{what was actually done and why}"
 - **Classification**: design-refinement | intent-divergence

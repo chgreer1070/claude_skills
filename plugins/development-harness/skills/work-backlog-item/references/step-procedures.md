@@ -160,7 +160,7 @@ If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
 
    Parse the returned dict. Each entry in `items` has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 
-2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`~/.dh/projects/{slug}/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.
+2. **Groomed** = item has `groomed: true` in `backlog_list` output. For full groomed content, call `backlog_view(selector="{title or #N}", summary=false)` — the response `sections` dict contains groomed field values (e.g., `response["sections"]["Acceptance Criteria"]`). If groomed sections are present, use them.
 
 3. Present a numbered list. Use these status indicators in user-visible output only:
 
@@ -264,7 +264,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 1. Extract title from `$1`+ joined. Build slug: title lowercased, spaces → hyphens.
 
-2. Find the item in `~/.dh/projects/{slug}/backlog/` per-item files (same logic as Step 1). If not found, create a minimal item with the title.
+2. Find the item via `backlog_view(selector="{title or #N}", summary=false)`. If not found (response contains `error` key), create a minimal item with `backlog_add(title="{title}")`. If found, extract description and acceptance criteria from `response["sections"]`.
 
 3. Extract the item's description and acceptance criteria if available.
 
@@ -278,7 +278,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
    )
    ```
 
-   `sam_create` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path.
+   `sam_create` handles path resolution internally — do not resolve or pass a file path.
 
 5. Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `plan="quick-{slug}"` to record the plan slug.
 
@@ -298,7 +298,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 **Trigger:** `$0` is `progress`.
 
-1. Scan `~/.dh/projects/{slug}/backlog/` per-item files. Count items by priority (P0, P1, P2, Ideas) and status (done, resolved, closed).
+1. Call `backlog_list()` to retrieve all open items. Count items by priority (P0, P1, P2, Ideas) and status from the returned `items` list. Each entry has `priority`, `status`, `title`, `issue`, `milestone`, and `groomed` fields.
 
 2. Query GitHub for the active milestone:
 
@@ -343,7 +343,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 1. Extract title from `$1`+ joined. If `$1` starts with `#`, fetch title from GitHub Issue (same logic as Step 1b).
 
-2. Find the item in `~/.dh/projects/{slug}/backlog/` per-item files. Extract `metadata.plan` field. If absent:
+2. Call `backlog_view(selector="{title or #N}", summary=false)`. Extract the `plan` field from the response. If absent or empty:
 
    <eg>
    No plan file recorded for "{title}".
@@ -411,7 +411,7 @@ Do not stop for user input at any point.
 ```text
 Backlog item "{title}" is now planned.
 
-- Plan file: ~/.dh/projects/{project-slug}/plan/P{NNN}-{slug}.yaml (or .../plan/P{NNN}-{slug}/ directory)
+- Plan: accessible via `sam_read(plan="{slug}")` MCP tool
 - To execute:      /implement-feature {slug}
 - To check status: /implementation-manager status . {slug}
 - To close when done: /work-backlog-item close {slug}

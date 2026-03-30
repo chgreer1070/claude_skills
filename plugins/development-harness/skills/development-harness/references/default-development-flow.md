@@ -114,7 +114,7 @@ flowchart TD
 - Map task dependencies and identify parallelization opportunities
 - Assign each task to the appropriate specialist agent (from manifest or fallback)
 
-**Output:** `ARTIFACT:TASK({task-id})` per task — Individual task files stored in `.planning/harness/`.
+**Output:** `ARTIFACT:TASK({task-id})` per task — Task plan registered via `sam_create`; access via `sam_read` / `sam_list`.
 
 **Skill:** `/dh:task-decomposition`
 

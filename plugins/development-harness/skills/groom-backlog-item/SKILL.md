@@ -101,6 +101,30 @@ After either drift check completes, report findings to the user and stop. Do not
 
 For each target item, extract: title, description, research-first questions (if present), source, suggested location.
 
+### Step 3.1: Discovery Gate
+
+Before running RT-ICA or spawning the swarm, check whether a structured discovery artifact
+exists for this item. This surfaces prior requirements gathering that should inform grooming.
+
+```mermaid
+flowchart TD
+    Extract([Step 3 complete — item details extracted]) --> HasIssue{"Item has GitHub<br>Issue number?"}
+    HasIssue -->|"No — no issue linked"| SkipGate["Skip discovery gate<br>Proceed to Step 3.5"]
+    HasIssue -->|"Yes — issue #{N}"| TypeCheck{"Item labels include<br>'type:fix' or 'type:bug'?"}
+    TypeCheck -->|"Yes — fix/bug type"| SkipGate
+    TypeCheck -->|"No — feature/refactor/other"| CheckArtifact["artifact_list(<br>issue_number={N},<br>artifact_type='feature-context')"]
+    CheckArtifact --> HasDiscovery{"count > 0?"}
+    HasDiscovery -->|"Yes"| LoadDiscovery["Read via artifact_read(issue_number={N},<br>artifact_type='feature-context')<br>Pass content to swarm agents as prior context"]
+    HasDiscovery -->|"No"| InvokeDiscovery["Invoke: Skill(skill='dh:discovery')<br>Wait for completion"]
+    InvokeDiscovery --> LoadDiscovery
+    LoadDiscovery --> Continue([Proceed to Step 3.5 with discovery context])
+    SkipGate --> Continue
+```
+
+The discovery context (if loaded) is passed to the swarm agents in Steps 4-8 as additional
+input alongside the item description. Agents should treat it as verified requirements that
+do not need re-derivation.
+
 ### Step 3.5: RT-ICA Initial Snapshot
 
 Before spawning any agents, the orchestrator runs a quick RT-ICA pass using only the information available from Steps 2-3 (item fields, description, suggested_location). This is a baseline — not the final assessment.
@@ -462,18 +486,18 @@ mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", section="RT-ICA",
 
 # After Step 8 (groomer output) — subsection or full groomed body
 mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", section="Reproducibility", content="{reproducibility section}")
-# ... or for full groomed body:
-mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
+# ... or for full groomed body (batch mode):
+mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", sections={"Reproducibility": "{section content}", "Impact Radius": "{section content}"})
 ```
 
-**Alternative: full content**
+**Alternative: full content (batch mode)**
 
 ```text
-mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
+mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", sections={"Overview": "...", "Impact Radius": "...", "Open Questions": "..."})
 ```
 
 Note — `--groomed-file {path}` and stdin pipe (`< {file}`) patterns have no MCP equivalent.
-Provide groomed content inline via the `groomed_content` parameter.
+Provide groomed content inline via the `sections` dict parameter (batch mode) or incremental `section`+`content` parameters.
 
 **Batch pattern: sections dict (preferred when writing 3+ sections at once)**
 

@@ -11,7 +11,7 @@ metadata:
 
 # Add New Feature (SAM Workflow)
 
-You MUST convert the user's request into **durable SAM artifacts** under the per-project state directory (`~/.dh/projects/{project-slug}/plan/`, resolved via `dh_paths.plan_dir()`):
+You MUST convert the user's request into **durable SAM artifacts** registered via MCP artifact and SAM tools:
 
 - `feature-context-{slug}.md` (discovery)
 - `codebase/{FOCUS}.md` (optional, analysis)
@@ -110,8 +110,9 @@ Research #{issue}: "{title}".
 If research artifacts exist for this issue, read them via
 artifact_read(issue_number={issue}, artifact_type="research") before starting
 discovery — they contain prior investigation findings that should be incorporated.
-Write feature-context-{slug}.md to dh_paths.plan_dir() with WHAT/WHY analysis — problem space, desired
+Produce feature-context-{slug}.md content with WHAT/WHY analysis — problem space, desired
 outcome, stakeholders, risks, open questions.
+Return the full markdown content in your response. Do NOT write to disk.
 Do NOT prescribe HOW to build it.
 If the feature involves replacing or migrating a local module to an external tool,
 you MUST perform a Replacement Coverage Analysis: enumerate all capabilities of the
@@ -144,7 +145,7 @@ If helpful, delegate to `@dh:codebase-analyzer` for one or more focus areas:
 - testing
 - conventions
 
-Outputs go to `dh_paths.plan_dir() / "codebase/"` (resolves to `~/.dh/projects/{project-slug}/plan/codebase/`).
+Each focus area produces a markdown document. The agent returns the content in its response; the orchestrator then registers it as an artifact.
 
 Delegation prompt template (one per focus area):
 
@@ -161,8 +162,9 @@ statements of fact without citation, code smells, missing documentation.
 </quality_vigilance>
 
 Analyze {focus_area} for #{issue}: "{title}".
-Write {focus_area}.md to dh_paths.plan_dir() / "codebase/" documenting what exists today — patterns,
+Produce {focus_area}.md content documenting what exists today — patterns,
 conventions, constraints.
+Return the full markdown content in your response. Do NOT write to disk.
 Do NOT prescribe changes.
 ```
 
@@ -216,13 +218,13 @@ statements of fact without citation, code smells, missing documentation.
 </quality_vigilance>
 
 Design the implementation for #{issue}: "{title}".
-Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context")
-or from dh_paths.plan_dir() / "feature-context-{slug}.md".
-[If codebase analysis exists: Read dh_paths.plan_dir() / "codebase/" for current state.]
+Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context").
+[If codebase analysis exists: Read via artifact_read(issue_number={issue}, artifact_type="codebase-analysis").]
 If research artifacts exist for this issue, read them via
 artifact_read(issue_number={issue}, artifact_type="research") for prior research
 findings that should inform the architecture.
-Write architect-{slug}.md to dh_paths.plan_dir() with interfaces, contracts, data models, module boundaries.
+Produce architect-{slug}.md content with interfaces, contracts, data models, module boundaries.
+Return the full markdown content in your response. Do NOT write to disk.
 Do NOT implement — define WHAT to build, not the code.
 ```
 
@@ -264,10 +266,8 @@ statements of fact without citation, code smells, missing documentation.
 </quality_vigilance>
 
 Decompose #{issue}: "{title}" into executable tasks.
-Read the architecture spec via artifact_read(issue_number={issue}, artifact_type="architect")
-or from dh_paths.plan_dir() / "architect-{slug}.md".
-Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context")
-or from dh_paths.plan_dir() / "feature-context-{slug}.md".
+Read the architecture spec via artifact_read(issue_number={issue}, artifact_type="architect").
+Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context").
 Goal: {goal_from_feature_request}
 Create the plan via sam_create with CLEAR+CoVe task definitions.
 ```

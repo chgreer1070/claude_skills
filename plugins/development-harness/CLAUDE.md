@@ -76,7 +76,9 @@ The full resolution protocol is documented in [./skills/development-harness/refe
 
 ## State Management
 
-All artifacts are written to the per-project state directory (`~/.dh/projects/{project-slug}/plan/`) resolved via `dh_paths.plan_dir()`. The `{project-slug}` is derived from the absolute project root path (replacing `/` with `-`). The base state directory can be overridden via the `DH_STATE_HOME` environment variable (used in CI and testing).
+All artifacts are written to the per-project state directory (`~/.dh/projects/{project-slug}/plan/`). The `{project-slug}` is derived from the absolute project root path (replacing `/` with `-`). The base state directory can be overridden via the `DH_STATE_HOME` environment variable (used in CI and testing).
+
+Skills and agents access plan artifacts via MCP tools — not via `dh_paths` directly. See the Artifact Manifest System section below for the discovery and access pattern.
 
 **Token pattern:** `ARTIFACT:{TYPE}({SCOPE_OR_ID})`
 
