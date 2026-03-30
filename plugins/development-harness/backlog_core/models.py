@@ -600,6 +600,12 @@ class BacklogItem(BaseModel):
     files: str = Field(default="", exclude=True)
     suggested_location: str = Field(default="", exclude=True)
     topic: str = Field(default="", exclude=True)
+    raw_body: str = Field(default="", exclude=True)
+    """Raw markdown body (below frontmatter) for legacy ``.md`` items.
+
+    Set by the legacy parser during ``.md`` parsing; always empty for ``.yaml``
+    items. Excluded from YAML serialisation. Read-only after construction.
+    """
 
     @model_validator(mode="after")
     def _sync_metadata(self) -> BacklogItem:

@@ -115,10 +115,10 @@ class TestAddItemCreatesLocalFile:
     """add_item writes a per-item file with correct frontmatter fields."""
 
     def test_add_item_creates_file_in_backlog_dir(self, mocker: MockerFixture) -> None:
-        """Verify add_item creates exactly one .md file in BACKLOG_DIR.
+        """Verify add_item creates exactly one .yaml file in BACKLOG_DIR.
 
-        Tests: add_item file creation.
-        How: Call add_item with create_issue=False; check one .md file exists.
+        Tests: add_item file creation (T04: new items use .yaml extension).
+        How: Call add_item with create_issue=False; check one .yaml file exists.
         Why: The primary side-effect of add_item is writing a local cache file.
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
@@ -130,7 +130,7 @@ class TestAddItemCreatesLocalFile:
             title="My New Feature", description="Does something useful", priority="P1", create_issue=False
         )
 
-        files = list(fake_dir.glob("*.md"))
+        files = list(fake_dir.glob("*.yaml"))
         assert len(files) == 1
         assert result["file_path"] == str(files[0])
 

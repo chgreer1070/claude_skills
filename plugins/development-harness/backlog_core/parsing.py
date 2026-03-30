@@ -250,6 +250,30 @@ def parse_item_file(text: str, path: Path) -> BacklogItem:
     )
 
 
+def _parse_yaml_item_file(path: Path) -> BacklogItem:
+    """Load a per-item ``.yaml`` file into a BacklogItem using ruamel.yaml.
+
+    Intentionally does not import from ``yaml_io`` to avoid the circular
+    dependency ``yaml_io → parsing → yaml_io``.  The implementation mirrors
+    the read path in :func:`yaml_io.load_item`.
+
+    Args:
+        path: Path to a ``.yaml`` backlog item file.
+
+    Returns:
+        Parsed ``BacklogItem`` with ``file_path`` set.
+
+    Raises:
+        YAMLError: On malformed YAML content.
+    """
+    yaml = YAML(typ="safe")
+    with path.open(encoding="utf-8") as fh:
+        data = yaml.load(fh)
+    item = _models.BacklogItem.model_validate(data)
+    item.file_path = str(path.resolve())
+    return item
+
+
 def parse_backlog_from_directory() -> list[BacklogItem]:
     """Parse backlog items directly from ~/.dh/projects/{slug}/backlog/ per-item files.
 
@@ -271,8 +295,15 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
         "completed-": "Completed",
         "medium-": "P1",
     }
+    # Collect .yaml files first (new format), then .md files (legacy).
+    # When a stem has both .yaml and .md, .yaml takes precedence.
+    yaml_files = list(_models.BACKLOG_DIR.glob("*.yaml"))
+    md_files = list(_models.BACKLOG_DIR.glob("*.md"))
+    yaml_stems = {f.stem for f in yaml_files}
+    all_files = sorted(yaml_files + [f for f in md_files if f.stem not in yaml_stems])
+
     items: list[BacklogItem] = []
-    for filepath in sorted(_models.BACKLOG_DIR.glob("*.md")):
+    for filepath in all_files:
         name = filepath.stem
         section = ""
         for prefix, sec in prefix_to_section.items():
@@ -280,12 +311,12 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
                 section = sec
                 break
         try:
-            item_text = filepath.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        try:
-            item = parse_item_file(item_text, filepath)
-        except (KeyError, TypeError, ValueError, AttributeError, YAMLError) as exc:
+            if filepath.suffix == ".yaml":
+                item = _parse_yaml_item_file(filepath)
+            else:
+                item_text = filepath.read_text(encoding="utf-8")
+                item = parse_item_file(item_text, filepath)
+        except (KeyError, TypeError, ValueError, AttributeError, YAMLError, OSError) as exc:
             log.warning("Skipping corrupt backlog file %s: %s", filepath, exc)
             continue
         # Filename-derived section; override with metadata if available

@@ -25,6 +25,7 @@ from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .entry_blocks import (
     ENTRY_RE,
+    _render_entry_raw,
     generate_diff,
     parse_entries,
     rewrite_section as rewrite_section_entries,
@@ -61,6 +62,7 @@ from .github import (
     update_task_status,
     view_enrich_from_github,
 )
+from .github_sync import merge_item as merge_item_models, parse_issue_body as parse_issue_body_sync, render_issue_body
 from .models import (
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     MIN_FRONTMATTER_PARTS,
@@ -71,19 +73,19 @@ from .models import (
     BacklogItem,
     DuplicateItemError,
     Entry,
+    GroomedData,
     IssueStatus,
     ItemNotFoundError,
     Output,
     SamTask,
     SamTasksResult,
+    Section,
     ValidationError,
     ViewItemResult,
 )
 from .parsing import (
     append_or_replace_section,
-    build_backlog_frontmatter,
     build_body_extra_only,
-    build_issue_body_from_file,
     dump_frontmatter,
     extract_description_from_issue_body,
     extract_groomed_section,
@@ -94,7 +96,6 @@ from .parsing import (
     items_needing_issues,
     items_with_issues,
     loads_frontmatter,
-    merge_sections,
     normalize_issue_title,
     now_iso,
     parse_backlog,
@@ -106,6 +107,7 @@ from .parsing import (
     today,
     view_result_from_local_item,
 )
+from .yaml_io import load_item, save_item
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -182,17 +184,39 @@ class ListCommentsResult(TypedDict):
 # ---------------------------------------------------------------------------
 
 
-def update_item_metadata(
-    filepath: Path, updates: dict[str, str | dict[str, str]], set_synced: bool = False, output: Output | None = None
-) -> dict[str, str | bool | list[str]]:
-    """Update per-item file frontmatter. Supports nested metadata.plan, metadata.issue, etc.
+def _apply_updates_to_yaml_item(filepath: Path, updates: dict[str, str | dict[str, str]], set_synced: bool) -> None:
+    """Apply *updates* dict to a ``.yaml`` backlog item via yaml_io round-trip.
 
-    When set_synced=True, also sets metadata.last_synced to current UTC time.
-
-    Returns:
-        Dict with filepath and updated flag plus output messages.
+    Args:
+        filepath: Path to the ``.yaml`` file.
+        updates: Mapping of field-name → value or ``"metadata"`` → nested dict.
+        set_synced: When ``True``, stamps ``metadata.last_synced`` with now.
     """
-    out = output or Output()
+    item = load_item(filepath)
+    for key, value in updates.items():
+        if key == "metadata" and isinstance(value, dict):
+            for meta_key, meta_val in value.items():
+                if hasattr(item.metadata, meta_key):
+                    setattr(item.metadata, meta_key, meta_val)
+        elif key == "name":
+            item.title = str(value)
+        elif key == "description":
+            item.description = str(value)
+        elif hasattr(item.metadata, key):
+            setattr(item.metadata, key, str(value))
+    if set_synced:
+        item.metadata.last_synced = now_iso()
+    save_item(item, filepath)
+
+
+def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str, str]], set_synced: bool) -> None:
+    """Apply *updates* dict to a legacy ``.md`` backlog item via frontmatter round-trip.
+
+    Args:
+        filepath: Path to the ``.md`` file.
+        updates: Mapping of field-name → value or ``"metadata"`` → nested dict.
+        set_synced: When ``True``, stamps ``metadata.last_synced`` with now.
+    """
     post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
     meta = post.metadata or {}
     for key, value in updates.items():
@@ -216,6 +240,26 @@ def update_item_metadata(
         meta["metadata"] = nested_dict2
     post.metadata = meta
     filepath.write_text(dump_frontmatter(post), encoding="utf-8")
+
+
+def update_item_metadata(
+    filepath: Path, updates: dict[str, str | dict[str, str]], set_synced: bool = False, output: Output | None = None
+) -> dict[str, str | bool | list[str]]:
+    """Update per-item file frontmatter. Supports nested metadata.plan, metadata.issue, etc.
+
+    When set_synced=True, also sets metadata.last_synced to current UTC time.
+
+    For ``.yaml`` files, uses the yaml_io round-trip (load_item / save_item).
+    For legacy ``.md`` files, uses the frontmatter round-trip to preserve format.
+
+    Returns:
+        Dict with filepath and updated flag plus output messages.
+    """
+    out = output or Output()
+    if filepath.suffix == ".yaml":
+        _apply_updates_to_yaml_item(filepath, updates, set_synced)
+    else:
+        _apply_updates_to_md_item(filepath, updates, set_synced)
     return {"filepath": str(filepath), "updated": True, **out.to_dict()}
 
 
@@ -425,6 +469,166 @@ def _extract_subsection_body(body: str, section_name: str) -> str:
     return sub_match.group(1).strip()
 
 
+def _apply_groomed_entries(
+    section: Section,
+    groomed_content: str,
+    *,
+    append: bool,
+    replace_section: bool,
+    reason: str | None,
+    entry_id: str | None,
+    added_date: str,
+) -> None:
+    """Mutate a Section's entry list according to the requested grooming operation.
+
+    Args:
+        section: Section whose entries are updated in place.
+        groomed_content: Content for the new or updated entry.
+        append: Always append without matching by id.
+        replace_section: Strike all existing entries and append new content.
+            Requires ``reason``.
+        reason: Strike reason; required when ``replace_section`` is ``True``.
+        entry_id: Id of an existing entry to update in place.
+        added_date: ISO date string used as id prefix for legacy seeding.
+
+    Raises:
+        ValueError: When ``replace_section`` is ``True`` but ``reason`` is empty.
+    """
+    if append:
+        section.entries.append(Entry(id=now_iso(), content=groomed_content))
+        return
+    if replace_section:
+        if not reason:
+            msg = "reason is required when replace_section=True"
+            raise ValueError(msg)
+        struck_at = now_iso()
+        for entry in section.entries:
+            if not entry.struck:
+                entry.struck = True
+                entry.struck_at = struck_at
+                entry.struck_reason = reason
+        section.entries.append(Entry(id=now_iso(), content=groomed_content))
+        return
+    if entry_id:
+        for entry in section.entries:
+            if entry.id == entry_id:
+                entry.content = groomed_content
+                return
+        section.entries.append(Entry(id=entry_id, content=groomed_content))
+        return
+    # Default: seed from added_date if no entries exist yet, else append.
+    if not section.entries and bool(groomed_content.strip()):
+        section.entries.append(Entry(id=f"{added_date}T00:00:00Z", content=groomed_content))
+    else:
+        section.entries.append(Entry(id=now_iso(), content=groomed_content))
+
+
+def _write_groomed_to_yaml_item(
+    filepath: Path,
+    groomed_content: str,
+    section_name: str | None = None,
+    *,
+    entry_id: str | None = None,
+    replace_section: bool = False,
+    reason: str | None = None,
+    added_date: str = "0000-00-00",
+    append: bool = False,
+) -> None:
+    """Write groomed content into a YAML BacklogItem file.
+
+    Loads the item, updates the relevant section, sets the groomed date on
+    metadata, and saves.  Mirrors the logic of ``_write_groomed_to_item_file``
+    for ``.yaml`` files.
+
+    Args:
+        filepath: Path to the ``.yaml`` item file.
+        groomed_content: The text to write into the section.
+        section_name: Named section to update.  When ``None`` the top-level
+            ``groomed`` section (stored as ``GroomedData``) is updated.
+        entry_id: Optional ID used to locate an existing entry for update.
+        replace_section: When ``True``, strike all existing entries and add
+            the new content as a replacement.  Requires ``reason``.
+        reason: Strike reason; required when ``replace_section`` is ``True``.
+        added_date: ISO date used as the entry id when migrating legacy text.
+        append: When ``True``, always append a new entry rather than updating
+            by id.
+    """
+    item = load_item(filepath)
+    today_str = today()
+    item.metadata.groomed = today_str
+
+    if section_name is None:
+        existing = item.sections.get("groomed")
+        groomed_data = existing if isinstance(existing, GroomedData) else GroomedData(date=today_str)
+        groomed_data.date = today_str
+        groomed_data.subsections["content"] = groomed_content.strip()
+        item.sections["groomed"] = groomed_data
+    else:
+        existing_section = item.sections.get(section_name)
+        section = existing_section if isinstance(existing_section, Section) else Section()
+        _apply_groomed_entries(
+            section,
+            groomed_content,
+            append=append,
+            replace_section=replace_section,
+            reason=reason,
+            entry_id=entry_id,
+            added_date=added_date,
+        )
+        item.sections[section_name] = section
+
+    save_item(item, filepath)
+
+
+def _compute_md_groomed_body(
+    body: str,
+    groomed_content: str,
+    section_name: str | None,
+    today_str: str,
+    *,
+    append: bool,
+    entry_id: str | None,
+    replace_section: bool,
+    reason: str | None,
+    added_date: str,
+) -> str:
+    """Compute the updated markdown body after inserting groomed content.
+
+    Args:
+        body: Current markdown body (text after frontmatter).
+        groomed_content: Content to merge into the body.
+        section_name: Named section to update; when ``None`` the top-level
+            ``## Groomed`` section is replaced.
+        today_str: Today's date string (YYYY-MM-DD).
+        append: Raw-append mode when ``True``.
+        entry_id: Entry id for targeted in-place update.
+        replace_section: Strike existing entries and replace when ``True``.
+        reason: Strike reason; required when ``replace_section`` is ``True``.
+        added_date: ISO date for legacy entry migration.
+
+    Returns:
+        Updated markdown body string.
+    """
+    if section_name:
+        if append:
+            return append_or_replace_section(body, section_name, groomed_content, append=True)
+        existing_section_body = _extract_subsection_body(body, section_name)
+        rewritten = rewrite_section_entries(
+            existing_body=existing_section_body,
+            new_content=groomed_content,
+            entry_id=entry_id,
+            replace=replace_section,
+            reason=reason,
+            added_date=added_date,
+        )
+        return append_or_replace_section(body, section_name, rewritten)
+    groomed_section = f"## Groomed ({today_str})\n\n{groomed_content.strip()}"
+    groomed_re = re.compile(r"\n## Groomed\s*\([^)]*\)\s*\n[\s\S]*?(?=\n## |\Z)", re.MULTILINE)
+    if groomed_re.search(body):
+        return groomed_re.sub(lambda _: f"\n{groomed_section}\n", body)
+    return body.rstrip() + "\n\n" + groomed_section + "\n"
+
+
 def _write_groomed_to_item_file(
     filepath: Path,
     groomed_content: str,
@@ -446,6 +650,19 @@ def _write_groomed_to_item_file(
     the existing section content instead of replacing it (no entry-block wrapping).
     Else replace full ## Groomed.
     """
+    if filepath.suffix == ".yaml":
+        _write_groomed_to_yaml_item(
+            filepath,
+            groomed_content,
+            section_name,
+            entry_id=entry_id,
+            replace_section=replace_section,
+            reason=reason,
+            added_date=added_date,
+            append=append,
+        )
+        return
+
     text = filepath.read_text(encoding="utf-8")
     if not text.startswith("---"):
         msg = "Item file has no frontmatter"
@@ -456,28 +673,17 @@ def _write_groomed_to_item_file(
         raise ValidationError(msg)
     fm_text, body = parts[1].strip(), parts[2].strip()
     today_str = today()
-    if section_name:
-        if append:
-            # Raw-append mode: skip entry-block wrapping, append text directly.
-            new_body = append_or_replace_section(body, section_name, groomed_content, append=True)
-        else:
-            existing_section_body = _extract_subsection_body(body, section_name)
-            rewritten = rewrite_section_entries(
-                existing_body=existing_section_body,
-                new_content=groomed_content,
-                entry_id=entry_id,
-                replace=replace_section,
-                reason=reason,
-                added_date=added_date,
-            )
-            new_body = append_or_replace_section(body, section_name, rewritten)
-    else:
-        groomed_section = f"## Groomed ({today_str})\n\n{groomed_content.strip()}"
-        groomed_re = re.compile(r"\n## Groomed\s*\([^)]*\)\s*\n[\s\S]*?(?=\n## |\Z)", re.MULTILINE)
-        if groomed_re.search(body):
-            new_body = groomed_re.sub(lambda _: f"\n{groomed_section}\n", body)
-        else:
-            new_body = body.rstrip() + "\n\n" + groomed_section + "\n"
+    new_body = _compute_md_groomed_body(
+        body,
+        groomed_content,
+        section_name,
+        today_str,
+        append=append,
+        entry_id=entry_id,
+        replace_section=replace_section,
+        reason=reason,
+        added_date=added_date,
+    )
     try:
         post = loads_frontmatter(text)
         meta_block = post.metadata.get("metadata")
@@ -775,20 +981,24 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
         md["description"] = parsed[0]
     groomed = extract_groomed_section(body)
     new_body = build_body_extra_only(parsed[1], parsed[2], parsed[3], parsed[4], parsed[5], groomed)
-    fm_str = build_backlog_frontmatter(
-        md["name"],
-        md["description"],
-        md["source"],
-        md["added"],
-        md["priority"],
-        md["type_val"],
-        md["status"],
-        md["issue"],
-        md["plan"],
-        md["groomed"],
-    )
-    result = fm_str.rstrip()
-    return result + ("\n" if not result.endswith("\n\n") else "") + new_body
+    # Re-serialise as frontmatter + body using the existing loads_frontmatter/dump_frontmatter pair
+    # (build_backlog_frontmatter removed from import — use round-trip rewrite instead)
+    post.metadata = {
+        "name": md["name"],
+        "description": md["description"],
+        "metadata": {
+            "source": md["source"],
+            "added": md["added"],
+            "priority": md["priority"],
+            "type": md["type_val"],
+            "status": md["status"],
+            "issue": md["issue"],
+            "plan": md["plan"],
+            "groomed": md["groomed"],
+        },
+    }
+    post.content = new_body
+    return dump_frontmatter(post)
 
 
 def _normalize_item_file(filepath: Path, dry_run: bool, output: Output | None = None) -> bool:
@@ -827,25 +1037,26 @@ def _pull_item_create_new(
     out = output or Output()
     slug = title_to_slug(title)
     priority = item.priority or "P2"
-    filename = f"{priority.lower()}-{slug}.md"
+    filename = f"{priority.lower()}-{slug}.yaml"
     filepath = _models.BACKLOG_DIR / filename
     _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
     if dry_run:
         out.info(f"  [dry-run] Would create {filename} from #{issue_num}: {title}")
         return True
-    fm_str = build_backlog_frontmatter(
-        title,
-        item.description,
-        item.source,
-        item.added or today(),
-        priority,
-        item.item_type,
-        "open",
-        issue_ref,
-        item.plan,
-        "",
+    remote_item = parse_issue_body_sync(github_body, item)
+    new_item = BacklogItem(
+        title=title,
+        description=remote_item.description or item.description,
+        source=item.source,
+        added=item.added or today(),
+        priority=priority,
+        item_type=item.item_type,
+        status="open",
+        issue=issue_ref,
+        plan=item.plan,
+        sections=remote_item.sections,
     )
-    filepath.write_text(fm_str.rstrip() + "\n\n" + github_body, encoding="utf-8")
+    save_item(new_item, filepath)
     out.info(f"  Created #{issue_num} -> {filename}: {title}")
     return True
 
@@ -856,20 +1067,22 @@ def _pick_entry(local_e: Entry, remote_e: Entry) -> tuple[str, bool]:
     Returns:
         Tuple of (raw_entry_text, was_modified).
     """
-    if local_e.raw == remote_e.raw:
-        return local_e.raw, False
+    local_raw = _render_entry_raw(local_e)
+    remote_raw = _render_entry_raw(remote_e)
+    if local_raw == remote_raw:
+        return local_raw, False
     if local_e.struck and not remote_e.struck:
-        return local_e.raw, True
+        return local_raw, True
     if remote_e.struck and not local_e.struck:
-        return remote_e.raw, True
+        return remote_raw, True
     if local_e.struck and remote_e.struck:
         local_ts = local_e.struck_at or ""
         remote_ts = remote_e.struck_at or ""
-        winner = remote_e if remote_ts > local_ts else local_e
-        return winner.raw, remote_ts != local_ts
+        winner_raw = remote_raw if remote_ts > local_ts else local_raw
+        return winner_raw, remote_ts != local_ts
     # Both active: keep longer content
-    winner = remote_e if len(remote_e.content) > len(local_e.content) else local_e
-    return winner.raw, remote_e.content != local_e.content
+    winner_raw = remote_raw if len(remote_e.content) > len(local_e.content) else local_raw
+    return winner_raw, remote_e.content != local_e.content
 
 
 def _merge_entry_bodies(local_content: str, remote_content: str) -> tuple[str, bool]:
@@ -900,9 +1113,9 @@ def _merge_entry_bodies(local_content: str, remote_content: str) -> tuple[str, b
             result_parts.append(raw)
             modified = modified or changed
         elif local_e:
-            result_parts.append(local_e.raw)
+            result_parts.append(_render_entry_raw(local_e))
         elif remote_e:
-            result_parts.append(remote_e.raw)
+            result_parts.append(_render_entry_raw(remote_e))
             modified = True
 
     return "\n\n".join(result_parts), modified
@@ -921,36 +1134,78 @@ def _pull_item_update_existing(
 ) -> tuple[bool, str]:
     """Update an existing local file with content from a GitHub issue body.
 
+    For ``.yaml`` files, uses the yaml_io / github_sync round-trip:
+    ``parse_issue_body`` → ``merge_item`` → ``save_item``.
+    For legacy ``.md`` files, preserves the frontmatter + body approach.
+
     Returns:
         Tuple of (was_updated, diff_string). diff_string is non-empty only when
         diff_mode is True and dry_run is True.
     """
     out = output or Output()
-    local_body = item.raw_body
 
-    if force:
-        if dry_run:
-            out.info(f"  [dry-run] Would overwrite {filepath.name} from #{issue_num}: {title}")
-            diff_str = generate_diff(local_body, github_body) if diff_mode else ""
-            return True, diff_str
-        post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
-        post.content = github_body
-        filepath.write_text(dump_frontmatter(post), encoding="utf-8")
-        out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
-        return True, ""
+    if filepath.suffix == ".yaml":
+        return _pull_item_update_yaml(item, issue_num, title, filepath, github_body, dry_run, force, output=out)
 
-    _merged_body, modified = merge_sections(local_body, github_body)
+    # Legacy .md path
+    return _pull_item_update_md(item, issue_num, title, filepath, github_body, dry_run, force, diff_mode, output=out)
+
+
+def _pull_item_update_yaml(
+    item: BacklogItem,
+    issue_num: int,
+    title: str,
+    filepath: Path,
+    github_body: str,
+    dry_run: bool,
+    force: bool,
+    output: Output | None = None,
+) -> tuple[bool, str]:
+    """YAML-format pull: model-level merge via github_sync.
+
+    Returns:
+        Tuple of (was_updated, diff_string). diff_string is always empty for YAML path.
+    """
+    out = output or Output()
+    remote_item = parse_issue_body_sync(github_body, item)
+    merged = merge_item_models(item, remote_item)
+    modified = merged.sections != item.sections or merged.description != item.description
+
     if not modified:
         return False, ""
 
-    diff_str = ""
     if dry_run:
         out.info(f"  [dry-run] Would merge #{issue_num} -> {filepath.name}: {title}")
-        if diff_mode:
-            diff_str = generate_diff(local_body, github_body)
-        return True, diff_str
+        return True, ""
 
-    # Apply entry-aware merge per section
+    save_item(remote_item if force else merged, filepath)
+    out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
+    return True, ""
+
+
+def _pull_item_update_md(
+    item: BacklogItem,
+    issue_num: int,
+    title: str,
+    filepath: Path,
+    github_body: str,
+    dry_run: bool,
+    force: bool,
+    diff_mode: bool = False,
+    output: Output | None = None,
+) -> tuple[bool, str]:
+    """Legacy .md-format pull: frontmatter + body section merge.
+
+    Returns:
+        Tuple of (was_updated, diff_string). diff_string is non-empty only when
+        diff_mode is True and dry_run is True.
+    """
+    out = output or Output()
+    local_body: str = getattr(item, "raw_body", "") or ""
+
+    if force:
+        return _pull_md_force(issue_num, title, filepath, local_body, github_body, dry_run, diff_mode, output=out)
+
     local_sections = extract_sections(local_body)
     github_sections = extract_sections(github_body)
     result_sections: dict[str, str] = dict(local_sections)
@@ -969,9 +1224,43 @@ def _pull_item_update_existing(
     if not entry_modified:
         return False, ""
 
+    diff_str = ""
+    if dry_run:
+        out.info(f"  [dry-run] Would merge #{issue_num} -> {filepath.name}: {title}")
+        if diff_mode:
+            diff_str = generate_diff(local_body, github_body)
+        return True, diff_str
+
     final_body = reconstruct_body_from_sections(local_sections, github_sections, result_sections)
     post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
     post.content = final_body
+    filepath.write_text(dump_frontmatter(post), encoding="utf-8")
+    out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
+    return True, ""
+
+
+def _pull_md_force(
+    issue_num: int,
+    title: str,
+    filepath: Path,
+    local_body: str,
+    github_body: str,
+    dry_run: bool,
+    diff_mode: bool,
+    output: Output | None = None,
+) -> tuple[bool, str]:
+    """Force-overwrite a legacy .md file from GitHub issue body.
+
+    Returns:
+        Tuple of (was_updated, diff_string).
+    """
+    out = output or Output()
+    if dry_run:
+        out.info(f"  [dry-run] Would overwrite {filepath.name} from #{issue_num}: {title}")
+        diff_str = generate_diff(local_body, github_body) if diff_mode else ""
+        return True, diff_str
+    post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
+    post.content = github_body
     filepath.write_text(dump_frontmatter(post), encoding="utf-8")
     out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
     return True, ""
@@ -1052,11 +1341,11 @@ def _resolve_filepath(priority: str, slug: str) -> Path:
     """
     _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
     base = f"{priority.lower()}-{slug}"
-    filepath = _models.BACKLOG_DIR / f"{base}.md"
+    filepath = _models.BACKLOG_DIR / f"{base}.yaml"
     idx = 0
     while filepath.exists():
         idx += 1
-        filepath = _models.BACKLOG_DIR / f"{base}-{idx}.md"
+        filepath = _models.BACKLOG_DIR / f"{base}-{idx}.yaml"
     return filepath
 
 
@@ -1152,6 +1441,7 @@ def add_item(
 
     # GH-first: try to create GitHub Issue BEFORE writing local file
     issue_num: int | None = None
+    issue_ref = ""
     if create_issue:
         item_data = BacklogItem(
             title=title,
@@ -1165,14 +1455,25 @@ def add_item(
             suggested_location=suggested_location,
         )
         issue_num = _try_create_github_issue(item_data, repo, out)
+        issue_ref = f"#{issue_num}" if issue_num else ""
 
-    # Build frontmatter with issue number already included (single write)
-    issue_ref = f"#{issue_num}" if issue_num else ""
-    fm_str = build_backlog_frontmatter(
-        title, description, source, today_str, priority, type_, "open", issue_ref, "", ""
+    # Build BacklogItem and write as YAML (single write)
+    item_to_write = BacklogItem(
+        title=title,
+        description=description,
+        source=source,
+        added=today_str,
+        priority=priority,
+        item_type=type_,
+        status="open",
+        issue=issue_ref,
+        research_first=research_first,
+        files=files,
+        suggested_location=suggested_location,
     )
-    body = _build_item_body(research_first, files, suggested_location)
-    _write_local_item(filepath, fm_str, body, issue_num, out)
+    if issue_num:
+        item_to_write.metadata.last_synced = now_iso()
+    save_item(item_to_write, filepath)
 
     out.info(f"Backlog item created.\n  Title: {title}\n  Priority: {priority}\n  File: {filepath.name}")
     if issue_num:
@@ -1635,6 +1936,33 @@ def _merge_section_entries(existing: _SectionMetadata, new_entries: list[dict[st
     return {"num_entries": active_count, "num_struck": struck_count, "entries": all_entries}
 
 
+def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, _SectionMetadata]:
+    """Build sections metadata directly from a YAML BacklogItem's structured sections.
+
+    Used when the item has no raw markdown body (i.e. it was created as a ``.yaml``
+    file) but its ``sections`` field carries structured ``Section`` objects.
+
+    Args:
+        item: The BacklogItem whose sections to convert.
+
+    Returns:
+        Mapping of section name to entry metadata in the same format as
+        ``_build_sections_metadata``.
+    """
+    result: dict[str, _SectionMetadata] = {}
+    for sec_name, sec_data in item.sections.items():
+        if not isinstance(sec_data, Section):
+            continue
+        entries = sec_data.entries
+        entry_dicts: list[dict[str, str | bool]] = [
+            {"id": e.id, "struck": e.struck, "content": e.content} for e in entries
+        ]
+        active_count = sum(1 for e in entries if not e.struck)
+        struck_count = sum(1 for e in entries if e.struck)
+        result[sec_name] = {"num_entries": active_count, "num_struck": struck_count, "entries": entry_dicts}
+    return result
+
+
 def _build_sections_metadata(body: str, show: str | int | None, since: str | None) -> dict[str, _SectionMetadata]:
     """Extract ``### ``-delimited sections from *body* into a metadata dict.
 
@@ -1732,7 +2060,7 @@ def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
         sliced = entries[offset:] if offset > 0 else entries
         if limit > 0:
             sliced = sliced[:limit]
-        data["body"] = "\n\n".join(e.raw for e in sliced)
+        data["body"] = "\n\n".join(_render_entry_raw(e) for e in sliced)
         remaining = total - offset - len(sliced)
         if remaining > 0:
             data["body_truncated"] = True
@@ -1819,9 +2147,12 @@ def view_item(
     body = data.get("body", "")
 
     if include_content:
-        # Full-content path (existing behavior unchanged).
+        # Full-content path.
         if body:
             data["sections"] = _build_sections_metadata(body, parsed_show, since)
+        elif item and item.sections:
+            # YAML items have structured sections but no raw body.
+            data["sections"] = _build_sections_from_yaml_item(item)
         if body and (offset > 0 or limit > 0):
             _paginate_body(data, body, offset, limit)
     else:
@@ -1951,9 +2282,7 @@ def sync_push_groomed_content(
         if not num_str.isdigit():
             out.warn(f"  WARNING: Skipping item with invalid issue ref '{issue_ref}'")
             continue
-        body = build_issue_body_from_file(item)
-        if body is None:
-            continue
+        body = render_issue_body(item)
         try:
             issue_num = int(num_str)
             issue_node = issue_lookup.get(issue_num)
@@ -2481,6 +2810,42 @@ def _apply_strike(text: str, entry_id: str, reason: str, section: str | None) ->
     raise ValueError(msg)
 
 
+def _strike_yaml_entry(filepath: Path, entry_id: str, reason: str, section: str | None) -> None:
+    """Strike an entry in a YAML BacklogItem file.
+
+    Loads the item, finds the entry with matching *entry_id* in the specified
+    section (or any section when *section* is ``None``), marks it as struck,
+    and saves the file.
+
+    Args:
+        filepath: Path to the ``.yaml`` item file.
+        entry_id: Timestamp ID of the entry to strike.
+        reason: Human-readable strike reason.
+        section: Optional section name to scope the search.
+
+    Raises:
+        ValueError: If the entry is not found.
+    """
+    item = load_item(filepath)
+    struck_at = now_iso()
+
+    for sec_name, sec_data in item.sections.items():
+        if not isinstance(sec_data, Section):
+            continue
+        if section and sec_name.lower() != section.lower():
+            continue
+        for entry in sec_data.entries:
+            if entry.id == entry_id:
+                entry.struck = True
+                entry.struck_at = struck_at
+                entry.struck_reason = reason
+                save_item(item, filepath)
+                return
+
+    msg = f"Entry '{entry_id}' not found"
+    raise ValueError(msg)
+
+
 def strike_entry(
     selector: str, entry_id: str, reason: str, section: str | None = None, output: Output | None = None
 ) -> dict[str, str | int | bool | list[str]]:
@@ -2514,17 +2879,26 @@ def strike_entry(
         raise BacklogError(msg)
 
     filepath = Path(item.file_path)
-    text = filepath.read_text(encoding="utf-8")
 
-    try:
-        text = _apply_strike(text, entry_id, reason, section)
-    except ValueError:
-        msg = f"Entry '{entry_id}' not found in item '{item.title}'"
-        if section:
-            msg += f" section '{section}'"
-        raise ValueError(msg) from None
+    if filepath.suffix == ".yaml":
+        try:
+            _strike_yaml_entry(filepath, entry_id, reason, section)
+        except ValueError:
+            msg = f"Entry '{entry_id}' not found in item '{item.title}'"
+            if section:
+                msg += f" section '{section}'"
+            raise ValueError(msg) from None
+    else:
+        text = filepath.read_text(encoding="utf-8")
+        try:
+            text = _apply_strike(text, entry_id, reason, section)
+        except ValueError:
+            msg = f"Entry '{entry_id}' not found in item '{item.title}'"
+            if section:
+                msg += f" section '{section}'"
+            raise ValueError(msg) from None
+        filepath.write_text(text, encoding="utf-8")
 
-    filepath.write_text(text, encoding="utf-8")
     out.info(f"Struck entry {entry_id} in {filepath.name}")
 
     # Sync to GitHub if item has an issue
@@ -2533,11 +2907,10 @@ def strike_entry(
         if repository:
             try:
                 num = int(item.issue.lstrip("#"))
-                body = build_issue_body_from_file(item)
-                if body is not None:
-                    owner, repo_name = repository.full_name.split("/", 1)
-                    issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
-                    _update_issue_graphql(repository, issue_node["id"], body=body)
+                body = render_issue_body(item)
+                owner, repo_name = repository.full_name.split("/", 1)
+                issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
+                _update_issue_graphql(repository, issue_node["id"], body=body)
                 out.info(f"  Synced strike to GitHub issue {item.issue}")
             except (GithubException, BacklogError) as e:
                 out.warn(f"  WARNING: Could not sync to GitHub: {e}")
@@ -2560,8 +2933,12 @@ def normalize_items(dry_run: bool = False, output: Output | None = None) -> dict
     if not _models.BACKLOG_DIR.exists():
         msg = f"{_models.BACKLOG_DIR} not found"
         raise BacklogError(msg)
-    pattern = re.compile(r"^(p0|p1|p2|ideas|completed)-[a-z0-9-]+\.md$", re.IGNORECASE)
-    files = sorted(f for f in _models.BACKLOG_DIR.glob("*.md") if pattern.match(f.name))
+    pattern = re.compile(r"^(p0|p1|p2|ideas|completed)-[a-z0-9-]+\.(md|yaml)$", re.IGNORECASE)
+    yaml_files = list(_models.BACKLOG_DIR.glob("*.yaml"))
+    md_files = list(_models.BACKLOG_DIR.glob("*.md"))
+    yaml_stems = {f.stem for f in yaml_files}
+    all_candidate_files = yaml_files + [f for f in md_files if f.stem not in yaml_stems]
+    files = sorted(f for f in all_candidate_files if pattern.match(f.name))
     if not files:
         out.info("No backlog item files found")
         return {"normalized": 0, **out.to_dict()}
@@ -2599,7 +2976,7 @@ def _write_issue_node_to_cache(
 
     if filepath is None:
         slug = title_to_slug(clean_title)
-        filename = f"{fields.priority.lower()}-{slug}.md"
+        filename = f"{fields.priority.lower()}-{slug}.yaml"
         filepath = _models.BACKLOG_DIR / filename
 
     _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -2633,19 +3010,21 @@ def _write_issue_node_to_cache(
         if diff_mode:
             diff_str = generate_diff(old_body, fields.body)
     else:
-        # Create new cache file from GitHub issue
-        fm_str = build_backlog_frontmatter(
-            name=clean_title,
+        # Create new cache file from GitHub issue as YAML
+        remote_item = parse_issue_body_sync(fields.body)
+        new_item = BacklogItem(
+            title=clean_title,
             description=extract_description_from_issue_body(fields.body),
             source=f"GitHub Issue #{issue_num}",
             added=today(),
             priority=fields.priority,
-            type_val=fields.item_type,
+            item_type=fields.item_type,
             status=fields.status,
             issue=f"#{issue_num}",
+            sections=remote_item.sections,
         )
-        filepath.write_text(fm_str.rstrip() + "\n\n" + fields.body + "\n", encoding="utf-8")
-        update_item_metadata(filepath, {"metadata": {"last_synced": now_iso()}}, output=out)
+        new_item.metadata.last_synced = now_iso()
+        save_item(new_item, filepath)
 
     return filepath, diff_str
 
