@@ -12,6 +12,7 @@ context: fork
 # Create Backlog Item
 
 Capture a new backlog item via `mcp__plugin_dh_backlog__backlog_add`. The MCP server handles persistence and GitHub Issue creation.
+See [backlog lifecycle overview](../../docs/backlog-lifecycle.md) for the end-to-end flow.
 
 ## PROHIBITED: Backlog Items Describe Problems, Not Solutions
 
@@ -61,7 +62,9 @@ Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUse
 2. Call `mcp__plugin_dh_backlog__backlog_list()` to search existing items for related titles and understand priority patterns.
 3. Derive all fields from the research file, task description, and available context:
    - **Title**: from `<item_title/>` onward
-   - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
+   - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P2)
+     P1 requires either a matched urgency keyword or explicit --priority=P1 flag.
+     P0 is never assigned by auto-mode — P0 must be set manually.
    - **Description**: summarize problem space and desired outcome from research file — do NOT include implementation steps, architecture ideas, proposed solutions, required changes, or file-level prescriptions. If the research file contains fix instructions, strip them. Keep only: what is broken, where it was observed, what the impact is.
    - **Verbatim user report**: the `<item_title/>` argument string, reproduced exactly — character for character, no trimming, no reformatting.
    - **Source**: `"Agent task — auto-derived from research/{filename}"`
@@ -71,7 +74,7 @@ Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUse
 
 ```text
 [AUTO] Title: {title} — from <item_title/> onward
-[AUTO] Priority: P1 — inferred from description (no urgency keywords found, defaulting P1)
+[AUTO] Priority: P2 — inferred from description (no urgency keywords found, defaulting P2)
 [AUTO] Description: derived from research/skill-generation-tools/vercel-labs-skills.md
 [AUTO] Source: Agent task — auto-derived from research/skill-generation-tools/vercel-labs-skills.md
 [AUTO] Type: Feature — inferred from "integrate" keyword
@@ -266,3 +269,9 @@ Next steps:
 - `backlog_add` MCP tool invoked successfully (no `error` key in response)
 - GitHub Issue created and linked (P0/P1 only, if create_issue=true; MCP tool handles)
 - Next-step commands shown to user
+
+## Handoff
+
+```text
+NEXT: skill="groom-backlog-item" args="{item title}" condition="item created successfully AND metadata.status=needs-grooming"
+```
