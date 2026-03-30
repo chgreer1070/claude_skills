@@ -85,17 +85,19 @@ If operation is `resolve`:
 
 1. Extract `**Plan**:` field from the matched item. If absent, skip to Step 5.7 (no plan = simple resolve with summary only).
 
-2. Read the plan file. Count:
-   - `total_tasks` — lines matching `- \[ \]` or `- \[x\]`
-   - `checked_tasks` — lines matching `- \[x\]`
+2. Extract the plan address from the plan path (e.g., `plan/P398-backlog-lifecycle-process-gaps.yaml` → `P398`). Call:
 
-3. If `checked_tasks < total_tasks`:
+   ```text
+   mcp__plugin_dh_sam__sam_status(plan="{address}")
+   ```
+
+   From the response, read `status_counts`. A plan is complete when `status_counts.not_started == 0` and `status_counts.in_progress == 0` and `status_counts.blocked == 0`.
+
+3. If any tasks are not complete (`not_started > 0` or `in_progress > 0` or `blocked > 0`):
 
 <eg>
-Checklist incomplete: {checked_tasks}/{total_tasks} tasks done.
-
-Remaining:
-{list of unchecked task lines}
+Plan incomplete: {status_counts.complete}/{total} tasks done.
+Not started: {not_started} | In progress: {in_progress} | Blocked: {blocked}
 
 Complete all tasks before resolving, or use /work-backlog-item close {title} to dismiss.
 </eg>

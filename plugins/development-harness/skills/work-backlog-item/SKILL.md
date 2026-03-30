@@ -89,8 +89,6 @@ flowchart TD
 
 Full procedure (MCP error handling, display format, response handling): [step-procedures.md](./references/step-procedures.md#step-1-1-interactive-browser)
 
-**Routing:** If `<mode/>` is `close` or `resolve`, extract `<item_ref/>`+ as the title and jump directly to Step 5.1.
-
 ### Step 1.2: Issue-First Path (`#N`, bare number, or GitHub URL)
 
 **Trigger:** `<mode/>` matches `#[0-9]+`, is a bare number, or is a GitHub issue URL (`https://github.com/.../issues/N`).
@@ -344,12 +342,6 @@ flowchart TD
 - `resolve --force` = bypass the `status:verified` gate (Step 5.4) and the open-PR gate (Step 5.7) with a warning. Use when label automation failed or when forcing a local-cache resolve while a PR is still open.
 
 Full step-by-step procedure (5.2–5.7): [close-resolve-procedure.md](./references/close-resolve-procedure.md)
-
-After `backlog_resolve` succeeds, query the milestone for remaining open issues. If `open_issues == 0`, emit the following NEXT token:
-
-```text
-NEXT: skill="complete-milestone" args="{milestone number}" condition="all milestone issues status:done OR status:resolved AND open_issues == 0"
-```
 
 ## Reference Index
 

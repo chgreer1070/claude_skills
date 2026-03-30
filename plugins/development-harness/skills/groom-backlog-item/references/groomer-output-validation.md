@@ -68,9 +68,10 @@ flowchart TD
     PresenceResult -->|"Yes"| ScopeCheck["Scan groomer sections for prohibited patterns"]
     PresenceResult -->|"No — sections missing"| MissingList["Build list of missing section names"]
     MissingList --> AttemptCount{"Validation attempts so far?"}
-    AttemptCount -->|"First attempt"| RetryHaiku["Spawn haiku groomer with targeted prompt:<br>'Write ONLY these missing sections: {list}<br>Do not repeat existing content'<br>Return to GatherSections after completion"]
-    AttemptCount -->|"Second attempt"| RetrySonnet["Escalate to sonnet groomer<br>Same targeted prompt<br>Return to GatherSections after completion"]
-    AttemptCount -->|"Third attempt"| Blocked(["backlog_update(status='blocked')<br>Report to user: grooming failed after 3 attempts<br>Missing: {list}<br>STOP — do not proceed to Step 9"])
+    AttemptCount -->|"First attempt"| RetryHaiku1["Spawn haiku groomer with targeted prompt:<br>'Write ONLY these missing sections: {list}<br>Do not repeat existing content'<br>Return to GatherSections after completion"]
+    AttemptCount -->|"Second attempt"| RetryHaiku2["Spawn haiku groomer again (second pass)<br>Same targeted prompt<br>Return to GatherSections after completion"]
+    AttemptCount -->|"Third attempt"| RetrySonnet["Escalate to sonnet groomer<br>Same targeted prompt<br>Return to GatherSections after completion"]
+    AttemptCount -->|"Fourth attempt"| Blocked(["backlog_update(status='blocked')<br>Report to user: grooming failed after 4 attempts<br>Missing: {list}<br>STOP — do not proceed to Step 9"])
 
     ScopeCheck --> ScopeResult{"Prohibited patterns found?"}
     ScopeResult -->|"No patterns"| ValidationPass(["VALIDATION PASS — proceed to Step 9 write"])

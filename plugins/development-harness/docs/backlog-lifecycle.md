@@ -460,5 +460,5 @@ SOURCE: Architect spec Issue #398, Section 7 (AC3 validation schema) (accessed 2
 - [State Machine](../skills/backlog/references/state-machine.md) — canonical state DAG source
 - [Feasibility Gate](../skills/work-backlog-item/references/feasibility-gate.md) — Step 3.4 procedure
 - [Groomer Output Validation](../skills/groom-backlog-item/references/groomer-output-validation.md) — Step 8.7 procedure
-- [Architect Spec Issue #398](~/.dh/projects/-home-ubuntulinuxqa2-repos-claude_skills/plan/architect-backlog-lifecycle-process-gaps.md) — authoritative design decisions
-- [Codebase Architecture Analysis](~/.dh/projects/-home-ubuntulinuxqa2-repos-claude_skills/plan/codebase/backlog-lifecycle-architecture.md) — Phase 2 analysis
+- Architect Spec — access via `artifact_read(issue_number=398, artifact_type="architect")` — authoritative design decisions
+- Codebase Architecture Analysis — access via `artifact_read(issue_number=398, artifact_type="codebase-analysis")` — Phase 2 analysis

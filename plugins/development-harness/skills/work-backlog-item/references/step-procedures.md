@@ -154,7 +154,7 @@ If evidence shows the work is already done:
 
 In AUTO_MODE: log `[AUTO] Work already implemented — closing #{N} with evidence: {sha/PR}` and stop.
 
-If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
+If no evidence, proceed to Step 2.2 (GitHub Issue Sync).
 
 ---
 
@@ -203,8 +203,8 @@ If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
    - `G [number]` — invoke `Skill(skill="groom-backlog-item", args="{item title}")` then re-display the list
    - `G all` — invoke `Skill(skill="groom-backlog-item", args="all")` then re-display the list
    - `D [number]` — display the full item description, research_first field, and groomed content (if present in the item file under `## Groomed`), then re-display the list
-   - `C [number]` — proceed to Step 9 (close path) with that item's title
-   - `R [number]` — proceed to Step 9 (resolve path) with that item's title
+   - `C [number]` — proceed to Step 5.1 (close path) with that item's title
+   - `R [number]` — proceed to Step 5.1 (resolve path) with that item's title
 
 ---
 
@@ -426,7 +426,7 @@ Backlog item "{title}" is now planned.
 - Plan: accessible via `sam_read(plan="{slug}")` MCP tool
 - To execute:      /implement-feature {slug}
 - To check status: /implementation-manager status . {slug}
-- To close when done: /work-backlog-item close {slug}
+- To close when done: /work-backlog-item close {title}
 ```
 
 **Do NOT close the GitHub Issue directly.** Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages or PR bodies — issue closure is handled exclusively by `/complete-implementation` in its final commit step. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__plugin_dh_backlog__backlog_resolve` before the PR has merged.
