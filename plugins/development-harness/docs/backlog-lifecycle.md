@@ -455,6 +455,53 @@ SOURCE: Architect spec Issue #398, Section 7 (AC3 validation schema) (accessed 2
 
 ---
 
+## 7. Severity Counting Policy
+
+### Discrete Severity Tiers
+
+Process audit findings use four discrete severity tiers, in descending order:
+
+```text
+HIGH > MEDIUM > LOW-MEDIUM > LOW
+```
+
+**LOW-MEDIUM** is a distinct tier. It applies when a finding is more impactful than LOW but does
+not clearly meet the MEDIUM threshold (e.g., a gap that causes reporting ambiguity without
+blocking execution).
+
+### Counting Rules
+
+When reporting severity totals (e.g., "3 HIGH, 5 MEDIUM, 3 LOW"):
+
+1. **Count each tier separately.** Do not collapse LOW-MEDIUM into either LOW or MEDIUM.
+2. **Report LOW-MEDIUM explicitly** as its own row/count in the severity summary table.
+3. **If a collapsed "total low severity" is needed**, LOW-MEDIUM counts toward the LOW bucket for that aggregate only, and the note "includes N LOW-MEDIUM" must accompany the aggregate.
+
+### Example
+
+A 10-finding audit with: 2 HIGH, 5 MEDIUM, 1 LOW-MEDIUM, 2 LOW reports as:
+
+```text
+HIGH:        2
+MEDIUM:      5
+LOW-MEDIUM:  1
+LOW:         2
+Total:       10
+```
+
+Not as:
+
+```text
+HIGH:    2
+MEDIUM:  5
+LOW:     3   ← WRONG — collapses LOW-MEDIUM without annotation
+```
+
+SOURCE: Architect spec Issue #398, Section 9 (AC7 severity policy decision) (accessed 2026-03-30).
+Decision: "treat severity-count ambiguity as a documentation/policy deliverable during implementation" (RT-ICA 2026-03-03).
+
+---
+
 ## References
 
 - [State Machine](../skills/backlog/references/state-machine.md) — canonical state DAG source
