@@ -13,6 +13,8 @@ Orchestrate autonomous backlog refinement: verify claims, clarify scope, estimat
 
 **Scope boundary**: Grooming answers "what needs to be done, is the problem clear, and what do we have to work with?" It does NOT answer "how should it be built." Architecture, task decomposition, and implementation design happen in the SAM planning phase (`/work-backlog-item` Step 6). Grooming produces a DEEP item (Detailed appropriately, Estimated, Emergent, Prioritized) — not a plan. The human provides direction and priorities; the agent does the research, fact-checking, and resource mapping autonomously.
 
+See the [Backlog Lifecycle reference](../../docs/backlog-lifecycle.md) for the complete state machine, handoff protocol, and data architecture.
+
 ## Arguments
 
 `<groom_scope/>` accepts:
@@ -48,7 +50,8 @@ flowchart TD
     S48 --> S85["Step 8.5 — RT-ICA Final Pass<br>Re-assess all conditions with full swarm output<br>Replace snapshot in item"]
     S85 --> FinalDecision{"RT-ICA Final<br>Decision?"}
     FinalDecision -->|"BLOCKED — MISSING conditions remain"| BlockedStop(["STOP — present missing inputs to user<br>Do not proceed to Step 9"])
-    FinalDecision -->|"APPROVED — all conditions resolved"| S9["Step 9 — Write groomed content<br>to item files via MCP tools"]
+    FinalDecision -->|"APPROVED — all conditions resolved"| S87["Step 8.7 — Groomer Output Validation Gate<br>Load references/groomer-output-validation.md"]
+    S87 --> S9["Step 9 — Write groomed content<br>to item files via MCP tools"]
     S9 --> Done(["Item fully groomed and synced"])
 ```
 
@@ -62,12 +65,22 @@ The following diagram is the authoritative procedure for the Step 2 validity che
 
 ```mermaid
 flowchart TD
-    ItemIn(["Item selected for grooming"]) --> C1{"Is the job still valid?<br>Does this item still belong<br>in the backlog given current context?"}
-    C1 -->|"No — scope, priority, or context changed"| InvalidSkip(["Report invalid — skip grooming for this item"])
-    C1 -->|"Yes — item is still relevant"| C2{"Search for evidence work is already done<br>git log --grep keyword + mcp: backlog_list_merged_prs(search=keyword)<br>+ read files at suggested_location<br>Does evidence of completion exist?"}
-    C2 -->|"Yes — evidence found"| AlreadyDone["Comment evidence on GitHub issue (if exists)<br>mcp: backlog_comment_issue(issue_number=N, body='Completed via PR')<br>Close GitHub issue: mcp: backlog_close(selector='#N')<br>Call backlog_resolve with PR/SHA summary"]
+    ItemIn(["Item selected for grooming"]) --> O1{"Observable check A: Prior implementation<br>git log --oneline --all -50 --grep='{title keywords}'<br>AND backlog_list_merged_prs(search='{title keywords}')<br>Commits or merged PRs found?"}
+    O1 -->|"Commit or merged PR references this item"| AlreadyDone["Comment evidence on GitHub issue (if exists)<br>mcp: backlog_comment_issue(issue_number=N, body='Completed via PR')<br>Close GitHub issue: mcp: backlog_close(selector='#N')<br>Call backlog_resolve with PR/SHA summary"]
     AlreadyDone --> DoneSkip(["Report to user — skip grooming for this item"])
-    C2 -->|"No evidence of completion found"| C3{"Does item have a GitHub issue?<br>Check metadata.issue or index link #N"}
+    O1 -->|"No commits or PRs found"| O2{"Observable check B: Location validity<br>Glob(suggested_location) returns results?<br>OR suggested_location absent from item?"}
+    O2 -->|"Path exists OR no suggested_location in item"| O3
+    O2 -->|"Path not found AND description requires it"| LocationGone{"Grep codebase for module name or class<br>from suggested_location path — substitute found?"}
+    LocationGone -->|"Substitute path found"| UpdateSuggested["Update suggested_location via backlog_update — proceed as valid"]
+    LocationGone -->|"No substitute"| InvalidSkip(["C1 INVALID: suggested_location gone with no substitute<br>Report and skip — recommend close or re-groom"])
+    UpdateSuggested --> O3
+    O3{"Observable check C: Age and activity<br>metadata.added older than 90 days?<br>AND metadata.groomed absent?<br>AND no GitHub issue comments? AND no plan?"}
+    O3 -->|"Age 90 days or less OR has recent activity"| C3
+    O3 -->|"Age over 90 days AND no activity"| AgeStale{"backlog_list — scan all titles for keyword overlap<br>with this item's title keywords<br>Any item added in last 30 days with overlap?"}
+    AgeStale -->|"No overlap found"| C3
+    AgeStale -->|"Overlap found"| Superseded(["WARN: possibly superseded by '{newer title}'<br>Interactive: AskUserQuestion<br>AUTO_MODE: log WARN and proceed"])
+    Superseded --> C3
+    C3{"Does item have a GitHub issue?<br>Check metadata.issue or index link #N"}
     C3 -->|"No GitHub issue"| C4Check{"Check item file's 'groomed' frontmatter field<br>Does groomed == today's date AND<br>item has all required sections?"}
     C3 -->|"Yes — call backlog_view selector='#N'<br>Check 'state' field in returned dict"| IssueState{"state field<br>value?"}
     IssueState -->|"open"| C4Check
@@ -327,42 +340,7 @@ For each TodoItem, answer these five questions:
 
 Mark each TodoItem complete after answering. Any system with at least one "yes" answer goes into the Impact Radius output.
 
-**Impact Radius output format:**
-
-```markdown
-## Impact Radius
-
-### Code — Producers (write the changed interface)
-- `{path}::{function_name}` — {what it produces, what change is needed}
-
-### Code — Consumers (read the changed interface)
-- `{path}::{function_name}` — {what it consumes, what migration is needed}
-
-### Code — Other References
-- `{path}` — {import/constant/type reference, what change is needed}
-
-### Documentation (will become stale)
-- `{path}` — {what section becomes inaccurate}
-
-### Configuration / CI
-- `{path}` — {what change is needed}
-
-### Agent Instructions (instruct AI to use current interface)
-- `{path}` — {what instruction needs updating}
-
-### Systems Inventory
-{full list of TodoItems with roles and connections, for planner completeness verification}
-
-### Ecosystem Completeness Checklist
-- [ ] Every code producer updated or verified compatible
-- [ ] Every code consumer migrated to new interface
-- [ ] Every stale document updated
-- [ ] Every agent instruction updated
-- [ ] Old interface deprecated or removed (if replacing)
-- [ ] CI/config files updated and validated
-```
-
-If a category has no affected files, write `None identified.` — do not omit the category.
+**Impact Radius output format**: Six named categories (Code Producers, Code Consumers, Code Other References, Documentation, Configuration/CI, Agent Instructions) plus a Systems Inventory and Ecosystem Completeness Checklist. Full format template: [groomer-agent.md — Impact Radius Output Format](./references/groomer-agent.md#impact-radius-output-format). If a category has no affected files, write `None identified.` — do not omit the category.
 
 #### Fact-Check — evidence rules
 
@@ -371,6 +349,10 @@ The fact-checker teammate (or agent) verifies item claims against primary source
 Output: `Fact-Check Summary` with claims checked, VERIFIED/REFUTED/INCONCLUSIVE counts, and citations.
 
 REFUTED claims become MISSING conditions in RT-ICA. INCONCLUSIVE claims become DERIVABLE.
+
+#### Fact-Checker Output Contract
+
+Required fields (`verdict`, `claim`, `evidence`, `source`) and validation rules (reject on missing verdict, INCONCLUSIVE on missing evidence, REFUTED→MISSING / INCONCLUSIVE→DERIVABLE RT-ICA mapping): [groomer-agent.md — Fact-Checker Output Contract](./references/groomer-agent.md#fact-checker-output-contract).
 
 #### RT-ICA — information completeness
 
@@ -430,6 +412,7 @@ RT-ICA Final report format:
 
 ```text
 RT-ICA Final: {item title}
+Date: {YYYY-MM-DD}
 Goal: {same as snapshot}
 Conditions:
 1. {condition} | Snapshot: {AVAILABLE|DERIVABLE|MISSING} → Final: {AVAILABLE|DERIVABLE|MISSING} | Citation: {tool result}
@@ -441,21 +424,15 @@ Changes from snapshot:
 Decision: {APPROVED|BLOCKED}
 ```
 
-**BLOCKED batch format (when MISSING conditions remain after self-resolution pass):**
+**BLOCKED batch format**: Full template for presenting unresolved MISSING conditions to the user: [groomer-agent.md — RT-ICA BLOCKED Batch Format](./references/groomer-agent.md#rt-ica-blocked-batch-format).
 
-```text
-RT-ICA: BLOCKED
+### Step 8.7: Groomer Output Validation Gate (Pre-Write Gate)
 
-The following inputs could not be resolved autonomously.
+Runs when RT-ICA Final Decision is APPROVED, before `backlog_groom(mark_groomed=True)` in Step 9.
 
-[Category]:
-- Question: {what is unknown}
-  Tried: {tools used, what they returned}
-  Options found: {a) option with trade-off | b) option with trade-off | c) open-ended}
+Full procedure (7-section presence check, scope boundary check, retry/escalation flowchart): [groomer-output-validation.md](./references/groomer-output-validation.md). Scope violations are logged as notes but do not block the write; failures after 3 attempts mark status `blocked` and stop.
 
-Answer what you can — skip what you don't know.
-Grooming will not proceed to Step 9 with unresolved gaps.
-```
+---
 
 ### Step 9: Write Groomed Content via MCP
 
@@ -559,6 +536,16 @@ The MCP server merges sections, updates the item status, and syncs to the GitHub
 ```
 
 Per-item groomed content lives in each item file; this session file holds only metadata and cross-item findings.
+
+### Handoff B: Grooming to Milestone Grouping
+
+When Step 9 completes with `mark_groomed=True` applied and `metadata.status=groomed`:
+
+```text
+NEXT: skill="group-items-to-milestone" args="" condition="mark_groomed=True applied AND metadata.status=groomed"
+```
+
+---
 
 ## Example Invocations
 
