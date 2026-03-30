@@ -932,6 +932,7 @@ class TestGrepAuditOldPaths:
         "dh_migrate.py",  # Migration tool — must reference old paths to move them
         "get_task_context.py",  # Docstring explaining migration
         "migrate_task_format.py",  # Task format migration script
+        "migrate_backlog_to_yaml.py",  # Migration script — default CLI arg is the source path to migrate from
     )
 
     # Patterns that are acceptable in docstrings and doc-examples (not path construction)
