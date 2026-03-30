@@ -100,6 +100,36 @@ Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 > already declares skills via its frontmatter, task-level skills supplement them (they do not
 > replace agent-level skills). Loading the same skill twice is a no-op.
 
+### Agent Health Check (While Waiting)
+
+After dispatching a batch, the orchestrator waits for completion messages. Trigger a health check when any of these occur:
+
+- No message received from any dispatched agent after ~10 minutes of silence
+- User asks about agent status
+- `git log` shows no new commits when implementation work should be in progress
+
+**Never read JSONL session files directly in the orchestrator context.** Session files can exceed 40K tokens. Always delegate to `agentskill-kaizen:transcript-analyst` with an empty context window.
+
+Session JSONL files are at `~/.claude/projects/{project-slug}/*.jsonl`, filterable by `agentId` field. The `{project-slug}` is the absolute project path with `/` replaced by `-` (e.g. `/home/user/repos/myproject` → `-home-user-repos-myproject`).
+
+```mermaid
+flowchart TD
+    Trigger([Health check triggered]) --> Spawn
+    Spawn["Task is session health summary<br>subagent_type='agentskill-kaizen:transcript-analyst'<br>Context: agent name or teammate ID to check,<br>JSONL dir ~/.claude/projects/{project-slug}/*.jsonl<br>Report: last turn timestamp, last tool call,<br>verdict of crashed / idle / active"]
+    Spawn --> Verdict{Analyst verdict}
+    Verdict -->|"Crashed — session ended abruptly<br>after sam_claim with no further turns"| Confirm
+    Confirm["Confirm task state via<br>mcp__plugin_dh_sam__sam_read(task_id)<br>Verify task is still CLAIMED"] --> Respawn
+    Respawn["Re-spawn agent with same task file path and task ID<br>SubagentStop hook updates status on completion"]
+    Verdict -->|"Idle — no tool calls for 5+ min<br>agent appears stuck mid-task"| TeamCheck{Agent is a teammate<br>in an active team?}
+    TeamCheck -->|Yes| SendMsg["SendMessage to teammate<br>'Are you blocked? What is your current status?'<br>Wait 2 minutes for response"]
+    TeamCheck -->|"No — spawned via single Agent call"| Respawn
+    SendMsg --> MsgCheck{Response received<br>within 2 min?}
+    MsgCheck -->|Yes — agent responds| Waiting
+    MsgCheck -->|No — still silent| Respawn
+    Verdict -->|"Active — tool calls within last 2–3 min"| Waiting
+    Waiting[Continue waiting] --> Later["Re-check after 5–10 min<br>if completion message still absent"]
+```
+
 4. After each agent returns, check its output for a `<concerns>` block. If present, append each concern to the backlog item as a checklist entry:
 
 ```text
