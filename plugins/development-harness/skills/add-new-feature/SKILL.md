@@ -82,6 +82,12 @@ statements of fact without citation, code smells, missing documentation.
 
 ---
 
+## Plan Artifact Taxonomy
+
+Plan artifacts are either **human-decision** (immutable — backlog items, grooming output, interview transcripts) or **generated** (mutable but intent-bound — feature context, architecture spec, task plan). Full taxonomy and divergence rules: [Plan Artifact Lifecycle Policy](../../docs/plan-artifact-lifecycle.md).
+
+---
+
 ## Phase 1: Discovery (@dh:feature-researcher)
 
 **WHAT / WHY only.** The feature-researcher produces problem space and desired outcome — not implementation approach. Output describes what is wanted and why; it does not prescribe how to build it.

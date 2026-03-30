@@ -7,6 +7,7 @@ skills:
   - dh:subagent-contract
   - dh:final-verification
   - dh:validation-protocol
+  - ccc
 color: green
 ---
 

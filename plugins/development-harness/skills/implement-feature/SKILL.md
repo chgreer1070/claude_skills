@@ -205,6 +205,12 @@ If the issue number is not known, skip registration. The artifacts remain discov
 
 ---
 
+## Variant: Worktree Isolation
+
+**Worktree isolation variant**: For milestone-scoped execution where each item gets its own worktree, use `/work-milestone` instead. See [work-milestone SKILL.md](../work-milestone/SKILL.md).
+
+---
+
 ## Completion Gate
 
 When all tasks show `COMPLETE`, invoke:

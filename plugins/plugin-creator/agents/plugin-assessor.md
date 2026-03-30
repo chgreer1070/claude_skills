@@ -6,6 +6,7 @@ skills:
   - plugin-creator:claude-skills-overview-2026
   - plugin-creator:claude-plugins-reference-2026
   - plugin-creator:hooks-guide
+  - ccc
 ---
 
 # Plugin Assessor

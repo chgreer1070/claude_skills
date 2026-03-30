@@ -5,6 +5,7 @@ model: haiku
 color: orange
 skills:
   - dh:subagent-contract
+  - ccc
 ---
 
 # Documentation Drift Auditor

@@ -6,6 +6,7 @@ tools: Read, Bash, Grep, Glob, mcp__git-forensics__analyze_file_changes, mcp__pl
 skills:
   - dh:subagent-contract
   - dh:validation-protocol
+  - ccc
 color: blue
 ---
 

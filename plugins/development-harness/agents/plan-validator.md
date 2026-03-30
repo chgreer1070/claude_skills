@@ -5,6 +5,7 @@ tools: Read, Grep, Glob, Bash, mcp__plugin_dh_sequential_thinking__sequentialthi
 model: haiku
 skills:
   - dh:subagent-contract
+  - ccc
 color: green
 ---
 

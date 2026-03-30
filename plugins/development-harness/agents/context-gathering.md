@@ -6,6 +6,7 @@ model: haiku
 color: cyan
 skills:
   - dh:subagent-contract
+  - ccc
 ---
 
 # Context-Gathering Agent

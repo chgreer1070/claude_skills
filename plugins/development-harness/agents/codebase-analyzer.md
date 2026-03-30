@@ -5,6 +5,7 @@ tools: Read, Bash, Grep, Glob, Write, Edit, mcp__git-forensics__analyze_file_cha
 model: haiku
 skills:
   - dh:subagent-contract
+  - ccc
 color: cyan
 ---
 

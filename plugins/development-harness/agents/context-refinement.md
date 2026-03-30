@@ -6,6 +6,7 @@ model: sonnet
 color: purple
 skills:
   - dh:subagent-contract
+  - ccc
 ---
 
 # Context Refinement Agent
