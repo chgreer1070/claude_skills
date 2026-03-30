@@ -3,6 +3,7 @@ name: create-backlog-item
 description: Use when capturing a new backlog item — creates a per-item file in ~/.dh/projects/{slug}/backlog/. Three modes — guided intake (no args), quick entry (quick {title}), or fully autonomous (--auto {title}). Validates required fields, detects duplicates, and offers GitHub Issue creation for P0/P1 items.
 argument-hint: '[quick {title} | --auto {title} | <empty for guided intake>]'
 user-invocable: true
+context: fork
 ---
 
 <mode>$0</mode>

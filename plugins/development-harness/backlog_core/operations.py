@@ -11,7 +11,6 @@ import contextlib
 import json
 import operator
 import re
-import sys
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -388,10 +387,13 @@ def _auto_register_plan_artifact(item: BacklogItem, plan: str, repo: str = "", o
 def _resolve_groomed_content(
     section: str | None, content: str | None, groomed_content: str | None, groomed_file: str | None
 ) -> tuple[str, str | None]:
-    """Resolve groomed content from section/content, groomed_content, groomed_file, or stdin.
+    """Resolve groomed content from section/content, groomed_content, or groomed_file.
 
     Returns:
         Tuple of (content_string, section_name_or_None).
+
+    Raises:
+        ValidationError: If no content source is provided. stdin is not supported in MCP/agent context.
     """
     if section is not None and content is not None:
         return content, section
@@ -399,7 +401,8 @@ def _resolve_groomed_content(
         return groomed_content, None
     if groomed_file:
         return Path(groomed_file).read_text(encoding="utf-8"), None
-    return sys.stdin.read(), None
+    msg = "No groomed content provided — supply section+content, groomed_content, or groomed_file"
+    raise ValidationError(msg)
 
 
 def _extract_subsection_body(body: str, section_name: str) -> str:
@@ -2403,24 +2406,29 @@ def groom_item(
     item = find_item(items, selector)
     if not item:
         _pull_if_issue_selector(selector, repo, output=out)
-    result = update_item(
-        selector=selector,
-        plan=None,
-        status=None,
-        create_issue=False,
-        groomed_file=groomed_file,
-        groomed_content=groomed_content,
-        section=section,
-        content=content,
-        groomed=not has_input,
-        repo=repo,
-        output=out,
-        entry_id=entry_id,
-        replace_section=replace_section,
-        reason=reason,
-        append=append,
-        sections=sections,
-    )
+    if has_input:
+        result = update_item(
+            selector=selector,
+            plan=None,
+            status=None,
+            create_issue=False,
+            groomed_file=groomed_file,
+            groomed_content=groomed_content,
+            section=section,
+            content=content,
+            groomed=True,
+            repo=repo,
+            output=out,
+            entry_id=entry_id,
+            replace_section=replace_section,
+            reason=reason,
+            append=append,
+            sections=sections,
+        )
+    else:
+        # No content to write — skip update_item to avoid stdin read in _resolve_groomed_content.
+        # Proceed directly to mark_groomed handling below.
+        result = {}
     if mark_groomed and "error" not in result:
         fresh_items = parse_backlog()
         fresh_item = find_item(fresh_items, selector)
