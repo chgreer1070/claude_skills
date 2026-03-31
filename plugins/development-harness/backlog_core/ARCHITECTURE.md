@@ -24,18 +24,6 @@ Local file I/O is handled by two dedicated modules:
   body text; `merge_item` merges local and remote items with conflict resolution rules. Uses
   `entry_blocks.py` for timestamped div block handling.
 
-## Dependency: frontmatter_utils
-
-`frontmatter_utils.py` wraps `python-frontmatter` with a `ruamel.yaml` round-trip handler.
-It is retained for:
-
-- `parsing.py` — legacy `.md` file parsing via `loads_frontmatter` / `dump_frontmatter`.
-  The `.md` path (`parse_item_file`) is kept for backward compatibility and migration tooling.
-- `agent_profile/parser.py` — reads agent `.md` files with YAML frontmatter via `load_frontmatter`.
-
-New code should use `yaml_io.py` (for backlog items) or `ruamel.yaml` directly. Do not add new
-callers of `frontmatter_utils`.
-
 **Bulk migration**: `scripts/migrate_backlog_to_yaml.py` converts an existing backlog directory
 from `.md` frontmatter files to `.yaml` format in-place. It uses `yaml_io.load_item` and
 `yaml_io.save_item` and deletes the source `.md` file after a successful write.
@@ -44,8 +32,7 @@ from `.md` frontmatter files to `.yaml` format in-place. It uses `yaml_io.load_i
 
 ```text
 models.py             ← standalone, no imports from other mcp modules
-frontmatter_utils.py  ← wraps python-frontmatter with ruamel.yaml; used by parsing.py and agent_profile/
-parsing.py            ← imports from models, frontmatter_utils; re-exports loads_frontmatter/dump_frontmatter
+parsing.py            ← imports from models; provides loads_frontmatter/dump_frontmatter (ruamel.yaml-based)
 entry_blocks.py       ← timestamped entry block parse/render/rewrite; imports from models, parsing
 yaml_io.py            ← pure-YAML read/write for .yaml backlog items; imports from models, parsing
 github_sync.py        ← GitHub issue body conversion (render/parse/merge); imports from models, parsing, entry_blocks
@@ -168,22 +155,14 @@ All constants, all exception classes, all Pydantic models.
 - Item search: `find_item()`, `find_fuzzy_duplicates()`
 - Item filtering: `items_needing_issues()`, `items_with_issues()`
 - Issue body: `build_issue_body()`, `build_issue_body_from_file()`
-- Body utilities (still used by `operations.py` and `github.py`): `extract_body_field_pairs()`,
-  `apply_field_to_result()`, `merge_field_into_result()`, `parse_body_extra_fields()`,
-  `extract_groomed_section()`, `build_body_extra_only()`, `append_or_replace_section()`,
-  `reconstruct_body_from_sections()`, `merge_sections()`
+- Body utilities: `extract_groomed_section()`, `build_body_extra_only()`, `merge_sections()`
 - Section extraction (used by `github_sync.py`): `extract_sections()`, `extract_groomed_section()`
 - View helper: `view_result_from_local_item()`
 - Normalize helper: `extract_normalize_metadata()`
 
-**Deprecated / legacy**: `build_backlog_frontmatter()` — builds `.md` frontmatter; superseded by
-`yaml_io.save_item()` for new items. Retained because test coverage depends on it.
-
 **Exports**: All functions above (without leading underscores).
-Also re-exports `loads_frontmatter` and `dump_frontmatter` from `frontmatter_utils` for backward
-compatibility with `operations.py` callers.
 
-**Imports from other modules**: `from .models import ...`, `from .frontmatter_utils import ...`.
+**Imports from other modules**: `from .models import ...`, `from ruamel.yaml import YAML, YAMLError`.
 
 ---
 
