@@ -234,23 +234,26 @@ class TestHandleBatchGroomedGithubSync:
         spy.assert_called_once_with("#77", "The decision is X.", "Decision", "owner/repo", output=mocker.ANY)
 
     def test_all_local_writes_precede_any_github_sync(self, tmp_path: Path, mocker: MockerFixture) -> None:
-        """Verify all Phase 1 local writes complete before any Phase 2 GitHub sync call.
+        """Verify Phase 1 local save completes before any Phase 2 GitHub sync call.
 
         Tests: _handle_batch_groomed two-phase ordering guarantee.
-        How: Record call order via shared call_log side effects on both mocked functions.
-        Why: Phase 1 must fully complete before Phase 2 — the function must not
-             interleave local writes and GitHub API calls.
+        How: Record call order via shared call_log side effects on save_item (Phase 1)
+             and _write_groomed_to_github (Phase 2).
+        Why: Phase 1 (save_item) must fully complete before Phase 2 begins — the
+             function must not interleave local writes and GitHub API calls.
+             P964 changed Phase 1 from per-section _write_groomed_to_item_file calls
+             to a single load-once-save-once save_item call.
         """
         call_log: list[str] = []
 
-        def _local_write(*args, **kwargs) -> None:
+        def _local_save(*args, **kwargs) -> None:
             call_log.append("local")
 
         def _github_write(*args, **kwargs) -> bool:
             call_log.append("github")
             return True
 
-        mocker.patch("backlog_core.operations._write_groomed_to_item_file", side_effect=_local_write)
+        mocker.patch("backlog_core.operations.save_item", side_effect=_local_save)
         mocker.patch("backlog_core.operations._write_groomed_to_github", side_effect=_github_write)
         mocker.patch("backlog_core.operations.update_item_metadata")
 
@@ -264,8 +267,10 @@ class TestHandleBatchGroomedGithubSync:
 
         local_indices = [i for i, v in enumerate(call_log) if v == "local"]
         github_indices = [i for i, v in enumerate(call_log) if v == "github"]
-        assert local_indices == [0, 1], f"Expected 2 local writes first, got: {call_log}"
-        assert github_indices == [2, 3], f"Expected 2 github writes after local, got: {call_log}"
+        # Phase 1: exactly one save_item call covering all sections
+        assert local_indices == [0], f"Expected 1 local save first, got: {call_log}"
+        # Phase 2: one GitHub call per section, all after the local save
+        assert github_indices == [1, 2], f"Expected 2 github writes after local save, got: {call_log}"
 
     def test_updates_last_synced_when_any_github_sync_succeeds(self, tmp_path: Path, mocker: MockerFixture) -> None:
         """Verify update_item_metadata is called to set last_synced after a successful sync.

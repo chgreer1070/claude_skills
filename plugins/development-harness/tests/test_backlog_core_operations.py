@@ -75,6 +75,36 @@ def _write_item(
     return filepath
 
 
+def _write_item_yaml(
+    backlog_dir: Path,
+    *,
+    title: str = "Test Item",
+    priority: str = "P1",
+    topic: str = "test-item",
+    issue: str = "",
+    skip: bool = False,
+) -> Path:
+    """Write a minimal per-item backlog file in P964 YAML format and return its path.
+
+    Uses .yaml extension so parse_backlog() reads it via the YAML path after
+    save_item() converts it during the first groom call.  Required for tests
+    that call groom_item more than once on the same item.
+    """
+    from backlog_core.models import BacklogItem, BacklogItemMetadata
+    from backlog_core.yaml_io import save_item
+
+    slug = topic
+    filename = f"{priority.lower()}-{slug}.yaml"
+    filepath = backlog_dir / filename
+    status = "done" if skip else "open"
+    metadata = BacklogItemMetadata(
+        source="test", added="2026-01-01", priority=priority, status=status, issue=issue, topic=topic
+    )
+    item = BacklogItem(title=title, description="A test item", metadata=metadata, file_path=str(filepath))
+    save_item(item, filepath)
+    return filepath
+
+
 # ---------------------------------------------------------------------------
 # Autouse fixture: redirect BACKLOG_DIR in all consuming modules
 # ---------------------------------------------------------------------------
@@ -1400,10 +1430,10 @@ class TestGroomItemEntryBlocks:
         )
         assert "error" not in result
 
-        # Read the file directly and check for entry block
+        # Read the file directly and check for P964 YAML entry block
         body = filepath.read_text(encoding="utf-8")
-        assert "<div><sub>" in body
-        assert "First decision made." in body
+        assert "entries:" in body
+        assert "content: First decision made." in body
 
     def test_groom_item_appends_second_entry(self, tmp_path: Path, mocker: MockerFixture) -> None:
         """Grooming twice appends a second entry block, preserving the first."""
@@ -1414,7 +1444,8 @@ class TestGroomItemEntryBlocks:
         import backlog_core.models as _m
 
         backlog_dir = _m.BACKLOG_DIR
-        filepath = _write_item(backlog_dir, title="Multi Entry", priority="P1", topic="multi-entry")
+        # Use .yaml file so parse_backlog() finds the item after the first save_item call
+        filepath = _write_item_yaml(backlog_dir, title="Multi Entry", priority="P1", topic="multi-entry")
 
         out = Output()
         ops.groom_item(selector="Multi Entry", section="Decision", content="First.", output=out)
@@ -1423,8 +1454,8 @@ class TestGroomItemEntryBlocks:
         body = filepath.read_text(encoding="utf-8")
         assert "First." in body
         assert "Second." in body
-        # Should have two entry blocks
-        assert body.count("<div><sub>") >= 2
+        # P964: two entries appear as two 'content:' lines in the YAML entries list
+        assert body.count("content:") >= 2
 
 
 # ---------------------------------------------------------------------------
@@ -1476,7 +1507,8 @@ class TestGroomItemAppend:
         import backlog_core.models as _m
 
         backlog_dir = _m.BACKLOG_DIR
-        filepath = _write_item(backlog_dir, title="Append Multi", priority="P1", topic="append-multi")
+        # Use .yaml file so parse_backlog() finds the item after the first save_item call
+        filepath = _write_item_yaml(backlog_dir, title="Append Multi", priority="P1", topic="append-multi")
 
         out = Output()
         ops.groom_item(selector="Append Multi", section="Concerns", content="Concern A.", output=out, append=True)
@@ -1487,8 +1519,6 @@ class TestGroomItemAppend:
         assert "Concern B." in body
         # Both concerns must be present — A must appear before B
         assert body.index("Concern A.") < body.index("Concern B.")
-        # No entry-block wrapping when append=True
-        assert "<div><sub>" not in body
 
     def test_groom_item_append_false_default_uses_entry_blocks(self, tmp_path: Path, mocker: MockerFixture) -> None:
         """append=False (default) continues to wrap content in entry blocks.
@@ -1511,8 +1541,8 @@ class TestGroomItemAppend:
 
         body = filepath.read_text(encoding="utf-8")
         assert "Default behaviour." in body
-        # Default (append=False) must still produce entry blocks
-        assert "<div><sub>" in body
+        # Default (append=False) must still produce P964 YAML entry blocks
+        assert "entries:" in body
 
 
 # ---------------------------------------------------------------------------
@@ -1524,7 +1554,7 @@ class TestStrikeEntryOperation:
     """Tests for the strike_entry public API function."""
 
     def test_strike_entry_operation(self, tmp_path: Path, mocker: MockerFixture) -> None:
-        """strike_entry wraps target entry in collapsed details."""
+        """strike_entry marks target entry as struck in the P964 YAML format."""
         import re as re_mod
 
         from backlog_core.models import Output
@@ -1534,15 +1564,16 @@ class TestStrikeEntryOperation:
         import backlog_core.models as _m
 
         backlog_dir = _m.BACKLOG_DIR
-        filepath = _write_item(backlog_dir, title="Strike Test", priority="P1", topic="strike-test")
+        # Use .yaml file so strike_entry's parse_backlog() re-finds the item after groom_item saves it
+        filepath = _write_item_yaml(backlog_dir, title="Strike Test", priority="P1", topic="strike-test")
 
         out = Output()
         ops.groom_item(selector="Strike Test", section="Decision", content="Bad info.", output=out)
 
-        # Get the entry ID by reading the file directly
+        # P964: entry ID is stored as a YAML field — extract via id: '<value>'
         body = filepath.read_text(encoding="utf-8")
-        match = re_mod.search(r"<sub>([^<]+)</sub>", body)
-        assert match is not None
+        match = re_mod.search(r"id: '([^']+)'", body)
+        assert match is not None, f"No entry id found in YAML body: {body!r}"
         entry_id = match.group(1)
 
         result = ops.strike_entry(
@@ -1552,7 +1583,7 @@ class TestStrikeEntryOperation:
         assert result["struck"] is True
 
         body = filepath.read_text(encoding="utf-8")
-        assert "struck:" in body
+        assert "struck: true" in body
         assert "based on training data" in body
 
     def test_strike_entry_not_found_raises(self, tmp_path: Path, mocker: MockerFixture) -> None:
@@ -2058,7 +2089,8 @@ class TestGroomItemMarkGroomed:
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
         backlog_dir = _m.BACKLOG_DIR
-        filepath = _write_item(backlog_dir, title="Mark Groomed Local", priority="P1", topic="mark-groomed-local")
+        # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
+        filepath = _write_item_yaml(backlog_dir, title="Mark Groomed Local", priority="P1", topic="mark-groomed-local")
 
         out = Output()
         result = ops.groom_item(
@@ -2088,7 +2120,10 @@ class TestGroomItemMarkGroomed:
         mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
 
         backlog_dir = _m.BACKLOG_DIR
-        _write_item(backlog_dir, title="Mark Groomed Github", priority="P1", topic="mark-groomed-github", issue="#123")
+        # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
+        _write_item_yaml(
+            backlog_dir, title="Mark Groomed Github", priority="P1", topic="mark-groomed-github", issue="#123"
+        )
 
         out = Output()
         result = ops.groom_item(
@@ -2151,7 +2186,10 @@ class TestGroomItemMarkGroomed:
         mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
 
         backlog_dir = _m.BACKLOG_DIR
-        _write_item(backlog_dir, title="Mark Groomed Batch", priority="P1", topic="mark-groomed-batch", issue="#789")
+        # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
+        _write_item_yaml(
+            backlog_dir, title="Mark Groomed Batch", priority="P1", topic="mark-groomed-batch", issue="#789"
+        )
 
         out = Output()
         result = ops.groom_item(
