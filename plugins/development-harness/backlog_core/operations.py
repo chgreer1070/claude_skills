@@ -681,7 +681,7 @@ def _write_groomed_to_yaml_item(
     for ``.yaml`` files.
 
     Args:
-        filepath: Path to the ``.yaml`` item file.
+        filepath: Path to the ``.yaml`` or legacy ``.md`` item file.
         groomed_content: The text to write into the section.
         section_name: Named section to update.  When ``None`` the top-level
             ``groomed`` section (stored as ``GroomedData``) is updated.
@@ -934,21 +934,23 @@ def _handle_batch_groomed(
     filepath = Path(item.file_path)
     added_date = item.added if hasattr(item, "added") and item.added else "0000-00-00"
 
-    # Phase 1: Local writes — all sections before any GitHub API call.
+    # Phase 1: Local writes — load once, apply all sections in memory, save once.
+    # Loading once avoids the legacy-MD-parser-on-YAML-content failure that occurs
+    # when save_item writes YAML to a .md filepath and a subsequent load_item on
+    # that same path incorrectly re-parses it as Markdown, losing prior sections.
     written: list[str] = []
+    batch_item = load_item(filepath)
+    today_str = today()
+    batch_item.metadata.groomed = today_str
     for section_name, content in sections.items():
-        _write_groomed_to_item_file(
-            filepath,
-            content,
-            section_name,
-            output=out,
-            entry_id=None,
-            replace_section=False,
-            reason=None,
-            added_date=added_date,
-            append=False,
+        existing_section = batch_item.sections.get(section_name)
+        section = existing_section if isinstance(existing_section, Section) else Section()
+        _apply_groomed_entries(
+            section, content, append=False, replace_section=False, reason=None, entry_id=None, added_date=added_date
         )
+        batch_item.sections[section_name] = section
         written.append(section_name)
+    save_item(batch_item, filepath)
     out.info(f"Updated {filepath.name} with {len(written)} groomed section(s)")
 
     if "Acceptance Criteria" in sections:
