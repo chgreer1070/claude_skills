@@ -25,14 +25,7 @@ from ruamel.yaml import YAML, YAMLError
 from . import models as _models
 from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
-from .entry_blocks import (
-    ENTRY_RE,
-    _render_entry_raw,
-    generate_diff,
-    parse_entries,
-    rewrite_section as rewrite_section_entries,
-    strike_entry as strike_entry_block,
-)
+from .entry_blocks import ENTRY_RE, _render_entry_raw, generate_diff, parse_entries, strike_entry as strike_entry_block
 from .github import (
     IssueNode,
     _add_comment_graphql,
@@ -727,55 +720,6 @@ def _write_groomed_to_yaml_item(
     save_item(item, filepath)
 
 
-def _compute_md_groomed_body(
-    body: str,
-    groomed_content: str,
-    section_name: str | None,
-    today_str: str,
-    *,
-    append: bool,
-    entry_id: str | None,
-    replace_section: bool,
-    reason: str | None,
-    added_date: str,
-) -> str:
-    """Compute the updated markdown body after inserting groomed content.
-
-    Args:
-        body: Current markdown body (text after frontmatter).
-        groomed_content: Content to merge into the body.
-        section_name: Named section to update; when ``None`` the top-level
-            ``## Groomed`` section is replaced.
-        today_str: Today's date string (YYYY-MM-DD).
-        append: Raw-append mode when ``True``.
-        entry_id: Entry id for targeted in-place update.
-        replace_section: Strike existing entries and replace when ``True``.
-        reason: Strike reason; required when ``replace_section`` is ``True``.
-        added_date: ISO date for legacy entry migration.
-
-    Returns:
-        Updated markdown body string.
-    """
-    if section_name:
-        if append:
-            return _md_append_or_replace_section(body, section_name, groomed_content, append=True)
-        existing_section_body = _extract_subsection_body(body, section_name)
-        rewritten = rewrite_section_entries(
-            existing_body=existing_section_body,
-            new_content=groomed_content,
-            entry_id=entry_id,
-            replace=replace_section,
-            reason=reason,
-            added_date=added_date,
-        )
-        return _md_append_or_replace_section(body, section_name, rewritten)
-    groomed_section = f"## Groomed ({today_str})\n\n{groomed_content.strip()}"
-    groomed_re = re.compile(r"\n## Groomed\s*\([^)]*\)\s*\n[\s\S]*?(?=\n## |\Z)", re.MULTILINE)
-    if groomed_re.search(body):
-        return groomed_re.sub(lambda _: f"\n{groomed_section}\n", body)
-    return body.rstrip() + "\n\n" + groomed_section + "\n"
-
-
 def _write_groomed_to_item_file(
     filepath: Path,
     groomed_content: str,
@@ -790,62 +734,34 @@ def _write_groomed_to_item_file(
 ) -> None:
     """Merge groomed content into per-item file.
 
-    Updates frontmatter groomed date and body.
-    If section_name is set, wrap content in an entry block via rewrite_section
-    and append/replace that section only (incremental).
-    When append=True and section_name is set, the new content is appended after
-    the existing section content instead of replacing it (no entry-block wrapping).
-    Else replace full ## Groomed.
-    """
-    if filepath.suffix == ".yaml":
-        _write_groomed_to_yaml_item(
-            filepath,
-            groomed_content,
-            section_name,
-            entry_id=entry_id,
-            replace_section=replace_section,
-            reason=reason,
-            added_date=added_date,
-            append=append,
-        )
-        return
+    Delegates to :func:`_write_groomed_to_yaml_item` for all file formats.
+    Legacy ``.md`` files are loaded via :func:`load_item` (which uses
+    :func:`~backlog_core.parsing.parse_item_file`) and saved back as YAML,
+    completing the P964 migration for any remaining ``.md`` items.
 
-    text = filepath.read_text(encoding="utf-8")
-    if not text.startswith("---"):
-        msg = "Item file has no frontmatter"
-        raise ValidationError(msg)
-    parts = text.split("---", 2)
-    if len(parts) < MIN_FRONTMATTER_PARTS:
-        msg = "Malformed item file"
-        raise ValidationError(msg)
-    fm_text, body = parts[1].strip(), parts[2].strip()
-    today_str = today()
-    new_body = _compute_md_groomed_body(
-        body,
+    Args:
+        filepath: Path to the backlog item file (``.yaml`` or ``.md``).
+        groomed_content: Content to merge into the item.
+        section_name: Named section to update; when ``None`` the top-level
+            ``groomed`` section is replaced.
+        output: Optional output collector (unused; kept for API compatibility).
+        entry_id: Optional ID used to locate an existing entry for update.
+        replace_section: Strike existing entries and replace when ``True``.
+        reason: Strike reason; required when ``replace_section`` is ``True``.
+        added_date: ISO date for legacy entry migration.
+        append: When ``True``, always append a new entry rather than updating
+            by id.
+    """
+    _write_groomed_to_yaml_item(
+        filepath,
         groomed_content,
         section_name,
-        today_str,
-        append=append,
         entry_id=entry_id,
         replace_section=replace_section,
         reason=reason,
         added_date=added_date,
+        append=append,
     )
-    try:
-        meta, _body = _md_read_frontmatter(text)
-        meta_block = meta.get("metadata")
-        if isinstance(meta_block, dict):
-            updated = dict(meta_block)
-            updated["groomed"] = today_str
-            meta["metadata"] = updated
-        else:
-            meta["groomed"] = today_str
-        new_content = _md_write_frontmatter(meta, new_body)
-    except (ValueError, KeyError, TypeError, YAMLError):
-        new_content = "---\n" + fm_text + "\n---\n\n" + new_body
-        if "groomed:" not in fm_text:
-            new_content = new_content.replace("---\n", f'---\ngroomed: "{today_str}"\n', 1)
-    filepath.write_text(new_content, encoding="utf-8")
 
 
 def _ensure_github_issue(item: BacklogItem, filepath: Path, repo: str, output: Output | None = None) -> str | None:
@@ -2044,7 +1960,7 @@ def _build_list_entry(item: BacklogItem, status_map: dict[int, IssueStatus]) -> 
     if item.file_path:
         entry["file_path"] = item.file_path
     if item.groomed:
-        entry["groomed"] = True
+        entry["groomed"] = item.groomed
     if item.issue:
         num_str = item.issue.lstrip("#")
         num = int(num_str) if num_str.isdigit() else 0

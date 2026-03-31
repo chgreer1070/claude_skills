@@ -327,9 +327,9 @@ Skills use a three-level loading system to manage context efficiently:
 
 Keep SKILL.md lean. Run `uvx skilllint@latest check <skill-path>` to check token complexity. Keep only core workflow and selection guidance in SKILL.md; move variant-specific details into reference files. Reference them from SKILL.md with clear descriptions of when to read each file.
 
-Three patterns: (1) high-level guide with pointers to FORMS.md, REFERENCE.md, etc.; (2) domain-split references (finance.md, sales.md per domain); (3) conditional details (basic inline, advanced via link). See `references/workflows.md` for full examples of all three patterns.
+Three patterns: (1) high-level guide with pointers to FORMS.md, REFERENCE.md, etc.; (2) domain-split references (finance.md, sales.md per domain); (3) conditional details (basic inline, advanced via link). Load [workflows.md](./references/workflows.md) for full examples of all three patterns.
 
-Rules: keep references one level deep from SKILL.md. NEVER add ToC, anchor links, or bold/italic for visual emphasis to reference files — see `references/ai-audience-writing-rules.md`.
+Rules: keep references one level deep from SKILL.md. NEVER add ToC, anchor links, or bold/italic for visual emphasis to reference files — Load [ai-audience-writing-rules.md](./references/ai-audience-writing-rules.md).
 
 > **Editing an existing SKILL.md?** Before treating an unrecognized frontmatter key as an error, check `plugins/plugin-creator/scripts/ecosystem_registry.py`. If the key is returned by `get_ecosystem_owned_keys()` — such as `mcp:` (OpenCode) — preserve it and all its nested content verbatim. Do not strip, rewrite, or normalize it. For `mcp:` specifically, see the `references/agent-plugin-ecosystem.md` reference (OpenCode SKILL.md Extensions section) for the full schema.
 
@@ -477,12 +477,12 @@ When editing the (newly-generated or existing) skill, remember that the skill is
 
 Consult these helpful guides based on your skill's needs:
 
-- **Multi-step processes**: See references/workflows.md for sequential workflows and conditional logic
-- **Output formats, examples, anti-patterns, and quality standards**: See `../agentskills/references/best-practices.md`
+- **Multi-step processes**: Load [workflows.md](./references/workflows.md) for sequential workflows and conditional logic
+- **Output formats, examples, anti-patterns, and quality standards**: Load [best-practices.md](../agentskills/references/best-practices.md)
 
 These files contain established best practices for effective skill design.
 
-- **Official specification**: See `references/claude-code-skills-official.md` for the authoritative source on frontmatter fields, discovery rules, invocation control, and budget limits
+- **Official specification**: Load [claude-code-skills-official.md](./references/claude-code-skills-official.md) for the authoritative source on frontmatter fields, discovery rules, invocation control, and budget limits
 
 #### Start with Reusable Skill Contents
 
@@ -614,7 +614,7 @@ flowchart TD
     AgentReg --> Done
 ```
 
-See `../claude-plugins-reference-2026/SKILL.md` for plugin creation documentation.
+See [claude-plugins-reference-2026](../claude-plugins-reference-2026/SKILL.md) for plugin creation documentation.
 
 ### Steps 7-10: Evaluate, Improve, and Optimize
 
@@ -627,7 +627,7 @@ After creating the skill, test it with real prompts, grade results with the A/B 
 - **Step 9** — Improve the skill (failure mode taxonomy, iteration loop, blind comparison via `agents/comparator.md` and `agents/analyzer.md`)
 - **Step 10** — Description optimization (automated trigger tuning via `scripts/run_loop.py` with train/test split)
 
-See `references/schemas.md` for evals.json and grading.json formats.
+Load [schemas.md](./references/schemas.md) for evals.json and grading.json formats.
 
 ## Reference Files
 

@@ -56,7 +56,7 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 
 ### --auto mode rules
 
-All interactive `AskUserQuestion` calls are replaced with evidence-derived decisions. Full substitution table: [auto-mode.md](./references/auto-mode.md)
+All interactive `AskUserQuestion` calls are replaced with evidence-derived decisions. Load [auto-mode.md](./references/auto-mode.md) for the full substitution table.
 
 ## Workflow
 
@@ -79,7 +79,7 @@ flowchart TD
     Q1 -->|"any other string"| S1["Title substring → Step 1.3 (interactive mode)<br>title source: <invocation_args/>"]
 ```
 
-**AUTO_MODE** — set when `$0` is `--auto`. All `AskUserQuestion` calls are replaced with evidence-derived decisions. See [auto-mode.md](./references/auto-mode.md) for the substitution table.
+**AUTO_MODE** — set when `$0` is `--auto`. All `AskUserQuestion` calls are replaced with evidence-derived decisions. See [auto-mode.md](./references/auto-mode.md) for the substitution table. BLOCKED states (RT-ICA MISSING conditions, feasibility gate BLOCKED) require human resolution regardless of mode.
 
 ## Phase 1: Locate
 
@@ -87,38 +87,13 @@ flowchart TD
 
 **Trigger:** `<mode/>` is empty (no arguments passed).
 
-Full procedure (MCP error handling, display format, response handling): [step-procedures.md](./references/step-procedures.md#step-1-1-interactive-browser)
+Load [step-procedures.md](./references/step-procedures.md#step-1-1-interactive-browser) for MCP error handling, display format, and response handling.
 
 ### Step 1.2: Issue-First Path (`#N`, bare number, or GitHub URL)
 
 **Trigger:** `<mode/>` matches `#[0-9]+`, is a bare number, or is a GitHub issue URL (`https://github.com/.../issues/N`).
 
-<issue_first_procedure>
-
-Fetch the issue using the `mcp__plugin_dh_backlog__backlog_view` tool (accepts URLs, `#N`, and bare numbers):
-
-Call the `mcp__plugin_dh_backlog__backlog_view` tool with `selector="{<mode/>}"`.
-
-If the tool returns a dict with an `error` key, report and stop.
-Parse the returned dict. If `state` is `closed`, run the **Completed Issue Discovery** procedure and stop. Full procedure (git commands, report template, AUTO_MODE behavior): [step-procedures.md](./references/step-procedures.md#step-1-2-completed-issue-discovery)
-
-From the JSON response build the working item:
-
-| Field | Source |
-|---|---|
-| `title` | `title` |
-| `description` | `body` (full text) |
-| `source` | `"GitHub Issue #N"` |
-| `priority` | `priority` field (extracted from `priority:*` label) |
-| `status` | `status` field (extracted from `status:*` label — canonical) |
-| `milestone` | `milestone` |
-| `plan` | `plan` field, or search `body` for `**Plan**:` line |
-
-The `backlog_view` MCP tool merges local cache with live GitHub issue data. All fields needed for subsequent steps are available in the response — do not read local files directly.
-
-Proceed to Step 2.4 (Set In-Progress Label) with the assembled item, then continue to Step 3.1.
-
-</issue_first_procedure>
+Load [step-procedures.md](./references/step-procedures.md#step-1-2-issue-first-path) for field mapping, completed-issue discovery, and AUTO_MODE behavior.
 
 ### Step 1.3: Find the Backlog Item
 
@@ -128,7 +103,7 @@ Title = `<item_ref/>`+ joined (args after the mode flag `<mode/>`). In interacti
 
 **AUTO_MODE with no title (`<item_ref/>` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their entry (these are filtered out by `backlog_list` already).
 
-Before executing Step 1.3: load `./references/step-procedures.md`.
+Before executing Step 1.3: Load [step-procedures.md](./references/step-procedures.md).
 
 Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
@@ -144,13 +119,11 @@ From the matched item's entry in the `mcp__plugin_dh_backlog__backlog_list` retu
 - `research_first` — from `backlog_view` response body, `**Research first**:` line (optional)
 - `suggested_location` — from `backlog_view` response body, `**Suggested location**:` line (optional)
 
-If the item already has a `**Plan**:` field, extract the plan address from the YAML filename (e.g., `plan/P1079-machine-readable-inter-item-dependencies.yaml` → `P1079`). Report:
+If the item already has a `**Plan**:` field, extract the plan address from the YAML filename (e.g., `plan/P1079-machine-readable-inter-item-dependencies.yaml` → `P1079`). Invoke immediately:
 
 ```text
-This item already has a plan (P{NNN}). Use /dh:implement-feature P{NNN} to execute it.
+Skill(skill: "dh:implement-feature", args: "P{NNN}")
 ```
-
-Then stop.
 
 After extracting fields, proceed to Step 2.1 (Already Implemented Check) before continuing.
 
@@ -158,21 +131,21 @@ After extracting fields, proceed to Step 2.1 (Already Implemented Check) before 
 
 ### Step 2.1: Already Implemented Check
 
-Before planning, verify the feature/fix hasn't already been implemented (stale open issue). Full procedure (git commands, resolve calls, AUTO_MODE behavior): [step-procedures.md](./references/step-procedures.md#step-2-1-already-implemented-check)
+Before planning, verify the feature/fix hasn't already been implemented (stale open issue). Load [step-procedures.md](./references/step-procedures.md#step-2-1-already-implemented-check) for git commands, resolve calls, and AUTO_MODE behavior.
 
 ### Step 2.2: GitHub Issue Sync
 
-After Step 1.4, check for `**Issue**: #N` in the matched item. Full procedure (MCP tool calls, yes/no branching, issue creation): [github-integration.md](./references/github-integration.md#step-2-2-github-issue-sync)
+After Step 1.4, check for `**Issue**: #N` in the matched item. Load [github-integration.md](./references/github-integration.md#step-2-2-github-issue-sync) for MCP tool calls, yes/no branching, and issue creation.
 
 **Note:** On the Issue-first path (Step 1.2), the `backlog_view` response already contains issue state — carry it forward without re-fetching.
 
 ### Step 2.3: Create GitHub Issue
 
-Full procedure: [github-integration.md](./references/github-integration.md#step-2-3-create-github-issue)
+Load [github-integration.md](./references/github-integration.md#step-2-3-create-github-issue).
 
 ### Step 2.4: Set In-Progress Label
 
-Full procedure: [github-integration.md](./references/github-integration.md#step-2-4-set-in-progress-label)
+Load [github-integration.md](./references/github-integration.md#step-2-4-set-in-progress-label).
 
 **Two-part step:** (a) Always run `mcp__plugin_dh_backlog__backlog_update` with `status="in-progress"` for the current item. (b) Run `milestone start` only on explicit user intent to start the whole milestone — it bulk-transitions all open milestone issues, not just the current one.
 
@@ -189,68 +162,37 @@ flowchart TD
     TypeCheck -->|"No — feature/refactor/other"| CheckArtifact["artifact_list(<br>issue_number={N},<br>artifact_type='feature-context')"]
     CheckArtifact --> HasDiscovery{"count > 0?"}
     HasDiscovery -->|"Yes"| Proceed["Discovery exists<br>Proceed to Step 3.1"]
-    HasDiscovery -->|"No"| InvokeDiscovery["Invoke: Skill(skill='dh:discovery')<br>Wait for user confirmation loop<br>Then proceed to Step 3.1"]
+    HasDiscovery -->|"No"| InvokeDiscovery["Invoke: Skill(skill='dh:discovery')"]
+    InvokeDiscovery --> VerifyDiscovery["Call artifact_list(<br>issue_number={N},<br>artifact_type='feature-context')"]
+    VerifyDiscovery --> DiscoveryConfirmed{"count > 0?"}
+    DiscoveryConfirmed -->|"Yes — artifact registered"| Continue
+    DiscoveryConfirmed -->|"No — retry once"| RetryDiscovery["Re-invoke: Skill(skill='dh:discovery')<br>(max 1 retry)"]
+    RetryDiscovery --> VerifyRetry["Call artifact_list(<br>issue_number={N},<br>artifact_type='feature-context')"]
+    VerifyRetry --> RetryConfirmed{"count > 0?"}
+    RetryConfirmed -->|"Yes"| Continue
+    RetryConfirmed -->|"No — still 0 after retry"| DiscoveryFail(["STOP — report to user:<br>dh:discovery completed but no feature-context<br>artifact was registered for issue #{N}.<br>Re-run /dh:discovery manually and retry."])
     SkipGate --> Continue([Step 3.1 — Auto-Groom])
     Proceed --> Continue
-    InvokeDiscovery --> Continue
 ```
 
 The discovery skill runs its full interactive confirmation loop (WHO/WHAT/WHEN/WHY gathering)
-and registers the result as a `feature-context` artifact. After completion, Step 3.1 (Auto-Groom)
-will detect the artifact and pass it to the grooming swarm.
+and registers the result as a `feature-context` artifact. The exit signal is a non-zero count
+from `artifact_list(issue_number={N}, artifact_type='feature-context')`. After confirmation,
+Step 3.1 (Auto-Groom) will detect the artifact and pass it to the grooming swarm.
 
 ## Phase 3: Prepare
 
 ### Step 3.1: Auto-Groom (if needed)
 
-<groom_check>
+**Trigger:** item not yet groomed (no `groomed: true` in `backlog_list` output).
 
-1. **Check if item is groomed**: Check the `groomed` field in the JSON output. If `true`, call `mcp__plugin_dh_backlog__backlog_view(selector="{title}", summary=false)` — the response `sections` dict contains all groomed content (Reproducibility, Priority, Impact, Files, Dependencies, etc.). Use that content.
-2. Search conversation context for a recent `groom-backlog-item` output matching this item.
-
-If no groomed content exists:
-
-```text
-Skill(skill: "groom-backlog-item", args: "{item title}")
-```
-
-The groom skill writes groomed content via the backlog MCP server. After grooming completes, call `backlog_view` again to retrieve the groomed sections.
-</groom_check>
+Load [step-procedures.md](./references/step-procedures.md#step-3-1-groom-check) for groomed-content retrieval, groom skill invocation, and continuation.
 
 ### Step 3.2: RT-ICA Gate
 
-#### RT-ICA Staleness Policy
+**Trigger:** RT-ICA result absent, stale (>7 days), or item updated since last run.
 
-> **RT-ICA Staleness Policy**: An RT-ICA result is stale and must be re-run if either condition
-> is true: (a) the `Date:` header in the RT-ICA section is older than 7 calendar days, or
-> (b) the item's `metadata.updated_at` field is newer than the RT-ICA section date. A stale
-> RT-ICA result is treated as absent — `dh:rt-ica` is re-run before proceeding to Step 3.4.
-> The 7-day threshold applies regardless of whether the item description has changed, because
-> codebase context may have changed even if the item text has not.
-
-```mermaid
-flowchart TD
-    RCheck(["Step 3.2: RT-ICA Freshness Check"]) --> Get["Read backlog_view(selector=title, summary=false).sections['RT-ICA']"]
-    Get --> Absent{"sections['RT-ICA'] key present and non-empty?"}
-    Absent -->|"No"| RunRTICA(["Run dh:rt-ica — section absent"])
-    Absent -->|"Yes"| ParseDate["Extract date using regex 'Date: YYYY-MM-DD' from section<br>If no match: try first ISO date in top 3 lines of section"]
-    ParseDate --> DateFound{"ISO date parseable?"}
-    DateFound -->|"No — date not found"| RunRTICA
-    DateFound -->|"Yes — date D extracted"| Check1{"D older than 7 calendar days?"}
-    Check1 -->|"Yes"| RunRTICA
-    Check1 -->|"No — within 7 days"| Check2{"backlog_view metadata.updated_at present<br>AND metadata.updated_at greater than D?"}
-    Check2 -->|"updated_at greater than D"| RunRTICA
-    Check2 -->|"updated_at less than or equal to D OR field absent"| UseCache(["RT-ICA is fresh — use cached result"])
-```
-
-When the flowchart routes to "Run dh:rt-ica":
-
-```text
-Skill(skill: "dh:rt-ica")
-```
-
-1. **Present and fresh** → use the APPROVED/BLOCKED decision from the cached result. Carry DERIVABLE items forward as "Assumptions to confirm" in the feature request.
-2. **BLOCKED** → stop. Do not proceed to Step 3.4 until all MISSING conditions are resolved.
+Load [step-procedures.md](./references/step-procedures.md#step-3-2-rt-ica-gate) for staleness policy, freshness flowchart, and BLOCKED handling.
 
 ### Step 3.3: RT-ICA Date Stamp
 
@@ -278,21 +220,9 @@ Load [feasibility-gate.md](./references/feasibility-gate.md) and evaluate all 4 
 
 ### Step 4.1: Compose Feature Request
 
-Build the feature request string for `add-new-feature`. If `--stack` was specified, append a "Stack profile" line. If `--language` is not `python`, invoke the corresponding language plugin (e.g., `/typescript-development:add-new-feature`).
+**Trigger:** RT-ICA APPROVED (Step 3.2) and feasibility PASS (Step 3.4).
 
-**Impact Radius requirement**: Before composing, extract the Impact Radius from the `backlog_view(selector=f"#{issue_number}", summary=false)` response. The `sections` dict in the response contains an `"Impact Radius"` key (populated by `groom-backlog-item` Step 3.5). Include it in the feature request so the planner creates tasks for every affected component.
-
-**Ecosystem Completeness Constraint**: The plan produced by `add-new-feature` MUST include tasks for every item listed in the Impact Radius, or explicitly document why an item is excluded. A feature is not complete when the core code works — it is complete when:
-
-- Every upstream producer of the changed interface is updated or verified compatible
-- Every downstream consumer is migrated to use the new interface
-- Every document listed as "will become stale" is updated
-- The old interface is deprecated or removed (if this item replaces something)
-- CI/config files listed in Impact Radius are updated and validated
-
-If the `backlog_view` response `sections` dict has no `"Impact Radius"` key, trigger `groom-backlog-item` for that item before continuing (Step 3.1 already handles this for ungroomed items — this handles the case where grooming ran before Step 3.5 existed). Do not skip to Step 4.2 with a missing impact radius — the planner will produce an incomplete plan.
-
-Template: [step-procedures.md](./references/step-procedures.md#step-4-1-feature-request-template)
+Load [step-procedures.md](./references/step-procedures.md#step-4-1-feature-request-template) for Impact Radius extraction, Ecosystem Completeness Constraint, template, and language/stack flags.
 
 ### Step 4.2: Invoke SAM Planning
 
@@ -305,6 +235,10 @@ This runs the full SAM workflow: discovery, codebase analysis, architecture spec
 ### Step 4.3: Update Backlog with Plan Reference
 
 After `add-new-feature` completes, identify the task plan it created by calling `mcp__plugin_dh_sam__sam_list(search="{slug}")` where `{slug}` is the item title lowercased with spaces replaced by hyphens. The SAM MCP server manages plan storage — do not search the filesystem directly.
+
+If `sam_list` returns an empty list, call `sam_list()` with no search argument and scan the
+most-recently-updated plan for a title matching the item slug. If still not found, log a
+warning and skip the `backlog_update` — do not block Step 4.4.
 
 Call the `mcp__plugin_dh_backlog__backlog_update` tool to add the Plan:
 
@@ -328,8 +262,8 @@ flowchart TD
 
 ### Step 4.5: Post-Planning Output
 
-- **Interactive mode**: load `./references/step-procedures.md#step-4-5-post-planning-output` for the report template.
-- **AUTO_MODE**: load `./references/step-procedures.md#step-4-5a-auto-mode-continuation` for the continuation procedure.
+- **Interactive mode**: Load [step-procedures.md](./references/step-procedures.md#step-4-5-post-planning-output) for the report template.
+- **AUTO_MODE**: Load [step-procedures.md](./references/step-procedures.md#step-4-5a-auto-mode-continuation) for the continuation procedure.
 
 ## Phase 5: Close/Resolve
 
@@ -341,7 +275,7 @@ flowchart TD
 - `resolve` = mark DONE with evidence trail. Requires `summary`. Optional `plan`, `method`, `notes`, `follow_ups`, `findings`. Verifies checklist + acceptance criteria before resolving. For items with a `**Plan**:` field, also checks that the `status:verified` GitHub label is present (Step 5.4). Calls `mcp__plugin_dh_backlog__backlog_resolve`.
 - `resolve --force` = bypass the `status:verified` gate (Step 5.4) and the open-PR gate (Step 5.7) with a warning. Use when label automation failed or when forcing a local-cache resolve while a PR is still open.
 
-Full step-by-step procedure (5.2–5.7): [close-resolve-procedure.md](./references/close-resolve-procedure.md)
+Load [close-resolve-procedure.md](./references/close-resolve-procedure.md) for steps 5.2–5.7.
 
 ## Reference Index
 
@@ -351,7 +285,7 @@ GitHub Issues are the source of truth. The backlog MCP server manages local cach
 
 ### setup-github Command
 
-**Trigger:** `<mode/>` is `setup-github`. Full setup procedure and expected output: [github-integration.md](./references/github-integration.md#setup-github-command)
+**Trigger:** `<mode/>` is `setup-github`. Load [github-integration.md](./references/github-integration.md#setup-github-command) for the full setup procedure and expected output.
 
 ### Error Handling
 

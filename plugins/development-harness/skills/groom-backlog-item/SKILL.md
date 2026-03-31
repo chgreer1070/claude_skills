@@ -404,8 +404,8 @@ flowchart TD
     BuildFinal --> WriteRTICA["Write final RT-ICA to item via backlog_groom<br>selector=title, section='RT-ICA', content=final<br>This replaces the Step 3.5 snapshot"]
     WriteRTICA --> FinalDecision{"RT-ICA Final Decision?"}
     FinalDecision -->|"BLOCKED — MISSING conditions remain<br>after self-resolution pass"| BlockedBatch["Batch all remaining MISSING conditions<br>For each: what was tried, options found,<br>trade-offs from tool results<br>Present as single batch to user"]
-    BlockedBatch --> BlockedStop(["STOP — do not proceed to Step 9<br>Wait for user answers<br>Re-check after receiving responses"])
-    FinalDecision -->|"APPROVED — all conditions AVAILABLE or DERIVABLE resolved"| Proceed(["Item fully groomed with verified information<br>Proceed to Step 9"])
+    BlockedBatch --> BlockedStop(["PAUSE — present batch to user<br>When user answers arrive: mark each resolved condition AVAILABLE<br>with user citation, re-run FinalDecision check<br>If APPROVED: proceed immediately to Step 8.7"])
+    FinalDecision -->|"APPROVED — all conditions AVAILABLE or DERIVABLE resolved"| Proceed(["Proceed to Step 8.7"])
 ```
 
 RT-ICA Final report format:
@@ -425,6 +425,8 @@ Decision: {APPROVED|BLOCKED}
 ```
 
 **BLOCKED batch format**: Full template for presenting unresolved MISSING conditions to the user: [groomer-agent.md — RT-ICA BLOCKED Batch Format](./references/groomer-agent.md#rt-ica-blocked-batch-format).
+
+**After BLOCKED**: When user provides answers, mark each resolved condition AVAILABLE with user citation, re-run Final Decision check. If APPROVED, continue to Step 8.7 immediately — do not stop or re-invoke.
 
 ### Step 8.7: Groomer Output Validation Gate (Pre-Write Gate)
 

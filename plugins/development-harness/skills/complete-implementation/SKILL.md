@@ -863,20 +863,19 @@ SendMessage(to="{name}", message={"type": "shutdown_request"})
 
 After the commit+push step, output this block to the user:
 
-```text
-Clear context and run:
-  /dh:work-backlog-item <next-backlog-item-title>
-```
-
-Where `<next-backlog-item-title>` is determined by:
+Call `mcp__plugin_dh_backlog__backlog_list()` and find the highest-priority open item whose
+title contains the current feature slug. Check the `plan` field on that item.
 
 ```text
-mcp__plugin_dh_backlog__backlog_list()
-```
+If item found AND item.plan is set (non-empty):
+  Clear context and run:
+    /dh:implement-feature {item.plan}
 
-Find the highest-priority open item whose title contains the current feature slug. If one exists, use its exact title. If none exists, output:
+If item found AND item.plan is NOT set:
+  Clear context and run:
+    /dh:work-backlog-item {item.title}
 
-```text
-Clear context and run:
-  /dh:work-backlog-item — nothing queued —
+If no item found:
+  Clear context and run:
+    /dh:work-backlog-item — nothing queued —
 ```

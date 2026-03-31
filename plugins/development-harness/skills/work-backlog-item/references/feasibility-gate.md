@@ -32,12 +32,20 @@ flowchart TD
     C3 -->|"Over 20 systems"| FBlock3(["BLOCKED: blast radius exceeds safe threshold<br>Over 20 affected systems requires human confirmation"])
     RiskWarn --> C4
 
-    C4{"Criterion 4 — Prior attempt check<br>Does item body contain 'tried', 'previous attempt', or 'failed'?<br>Does Impact Radius list exactly 1 file total?"}
+    C4{"Criterion 4 — Prior attempt check<br>Does item body contain 'tried', 'previous attempt', or 'failed'?<br>Does Impact Radius list exactly 1 file total AND Effort lists 4 or more tasks?"}
     C4 -->|"No prior failure refs, scope appropriate"| PASS(["FEASIBILITY: PASS<br>Proceed to Step 4.1 — Compose Feature Request"])
     C4 -->|"Prior failure reference found"| AltWarn["WARN: prior attempt referenced — include in feature request"]
-    C4 -->|"Impact Radius = 1 file AND item is feature-sized"| AltBlock(["BLOCKED: potential over-engineering<br>1-file impact with full pipeline — offer --quick path"])
+    C4 -->|"Impact Radius = 1 file total AND task count >= 4"| AltBlock(["BLOCKED: potential over-engineering<br>1-file scope with 4+ tasks — offer --quick path"])
     AltWarn --> PASS
 ```
+
+**Criterion 4 — observable thresholds:**
+
+- Count rows under all Impact Radius sections (Code, Docs, Config, Agent Instructions) to get the total affected-file count.
+- Count task entries in the item's Effort section (lines starting with `- [ ]` or `- [x]`) to get the estimated task count.
+- BLOCKED condition: `impact_radius_file_count == 1 AND estimated_task_count >= 4`. Both conditions must be true simultaneously.
+- If the Effort section is absent, treat task count as 0 — the BLOCKED condition cannot be met, proceed.
+- If the Impact Radius section is absent, treat file count as 0 — the BLOCKED condition cannot be met, proceed.
 
 ---
 

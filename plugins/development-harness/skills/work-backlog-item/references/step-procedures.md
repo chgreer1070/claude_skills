@@ -69,12 +69,54 @@ item whose title, type, and topic best match the intent of the query. The token 
 **245 items × ~25 tokens/item ≈ 6,125 tokens (under 10K budget)**. If two or more candidates
 are plausible, read their per-item files via `backlog_view` before choosing.
 
+**Tiebreaker rule** — applied in order when two or more candidates remain equally plausible after reading `backlog_view`:
+
+1. **Priority**: select the candidate in the highest priority section — P0 > P1 > P2 > Ideas.
+2. **Age**: if still tied, select the candidate with the earliest `added` date (oldest item first).
+3. **Title overlap**: if `added` is absent or identical, select the candidate whose `title` has the highest character-level overlap with the query string (count characters shared in sequence order).
+4. **List order**: if all three tiebreakers are equal, select the first candidate in the order returned by `backlog_list` and log: `[STRATEGY3-TIE] Selected {title} — all tiebreakers equal, using list order.`
+
+In **AUTO_MODE**, apply the tiebreaker silently and log: `[AUTO] Strategy 3 tiebreaker applied — rule {N}: selected {title}.`
+
 ### Zero-match handling after all 3 strategies
 
 - **Interactive mode:** report "No backlog item found matching: {title}" and offer to create one
   via `/create-backlog-item`.
 - **AUTO_MODE:** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`,
   invoke `Skill(skill: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
+
+---
+
+<a id="step-1-2-issue-first-path"></a>
+
+## Step 1.2: Issue-First Path
+
+**Trigger:** `<mode/>` matches `#[0-9]+`, is a bare number, or is a GitHub issue URL (`https://github.com/.../issues/N`).
+
+Fetch the issue using the `mcp__plugin_dh_backlog__backlog_view` tool (accepts URLs, `#N`, and bare numbers):
+
+Call the `mcp__plugin_dh_backlog__backlog_view` tool with `selector="{<mode/>}"`.
+
+If the tool returns a dict with an `error` key, report and stop.
+Parse the returned dict. If `state` is `closed`, run the **Completed Issue Discovery** procedure and stop. Full procedure: [#step-1-2-completed-issue-discovery](#step-1-2-completed-issue-discovery)
+
+From the JSON response build the working item:
+
+| Field | Source |
+|---|---|
+| `title` | `title` |
+| `description` | `body` (full text) |
+| `source` | `"GitHub Issue #N"` |
+| `priority` | `priority` field (extracted from `priority:*` label) |
+| `status` | `status` field (extracted from `status:*` label — canonical) |
+| `milestone` | `milestone` |
+| `plan` | `plan` field, or search `body` for `**Plan**:` line |
+
+The `backlog_view` MCP tool merges local cache with live GitHub issue data. All fields needed for subsequent steps are available in the response — do not read local files directly.
+
+Note: The issue-first path skips Steps 2.1–2.3 because the item is resolved via GitHub Issue
+number — it already has an issue (skips 2.2–2.3) and the `backlog_view` response includes
+closed-state detection (substitutes 2.1). Proceed directly to Step 2.4.
 
 ---
 
@@ -161,6 +203,9 @@ If no evidence, proceed to Step 2.2 (GitHub Issue Sync).
 <a id="step-1-1-interactive-browser"></a>
 
 ## Step 1.1: Interactive Browser
+
+For MCP tool errors encountered at any step, load `./error-handling.md` for error
+classification and handling instructions.
 
 1. Call the `mcp__plugin_dh_backlog__backlog_list` tool.
 
@@ -266,6 +311,60 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 ---
 
+<a id="step-3-1-groom-check"></a>
+
+## Step 3.1: Auto-Groom Check
+
+1. **Check if item is groomed**: Check the `groomed` field in the JSON output. If `true`, call `mcp__plugin_dh_backlog__backlog_view(selector="{title}", summary=false)` — the response `sections` dict contains all groomed content (Reproducibility, Priority, Impact, Files, Dependencies, etc.). Use that content.
+2. Search conversation context for a recent `groom-backlog-item` output matching this item.
+
+If no groomed content exists:
+
+```text
+Skill(skill: "groom-backlog-item", args: "{item title}")
+```
+
+The groom skill writes groomed content via the backlog MCP server. After grooming completes — including any BLOCKED/resolution cycles during the RT-ICA assessment — call `backlog_view` again to retrieve the groomed sections and proceed immediately to Step 3.2. Do not stop or wait for re-invocation.
+
+---
+
+<a id="step-3-2-rt-ica-gate"></a>
+
+## Step 3.2: RT-ICA Gate
+
+### RT-ICA Staleness Policy
+
+An RT-ICA result is stale and must be re-run if either condition is true: (a) the `Date:` header in the RT-ICA section is older than 7 calendar days, or (b) the item's `metadata.updated_at` field is newer than the RT-ICA section date. A stale RT-ICA result is treated as absent — `dh:rt-ica` is re-run before proceeding to Step 3.4. The 7-day threshold applies regardless of whether the item description has changed, because codebase context may have changed even if the item text has not.
+
+```mermaid
+flowchart TD
+    RCheck(["Step 3.2: RT-ICA Freshness Check"]) --> Get["Read backlog_view(selector=title, summary=false).sections['RT-ICA']"]
+    Get --> Absent{"sections['RT-ICA'] key present and non-empty?"}
+    Absent -->|"No"| RunRTICA(["Run dh:rt-ica — section absent"])
+    Absent -->|"Yes"| ParseDate["Extract date using regex 'Date: YYYY-MM-DD' from section<br>If no match: try first ISO date in top 3 lines of section"]
+    ParseDate --> DateFound{"ISO date parseable?"}
+    DateFound -->|"No — date not found"| RunRTICA
+    DateFound -->|"Yes — date D extracted"| Check1{"D older than 7 calendar days?"}
+    Check1 -->|"Yes"| RunRTICA
+    Check1 -->|"No — within 7 days"| Check2{"backlog_view metadata.updated_at present<br>AND metadata.updated_at greater than D?"}
+    Check2 -->|"updated_at greater than D"| RunRTICA
+    Check2 -->|"updated_at less than or equal to D OR field absent"| UseCache(["RT-ICA is fresh — use cached result"])
+```
+
+When the flowchart routes to "Run dh:rt-ica":
+
+```text
+Skill(skill: "dh:rt-ica")
+```
+
+Log re-run reason: `RT-ICA re-run: {staleness reason — date older than 7 days / updated_at
+newer than RT-ICA date}` to the item's RT-ICA section as a prefix before the new result.
+
+- **Present and fresh** — use the APPROVED/BLOCKED decision from the cached result. Carry DERIVABLE items forward as "Assumptions to confirm" in the feature request.
+- **BLOCKED** — stop. Do not proceed to Step 3.4 until all MISSING conditions are resolved.
+
+---
+
 ## Step Q: Quick Mode
 
 **Trigger:** `$0` is `--quick`. Skips grooming, RT-ICA, and SAM planning. For one-file fixes, broken links, and typo patches where full pipeline overhead is disproportionate.
@@ -360,11 +459,12 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
    Then stop.
 
-3. Read the plan file. Parse the checklist:
-   - `total_tasks` — lines matching `- \[[ x]\]`
-   - `checked_tasks` — lines matching `- \[x\]`
-   - `last_checked` — last line matching `- \[x\]` (trim the `- [x]` prefix)
-   - `first_unchecked` — first line matching `- \[ \]` (trim the `- [ ]` prefix)
+3. Read the plan via `mcp__plugin_dh_sam__sam_read` using the plan ID extracted from the item's
+   `plan` field. Do not read the YAML file directly. Parse the task list from the response:
+   - `total_tasks` — count of all task entries
+   - `checked_tasks` — count of tasks with `status: complete`
+   - `last_checked` — title of the last task with `status: complete`
+   - `first_unchecked` — title of the first task with `status: not-started` or `status: in-progress`
 
 4. Compute `completion_pct = checked_tasks * 100 / total_tasks` (integer).
 
@@ -408,7 +508,7 @@ Skip Step 8.5 reporting. Instead, continue directly to implementation:
    Skill(skill: "complete-implementation", args: "{task_file_path}")
    ```
 
-3. After completion, proceed to Step 9 resolve path to mark the item done.
+3. After completion, proceed to Step 5.1 resolve path to mark the item done.
 
 Do not stop for user input at any point.
 

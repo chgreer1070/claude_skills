@@ -196,13 +196,25 @@ git log --oneline -20 --grep="Fixes #N\|Closes #N"
 
 12. Check the returned dict for an `error` key. Report the result to the user.
 
-13. If `open_issues == 0` after resolve, emit the Handoff E token so the orchestrator can invoke the next lifecycle stage:
+13. Before emitting Handoff E, determine whether all milestone issues are resolved:
 
-```text
-NEXT: skill="complete-milestone" args="{milestone number}" condition="all milestone issues status:done OR status:resolved AND open_issues == 0"
-```
+    a. Read the `milestone` field from the `backlog_resolve` response. If the resolved item has no `milestone` field (or `milestone` is null/empty), skip Handoff E — no milestone context exists.
 
-Only emit when `open_issues == 0`. If other open issues remain in the milestone, skip this token — the milestone is not yet ready for completion.
+    b. If a milestone is present, call:
+
+       ```text
+       mcp__plugin_dh_backlog__backlog_list(status='open')
+       ```
+
+       Count the returned items whose `milestone` field matches the resolved item's milestone. This is the `open_issues` count.
+
+    c. Emit Handoff E only when `open_issues == 0`:
+
+       ```text
+       NEXT: skill="complete-milestone" args="{milestone number}" condition="all milestone issues status:done OR status:resolved AND open_issues == 0"
+       ```
+
+    d. If `open_issues > 0`, skip Handoff E — the milestone is not yet ready for completion.
 
 ## --force flag
 
