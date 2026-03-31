@@ -2041,6 +2041,29 @@ def _merge_section_entries(existing: _SectionMetadata, new_entries: list[dict[st
     return {"num_entries": active_count, "num_struck": struck_count, "entries": all_entries}
 
 
+def _render_sections_as_body(item: BacklogItem) -> str:
+    r"""Render a YAML BacklogItem's structured sections into a markdown body string.
+
+    Produces ``## {name}\\n\\n{content}\\n\\n`` for each section, where content is
+    the joined entry contents.  Returns ``""`` when ``item.sections`` is empty.
+
+    Args:
+        item: The BacklogItem whose sections to render.
+
+    Returns:
+        Markdown string representation of all sections, or ``""`` if none exist.
+    """
+    if not item.sections:
+        return ""
+    parts: list[str] = []
+    for sec_name, sec_data in item.sections.items():
+        if not isinstance(sec_data, Section):
+            continue
+        content = "\n".join(e.content for e in sec_data.entries if e.content)
+        parts.append(f"## {sec_name}\n\n{content}")
+    return "\n\n".join(parts) + "\n\n" if parts else ""
+
+
 def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, _SectionMetadata]:
     """Build sections metadata directly from a YAML BacklogItem's structured sections.
 
@@ -2256,7 +2279,10 @@ def view_item(
         if body:
             data["sections"] = _build_sections_metadata(body, parsed_show, since)
         elif item and item.sections:
-            # YAML items have structured sections but no raw body.
+            # YAML items have structured sections but no raw body; render body
+            # from sections so callers always receive a non-empty body string.
+            data["body"] = _render_sections_as_body(item)
+            body = data["body"]
             data["sections"] = _build_sections_from_yaml_item(item)
         if body and (offset > 0 or limit > 0):
             _paginate_body(data, body, offset, limit)
