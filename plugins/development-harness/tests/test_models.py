@@ -198,7 +198,7 @@ class TestBacklogItemMetadataTypeValidator:
 class TestBacklogItemMetadataStatusValidator:
     """BacklogItemMetadata.status validator."""
 
-    @pytest.mark.parametrize("s", ["open", "done", "in-progress", "needs-grooming"])
+    @pytest.mark.parametrize("s", ["open", "done", "in-progress", "needs-grooming", "closed"])
     def test_valid_status_accepted(self, s: str) -> None:
         m = BacklogItemMetadata(status=s)
         assert m.status == s
@@ -210,6 +210,24 @@ class TestBacklogItemMetadataStatusValidator:
     def test_invalid_status_rejected(self) -> None:
         with pytest.raises(PydanticValidationError):
             BacklogItemMetadata(status="unknown")
+
+
+class TestBacklogItemMetadataCloseReason:
+    """BacklogItemMetadata.close_reason field."""
+
+    def test_close_reason_default_empty(self) -> None:
+        m = BacklogItemMetadata()
+        assert m.close_reason == ""
+
+    def test_close_reason_accepted(self) -> None:
+        m = BacklogItemMetadata(close_reason="superseded")
+        assert m.close_reason == "superseded"
+
+    def test_unknown_metadata_key_ignored(self) -> None:
+        """Extra keys in frontmatter must be silently discarded, not raise ValidationError."""
+        m = BacklogItemMetadata.model_validate({"status": "closed", "unknown_future_key": "value"})
+        assert m.status == "closed"
+        assert not hasattr(m, "unknown_future_key")
 
 
 class TestBacklogItemMetadataAddedValidator:

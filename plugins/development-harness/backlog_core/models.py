@@ -449,7 +449,7 @@ class Section(BaseModel):
 
 _VALID_PRIORITIES = {"P0", "P1", "P2", "Ideas", "completed"}
 _VALID_TYPES = {"Feature", "Bug", "Refactor", "Docs", "Chore"}
-_VALID_STATUSES = {"open", "done", "in-progress", "needs-grooming"}
+_VALID_STATUSES = {"open", "done", "in-progress", "needs-grooming", "closed"}
 _ADDED_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -474,8 +474,9 @@ class BacklogItemMetadata(BaseModel):
     research_first: str = ""
     files: str = ""
     suggested_location: str = ""
+    close_reason: str = ""
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "extra": "ignore"}
 
     @field_validator("priority")
     @classmethod
