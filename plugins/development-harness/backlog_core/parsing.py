@@ -31,7 +31,10 @@ from .models import (
     ROLE_MAP,
     SKIP_STATUS,
     BacklogItem,
+    Entry,
+    GroomedData,
     SamTask,
+    Section,
     ViewItemResult,
 )
 
@@ -60,6 +63,7 @@ __all__ = [
     "parse_backlog_from_directory",
     "parse_issue_selector",
     "parse_item_file",
+    "parse_md_body_sections",
     "parse_sam_task_metadata",
     "title_to_slug",
     "today",
@@ -293,7 +297,8 @@ def parse_item_file(text: str, path: Path) -> BacklogItem:
     groomed = _fm_str(fm, meta, "groomed")
     if not groomed and "## Groomed" in body:
         groomed = "true"
-    return BacklogItem(
+    added_date = _fm_str(fm, meta, "added") or "0000-00-00"
+    item = BacklogItem(
         title=str(fm.get("name") or fm.get("title") or ""),
         description=str(fm.get("description") or ""),
         source=_fm_str(fm, meta, "source"),
@@ -308,6 +313,9 @@ def parse_item_file(text: str, path: Path) -> BacklogItem:
         groomed=groomed,
         last_synced=_fm_str(fm, meta, "last_synced"),
     )
+    if body:
+        item.sections.update(parse_md_body_sections(body, added_date=added_date))
+    return item
 
 
 def _parse_yaml_item_file(path: Path) -> BacklogItem:
@@ -710,6 +718,294 @@ def merge_sections(local_body: str, github_body: str) -> tuple[str, bool]:
             content = result_sections[heading]
             parts.append(f"{heading}\n\n{content}" if content else heading)
     return "\n\n".join(parts) + "\n", True
+
+
+# ---------------------------------------------------------------------------
+# Legacy .md body section parsing — converts markdown body into typed sections
+# ---------------------------------------------------------------------------
+
+import marko
+from marko.block import Heading as _MarkoHeading
+
+# Heading levels used for body section splitting.
+_H2_LEVEL = 2
+_H3_LEVEL = 3
+
+# Groomed heading: "## Groomed" with optional " (YYYY-MM-DD)" suffix.
+_GROOMED_DATE_RE = re.compile(r"^Groomed(?:\s*\((\d{4}-\d{2}-\d{2})\))?$", re.IGNORECASE)
+
+# ATX heading detector used when mapping AST positions back to source lines.
+_ATX_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)")
+
+
+def _extract_heading_text(node: _MarkoHeading) -> str:
+    """Reconstruct heading text from all inline children of a marko Heading node.
+
+    Args:
+        node: Parsed marko Heading node.
+
+    Returns:
+        Heading text as a plain string with inline formatting stripped.
+    """
+    parts: list[str] = []
+    for inline in node.children:
+        raw = getattr(inline, "children", "")
+        parts.append(raw if isinstance(raw, str) else str(raw))
+    return "".join(parts).strip()
+
+
+def _ast_h2_headings(text: str) -> list[str]:
+    """Return level-2 heading texts from the marko AST in document order.
+
+    marko correctly ignores ``##`` lines inside fenced code blocks.
+
+    Args:
+        text: Raw markdown body text.
+
+    Returns:
+        Ordered list of heading text strings (after ``## ``).
+    """
+    doc = marko.parse(text)
+    return [
+        _extract_heading_text(child)
+        for child in doc.children
+        if isinstance(child, _MarkoHeading) and child.level == _H2_LEVEL
+    ]
+
+
+def _ast_h3_headings(text: str) -> list[str]:
+    """Return level-3 heading texts from the marko AST in document order.
+
+    Args:
+        text: Raw markdown text for a single section body.
+
+    Returns:
+        Ordered list of heading text strings (after ``### ``).
+    """
+    doc = marko.parse(text)
+    return [
+        _extract_heading_text(child)
+        for child in doc.children
+        if isinstance(child, _MarkoHeading) and child.level == _H3_LEVEL
+    ]
+
+
+def _map_headings_to_lines(ast_headings: list[str], raw_lines: list[str], target_level: int) -> list[tuple[int, str]]:
+    """Map AST heading texts to their 0-indexed source line numbers.
+
+    Uses a code-fence state tracker to skip ``#`` lines inside fenced code
+    blocks, then matches AST heading entries in document order by level.  Line
+    numbers are 0-indexed (offsets into ``raw_lines``).
+
+    Args:
+        ast_headings: Heading texts extracted from the marko AST, in order.
+        raw_lines: Source lines of the text (``text.splitlines()``).
+        target_level: Heading depth to match (2 for ``##``, 3 for ``###``).
+
+    Returns:
+        List of ``(line_index, heading_text_from_source)`` tuples.
+    """
+    "#" * target_level + " "
+    result: list[tuple[int, str]] = []
+    ast_idx = 0
+    in_fence = False
+
+    for idx, line in enumerate(raw_lines):
+        if ast_idx >= len(ast_headings):
+            break
+        stripped = line.lstrip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = _ATX_HEADING_RE.match(line)
+        if m and len(m.group(1)) == target_level:
+            result.append((idx, m.group(2).strip()))
+            ast_idx += 1
+
+    return result
+
+
+def _split_body_h2(body: str) -> list[tuple[str, str]]:
+    """Split markdown body on ``## `` headings using the marko AST.
+
+    marko correctly identifies ATX headings while ignoring ``##`` lines inside
+    fenced code blocks.  Heading positions are then mapped back to source lines
+    so that raw content (including HTML entry blocks) is extracted verbatim.
+
+    Args:
+        body: Raw markdown body text (everything after frontmatter).
+
+    Returns:
+        List of ``(heading_name, content)`` tuples in document order.
+        The heading_name is the text after ``## `` with whitespace stripped.
+        Content does not include the heading line itself.
+    """
+    ast_headings = _ast_h2_headings(body)
+    if not ast_headings:
+        return []
+
+    raw_lines = body.splitlines()
+    positioned = _map_headings_to_lines(ast_headings, raw_lines, target_level=2)
+
+    segments: list[tuple[str, str]] = []
+    for i, (line_idx, heading_name) in enumerate(positioned):
+        content_start = line_idx + 1
+        content_end = positioned[i + 1][0] if i + 1 < len(positioned) else len(raw_lines)
+        content = "\n".join(raw_lines[content_start:content_end]).strip()
+        segments.append((heading_name, content))
+
+    return segments
+
+
+def _split_h3_subsections(content: str) -> dict[str, str]:
+    """Split a block of text on ``### `` headings using the marko AST.
+
+    Subsection content is extracted from the raw source lines so that entry
+    block HTML is stored verbatim.
+
+    Args:
+        content: Block of text under a ``## `` section.
+
+    Returns:
+        Dict mapping subsection name to raw content (verbatim).
+        Keys are the heading text after ``### ``, whitespace stripped.
+    """
+    ast_headings = _ast_h3_headings(content)
+    if not ast_headings:
+        return {}
+
+    raw_lines = content.splitlines()
+    positioned = _map_headings_to_lines(ast_headings, raw_lines, target_level=3)
+
+    subsections: dict[str, str] = {}
+    for i, (line_idx, sub_name) in enumerate(positioned):
+        content_start = line_idx + 1
+        content_end = positioned[i + 1][0] if i + 1 < len(positioned) else len(raw_lines)
+        sub_content = "\n".join(raw_lines[content_start:content_end]).strip()
+        subsections[sub_name] = sub_content
+
+    return subsections
+
+
+def _parse_section_entries(content: str, added_date: str) -> Section:
+    """Parse content into a Section, handling both entry-block and plain text.
+
+    If ``<div><sub>`` entry blocks are present the content is parsed into
+    ``Entry`` objects via the entry_blocks module.  Plain text (no entry
+    blocks) is wrapped in a single synthetic ``Entry`` so the data model
+    stays uniform.
+
+    Args:
+        content: Raw text content of a section body.
+        added_date: YYYY-MM-DD date used to construct a synthetic entry id
+            when the content has no entry block wrappers.
+
+    Returns:
+        ``Section`` with one or more ``Entry`` objects.
+    """
+    # Import here to avoid circular dependency: entry_blocks → parsing (now_iso).
+    from .entry_blocks import ENTRY_RE  # noqa: PLC0415
+
+    if not content:
+        return Section(entries=[])
+
+    matches = list(ENTRY_RE.finditer(content))
+    if matches:
+        from .entry_blocks import _deduplicate_timestamps, _parse_match_to_entry  # noqa: PLC0415
+
+        entries = [_parse_match_to_entry(m) for m in matches]
+        _deduplicate_timestamps(entries)
+        return Section(entries=entries)
+
+    # No entry blocks — wrap raw content in a synthetic entry.
+    synthetic_id = f"{added_date}T00:00:00Z"
+    return Section(entries=[Entry(id=synthetic_id, content=content)])
+
+
+def _parse_groomed_section(heading_name: str, content: str, added_date: str) -> GroomedData:
+    """Parse a ``## Groomed`` section into a ``GroomedData`` object.
+
+    The date is extracted from the heading suffix ``(YYYY-MM-DD)``.
+    ``### `` subsections become keys in ``GroomedData.subsections``; their
+    values are stored verbatim so existing ``entry_blocks`` operations work
+    without re-parsing.
+
+    Args:
+        heading_name: Full heading text after ``## ``, e.g. ``"Groomed (2026-02-28)"``.
+        content: Raw text content under the heading (after the heading line).
+        added_date: Fallback date when no date is in the heading.
+
+    Returns:
+        ``GroomedData`` with ``date`` and ``subsections`` populated.
+    """
+    date_match = re.search(r"\((\d{4}-\d{2}-\d{2})\)", heading_name)
+    date = date_match.group(1) if date_match else added_date
+    subsections = _split_h3_subsections(content)
+    return GroomedData(date=date, subsections=subsections)
+
+
+def parse_md_body_sections(body_text: str, added_date: str = "0000-00-00") -> dict[str, Section | GroomedData]:
+    """Parse markdown body sections from a legacy ``.md`` backlog file body.
+
+    Splits the body on ``## `` top-level headings (respecting fenced code
+    blocks), then converts each section to a typed model:
+
+    - ``## Groomed`` (with optional date suffix) → ``GroomedData``
+      ``### `` subsections become ``GroomedData.subsections`` keys; values
+      are stored verbatim so ``entry_blocks`` operations work unchanged.
+    - All other sections → ``Section`` with a list of ``Entry`` objects.
+      Sections with ``<div><sub>`` entry blocks are parsed into individual
+      ``Entry`` instances.  Sections with plain text get a single synthetic
+      ``Entry`` (id = ``{added_date}T00:00:00Z``).
+
+    Duplicate ``## `` headings are merged: entries from the second (and any
+    subsequent) occurrence are appended to the first, preserving all content.
+    ``GroomedData`` from duplicate ``## Groomed`` headings are merged by
+    updating ``subsections`` (later keys overwrite earlier ones with the same
+    name).
+
+    Args:
+        body_text: Raw markdown body string — everything after the ``---``
+            frontmatter delimiter block.
+        added_date: YYYY-MM-DD date used as the synthetic entry id timestamp
+            for plain-text sections that have no ``<div><sub>`` wrappers.
+            Defaults to ``"0000-00-00"``.
+
+    Returns:
+        Dict mapping section name (as it appears in the heading after ``## ``,
+        with any date suffix stripped for ``Groomed``) to a ``Section`` or
+        ``GroomedData`` instance.  The key for ``## Groomed (2026-02-28)``
+        is ``"groomed"``; all other section names are lowercased.
+    """
+    segments = _split_body_h2(body_text)
+    result: dict[str, Section | GroomedData] = {}
+
+    for heading_name, content in segments:
+        groomed_match = _GROOMED_DATE_RE.match(heading_name.strip())
+        if groomed_match:
+            key = "groomed"
+            parsed: Section | GroomedData = _parse_groomed_section(heading_name, content, added_date)
+            existing_groomed = result.get(key)
+            if isinstance(existing_groomed, GroomedData) and isinstance(parsed, GroomedData):
+                # Merge duplicate ## Groomed sections: later subsections overwrite.
+                existing_groomed.subsections.update(parsed.subsections)
+                if parsed.date and not existing_groomed.date:
+                    existing_groomed.date = parsed.date
+            else:
+                result[key] = parsed
+        else:
+            key = heading_name.lower()
+            parsed_section = _parse_section_entries(content, added_date)
+            existing_section = result.get(key)
+            if isinstance(existing_section, Section):
+                # Merge duplicate headings: append entries from subsequent occurrences.
+                existing_section.entries.extend(parsed_section.entries)
+            else:
+                result[key] = parsed_section
+
+    return result
 
 
 # ---------------------------------------------------------------------------
