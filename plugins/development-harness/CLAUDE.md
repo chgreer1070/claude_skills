@@ -394,6 +394,15 @@ uv run fastmcp call \
 
 **Why `--command` is required**: The server files use relative imports (`from . import models`) and sibling packages (`import dh_paths`). Running `fastmcp call server.py` directly breaks module resolution. The `--command` flag launches the runner script as a subprocess with the correct Python path, matching how the plugin cache launches the server.
 
+**Backend selection during testing**: Prefix `fastmcp call` commands with `BACKLOG_BACKEND=sqlite` or `BACKLOG_BACKEND=memory` to test against a non-GitHub backend without requiring live credentials:
+
+```bash
+BACKLOG_BACKEND=memory uv run fastmcp call \
+  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
+  --target backlog_list \
+  --input-json '{}'
+```
+
 **When to use this vs built-in MCP calls**: Use `fastmcp call` to verify behavior after editing `backlog_core/` or `sam_schema/` source files. Use built-in MCP calls for normal workflow operations where the cached server is sufficient.
 
 ---
@@ -402,7 +411,15 @@ uv run fastmcp call \
 
 When discussing, extending, or adding backend providers for the development harness — including state management, task management, planning, issues, jobs, milestones, or boards — read [docs/backend-providers.md](./docs/backend-providers.md) first. Amend that document with any new points, references, discoveries, or user inputs that arise during the conversation.
 
-The development harness supports pluggable backends via Protocol-based abstractions. The current implementation uses GitHub. Future backends include GitLab, Linear, and Supabase. Each backend uses its platform's native primitives — see the reference doc for verified capabilities and official documentation URLs per platform.
+The backlog MCP server uses a `BacklogBackend` Protocol (`backlog_core/backend_protocol.py`) to decouple all operations from any specific storage platform. Three backends are available:
+
+- `github` (default) — GitHub Issues via GraphQL + PyGithub REST. Requires `GITHUB_TOKEN`.
+- `sqlite` — local 6-table SQLite schema, WAL mode. No external credentials.
+- `memory` — in-memory test double. No persistence.
+
+Select via `BACKLOG_BACKEND` env var or `[backend] name` in `backend.toml` (project root or `~/.dh/`). Default is `github` when neither is set — existing deployments require no changes.
+
+Future platform backends (GitLab, Linear, Supabase) will implement the same Protocol. See [docs/backend-providers.md](./docs/backend-providers.md) for the full Protocol reference, method groups, configuration examples, and platform capability comparison.
 
 The backlog MCP server also exposes `profile_load` (agent_profile tool) for loading named agent profiles that specialize task-worker behavior at dispatch time. Profile definitions live in the backlog server configuration; see [docs/backend-providers.md](./docs/backend-providers.md) for the module boundary.
 

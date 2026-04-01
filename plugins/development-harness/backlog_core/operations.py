@@ -14,7 +14,7 @@ import re
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, NotRequired, cast
+from typing import TYPE_CHECKING, Any, NotRequired, cast
 
 import dh_paths as _dh_paths
 from dispatch_schema.core.models import ConflictGroup
@@ -25,46 +25,9 @@ from typing_extensions import TypedDict
 from . import models as _models
 from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
+from .backend_protocol import IssueCommentNode, IssueNode, MilestoneFullNode, get_config
 from .entry_blocks import ENTRY_RE, _render_entry_raw, generate_diff, parse_entries, strike_entry as strike_entry_block
-from .gh_client import (
-    IssueNode,
-    _add_comment_graphql,
-    _fetch_comment_by_id_graphql,
-    _fetch_issue_comments_graphql,
-    _fetch_issue_graphql,
-    _fetch_milestones_graphql,
-    _graphql_request,
-    _projects_v2_create_mutation,
-    _projects_v2_list_query,
-    _update_issue_graphql,
-    apply_status_groomed,
-    apply_status_in_progress,
-    apply_status_verified,
-    batch_fetch_statuses,
-    check_open_prs_for_issue,
-    close_github_issue,
-    create_issue_for_item,
-    create_task_issue,
-    fetch_github_issue_body,
-    fetch_open_issues_by_title,
-    get_github,
-    get_task_issues,
-    issue_to_local_fields,
-    resolve_github_issue,
-    sync_groomed_to_github_issue,
-    sync_issues_graphql,
-    try_get_github,
-    update_task_status,
-    view_enrich_from_github,
-)
-from .github_sync import (
-    SECTION_HEADING as _SECTION_HEADING_MAP,
-    _render_groomed as _render_groomed_md,
-    merge_item as merge_item_models,
-    parse_issue_body as parse_issue_body_sync,
-    render_issue_body,
-    unknown_key_to_heading,
-)
+from .github_sync import SECTION_HEADING as _SECTION_HEADING_MAP, _render_groomed as _render_groomed_md
 from .models import (
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     MIN_FRONTMATTER_PARTS,
@@ -82,6 +45,7 @@ from .models import (
     ItemNotFoundError,
     MilestoneInfo,
     Output,
+    PullRequestRef,
     SamTask,
     SamTasksResult,
     Section,
@@ -117,9 +81,360 @@ from .parsing import (
 from .yaml_io import load_item, save_item
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
     from github.Repository import Repository
+
+
+# ---------------------------------------------------------------------------
+# Module-level backend delegates — thin wrappers preserving test patchability.
+# Tests can patch via mocker.patch("backlog_core.operations.X").
+# Each wrapper delegates to get_config().backend.X(...).
+# ---------------------------------------------------------------------------
+
+
+def get_github(repo: str = "", timeout: int = 15) -> Repository:
+    """Return authenticated PyGithub Repository via the active backend.
+
+    Returns:
+        Authenticated Repository object.
+    """
+    return get_config().backend.get_github(repo, timeout)
+
+
+def try_get_github(repo: str = "") -> Repository | None:
+    """Return PyGithub Repository or None if unavailable.
+
+    Returns:
+        Repository object, or None if the backend is unavailable.
+    """
+    return get_config().backend.try_get_github(repo)
+
+
+def create_issue_for_item(
+    repository: Repository, item: BacklogItem, dry_run: bool = False, output: Output | None = None
+) -> int | None:
+    """Create a backend issue from a BacklogItem.
+
+    Returns:
+        New issue number, or None if dry_run.
+    """
+    return get_config().backend.create_issue_for_item(repository, item, dry_run, output)
+
+
+def sync_groomed_to_github_issue(
+    repo_obj: Repository,
+    issue_num: int,
+    groomed_content: str,
+    section_name: str | None = None,
+    output: Output | None = None,
+) -> bool:
+    """Write groomed section into a specific section of an issue body.
+
+    Returns:
+        True if the issue body was updated, False otherwise.
+    """
+    return get_config().backend.sync_groomed_to_github_issue(repo_obj, issue_num, groomed_content, section_name, output)
+
+
+def fetch_github_issue_body(repo_obj: Repository, issue_num: int, output: Output | None = None) -> str | None:
+    """Fetch the raw body of an issue.
+
+    Returns:
+        Issue body string, or None if the issue was not found.
+    """
+    return get_config().backend.fetch_github_issue_body(repo_obj, issue_num, output)
+
+
+def sync_issues_graphql(
+    repo: Repository,
+    owner: str,
+    repo_name: str,
+    *,
+    state: str = "OPEN",
+    labels: list[str] | None = None,
+    milestone_number: int | None = None,
+    since: datetime | None = None,
+    callback: Callable[[IssueNode], None] | None = None,
+    track_timestamp: bool = False,
+) -> list[IssueNode]:
+    """Bulk-fetch issues with optional progress callback.
+
+    Returns:
+        List of IssueNode objects matching the query.
+    """
+    return get_config().backend.sync_issues_graphql(
+        repo,
+        owner,
+        repo_name,
+        state=state,
+        labels=labels,
+        milestone_number=milestone_number,
+        since=since,
+        callback=callback,
+        track_timestamp=track_timestamp,
+    )
+
+
+def batch_fetch_statuses(items: list[BacklogItem], repo: str = "") -> dict[int, IssueStatus]:
+    """Fetch status for multiple items in one operation.
+
+    Returns:
+        Mapping of issue number to IssueStatus.
+    """
+    return get_config().backend.batch_fetch_statuses(items, repo)
+
+
+def view_enrich_from_github(result: ViewItemResult, issue_num: str, repo: str = "") -> bool:
+    """Enrich a ViewItemResult with live data from the backend.
+
+    Returns:
+        True if enrichment succeeded, False otherwise.
+    """
+    return get_config().backend.view_enrich_from_github(result, issue_num, repo)
+
+
+def fetch_open_issues_by_title(repository: Repository) -> dict[str, int]:
+    """Return a mapping of open issue titles to issue numbers.
+
+    Returns:
+        Dict mapping issue title strings to their issue numbers.
+    """
+    return get_config().backend.fetch_open_issues_by_title(repository)
+
+
+def check_open_prs_for_issue(issue_num: int, repo: str = "") -> list[PullRequestRef]:
+    """Find open pull requests referencing a given issue.
+
+    Returns:
+        List of PullRequestRef objects for matching open PRs.
+    """
+    return get_config().backend.check_open_prs_for_issue(issue_num, repo)
+
+
+def close_github_issue(
+    issue_ref: str, reason: str, *, reference: str = "", comment: str = "", repo: str = "", output: Output | None = None
+) -> None:
+    """Close an issue with a reason comment."""
+    get_config().backend.close_github_issue(
+        issue_ref, reason, reference=reference, comment=comment, repo=repo, output=output
+    )
+
+
+def resolve_github_issue(
+    issue_ref: str,
+    *,
+    summary: str,
+    method: str = "",
+    notes: str = "",
+    follow_ups: str = "",
+    findings: str = "",
+    repo: str = "",
+    output: Output | None = None,
+) -> None:
+    """Resolve an issue with a structured resolution comment."""
+    get_config().backend.resolve_github_issue(
+        issue_ref,
+        summary=summary,
+        method=method,
+        notes=notes,
+        follow_ups=follow_ups,
+        findings=findings,
+        repo=repo,
+        output=output,
+    )
+
+
+def apply_status_in_progress(item: BacklogItem, repo: str = "", output: Output | None = None) -> None:
+    """Transition an item to in-progress state on the backend."""
+    get_config().backend.apply_status_in_progress(item, repo, output)
+
+
+def apply_status_verified(item: BacklogItem, repo: str = "", output: Output | None = None) -> None:
+    """Transition an item to verified state on the backend."""
+    get_config().backend.apply_status_verified(item, repo, output)
+
+
+def apply_status_groomed(item: BacklogItem, repo: str = "", output: Output | None = None) -> None:
+    """Transition an item to groomed state on the backend."""
+    get_config().backend.apply_status_groomed(item, repo, output)
+
+
+def issue_to_local_fields(issue: IssueNode) -> IssueLocalFields:
+    """Convert a raw IssueNode to a typed IssueLocalFields model.
+
+    Returns:
+        Populated IssueLocalFields instance.
+    """
+    return get_config().backend.issue_to_local_fields(issue)
+
+
+def create_task_issue(
+    repo: Repository,
+    parent_issue_number: int,
+    task: SamTask,
+    description: str = "",
+    acceptance_criteria: list[str] | None = None,
+    labels: list[str] | None = None,
+    output: Output | None = None,
+) -> IssueNode | None:
+    """Create a child issue for a SAM task under a parent issue.
+
+    Returns:
+        IssueNode for the created child issue, or None on failure.
+    """
+    return get_config().backend.create_task_issue(
+        repo, parent_issue_number, task, description, acceptance_criteria, labels, output
+    )
+
+
+def get_task_issues(repo: Repository, parent_issue_number: int, output: Output | None = None) -> list[IssueNode]:
+    """Fetch all child task issues for a parent issue.
+
+    Returns:
+        List of IssueNode objects for child task issues.
+    """
+    return get_config().backend.get_task_issues(repo, parent_issue_number, output)
+
+
+def update_task_status(repo: Repository, issue_number: int, new_status: str, output: Output | None = None) -> bool:
+    """Update the status label on a task issue.
+
+    Returns:
+        True if the status was updated, False otherwise.
+    """
+    return get_config().backend.update_task_status(repo, issue_number, new_status, output)
+
+
+def _fetch_issue_graphql(repo: Repository, owner: str, repo_name: str, issue_number: int) -> IssueNode:
+    """Fetch a single issue by number via the active backend.
+
+    Returns:
+        IssueNode for the requested issue.
+    """
+    return get_config().backend._fetch_issue_graphql(repo, owner, repo_name, issue_number)
+
+
+def _update_issue_graphql(
+    repo: Repository,
+    issue_node_id: str,
+    *,
+    state: str | None = None,
+    body: str | None = None,
+    title: str | None = None,
+    label_ids: list[str] | None = None,
+    milestone_id: str | None = None,
+) -> None:
+    """Update an issue's mutable fields via the active backend."""
+    get_config().backend._update_issue_graphql(
+        repo, issue_node_id, state=state, body=body, title=title, label_ids=label_ids, milestone_id=milestone_id
+    )
+
+
+def _add_comment_graphql(repo: Repository, issue_node_id: str, body: str) -> str:
+    """Add a comment to an issue via the active backend.
+
+    Returns:
+        GraphQL node ID of the newly created comment.
+    """
+    return get_config().backend._add_comment_graphql(repo, issue_node_id, body)
+
+
+def _fetch_issue_comments_graphql(
+    repo: Repository, owner: str, repo_name: str, issue_number: int
+) -> list[IssueCommentNode]:
+    """Fetch all comments on an issue via the active backend.
+
+    Returns:
+        List of IssueCommentNode objects for the issue.
+    """
+    return get_config().backend._fetch_issue_comments_graphql(repo, owner, repo_name, issue_number)
+
+
+def _fetch_comment_by_id_graphql(repo: Repository, comment_node_id: str) -> IssueCommentNode:
+    """Fetch a single comment by its GraphQL node ID via the active backend.
+
+    Returns:
+        IssueCommentNode for the requested comment.
+    """
+    return get_config().backend._fetch_comment_by_id_graphql(repo, comment_node_id)
+
+
+def _fetch_milestones_graphql(
+    repo: Repository, owner: str, repo_name: str, states: list[str] | None = None
+) -> list[MilestoneFullNode]:
+    """Fetch milestones from the active backend.
+
+    Returns:
+        List of MilestoneFullNode objects.
+    """
+    return get_config().backend._fetch_milestones_graphql(repo, owner, repo_name, states)
+
+
+def _graphql_request(repo: Repository, query: str, variables: dict[str, object] | None = None) -> dict[str, Any]:
+    """Execute a raw GraphQL query via the active backend.
+
+    Returns:
+        Parsed JSON response dict from the GraphQL endpoint.
+    """
+    return get_config().backend._graphql_request(repo, query, variables)
+
+
+def _projects_v2_list_query(owner: str, limit: int = 20) -> tuple[str, dict[str, object]]:
+    """Build a ProjectsV2 list query string and variables via the active backend.
+
+    Returns:
+        Tuple of (query_string, variables_dict).
+    """
+    return get_config().backend._projects_v2_list_query(owner, limit)
+
+
+def _projects_v2_create_mutation(owner_id: str, title: str) -> tuple[str, dict[str, object]]:
+    """Build a ProjectsV2 create mutation string and variables via the active backend.
+
+    Returns:
+        Tuple of (mutation_string, variables_dict).
+    """
+    return get_config().backend._projects_v2_create_mutation(owner_id, title)
+
+
+# github_sync delegates — original alias names preserved for test patchability
+
+
+def parse_issue_body_sync(body: str, existing: BacklogItem | None = None) -> BacklogItem:
+    """Deserialise a backend issue body into a BacklogItem.
+
+    Returns:
+        Populated BacklogItem parsed from the issue body.
+    """
+    return get_config().backend.parse_issue_body(body, existing)
+
+
+def merge_item_models(local: BacklogItem, remote: BacklogItem) -> BacklogItem:
+    """Merge a local BacklogItem with a remote version.
+
+    Returns:
+        Merged BacklogItem combining local and remote fields.
+    """
+    return get_config().backend.merge_item(local, remote)
+
+
+def render_issue_body(item: BacklogItem, original_body: str | None = None) -> str:
+    """Serialise a BacklogItem to backend issue body markdown.
+
+    Returns:
+        Rendered markdown string for the issue body.
+    """
+    return get_config().backend.render_issue_body(item, original_body)
+
+
+def unknown_key_to_heading(key: str) -> str:
+    """Convert an unknown section key to a markdown heading string.
+
+    Returns:
+        Markdown heading string for the key.
+    """
+    return get_config().backend.unknown_key_to_heading(key)
 
 
 # ---------------------------------------------------------------------------
@@ -451,7 +766,7 @@ def _auto_register_plan_artifact(item: BacklogItem, plan: str, repo: str = "", o
         updated_manifest = registry.register(manifest, entry)
         provider.set_manifest(issue_number, updated_manifest)
         out.info(f"  Artifact registered: task-plan {plan} on issue #{issue_number}")
-    except (BacklogError, GithubException) as exc:
+    except (BacklogError, GithubException, OSError, RuntimeError) as exc:
         out.warn(f"  WARNING: Artifact registration failed for {plan} on issue #{issue_number}: {exc}")
 
 
@@ -3576,7 +3891,7 @@ def _sub_issues_to_task_dicts(sub_issues: list[IssueNode]) -> list[dict[str, obj
     ``SamTask`` fields parsed from the issue body's ``<!-- sam:task ... -->`` block.
 
     Args:
-        sub_issues: List of IssueNode TypedDicts from ``get_task_issues()``.
+        sub_issues: List of IssueNode TypedDicts from ``get_config().backend.get_task_issues()``.
 
     Returns:
         List of task dicts with GitHub issue fields and SAM metadata merged.
@@ -3609,7 +3924,7 @@ def create_sam_task(
     """Create a GitHub issue for a SAM task and link it as a sub-issue of a parent story.
 
     Constructs a ``SamTask`` from scalar parameters, creates the GitHub issue, and
-    links it as a sub-issue of the parent. Wraps ``github.create_task_issue()``.
+    links it as a sub-issue of the parent. Wraps ``backend.create_task_issue()``.
 
     Args:
         parent_issue_number: Issue number of the parent story (without ``#``).
@@ -3721,7 +4036,7 @@ def update_sam_task_status(
 ) -> dict[str, bool | int | str | list[str]]:
     """Update the status field in the ``<!-- sam:task ... -->`` block of a task issue body.
 
-    Wraps ``github.update_task_status()``. Returns without error when the status
+    Wraps ``backend.update_task_status()``. Returns without error when the status
     is already the target value or no ``sam:task`` block is found.
 
     Args:

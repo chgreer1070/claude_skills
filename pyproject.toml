@@ -311,6 +311,21 @@ max-complexity = 12
 "**/assets/nested-typer-exceptions/*.py" = ["ANN", "DOC"]
 # Lazy imports for optional dependency detection (hatchling may not be installed)
 "**/assets/version.py" = ["PLC0415"]
+# BacklogBackend Protocol must expose all 41 operations from gh_client/github_sync/github_branches
+# PLR0904 limit (20) is not applicable to Protocol classes that define a full backend surface
+"**/backlog_core/backend_protocol.py" = ["PLR0904"]
+# GitHubBackend implements every method of BacklogBackend — PLR0904 does not apply to protocol implementations
+# SLF001 — protocol surface includes _-prefixed methods that delegate to _-prefixed gh_client functions by design
+"**/backlog_core/backends/github_backend.py" = ["PLR0904", "SLF001"]
+# InMemoryBackend implements the full BacklogBackend Protocol surface — PLR0904 and DOC201 do not apply
+# DOC201 — single-line docstrings already state the return value; formal Returns sections add no information
+"**/backlog_core/backends/memory_backend.py" = ["DOC201", "PLR0904"]
+# SQLiteBackend implements the full BacklogBackend Protocol surface — PLR0904 does not apply
+# SLF001 — protocol surface includes _-prefixed methods that are part of the public protocol interface by design
+"**/backlog_core/backends/sqlite_backend.py" = ["PLR0904", "SLF001"]
+# operations.py calls _-prefixed BacklogBackend protocol methods — these are part of the public protocol surface
+# SLF001 — private-name access is intentional: protocol interface defines _-prefixed methods by design
+"**/backlog_core/operations.py" = ["SLF001"]
 # FastMCP lifespan hook requires async def + yield without await — RUF029 is a false positive
 "**/backlog_core/server.py" = ["RUF029"]
 # dh_paths and kage-bunshin spawn call system tools by name (not full path) — intentional

@@ -32,13 +32,8 @@ from ruamel.yaml import YAML as _YAML, YAMLError as _YAMLError
 from . import models as _models, operations
 from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
+from .backend_protocol import IssueNode as _IssueNode, get_config as _get_config
 from .dispatch_state import DispatchStateManager as _DispatchStateManager
-from .gh_client import (
-    IssueNode as _IssueNode,
-    get_github as _get_github,
-    probe_backend_status as _probe_backend_status,
-    sync_issues_graphql as _sync_issues_graphql,
-)
 from .models import (
     ArtifactContent,
     ArtifactEntry,
@@ -341,6 +336,19 @@ async def backlog_add(
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
+
+
+def _probe_backend_status() -> _BackendStatus:
+    """Delegate to the configured backend's probe_backend_status().
+
+    Extracted as a module-level function so tests can patch
+    ``backlog_core.server._probe_backend_status`` without reaching into the
+    backend object directly.
+
+    Returns:
+        BackendStatus populated by the active backend implementation.
+    """
+    return _get_config().backend.probe_backend_status()
 
 
 def _format_backend_status_message(status: _BackendStatus) -> str:
@@ -1836,10 +1844,12 @@ async def dispatch_stale_check(
         return {"error": str(exc), "milestone_number": milestone_number, "plan_path": str(plan_path)}
 
     def _fetch_milestone_issue_numbers() -> list[int]:
-        gh_repo = _get_github(repo)
+        gh_repo = _get_config().backend.get_github(repo)
         owner, repo_name = gh_repo.full_name.split("/", 1)
-        open_issues = _sync_issues_graphql(gh_repo, owner, repo_name, state="OPEN", milestone_number=milestone_number)
-        closed_issues = _sync_issues_graphql(
+        open_issues = _get_config().backend.sync_issues_graphql(
+            gh_repo, owner, repo_name, state="OPEN", milestone_number=milestone_number
+        )
+        closed_issues = _get_config().backend.sync_issues_graphql(
             gh_repo, owner, repo_name, state="CLOSED", milestone_number=milestone_number
         )
         return [issue["number"] for issue in open_issues + closed_issues]
@@ -2050,9 +2060,9 @@ async def dispatch_conflicts(
     """
 
     def _fetch_items_with_impact_radius() -> list[_ImpactRadiusItem]:
-        gh_repo = _get_github(repo)
+        gh_repo = _get_config().backend.get_github(repo)
         owner, repo_name = gh_repo.full_name.split("/", 1)
-        issue_nodes: list[_IssueNode] = _sync_issues_graphql(
+        issue_nodes: list[_IssueNode] = _get_config().backend.sync_issues_graphql(
             gh_repo, owner, repo_name, state="OPEN", milestone_number=milestone_number
         )
         items: list[_ImpactRadiusItem] = []
