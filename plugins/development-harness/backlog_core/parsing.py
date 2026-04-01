@@ -37,6 +37,7 @@ from .models import (
     SamTask,
     Section,
     ViewItemResult,
+    parse_issue_number,
 )
 
 # ---------------------------------------------------------------------------
@@ -235,9 +236,9 @@ def parse_issue_selector(selector: str) -> str | None:
         return url_match.group(2)
     # #N form
     if selector.startswith("#"):
-        num = selector.lstrip("#").strip()
-        if num.isdigit():
-            return num
+        n = parse_issue_number(selector)
+        if n is not None:
+            return str(n)
     # Bare number form
     if selector.isdigit():
         return selector
@@ -433,7 +434,7 @@ def find_item(items: list[BacklogItem], selector: str) -> BacklogItem | None:
     if issue_num is not None:
         for it in items:
             issue_ref = it.issue or ""
-            if issue_ref.lstrip("#") == issue_num:
+            if str(parse_issue_number(issue_ref)) == issue_num:
                 return it
         return None
     # Title substring match (case-insensitive)

@@ -59,33 +59,27 @@ class TestSectionDisplayTitle:
 
     def test_known_key_fact_check(self) -> None:
         """Known key 'fact_check' maps to 'Fact-Check'."""
-        sec = Section(entries=[])
-        assert _section_display_title("fact_check", sec) == "Fact-Check"
+        assert _section_display_title("fact_check") == "Fact-Check"
 
     def test_known_key_rt_ica(self) -> None:
         """Known key 'rt_ica' maps to 'RT-ICA'."""
-        sec = Section(entries=[])
-        assert _section_display_title("rt_ica", sec) == "RT-ICA"
+        assert _section_display_title("rt_ica") == "RT-ICA"
 
     def test_groomed_key_with_date(self) -> None:
-        """'groomed' key with GroomedData returns 'Groomed — {date}'."""
-        groomed = GroomedData(date="2026-03-15", subsections={})
-        assert _section_display_title("groomed", groomed) == "Groomed \u2014 2026-03-15"
+        """'groomed' key with a date string returns 'Groomed — {date}'."""
+        assert _section_display_title("groomed", "2026-03-15") == "Groomed \u2014 2026-03-15"
 
     def test_groomed_key_no_date(self) -> None:
-        """'groomed' key with empty date returns bare 'Groomed'."""
-        groomed = GroomedData(date="", subsections={})
-        assert _section_display_title("groomed", groomed) == "Groomed"
+        """'groomed' key with empty date string returns bare 'Groomed'."""
+        assert _section_display_title("groomed", "") == "Groomed"
 
     def test_unknown_prefix_key(self) -> None:
         """'unknown__impact_radius' key reconstructs to 'Impact Radius'."""
-        sec = Section(entries=[])
-        assert _section_display_title("unknown__impact_radius", sec) == "Impact Radius"
+        assert _section_display_title("unknown__impact_radius") == "Impact Radius"
 
     def test_plain_key_title_cased(self) -> None:
         """Plain key without known prefix is title-cased with spaces."""
-        sec = Section(entries=[])
-        assert _section_display_title("some_section", sec) == "Some Section"
+        assert _section_display_title("some_section") == "Some Section"
 
 
 # ---------------------------------------------------------------------------

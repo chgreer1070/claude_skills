@@ -85,6 +85,7 @@ from .models import (
     Section,
     ValidationError,
     ViewItemResult,
+    parse_issue_number,
 )
 from .parsing import (
     build_body_extra_only,
@@ -412,7 +413,9 @@ def _rename_item_title(item: BacklogItem, title: str, repo: str = "", output: Ou
         repository = try_get_github(repo)
         if repository is not None:
             try:
-                num = int(issue_ref.lstrip("#"))
+                num = parse_issue_number(issue_ref)
+                if num is None:
+                    raise ValueError(f"Invalid issue ref: {issue_ref!r}")
                 owner, repo_name = repository.full_name.split("/", 1)
                 issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
                 _update_issue_graphql(repository, issue_node["id"], title=title)
@@ -458,7 +461,9 @@ def _apply_plan_to_item(item: BacklogItem, plan: str, repo: str = "", output: Ou
         repository = try_get_github(repo)
         if repository is not None:
             try:
-                num = int(issue_ref.lstrip("#"))
+                num = parse_issue_number(issue_ref)
+                if num is None:
+                    raise ValueError(f"Invalid issue ref: {issue_ref!r}")
                 owner, repo_name = repository.full_name.split("/", 1)
                 issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
                 _add_comment_graphql(repository, issue_node["id"], f"**Plan**: {plan}")
@@ -486,9 +491,8 @@ def _auto_register_plan_artifact(item: BacklogItem, plan: str, repo: str = "", o
     issue_ref = item.issue
     if not issue_ref:
         return
-    try:
-        issue_number = int(issue_ref.lstrip("#"))
-    except ValueError:
+    issue_number = parse_issue_number(issue_ref)
+    if issue_number is None:
         out.warn(f"  WARNING: Could not parse issue number from {issue_ref!r}; skipping artifact registration")
         return
 
@@ -742,7 +746,9 @@ def _write_groomed_to_github(
         out.info(f"  INFO: GitHub unavailable — {issue_ref} will sync on next `backlog pull` or `backlog sync`")
         return False
     try:
-        num = int(issue_ref.lstrip("#"))
+        num = parse_issue_number(issue_ref)
+        if num is None:
+            raise ValueError(f"Invalid issue ref: {issue_ref!r}")
         updated = sync_groomed_to_github_issue(repository, num, content, section_name, output=out)
     except (GithubException, BacklogError) as e:
         out.warn(f"  WARNING: Could not sync to GitHub: {e}")
@@ -1325,11 +1331,10 @@ def _pull_item(
     """
     out = output or Output()
     issue_ref = item.issue
-    num_str = issue_ref.lstrip("#")
-    if not num_str.isdigit():
+    issue_num = parse_issue_number(issue_ref)
+    if issue_num is None:
         return False, ""
 
-    issue_num = int(num_str)
     title = item.title
     filepath_str = item.file_path
 
@@ -1571,11 +1576,9 @@ def _build_issue_to_item_index(local_items: list[BacklogItem]) -> dict[int, Back
     for item in local_items:
         if not item.issue:
             continue
-        num_str = item.issue.lstrip("#")
-        if num_str.isdigit():
-            num = int(num_str)
-            if item.status not in _TERMINAL_STATUSES:
-                index[num] = item
+        num = parse_issue_number(item.issue)
+        if num is not None and item.status not in _TERMINAL_STATUSES:
+            index[num] = item
     return index
 
 
@@ -1814,9 +1817,9 @@ def refresh_local_cache_from_github(
 
 def _item_derived_status(item: BacklogItem, status_map: dict[int, IssueStatus]) -> str:
     """Return the GitHub status string for an item, defaulting to 'needs-grooming'."""
-    num_str = item.issue.lstrip("#") if item.issue else ""
-    if num_str.isdigit():
-        info = status_map.get(int(num_str))
+    num = parse_issue_number(item.issue)
+    if num is not None:
+        info = status_map.get(num)
         return info.status if info is not None else "needs-grooming"
     return "needs-grooming"
 
@@ -1929,8 +1932,7 @@ def _build_list_entry(item: BacklogItem, status_map: dict[int, IssueStatus]) -> 
     if item.groomed:
         entry["groomed"] = item.groomed
     if item.issue:
-        num_str = item.issue.lstrip("#")
-        num = int(num_str) if num_str.isdigit() else 0
+        num = parse_issue_number(item.issue) or 0
         info = status_map.get(num)
         entry["status"] = info.status if info is not None else ""
         entry["milestone"] = info.milestone if info is not None else ""
@@ -2006,7 +2008,7 @@ def _merge_section_entries(existing: _SectionMetadata, new_entries: list[dict[st
     return {"num_entries": active_count, "num_struck": struck_count, "entries": all_entries}
 
 
-def _section_display_title(key: str, sec_data: Section | GroomedData) -> str:
+def _section_display_title(key: str, groomed_date: str = "") -> str:
     """Return the human-readable title for a section key.
 
     Known keys are looked up in the inverse of ``_SECTION_HEADING``.  Unknown
@@ -2016,7 +2018,8 @@ def _section_display_title(key: str, sec_data: Section | GroomedData) -> str:
 
     Args:
         key: Section storage key (e.g. ``"fact_check"``, ``"unknown__story"``).
-        sec_data: The section value (used to determine GroomedData date).
+        groomed_date: Optional date string from a ``GroomedData`` section, used
+            to append the date to the ``"groomed"`` title.
 
     Returns:
         Display title string (e.g. ``"Fact-Check"``, ``"Story"``).
@@ -2024,9 +2027,7 @@ def _section_display_title(key: str, sec_data: Section | GroomedData) -> str:
     if key in _SECTION_HEADING_MAP:
         return _SECTION_HEADING_MAP[key]
     if key == "groomed":
-        if isinstance(sec_data, GroomedData):
-            return f"Groomed \u2014 {sec_data.date}" if sec_data.date else "Groomed"
-        return "Groomed"
+        return f"Groomed \u2014 {groomed_date}" if groomed_date else "Groomed"
     if key.startswith("unknown__"):
         return unknown_key_to_heading(key)
     return key.replace("_", " ").title()
@@ -2051,7 +2052,8 @@ def _render_section_index(item: BacklogItem) -> str:
         return ""
     lines: list[str] = ["## Sections"]
     for idx, (key, sec_data) in enumerate(item.sections.items()):
-        title = _section_display_title(key, sec_data)
+        groomed_date = sec_data.date if isinstance(sec_data, GroomedData) else ""
+        title = _section_display_title(key, groomed_date)
         if isinstance(sec_data, GroomedData):
             count = len(sec_data.subsections)
             lines.append(f"[{idx}] {title} ({count} subsections)")
@@ -2100,11 +2102,22 @@ def _filter_sections(item: BacklogItem, section: str) -> dict[str, Section | Gro
     if stripped.startswith("/") and stripped.endswith("/") and len(stripped) > 1:
         pattern = stripped[1:-1]
         compiled = re.compile(pattern, re.IGNORECASE)
-        return {k: item.sections[k] for k in keys if compiled.search(_section_display_title(k, item.sections[k]))}
+        return {
+            k: item.sections[k]
+            for k in keys
+            if compiled.search(
+                _section_display_title(k, v.date if isinstance(v := item.sections[k], GroomedData) else "")
+            )
+        }
 
     # --- substring match ---
     lower_filter = stripped.lower()
-    return {k: item.sections[k] for k in keys if lower_filter in _section_display_title(k, item.sections[k]).lower()}
+    return {
+        k: item.sections[k]
+        for k in keys
+        if lower_filter
+        in _section_display_title(k, v.date if isinstance(v := item.sections[k], GroomedData) else "").lower()
+    }
 
 
 def _render_sections_as_body(item: BacklogItem, section: str | None = None) -> str:
@@ -2141,7 +2154,7 @@ def _render_sections_as_body(item: BacklogItem, section: str | None = None) -> s
         if isinstance(sec_data, GroomedData):
             parts.append(_render_groomed_md(sec_data))
         elif isinstance(sec_data, Section):
-            title = _section_display_title(key, sec_data)
+            title = _section_display_title(key)
             content = "\n".join(e.content for e in sec_data.entries if e.content)
             parts.append(f"## {title}\n\n{content}")
 
@@ -2533,9 +2546,9 @@ def sync_push_groomed_content(
     # Bulk-fetch all issue nodes to avoid N+1 GraphQL queries
     issue_numbers = []
     for item in groomed_items:
-        num_str = item.issue.lstrip("#")
-        if num_str.isdigit():
-            issue_numbers.append(int(num_str))
+        num = parse_issue_number(item.issue)
+        if num is not None:
+            issue_numbers.append(num)
 
     # Fetch all open issues and build lookup dict
     all_issues = sync_issues_graphql(repository, owner, repo_name, state="OPEN")
@@ -2544,22 +2557,21 @@ def sync_push_groomed_content(
     pushed = 0
     for item in groomed_items:
         issue_ref = item.issue
-        num_str = issue_ref.lstrip("#")
-        if not num_str.isdigit():
+        issue_num = parse_issue_number(issue_ref)
+        if issue_num is None:
             out.warn(f"  WARNING: Skipping item with invalid issue ref '{issue_ref}'")
             continue
         try:
-            issue_num = int(num_str)
             issue_node = issue_lookup.get(issue_num)
             if issue_node is None:
-                out.warn(f"  WARNING: Issue #{num_str} not found in bulk fetch (may be closed)")
+                out.warn(f"  WARNING: Issue #{issue_num} not found in bulk fetch (may be closed)")
                 continue
             body = render_issue_body(item, original_body=issue_node["body"])
             _update_issue_graphql(repository, issue_node["id"], body=body)
-            out.info(f"  Updated issue #{num_str}: {item.title[:60]}")
+            out.info(f"  Updated issue #{issue_num}: {item.title[:60]}")
             pushed += 1
         except (GithubException, BacklogError) as e:
-            out.warn(f"  WARNING: Could not update issue #{num_str}: {e}")
+            out.warn(f"  WARNING: Could not update issue #{issue_num}: {e}")
 
     return {"pushed": pushed, **out.to_dict()}
 
@@ -2622,7 +2634,9 @@ def close_item(
         raise ItemNotFoundError(selector)
     issue_ref = item.issue
     if issue_ref and not force:
-        issue_num_val = int(issue_ref.lstrip("#"))
+        issue_num_val = parse_issue_number(issue_ref)
+        if issue_num_val is None:
+            raise ValueError(f"Invalid issue ref: {issue_ref!r}")
         open_prs = check_open_prs_for_issue(issue_num_val, repo)
         if open_prs:
             out.warn(f"WARNING: Open PRs reference issue {issue_ref}:")
@@ -2697,8 +2711,8 @@ def resolve_item(
         raise ItemNotFoundError(selector)
     issue_ref = item.issue
     if issue_ref and not force:
-        issue_num_val = int(issue_ref.lstrip("#"))
-        open_prs = check_open_prs_for_issue(issue_num_val, repo)
+        issue_num_val = parse_issue_number(issue_ref)
+        open_prs = check_open_prs_for_issue(issue_num_val, repo) if issue_num_val is not None else []
         if open_prs:
             out.warn(f"WARNING: Open PRs reference issue {issue_ref}:")
             for pr in open_prs:
@@ -3167,7 +3181,9 @@ def strike_entry(
         repository = try_get_github(_models.DEFAULT_REPO)
         if repository:
             try:
-                num = int(item.issue.lstrip("#"))
+                num = parse_issue_number(item.issue)
+                if num is None:
+                    raise ValueError(f"Invalid issue ref: {item.issue!r}")
                 owner, repo_name = repository.full_name.split("/", 1)
                 issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
                 body = render_issue_body(item, original_body=issue_node["body"])

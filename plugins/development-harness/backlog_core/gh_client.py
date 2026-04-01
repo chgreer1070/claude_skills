@@ -35,6 +35,7 @@ from .models import (
     PullRequestRef,
     SamTask,
     ViewItemResult,
+    parse_issue_number,
 )
 from .parsing import (
     build_issue_body,
@@ -1279,9 +1280,11 @@ def close_github_issue(
     out = output or Output()
     try:
         repository = get_github(repo)
-        num = issue_ref.lstrip("#")
+        num = parse_issue_number(issue_ref)
+        if num is None:
+            raise ValueError(f"Invalid issue ref: {issue_ref!r}")
         owner, repo_name = repository.full_name.split("/", 1)
-        issue = _fetch_issue_graphql(repository, owner, repo_name, int(num))
+        issue = _fetch_issue_graphql(repository, owner, repo_name, num)
         parts = [f"**Closed** ({reason})."]
         if reference:
             parts.append(f"**Reference**: {reference}")
@@ -1309,9 +1312,11 @@ def resolve_github_issue(
     out = output or Output()
     try:
         repository = get_github(repo)
-        num = issue_ref.lstrip("#")
+        num = parse_issue_number(issue_ref)
+        if num is None:
+            raise ValueError(f"Invalid issue ref: {issue_ref!r}")
         owner, repo_name = repository.full_name.split("/", 1)
-        issue = _fetch_issue_graphql(repository, owner, repo_name, int(num))
+        issue = _fetch_issue_graphql(repository, owner, repo_name, num)
         body_parts = [f"## Resolved\n\n**Summary**: {summary}"]
         if method:
             body_parts.append(f"**Method**: {method}")
@@ -1388,10 +1393,9 @@ def batch_fetch_statuses(items: list[BacklogItem], repo: str = "") -> dict[int, 
         return {}
     result: dict[int, IssueStatus] = {}
     for item in items:
-        num_str = item.issue.lstrip("#")
-        if not num_str.isdigit():
+        num = parse_issue_number(item.issue)
+        if num is None:
             continue
-        num = int(num_str)
         if num in issue_map:
             gh_issue = issue_map[num]
             status_labels = [lbl["name"] for lbl in gh_issue["labels"] if lbl["name"].startswith("status:")]
@@ -1414,9 +1418,11 @@ def fetch_item_status(item: BacklogItem, repo: str = "", output: Output | None =
         return ""
     try:
         repository = get_github(repo)
-        num = item.issue.lstrip("#")
+        num = parse_issue_number(item.issue)
+        if num is None:
+            raise ValueError(f"Invalid issue ref: {item.issue!r}")
         owner, repo_name = repository.full_name.split("/", 1)
-        gh_issue = _fetch_issue_graphql(repository, owner, repo_name, int(num))
+        gh_issue = _fetch_issue_graphql(repository, owner, repo_name, num)
         labels = [lb["name"] for lb in gh_issue["labels"] if lb["name"].startswith("status:")]
         return labels[0] if labels else ""
     except (BacklogError, GithubException):
@@ -1433,9 +1439,11 @@ def apply_status_in_progress(item: BacklogItem, repo: str = "", output: Output |
     out = output or Output()
     try:
         repository = get_github(repo)
-        num = item.issue.lstrip("#")
+        num = parse_issue_number(item.issue)
+        if num is None:
+            raise ValueError(f"Invalid issue ref: {item.issue!r}")
         owner, repo_name = repository.full_name.split("/", 1)
-        issue = _fetch_issue_graphql(repository, owner, repo_name, int(num))
+        issue = _fetch_issue_graphql(repository, owner, repo_name, num)
         current_names = [lbl["name"] for lbl in issue["labels"]]
         if "status:in-progress" in current_names:
             out.info("  Status: already in-progress")
@@ -1471,9 +1479,11 @@ def apply_status_verified(item: BacklogItem, repo: str = "", output: Output | No
         return
     out = output or Output()
     repository = get_github(repo)
-    num = item.issue.lstrip("#")
+    num = parse_issue_number(item.issue)
+    if num is None:
+        raise ValueError(f"Invalid issue ref: {item.issue!r}")
     owner, repo_name = repository.full_name.split("/", 1)
-    issue = _fetch_issue_graphql(repository, owner, repo_name, int(num))
+    issue = _fetch_issue_graphql(repository, owner, repo_name, num)
     current_names = [lbl["name"] for lbl in issue["labels"]]
     if "status:verified" in current_names:
         out.info("  Status: already verified")
@@ -1517,9 +1527,11 @@ def apply_status_groomed(item: BacklogItem, repo: str = "", output: Output | Non
         return
     out = output or Output()
     repository = get_github(repo)
-    num = item.issue.lstrip("#")
+    num = parse_issue_number(item.issue)
+    if num is None:
+        raise ValueError(f"Invalid issue ref: {item.issue!r}")
     owner, repo_name = repository.full_name.split("/", 1)
-    issue = _fetch_issue_graphql(repository, owner, repo_name, int(num))
+    issue = _fetch_issue_graphql(repository, owner, repo_name, num)
     current_names = [lbl["name"] for lbl in issue["labels"]]
     if "status:groomed" in current_names:
         out.info("  Status: already groomed")

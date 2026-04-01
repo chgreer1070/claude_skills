@@ -17,7 +17,7 @@ import re
 
 from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
 from .entry_blocks import parse_entries
-from .models import BacklogItem, Entry, GroomedData, Section
+from .models import BacklogItem, Entry, GroomedData, Section, parse_issue_number
 from .parsing import extract_sections
 
 __all__ = [
@@ -237,7 +237,7 @@ def render_issue_body(item: BacklogItem, original_body: str | None = None) -> st
 
     # Preserve the artifact manifest from the original body when available.
     if original_body is not None:
-        issue_number = int(item.issue.lstrip("#")) if item.issue and item.issue.lstrip("#").isdigit() else 0
+        issue_number = parse_issue_number(item.issue) or 0
         manifest = parse_manifest_section(original_body, issue_number)
         if manifest.artifacts:
             manifest_section = render_manifest_section(manifest)

@@ -318,6 +318,32 @@ SECTION_HEADING_ALIAS: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
+# Utility functions
+# ---------------------------------------------------------------------------
+
+
+def parse_issue_number(ref: str | None) -> int | None:
+    """Parse an issue reference string to a positive integer.
+
+    Accepts ``"#123"``, ``"123"``, ``"  #123  "`` and similar forms.
+
+    Args:
+        ref: Issue reference string, e.g. ``"#42"`` or ``"42"``.
+
+    Returns:
+        Positive integer issue number, or ``None`` when *ref* is empty,
+        ``None``, or not a valid positive integer.
+    """
+    if not ref:
+        return None
+    stripped = ref.lstrip("#").strip()
+    if stripped.isdigit():
+        num = int(stripped)
+        return num if num > 0 else None
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Exception classes
 # ---------------------------------------------------------------------------
 
