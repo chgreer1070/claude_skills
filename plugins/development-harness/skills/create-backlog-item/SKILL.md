@@ -236,6 +236,7 @@ Call the `mcp__plugin_dh_backlog__backlog_add` tool:
 
 | Parameter | Value |
 |-----------|-------|
+| `gate_token` | `"problems-not-solutions"` |
 | `title` | `"{title}"` |
 | `priority` | `"{priority}"` |
 | `description` | `"{description}"` |

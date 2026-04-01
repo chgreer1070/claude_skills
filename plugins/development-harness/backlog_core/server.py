@@ -837,6 +837,10 @@ def _parse_args() -> argparse.Namespace:
 _args = _parse_args()
 _init_models(_args.project_dir)
 
+# Gate passphrase required by backlog_add to enforce skill-mediated item creation.
+# Callers must load /dh:create-backlog-item to obtain this value.
+_BACKLOG_ADD_GATE_PHRASE = "problems-not-solutions"
+
 mcp = FastMCP(
     "backlog",
     instructions=(
@@ -859,6 +863,12 @@ async def backlog_add(
         str, Field(description="Item type: Feature, Bug, Refactor, Docs, or Chore", alias="type")
     ] = "Feature",
     force: Annotated[bool, Field(description="Skip fuzzy duplicate check")] = False,
+    gate_token: Annotated[
+        str | None,
+        Field(
+            description="Required gate token. Must be 'problems-not-solutions'. Obtain by loading /dh:create-backlog-item skill."
+        ),
+    ] = None,
 ) -> dict:
     """Add a new item to the backlog. Creates a per-item file and a GitHub issue.
 
@@ -869,6 +879,10 @@ async def backlog_add(
         Dict with file_path, title, priority, issue number (if created),
         and output messages/warnings. On error, dict contains an error key.
     """
+    if gate_token != _BACKLOG_ADD_GATE_PHRASE:
+        return {
+            "error": "Direct backlog_add calls are not permitted. Load and follow /dh:create-backlog-item — it will provide the required gate_token."
+        }
     out = Output()
     try:
         result = await asyncio.to_thread(
