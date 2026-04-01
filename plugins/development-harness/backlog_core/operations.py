@@ -26,7 +26,7 @@ from . import models as _models
 from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .entry_blocks import ENTRY_RE, _render_entry_raw, generate_diff, parse_entries, strike_entry as strike_entry_block
-from .github import (
+from .gh_client import (
     IssueNode,
     _add_comment_graphql,
     _fetch_comment_by_id_graphql,

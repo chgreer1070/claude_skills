@@ -8,7 +8,7 @@ adapter.
 Dependency direction (must remain acyclic):
     models <- parsing <- entry_blocks <- github_sync
 
-Do not import from github.py, operations.py, or server.py.
+Do not import from gh_client.py, operations.py, or server.py.
 """
 
 from __future__ import annotations

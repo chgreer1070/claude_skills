@@ -67,7 +67,7 @@ def _repo(repo: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# TypedDict response models — private to github.py (ADR-002)
+# TypedDict response models — private to gh_client.py (ADR-002)
 # ---------------------------------------------------------------------------
 
 

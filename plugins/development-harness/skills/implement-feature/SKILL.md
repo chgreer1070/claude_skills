@@ -210,7 +210,7 @@ This terminates the teammate immediately rather than leaving it idle. Idle teamm
 
 > **Hook behavior on SubagentStop**: When a sub-agent finishes, `task_status_hook.py` marks
 > the task complete in the local task file. After marking the task complete locally, the hook
-> calls `backlog_core.github.update_task_status()` to sync the completion to the GitHub
+> calls `backlog_core.gh_client.update_task_status()` to sync the completion to the GitHub
 > sub-issue (if `github_issue` field is set in the task YAML). GitHub sync failure does not
 > affect the hook exit code.
 

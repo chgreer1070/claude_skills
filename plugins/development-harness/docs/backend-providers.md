@@ -80,7 +80,7 @@ The development harness uses three subsystems, all currently backed by GitHub an
 - **Implementation**: `backlog_core/` package, exposed as FastMCP 3.x server (`mcp__plugin_dh_backlog__*`)
 - **Operations**: CRUD on issues, label management, grooming, syncing, milestone/project management
 - **Sync direction**: GitHub Issues are canonical; local files are derived cache updated by `backlog_sync` and `backlog_pull`
-- **Bulk sync primitive**: `sync_issues_graphql` in `backlog_core/github.py` — GraphQL cursor-paginated fetch with optional `since` filter for incremental sync. Full sync ~12s for 245 issues; incremental sync ~0.7s. `create_milestone` and `create_label` remain REST-only (no GraphQL mutations — ADR-004).
+- **Bulk sync primitive**: `sync_issues_graphql` in `backlog_core/gh_client.py` — GraphQL cursor-paginated fetch with optional `since` filter for incremental sync. Full sync ~12s for 245 issues; incremental sync ~0.7s. `create_milestone` and `create_label` remain REST-only (no GraphQL mutations — ADR-004).
 
 ### Plans/Tasks (SAM MCP)
 
@@ -103,7 +103,7 @@ The development harness uses Protocol-based abstraction to decouple MCP tools fr
 
 | Protocol | Primitive | Backlog item | Current state |
 |---|---|---|---|
-| `IssueBackend` | Work Items + Sub-items | #389 (P2, groomed) | Operations hardcoded to GitHub in `backlog_core/github.py` |
+| `IssueBackend` | Work Items + Sub-items | #389 (P2, groomed) | Operations hardcoded to GitHub in `backlog_core/gh_client.py` |
 | `DocumentBackend` | Documents (durable handoff content) | #984 (P2, groomed) | `ArtifactBackend` Protocol exists in `backlog_core/artifact_provider.py` with `GitHubArtifactProvider` |
 | `TaskBackend` | SAM orchestration over IssueBackend + DocumentBackend | #912 (P1, grooming) | Local YAML in `sam_schema/`, no Protocol yet |
 
@@ -268,7 +268,7 @@ class DocumentBackend(Protocol):
 
 ### IssueBackend Protocol (#389 — to be created)
 
-Abstracts the backlog/issue operations currently hardcoded to GitHub in `backlog_core/github.py` and `backlog_core/operations.py`. The current GitHub implementation uses `sync_issues_graphql` as the bulk fetch primitive; the Protocol interface expresses this as `list_issues`.
+Abstracts the backlog/issue operations currently hardcoded to GitHub in `backlog_core/gh_client.py` and `backlog_core/operations.py`. The current GitHub implementation uses `sync_issues_graphql` as the bulk fetch primitive; the Protocol interface expresses this as `list_issues`.
 
 **What a backend must provide to be pluggable**: CRUD on work items (issues) and sub-items (child issues/tasks), label/status management, parent-child relationship traversal, and incremental sync for bulk fetch. Backends that lack native sub-issues must emulate the relationship via labels, linked items, or custom fields — the relationship must be traversable via `list_sub_issues`.
 
@@ -460,5 +460,5 @@ Backend selection is configured via a config file at server startup. Each MCP se
 - `~/.dh/projects/{slug}/plan/feature-context-artifact-manifest.md` -- problem space and desired outcomes (access via `artifact_read`)
 - [artifact-manifest-backends.md](./artifact-manifest-backends.md) -- artifact-specific backend details
 - [backlog_core/artifact_provider.py](../backlog_core/artifact_provider.py) -- ArtifactBackend Protocol definition and GitHubArtifactProvider
-- [backlog_core/github.py](../backlog_core/github.py) -- current GitHub-specific issue operations
+- [backlog_core/gh_client.py](../backlog_core/gh_client.py) -- current GitHub-specific issue operations
 - [sam_schema/](../sam_schema/) -- current local YAML task implementation

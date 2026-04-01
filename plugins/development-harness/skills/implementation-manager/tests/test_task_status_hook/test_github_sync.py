@@ -7,7 +7,7 @@ call any GitHub code.
 Scope: Unit tests — all GitHub I/O is mocked via sys.modules injection.
 
 Strategy:
-- Inject mock ``backlog_core.github`` into ``sys.modules`` before each test
+- Inject mock ``backlog_core.gh_client`` into ``sys.modules`` before each test
   that exercises the GitHub path. The conditional import in
   ``sync_completion_to_github`` reads from ``sys.modules`` at call-time.
 - Use ``tmp_path`` for all temporary files.
@@ -221,7 +221,7 @@ class TestSyncCompletionToGithub:
     Scope: Syncs task completion to a GitHub sub-issue. Wraps all GitHub I/O
     in try/except — must never raise regardless of failure mode.
 
-    Strategy: Inject mock ``backlog_core`` and ``backlog_core.github`` modules
+    Strategy: Inject mock ``backlog_core`` and ``backlog_core.gh_client`` modules
     into sys.modules so the conditional import in sync_completion_to_github
     resolves the mock instead of the real module.
 
@@ -246,11 +246,11 @@ class TestSyncCompletionToGithub:
         task_file.write_text(_TASK_YAML_WITHOUT_GITHUB_ISSUE, encoding="utf-8")
 
         mock_bc = cast("Any", types.ModuleType("backlog_core"))
-        mock_bc_github = cast("Any", types.ModuleType("backlog_core.github"))
+        mock_bc_github = cast("Any", types.ModuleType("backlog_core.gh_client"))
         mock_update = MagicMock(return_value=True)
         vars(mock_bc_github).update({"update_task_status": mock_update, "get_github": MagicMock()})
 
-        with patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.github": mock_bc_github}):
+        with patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.gh_client": mock_bc_github}):
             # Act
             result = hook.sync_completion_to_github(task_file, "T1", 480)
 
@@ -278,7 +278,7 @@ class TestSyncCompletionToGithub:
 
         mock_repo = MagicMock()
         mock_bc = cast("Any", types.ModuleType("backlog_core"))
-        mock_bc_github = cast("Any", types.ModuleType("backlog_core.github"))
+        mock_bc_github = cast("Any", types.ModuleType("backlog_core.gh_client"))
         mock_get_github = MagicMock(return_value=mock_repo)
         mock_update = MagicMock(return_value=True)
         vars(mock_bc_github).update({"get_github": mock_get_github, "update_task_status": mock_update})
@@ -286,7 +286,7 @@ class TestSyncCompletionToGithub:
         mock_hook_path = MagicMock()
         mock_hook_path.exists.return_value = True
         with (
-            patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.github": mock_bc_github}),
+            patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.gh_client": mock_bc_github}),
             patch.object(hook, "_BACKLOG_CORE_HOOK", mock_hook_path),
         ):
             # Act
@@ -314,12 +314,12 @@ class TestSyncCompletionToGithub:
 
         mock_repo = MagicMock()
         mock_bc = cast("Any", types.ModuleType("backlog_core"))
-        mock_bc_github = cast("Any", types.ModuleType("backlog_core.github"))
+        mock_bc_github = cast("Any", types.ModuleType("backlog_core.gh_client"))
         mock_get_github = MagicMock(return_value=mock_repo)
         mock_update = MagicMock(side_effect=RuntimeError("GitHub API error"))
         vars(mock_bc_github).update({"get_github": mock_get_github, "update_task_status": mock_update})
 
-        with patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.github": mock_bc_github}):
+        with patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.gh_client": mock_bc_github}):
             # Act
             result = hook.sync_completion_to_github(task_file, "T1", 480)
 
@@ -344,12 +344,12 @@ class TestSyncCompletionToGithub:
         task_file.write_text(_TASK_YAML_WITH_GITHUB_ISSUE, encoding="utf-8")
 
         mock_bc = cast("Any", types.ModuleType("backlog_core"))
-        mock_bc_github = cast("Any", types.ModuleType("backlog_core.github"))
+        mock_bc_github = cast("Any", types.ModuleType("backlog_core.gh_client"))
         mock_get_github = MagicMock(side_effect=RuntimeError("No token"))
         mock_update = MagicMock()
         vars(mock_bc_github).update({"get_github": mock_get_github, "update_task_status": mock_update})
 
-        with patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.github": mock_bc_github}):
+        with patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.gh_client": mock_bc_github}):
             # Act
             result = hook.sync_completion_to_github(task_file, "T1", 480)
 

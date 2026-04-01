@@ -43,8 +43,8 @@ from ruamel.yaml import YAML, YAMLError
 from sam_schema.task_format import resolve_task_id
 
 if TYPE_CHECKING:
-    # IssueNode is a TypedDict from backlog_core.github; only imported for type checking
-    from backlog_core.github import IssueNode
+    # IssueNode is a TypedDict from backlog_core.gh_client; only imported for type checking
+    from backlog_core.gh_client import IssueNode
     from github.Repository import Repository
 
 # ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ SamTask = None
 
 if _BACKLOG_CORE.exists():
     try:
-        from backlog_core.github import create_task_issue, get_github
+        from backlog_core.gh_client import create_task_issue, get_github
         from backlog_core.models import SamTask
     except ImportError:
         pass

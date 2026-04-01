@@ -436,7 +436,7 @@ If the MCP tools or CLI lack a needed operation, invoke `/backlog-tools-administ
   backlog_core/
     models.py                  Pydantic models, constants, exceptions
     parsing.py                 File parsing, item search, frontmatter
-    github.py                  GitHub API: issue CRUD, labels, status
+    gh_client.py               GitHub API: issue CRUD, labels, status
     operations.py              High-level CRUD combining all modules
     server.py                  FastMCP 3.x server (10 MCP tools)
   templates/

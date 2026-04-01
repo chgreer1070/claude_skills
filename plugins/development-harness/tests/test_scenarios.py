@@ -2,7 +2,7 @@
 
 Tests are organized by the skill/agent workflow that generates each call
 pattern. All tests go through the full operations layer — mocking only at
-the github.py boundary and filesystem (via conftest fixtures).
+the gh_client.py boundary and filesystem (via conftest fixtures).
 
 Uses in-memory FastMCP Client transport (``Client(mcp)``).
 No ``@pytest.mark.asyncio`` decorators — global ``asyncio_mode = "auto"``.

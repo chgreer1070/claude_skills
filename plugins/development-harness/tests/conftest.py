@@ -6,7 +6,7 @@ resolves correctly regardless of pytest invocation directory.
 Shared fixtures for scenario integration tests:
 - ``backlog_dir``: Redirects backlog state to tmp_path via DH_STATE_HOME for
   test isolation (uses dh_paths.backlog_dir() path conventions)
-- ``mock_github``: Patches all github.py functions at operations.py boundary
+- ``mock_github``: Patches all gh_client.py functions at operations.py boundary
 - ``write_test_item``: Factory for creating per-item files with valid frontmatter
 """
 
@@ -73,7 +73,7 @@ def backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 @pytest.fixture
 def mock_github(monkeypatch):
-    """Patch all github.py functions imported by operations.py.
+    """Patch all gh_client.py functions imported by operations.py.
 
     Returns dict of ``{function_name: MagicMock}`` for per-test configuration.
     Override return values in individual tests like::

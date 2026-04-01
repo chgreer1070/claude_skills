@@ -450,6 +450,10 @@ class Section(BaseModel):
 _VALID_PRIORITIES = {"P0", "P1", "P2", "Ideas", "completed"}
 _VALID_TYPES = {"Feature", "Bug", "Refactor", "Docs", "Chore"}
 _VALID_STATUSES = {"open", "done", "in-progress", "needs-grooming", "closed"}
+
+# Alias maps for legacy / variant spellings found in production files.
+_PRIORITY_ALIASES: dict[str, str] = {}  # populated below via case-insensitive idea* rule
+_TYPE_ALIASES: dict[str, str] = {"documentation": "Docs"}
 _ADDED_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -481,55 +485,66 @@ class BacklogItemMetadata(BaseModel):
     @field_validator("priority")
     @classmethod
     def _validate_priority(cls, v: str) -> str:
-        """Allow empty or one of the known priority labels.
+        """Normalise and accept priority values, preserving unknown strings verbatim.
+
+        Canonical set: P0, P1, P2, Ideas, completed.  P3 and any other strings
+        are preserved as-is.  Case-insensitive ``idea*`` prefix is normalised
+        to ``Ideas`` (covers legacy ``IDEA``, ``Idea`` values in production files).
 
         Args:
             v: Raw priority value from input.
 
         Returns:
-            Validated priority string.
-
-        Raises:
-            ValueError: When v is non-empty and not in the allowed set.
+            Normalised or verbatim priority string.
         """
-        if v and v not in _VALID_PRIORITIES:
-            raise ValueError(f"priority must be one of {sorted(_VALID_PRIORITIES)}, got {v!r}")
+        if not v:
+            return v
+        if v in _VALID_PRIORITIES:
+            return v
+        if v.lower().startswith("idea"):
+            return "Ideas"
+        # Unknown value — preserve verbatim rather than rejecting.
         return v
 
     @field_validator("item_type", mode="before")
     @classmethod
     def _validate_item_type(cls, v: str) -> str:
-        """Allow empty or one of the known item type labels.
+        """Normalise and accept item_type values, preserving unknown strings verbatim.
+
+        Canonical set: Feature, Bug, Refactor, Docs, Chore.
+        Known aliases: Documentation → Docs.
+        Unknown values (Enhancement, Tech Debt, etc.) are preserved as-is.
 
         Args:
             v: Raw item type value from input.
 
         Returns:
-            Validated item type string.
-
-        Raises:
-            ValueError: When v is non-empty and not in the allowed set.
+            Normalised or verbatim item type string.
         """
-        if v and v not in _VALID_TYPES:
-            raise ValueError(f"type must be one of {sorted(_VALID_TYPES)}, got {v!r}")
+        if not v:
+            return v
+        if v in _VALID_TYPES:
+            return v
+        canonical = _TYPE_ALIASES.get(v.lower())
+        if canonical is not None:
+            return canonical
+        # Unknown value — preserve verbatim rather than rejecting.
         return v
 
     @field_validator("status")
     @classmethod
     def _validate_status(cls, v: str) -> str:
-        """Allow empty or one of the known status values.
+        """Accept any non-empty status string, preserving unknown values verbatim.
+
+        Canonical set: open, done, in-progress, needs-grooming, closed.
+        Legacy values (resolved, groomed, etc.) are preserved as-is.
 
         Args:
             v: Raw status value from input.
 
         Returns:
-            Validated status string.
-
-        Raises:
-            ValueError: When v is non-empty and not in the allowed set.
+            Status string unchanged.
         """
-        if v and v not in _VALID_STATUSES:
-            raise ValueError(f"status must be one of {sorted(_VALID_STATUSES)}, got {v!r}")
         return v
 
     @field_validator("added")
@@ -913,7 +928,7 @@ class BackendAvailability(StrEnum):
 class BackendStatus(BaseModel):
     """GitHub backend availability status included in every ``backlog_list`` response.
 
-    Populated by ``probe_backend_status()`` in ``backlog_core.github``.  Fields
+    Populated by ``probe_backend_status()`` in ``backlog_core.gh_client``.  Fields
     default to their "unknown" states so the model is always safe to construct
     without arguments.
 

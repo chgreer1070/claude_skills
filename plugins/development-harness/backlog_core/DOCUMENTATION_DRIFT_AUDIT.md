@@ -16,7 +16,7 @@
 
 **Analyzed Files**:
 
-- Implementation: `backlog_core/__init__.py`, `backlog_core/models.py`, `backlog_core/parsing.py`, `backlog_core/github.py`, `backlog_core/operations.py`, `backlog_core/server.py`
+- Implementation: `backlog_core/__init__.py`, `backlog_core/models.py`, `backlog_core/parsing.py`, `backlog_core/gh_client.py`, `backlog_core/operations.py`, `backlog_core/server.py`
 - Documentation: `.claude/skills/backlog/backlog_core/ARCHITECTURE.md`
 
 **Git Timeline**:
@@ -395,14 +395,14 @@ The spec format using `_old()` → `new()` implies these were renamed to public,
 
 ---
 
-**FIND-20** — `github.py` spec lists private names `_get_github()`, `_try_get_github()`, etc. — all are now public
+**FIND-20** — `gh_client.py` spec lists private names `_get_github()`, `_try_get_github()`, etc. — all are now public
 
 - **Priority**: Low
 - **Evidence**: `ARCHITECTURE.md:151-158`
 
-Spec uses the same `_old()` → `new()` migration notation for every function in `github.py`. All were made public. Same issue as FIND-19, specific to `github.py`.
+Spec uses the same `_old()` → `new()` migration notation for every function in `gh_client.py`. All were made public. Same issue as FIND-19, specific to `gh_client.py`.
 
-- **Code Reality**: `get_github`, `try_get_github`, `create_issue_for_item`, `close_github_issue`, `resolve_github_issue`, `check_open_prs_for_issue`, `batch_fetch_statuses`, `fetch_item_status`, `apply_status_in_progress`, `fetch_open_issues_by_title`, `view_enrich_from_github`, `issue_to_local_fields`, `sync_groomed_to_github_issue`, `fetch_github_issue_body` — all public, all in `github.py`.
+- **Code Reality**: `get_github`, `try_get_github`, `create_issue_for_item`, `close_github_issue`, `resolve_github_issue`, `check_open_prs_for_issue`, `batch_fetch_statuses`, `fetch_item_status`, `apply_status_in_progress`, `fetch_open_issues_by_title`, `view_enrich_from_github`, `issue_to_local_fields`, `sync_groomed_to_github_issue`, `fetch_github_issue_body` — all public, all in `gh_client.py`.
 - **Recommendation**: Update spec to list only final public names.
 
 ---
@@ -528,7 +528,7 @@ from .models import BacklogError, Output
 
 14. **FIND-14 / FIND-15**: Resolve unused `SKIP_STATUS` and `SECTION_RE` constants: either wire them into parsing logic or remove them from the spec's constants list.
 
-15. **FIND-19 / FIND-20**: Replace `_old() → new()` migration notation in `parsing.py` and `github.py` sections with final public names only.
+15. **FIND-19 / FIND-20**: Replace `_old() → new()` migration notation in `parsing.py` and `gh_client.py` sections with final public names only.
 
 16. **FIND-22**: Rename `_COMMIT_PREFIX_RE` to `COMMIT_PREFIX_RE` (remove private prefix since it is imported across module boundaries) or document the cross-module private import.
 

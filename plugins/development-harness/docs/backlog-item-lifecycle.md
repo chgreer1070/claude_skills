@@ -787,7 +787,7 @@ After `backlog_groom` writes all sections and sets the `groomed` frontmatter fie
 
 ### Gap 4: No Machine-Readable Parent/Child Links (Session observation)
 
-The GraphQL `addSubIssue` mutation is implemented in `backlog_core/github.py` and used for SAM task sub-issues. However, no general `backlog_link_parent` MCP tool exists for arbitrary backlog-to-backlog item linking. Inter-item dependencies in groomed items are prose-only (the `### Dependencies` section lists titles or issue numbers as text).
+The GraphQL `addSubIssue` mutation is implemented in `backlog_core/gh_client.py` and used for SAM task sub-issues. However, no general `backlog_link_parent` MCP tool exists for arbitrary backlog-to-backlog item linking. Inter-item dependencies in groomed items are prose-only (the `### Dependencies` section lists titles or issue numbers as text).
 
 ### Gap 5: Compaction Recovery (Tracked: #1069)
 
@@ -859,6 +859,10 @@ Neither `implement-feature` nor `start-task` documents an explicit procedure for
 - [Backlog Item Lifecycle (Draft — superseded by this document)](./backlog-lifecycle.draft.md)
 - [Workflow Architecture Diagram (SAM pipeline detail)](./workflow-architecture-diagram.md)
 - [Plan Artifact Lifecycle Policy](./plan-artifact-lifecycle.md)
+- [Default Development Flow (S1-S7 pipeline)](../skills/development-harness/references/default-development-flow.md)
+- [Artifact Conventions (naming, file layout)](../skills/development-harness/references/artifact-conventions.md)
+- [Task File Format (task field reference, sam CLI)](./TASK_FILE_FORMAT.md)
+- [Domain model source (authoritative field definitions)](../sam_schema/core/models.py)
 - [Backend Providers](./backend-providers.md)
 - [ADR-9: Close/Resolve Semantics](./adr-9-close-resolve-semantics.md)
 - [Process Audit (2026-03-02)](./process-audit-backlog-lifecycle-2026-03-02.md)

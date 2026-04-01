@@ -33,7 +33,7 @@ from . import models as _models, operations
 from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .dispatch_state import DispatchStateManager as _DispatchStateManager
-from .github import (
+from .gh_client import (
     IssueNode as _IssueNode,
     get_github as _get_github,
     probe_backend_status as _probe_backend_status,

@@ -248,6 +248,17 @@ When a flow override is present, the harness loads the custom flow instead of th
 
 ---
 
+## Related Documents
+
+Read these together to get the full system picture:
+
+- [Artifact Conventions](./artifact-conventions.md) — naming, file layout, cross-referencing
+- [Workflow Architecture Diagram](../../../docs/workflow-architecture-diagram.md) — data shapes, publisher-consumer map, state machine
+- [Plan Artifact Lifecycle](../../../docs/plan-artifact-lifecycle.md) — immutable vs mutable artifacts, divergence detection
+- [Backlog Item Lifecycle](../../../docs/backlog-item-lifecycle.md) — end-to-end issue journey from creation to closure
+- [Task File Format](../../../docs/TASK_FILE_FORMAT.md) — task field reference, authorized writers, sam CLI (snapshot — verify against `models.py` for planning)
+- [Domain model source](../../../sam_schema/core/models.py) — authoritative field definitions (`Task` class)
+
 ## Sources
 
 - SAM methodology: <https://github.com/bitflight-devops/stateless-agent-methodology>

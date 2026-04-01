@@ -435,7 +435,7 @@ def sync_completion_to_github(task_file_path: Path, task_id: str, parent_issue_n
             return
 
         # Conditional import — only after path guard
-        import backlog_core.github as _bc_github  # noqa: PLC0415
+        import backlog_core.gh_client as _bc_github  # noqa: PLC0415
         from backlog_core.models import BacklogError, GitHubUnavailableError  # noqa: PLC0415
         from github import GithubException  # noqa: PLC0415
 

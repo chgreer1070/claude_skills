@@ -126,7 +126,7 @@ Omit `parent_issue_number` if the story issue number is not known. The hook trea
 `None` and skips GitHub sync.
 
 If `parent_issue_number` is known and `github_issue` field is set in the task YAML, call
-`backlog_core.github.update_task_status(repo, github_issue, "in-progress")` after the
+`backlog_core.gh_client.update_task_status(repo, github_issue, "in-progress")` after the
 `claim-task` step to sync the in-progress status to GitHub. Failure is non-fatal — continue
 regardless.
 

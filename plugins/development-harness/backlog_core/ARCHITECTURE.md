@@ -36,7 +36,7 @@ parsing.py            ← imports from models; provides loads_frontmatter/dump_f
 entry_blocks.py       ← timestamped entry block parse/render/rewrite; imports from models, parsing
 yaml_io.py            ← pure-YAML read/write for .yaml backlog items; imports from models, parsing
 github_sync.py        ← GitHub issue body conversion (render/parse/merge); imports from models, parsing, entry_blocks
-github.py             ← imports from models, parsing
+gh_client.py             ← imports from models, parsing
 operations.py         ← imports from models, parsing, github, yaml_io
 dispatch_state.py     ← imports from models (DispatchItemRecord, DispatchWaveRecord); no MCP awareness
 server.py             ← imports from models, operations, dispatch_state
@@ -229,7 +229,7 @@ Operations layer never writes raw markdown body strings directly — they go thr
 - `"groomed"` → `## Groomed (date)` (GroomedData type, not Section)
 
 **Dependency direction**: `models ← parsing ← entry_blocks ← github_sync` (must remain acyclic;
-do not import from `github.py`, `operations.py`, or `server.py`)
+do not import from `gh_client.py`, `operations.py`, or `server.py`)
 
 **Imports from other modules**: `from .entry_blocks import parse_entries`,
 `from .models import BacklogItem, Entry, GroomedData, Section`,
@@ -237,7 +237,7 @@ do not import from `github.py`, `operations.py`, or `server.py`)
 
 ---
 
-## Module: github.py
+## Module: gh_client.py
 
 **Responsibility**: GitHub API connection, issue CRUD, status/label management, view enrichment.
 
@@ -284,7 +284,7 @@ do not import from `github.py`, `operations.py`, or `server.py`)
 **Imports from other modules**:
 - `from .models import ...`
 - `from .parsing import ...`
-- `from .github import ...`
+- `from .gh_client import ...`
 - `from .yaml_io import ...`
 
 ---

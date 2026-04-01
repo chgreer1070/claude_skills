@@ -283,3 +283,16 @@ New artifacts created after this policy is in place will include lifecycle metad
 - `Intent Source: ~/.dh/projects/{slug}/backlog/{backlog-item-file}.md` -- links to the human-decision artifact that established the intent
 
 These fields enable the `context-refinement` agent to locate the human intent when classifying divergence. Their absence in pre-policy artifacts triggers the safe default behavior described above.
+
+---
+
+## Related Documents
+
+Read these together to get the full system picture:
+
+- [Default Development Flow](../skills/development-harness/references/default-development-flow.md) — S1-S7 stage sequencing, ARL touchpoint gates
+- [Artifact Conventions](../skills/development-harness/references/artifact-conventions.md) — naming, file layout, cross-referencing
+- [Workflow Architecture Diagram](./workflow-architecture-diagram.md) — data shapes, publisher-consumer map, state machine
+- [Backlog Item Lifecycle](./backlog-item-lifecycle.md) — end-to-end issue journey from creation to closure
+- [Task File Format](./TASK_FILE_FORMAT.md) — task field reference, authorized writers, sam CLI (snapshot — verify against `models.py` for planning)
+- [Domain model source](../sam_schema/core/models.py) — authoritative field definitions (`Task` class)

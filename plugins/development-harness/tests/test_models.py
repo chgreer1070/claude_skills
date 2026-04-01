@@ -169,13 +169,21 @@ class TestBacklogItemMetadataPriorityValidator:
         m = BacklogItemMetadata(priority="")
         assert m.priority == ""
 
-    def test_invalid_priority_rejected(self) -> None:
-        with pytest.raises(PydanticValidationError):
-            BacklogItemMetadata(priority="P3")
+    def test_p3_accepted_verbatim(self) -> None:
+        """P3 is a valid priority not in the canonical set — accepted verbatim."""
+        m = BacklogItemMetadata(priority="P3")
+        assert m.priority == "P3"
 
-    def test_invalid_priority_rejected_unknown(self) -> None:
-        with pytest.raises(PydanticValidationError):
-            BacklogItemMetadata(priority="critical")
+    def test_unknown_priority_accepted_verbatim(self) -> None:
+        """Unknown priority values are preserved verbatim, not rejected."""
+        m = BacklogItemMetadata(priority="critical")
+        assert m.priority == "critical"
+
+    @pytest.mark.parametrize(("raw", "expected"), [("IDEA", "Ideas"), ("Idea", "Ideas"), ("idea", "Ideas")])
+    def test_idea_variants_normalised(self, raw: str, expected: str) -> None:
+        """case-insensitive idea* prefix is normalised to 'Ideas'."""
+        m = BacklogItemMetadata(priority=raw)
+        assert m.priority == expected
 
 
 class TestBacklogItemMetadataTypeValidator:
@@ -190,9 +198,25 @@ class TestBacklogItemMetadataTypeValidator:
         m = BacklogItemMetadata(item_type="")
         assert m.item_type == ""
 
-    def test_invalid_type_rejected(self) -> None:
-        with pytest.raises(PydanticValidationError):
-            BacklogItemMetadata(item_type="Epic")
+    def test_documentation_alias_normalised(self) -> None:
+        """'Documentation' is a known alias for 'Docs'."""
+        m = BacklogItemMetadata(item_type="Documentation")
+        assert m.item_type == "Docs"
+
+    def test_enhancement_accepted_verbatim(self) -> None:
+        """Unknown type values like 'Enhancement' are preserved verbatim."""
+        m = BacklogItemMetadata(item_type="Enhancement")
+        assert m.item_type == "Enhancement"
+
+    def test_tech_debt_accepted_verbatim(self) -> None:
+        """Unknown type values like 'Tech Debt' are preserved verbatim."""
+        m = BacklogItemMetadata(item_type="Tech Debt")
+        assert m.item_type == "Tech Debt"
+
+    def test_unknown_type_accepted_verbatim(self) -> None:
+        """Previously-rejected type values are now preserved verbatim."""
+        m = BacklogItemMetadata(item_type="Epic")
+        assert m.item_type == "Epic"
 
 
 class TestBacklogItemMetadataStatusValidator:
@@ -207,9 +231,20 @@ class TestBacklogItemMetadataStatusValidator:
         m = BacklogItemMetadata(status="")
         assert m.status == ""
 
-    def test_invalid_status_rejected(self) -> None:
-        with pytest.raises(PydanticValidationError):
-            BacklogItemMetadata(status="unknown")
+    def test_legacy_resolved_accepted(self) -> None:
+        """Legacy 'resolved' status is accepted verbatim."""
+        m = BacklogItemMetadata(status="resolved")
+        assert m.status == "resolved"
+
+    def test_legacy_groomed_accepted(self) -> None:
+        """Legacy 'groomed' status is accepted verbatim."""
+        m = BacklogItemMetadata(status="groomed")
+        assert m.status == "groomed"
+
+    def test_unknown_status_accepted_verbatim(self) -> None:
+        """Previously-rejected status values are now preserved verbatim."""
+        m = BacklogItemMetadata(status="unknown")
+        assert m.status == "unknown"
 
 
 class TestBacklogItemMetadataCloseReason:
