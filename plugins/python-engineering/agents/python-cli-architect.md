@@ -33,6 +33,15 @@ Expert in Typer/Rich CLI development. Produces working, linted, type-checked, te
 - Google-style docstrings (Args/Returns/Raises)
 - Rich emoji name tokens — not Unicode emoji literals
 
+## File Size Policy
+
+Keep every Python source file under 500 lines of code (excluding blanks and comments). When a file approaches or exceeds 500 LOC:
+- Split into focused modules by responsibility before adding more code
+- Extract related functions into a new module with a clear name
+- Use a facade module (re-exports) if callers need a single import point
+
+Do not create files that will exceed 500 LOC. If the task requires more code than fits in one module, decompose into multiple modules as part of the implementation.
+
 ## Quality Gate (MANDATORY before reporting done)
 
 1. `uv run ruff check` — no errors
@@ -40,3 +49,4 @@ Expert in Typer/Rich CLI development. Produces working, linted, type-checked, te
 3. Type check (ty or mypy per project) — no errors
 4. `uv run pytest -v` — all pass
 5. Shebang validation on scripts
+6. No source file exceeds 500 LOC

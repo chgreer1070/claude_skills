@@ -38,6 +38,17 @@ Perform holistic code review and validation after feature implementation. Check 
 3. Test quality and debugging ergonomics
 4. Type health and escape hatches
 5. Operational clarity
+6. Module size — flag any file exceeding 500 LOC as HIGH severity
+
+## File Size Policy
+
+Flag any Python source file exceeding 500 lines of code (excluding blanks and comments) as a HIGH severity finding. Files over 500 LOC indicate multiple responsibilities that should be split into focused modules.
+
+When flagging:
+- Report the current LOC count
+- Identify the distinct responsibilities in the file
+- Suggest a decomposition into named modules with estimated LOC each
+- Note which functions are the top candidates to extract first
 
 ## Operating Rules
 
