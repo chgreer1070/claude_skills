@@ -7,14 +7,17 @@ from typing import TYPE_CHECKING, cast
 import pytest
 from backlog_core.models import BacklogItem, ViewItemResult
 from backlog_core.parsing import (
+    _MdPost,
     _parse_frontmatter,
     build_body_extra_only,
     build_issue_body,
     build_issue_body_from_file,
+    dump_frontmatter,
     extract_description_from_issue_body,
     find_fuzzy_duplicates,
     find_item,
     infer_type,
+    loads_frontmatter,
     merge_sections,
     normalize_issue_title,
     parse_item_file,
@@ -1627,3 +1630,198 @@ class TestFindFuzzyDuplicatesEdgeCases:
 
         # Only the titled item can match
         assert all(t != "" for t, _, _ in matches)
+
+
+# ---------------------------------------------------------------------------
+# Round-trip tests for loads_frontmatter / dump_frontmatter
+# ---------------------------------------------------------------------------
+
+
+class TestFrontmatterRoundTrip:
+    """Round-trip tests: loads_frontmatter → dump_frontmatter preserves all content."""
+
+    _SIMPLE = """\
+---
+name: My Item
+description: A simple description
+priority: P1
+status: open
+---
+
+Body content here.
+"""
+
+    _NESTED_METADATA = """\
+---
+name: Nested Item
+description: Has nested metadata
+metadata:
+  source: test-source
+  added: '2026-01-01'
+  priority: P2
+  type: Feature
+  status: open
+---
+
+Body with nested frontmatter.
+"""
+
+    _MULTILINE_BODY = """\
+---
+name: Multi
+description: Multiple body paragraphs
+---
+
+First paragraph.
+
+Second paragraph with **bold**.
+
+- list item one
+- list item two
+"""
+
+    def test_round_trip_simple_document_preserves_fields(self) -> None:
+        """Round-tripping a simple document keeps all frontmatter fields intact.
+
+        Tests: loads_frontmatter → dump_frontmatter field preservation
+        How: Parse known document, dump, re-parse, compare metadata dicts
+        Why: Single implementation ensures no data loss across the round-trip
+        """
+        # Arrange / Act
+        post = loads_frontmatter(self._SIMPLE)
+        serialised = dump_frontmatter(post)
+        reparsed = loads_frontmatter(serialised)
+
+        # Assert — all fields survive the round-trip
+        assert reparsed.metadata["name"] == "My Item"
+        assert reparsed.metadata["description"] == "A simple description"
+        assert reparsed.metadata["priority"] == "P1"
+        assert reparsed.metadata["status"] == "open"
+
+    def test_round_trip_simple_document_preserves_body(self) -> None:
+        """Round-tripping a simple document keeps the body unchanged.
+
+        Tests: body content preservation through loads_frontmatter → dump_frontmatter
+        How: Parse and dump, verify content field of re-parsed post
+        Why: Body must not be altered or truncated by serialisation
+        """
+        # Arrange / Act
+        post = loads_frontmatter(self._SIMPLE)
+        serialised = dump_frontmatter(post)
+        reparsed = loads_frontmatter(serialised)
+
+        # Assert
+        assert reparsed.content == "Body content here."
+
+    def test_round_trip_nested_metadata_preserves_nested_dict(self) -> None:
+        """Round-tripping nested metadata preserves the nested dict structure.
+
+        Tests: nested YAML map survival through loads_frontmatter → dump_frontmatter
+        How: Parse document with metadata sub-dict, dump, re-parse, assert sub-dict intact
+        Why: operations.py mutates the metadata sub-dict; it must survive serialisation
+        """
+        # Arrange / Act
+        post = loads_frontmatter(self._NESTED_METADATA)
+        serialised = dump_frontmatter(post)
+        reparsed = loads_frontmatter(serialised)
+
+        # Assert
+        assert reparsed.metadata["name"] == "Nested Item"
+        nested = reparsed.metadata.get("metadata")
+        assert isinstance(nested, dict)
+        assert nested["source"] == "test-source"
+        assert nested["added"] == "2026-01-01"
+        assert nested["priority"] == "P2"
+        assert nested["type"] == "Feature"
+        assert nested["status"] == "open"
+
+    def test_round_trip_multiline_body_preserves_all_lines(self) -> None:
+        """Round-tripping a multiline body preserves every line without truncation.
+
+        Tests: multiline body content preservation
+        How: Parse document with multiple paragraphs, dump, re-parse, check content
+        Why: Confirms no silent truncation during serialisation
+        """
+        # Arrange / Act
+        post = loads_frontmatter(self._MULTILINE_BODY)
+        serialised = dump_frontmatter(post)
+        reparsed = loads_frontmatter(serialised)
+
+        # Assert
+        assert "First paragraph." in reparsed.content
+        assert "Second paragraph with **bold**." in reparsed.content
+        assert "- list item one" in reparsed.content
+        assert "- list item two" in reparsed.content
+
+    def test_round_trip_no_frontmatter_returns_empty_metadata(self) -> None:
+        """Input without frontmatter delimiter returns empty metadata and full text as content.
+
+        Tests: absent-frontmatter branch of loads_frontmatter
+        How: Parse plain text, verify metadata is {} and content is the input text
+        Why: No frontmatter must not crash or return garbage metadata
+        """
+        # Arrange
+        plain = "No frontmatter here.\n\nJust text."
+
+        # Act
+        post = loads_frontmatter(plain)
+
+        # Assert
+        assert post.metadata == {}
+        assert "No frontmatter here." in post.content
+
+    def test_round_trip_metadata_field_order_preserved(self) -> None:
+        """Field order in frontmatter is preserved through the round-trip (rt YAML).
+
+        Tests: round-trip YAML typ="rt" preserves insertion order
+        How: Parse document, dump, check serialised string for field ordering
+        Why: typ="rt" is chosen specifically to preserve order; this verifies it
+        """
+        # Arrange / Act
+        post = loads_frontmatter(self._SIMPLE)
+        serialised = dump_frontmatter(post)
+
+        # Assert — fields appear in original order in the serialised YAML block
+        name_pos = serialised.index("name:")
+        desc_pos = serialised.index("description:")
+        priority_pos = serialised.index("priority:")
+        assert name_pos < desc_pos < priority_pos
+
+    def test_round_trip_modified_metadata_survives_dump(self) -> None:
+        """Mutating metadata before dump produces the updated value in the output.
+
+        Tests: _MdPost mutation + dump_frontmatter workflow (as used in operations.py)
+        How: Parse, mutate metadata, dump via _MdPost, re-parse, verify updated value
+        Why: operations.py mutates post.metadata directly before calling dump_frontmatter
+        """
+        # Arrange
+        post = loads_frontmatter(self._SIMPLE)
+
+        # Act — mutate as operations.py does
+        post.metadata["status"] = "closed"
+        serialised = dump_frontmatter(post)
+        reparsed = loads_frontmatter(serialised)
+
+        # Assert
+        assert reparsed.metadata["status"] == "closed"
+        # Other fields unchanged
+        assert reparsed.metadata["name"] == "My Item"
+
+    def test_round_trip_mdpost_constructor_with_new_body(self) -> None:
+        """_MdPost constructed with new body produces updated body in dump output.
+
+        Tests: _MdPost(metadata, new_body) + dump_frontmatter (as used in _pull_md_force)
+        How: Parse, extract metadata, construct _MdPost with new body, dump, re-parse
+        Why: _pull_md_force preserves frontmatter while replacing body — must work correctly
+        """
+        # Arrange
+        post = loads_frontmatter(self._SIMPLE)
+        new_body = "Replaced body content."
+
+        # Act — as done in _pull_md_force
+        serialised = dump_frontmatter(_MdPost(post.metadata, new_body))
+        reparsed = loads_frontmatter(serialised)
+
+        # Assert
+        assert reparsed.content == new_body
+        assert reparsed.metadata["name"] == "My Item"

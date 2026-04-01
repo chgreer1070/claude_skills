@@ -4,7 +4,7 @@ Provides five PyGithub functions for creating, inspecting, merging, deleting,
 and listing milestone integration branches.  All functions follow the
 established patterns from ``gh_client.py``: ``get_github()`` for auth,
 ``Output`` parameter for status messages, ``GithubException`` catch-and-warn,
-``_repo()`` for repo slug resolution.
+:func:`~backlog_core.models.resolve_repo` for repo slug resolution.
 
 Branch naming convention: ``milestone/{N}-{slug}``
   e.g. ``milestone/3-v1.1-milestone-workflow``
@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING
 
 from github import GithubException
 
-from .gh_client import _HTTP_NOT_FOUND, _repo, get_github
-from .models import BacklogError, BranchConflictError, BranchInfo, MergeResult, Output
+from .gh_client import _HTTP_NOT_FOUND, get_github
+from .models import BacklogError, BranchConflictError, BranchInfo, MergeResult, Output, resolve_repo as _repo
 
 if TYPE_CHECKING:
     from github.Branch import Branch

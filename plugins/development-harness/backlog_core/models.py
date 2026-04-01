@@ -242,9 +242,25 @@ def discover_repo() -> str:
 #: when a default is needed before ``init()`` has run.
 DEFAULT_REPO: str = ""
 
+
+def resolve_repo(repo: str) -> str:
+    """Resolve a repo slug, falling back to the live ``DEFAULT_REPO`` global.
+
+    Args:
+        repo: Caller-supplied ``owner/repo`` slug, or empty string to use the
+            module-level default.
+
+    Returns:
+        ``repo`` when non-empty; otherwise the current value of
+        :data:`DEFAULT_REPO`.
+    """
+    return repo or DEFAULT_REPO
+
+
 # ---------------------------------------------------------------------------
 # Regex patterns
 # ---------------------------------------------------------------------------
+
 
 SECTION_RE = re.compile(r"^##\s+(P0|P1|P2|Ideas)")
 GITHUB_ISSUE_URL_RE = re.compile(r"https?://github\.com/([^/]+/[^/]+)/issues/(\d+)")

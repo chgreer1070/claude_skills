@@ -25,6 +25,7 @@ from backlog_core.models import (
     PullRequestRef,
     ValidationError,
     ViewItemResult,
+    resolve_repo,
 )
 from pydantic import ValidationError as PydanticValidationError
 
@@ -613,3 +614,26 @@ class TestCommitPrefixRegex:
     def test_commit_prefix_re_strips_trailing_space(self) -> None:
         result = _COMMIT_PREFIX_RE.sub("", "feat: Title With Spaces")
         assert result == "Title With Spaces"
+
+
+# ---------------------------------------------------------------------------
+# resolve_repo
+# ---------------------------------------------------------------------------
+
+
+class TestResolveRepo:
+    """Behavioural tests for :func:`~backlog_core.models.resolve_repo`."""
+
+    def test_resolve_repo_returns_default_when_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Empty string falls back to the live DEFAULT_REPO module global."""
+        import backlog_core.models as _m
+
+        monkeypatch.setattr(_m, "DEFAULT_REPO", "owner/default")
+        assert resolve_repo("") == "owner/default"
+
+    def test_resolve_repo_returns_input_when_non_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Non-empty slug is returned unchanged regardless of DEFAULT_REPO."""
+        import backlog_core.models as _m
+
+        monkeypatch.setattr(_m, "DEFAULT_REPO", "owner/default")
+        assert resolve_repo("owner/custom") == "owner/custom"

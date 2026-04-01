@@ -327,6 +327,61 @@ def test_diff_content_differs():
 
 
 # ---------------------------------------------------------------------------
+# Task 7: _render_entry_raw() — unified entry renderer
+# ---------------------------------------------------------------------------
+from backlog_core.entry_blocks import _render_entry_raw
+
+
+def test_render_entry_raw_active_format():
+    """Active entry uses double newline between id and content."""
+    e = Entry(id="2026-03-10T22:18:04Z", content="Active content.")
+    result = _render_entry_raw(e)
+    assert result == "<div><sub>2026-03-10T22:18:04Z</sub>\n\nActive content.\n</div>"
+
+
+def test_render_entry_raw_struck_uses_double_newline():
+    """Struck entry wraps content in details block with double newline before inner block.
+
+    Regression: github_sync._render_entry used a single newline (\\n{inner}\\n),
+    which caused merge operations to see false differences. The unified function
+    must use double newline (\\n\\n{inner}\\n) consistent with active entry format.
+    """
+    e = Entry(
+        id="2026-03-10T22:18:04Z",
+        content="Old content.",
+        struck=True,
+        struck_reason="outdated",
+        struck_at="2026-03-11T09:00:00Z",
+    )
+    result = _render_entry_raw(e)
+    expected_inner = "<details><summary>struck: 2026-03-11T09:00:00Z — outdated</summary>\n\nOld content.\n</details>"
+    expected = f"<div><sub>2026-03-10T22:18:04Z</sub>\n\n{expected_inner}\n</div>"
+    assert result == expected
+    # Explicitly verify the double-newline before the inner block is present
+    assert "<sub>2026-03-10T22:18:04Z</sub>\n\n<details>" in result
+    # Verify the old single-newline variant is NOT present
+    assert "<sub>2026-03-10T22:18:04Z</sub>\n<details>" not in result
+
+
+def test_render_entry_raw_struck_roundtrips_through_parser():
+    """Rendered struck entry must parse back to the same Entry."""
+    e = Entry(
+        id="2026-03-10T22:18:04Z",
+        content="Some content.",
+        struck=True,
+        struck_reason="wrong info",
+        struck_at="2026-03-11T09:00:00Z",
+    )
+    rendered = _render_entry_raw(e)
+    entries = parse_entries(rendered, show="all")
+    assert len(entries) == 1
+    assert entries[0].struck is True
+    assert entries[0].struck_reason == "wrong info"
+    assert entries[0].struck_at == "2026-03-11T09:00:00Z"
+    assert "Some content." in entries[0].content
+
+
+# ---------------------------------------------------------------------------
 # Edge-case tests
 # ---------------------------------------------------------------------------
 

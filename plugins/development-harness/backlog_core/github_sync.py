@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 
 from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
-from .entry_blocks import parse_entries
+from .entry_blocks import _render_entry_raw, parse_entries
 from .models import BacklogItem, Entry, GroomedData, Section, parse_issue_number
 from .parsing import extract_sections
 
@@ -119,27 +119,6 @@ _GROOMED_SUBSECTION_ORDER: list[str] = [
 # ---------------------------------------------------------------------------
 
 
-def _render_entry(entry: Entry) -> str:
-    r"""Render an Entry as an HTML div block.
-
-    Active entries use ``<div><sub>{id}</sub>\\n\\n{content}\\n</div>``.
-    Struck entries wrap the content in a collapsed ``<details>`` block.
-
-    Args:
-        entry: Entry to render.
-
-    Returns:
-        HTML div string for the entry.
-    """
-    if entry.struck:
-        inner = (
-            f"<details><summary>struck: {entry.struck_at} — {entry.struck_reason}</summary>"
-            f"\n\n{entry.content}\n</details>"
-        )
-        return f"<div><sub>{entry.id}</sub>\n{inner}\n</div>"
-    return f"<div><sub>{entry.id}</sub>\n\n{entry.content}\n</div>"
-
-
 def _render_section_entries(section: Section) -> str:
     """Render all entries in a Section as concatenated div blocks.
 
@@ -149,7 +128,7 @@ def _render_section_entries(section: Section) -> str:
     Returns:
         Entry blocks joined by blank lines.
     """
-    return "\n\n".join(_render_entry(e) for e in section.entries)
+    return "\n\n".join(_render_entry_raw(e) for e in section.entries)
 
 
 def _render_groomed(groomed: GroomedData) -> str:

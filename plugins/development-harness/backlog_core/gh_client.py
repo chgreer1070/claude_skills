@@ -37,6 +37,7 @@ from .models import (
     SamTask,
     ViewItemResult,
     parse_issue_number,
+    resolve_repo,
 )
 from .parsing import (
     build_issue_body,
@@ -57,15 +58,6 @@ logger = logging.getLogger(__name__)
 
 _HTTP_FORBIDDEN = 403
 _HTTP_NOT_FOUND = 404
-
-
-def _repo(repo: str) -> str:
-    """Resolve repo slug at call time, falling back to the live module global.
-
-    Returns:
-        Resolved ``owner/repo`` slug.
-    """
-    return repo or _models.DEFAULT_REPO
 
 
 # ---------------------------------------------------------------------------
@@ -493,7 +485,8 @@ def _graphql_request(repo: Repository, query: str, variables: dict[str, object] 
 
     Follows the same pattern as ``_resolve_labels_graphql``.  Raises
     ``BacklogError`` when the GraphQL response contains an ``errors`` key
-    or when the requester raises ``GithubException``.
+    or when the requester raises ``GithubException`` (including
+    ``UnknownObjectException`` for NOT_FOUND / 404 responses).
 
     Args:
         repo: PyGithub Repository object (provides requester access).
@@ -504,10 +497,12 @@ def _graphql_request(repo: Repository, query: str, variables: dict[str, object] 
         The ``data`` dict from the GraphQL response.
 
     Raises:
-        BacklogError: On GraphQL errors or network/auth failures.
-        GithubException: Propagated from PyGithub requester for connection-level errors.
+        BacklogError: On GraphQL errors, NOT_FOUND (404), or network/auth failures.
     """
-    _headers, response = repo.requester.graphql_query(query, variables or {})
+    try:
+        _headers, response = repo.requester.graphql_query(query, variables or {})
+    except GithubException as exc:
+        raise BacklogError(f"GraphQL request failed: {exc}") from exc
     if "errors" in response:
         first_error = response["errors"][0] if response["errors"] else {}
         msg = first_error.get("message", str(response["errors"]))
@@ -1135,7 +1130,7 @@ def get_github(repo: str = "", timeout: int = 15) -> Repository:
     Raises:
         GitHubUnavailableError: If GITHUB_TOKEN is not set.
     """
-    repo = _repo(repo)
+    repo = resolve_repo(repo)
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         raise GitHubUnavailableError("GITHUB_TOKEN not set")
@@ -1151,7 +1146,7 @@ def try_get_github(repo: str = "") -> Repository | None:
     Returns:
         Repository object or None if GitHub is unavailable.
     """
-    repo = _repo(repo)
+    repo = resolve_repo(repo)
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         logger.error("try_get_github: GITHUB_TOKEN not set in environment — GitHub operations will be skipped")
@@ -1177,7 +1172,7 @@ def probe_backend_status(repo: str = "") -> BackendStatus:
 
     Args:
         repo: Optional repository slug (``owner/name``).  Defaults to the
-            value resolved by ``_repo()``.
+            value resolved by :func:`~backlog_core.models.resolve_repo`.
 
     Returns:
         BackendStatus with availability, open/total issue counts, cache
@@ -1353,7 +1348,7 @@ def check_open_prs_for_issue(issue_num: int, repo: str = "") -> list[PullRequest
         List of PullRequestRef models for each matching PR.
         Empty list if no open PRs found or GitHub is unavailable.
     """
-    repo = _repo(repo)
+    repo = resolve_repo(repo)
     try:
         repository = get_github(repo)
         search_query = f"repo:{repo} is:pr is:open #{issue_num}"

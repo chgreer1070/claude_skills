@@ -8,7 +8,6 @@ parameter and returns ``{...result, **out.to_dict()}``.
 from __future__ import annotations
 
 import contextlib
-import io
 import json
 import operator
 import re
@@ -20,7 +19,7 @@ from typing import TYPE_CHECKING, NotRequired, TypedDict
 import dh_paths as _dh_paths
 from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject  # GithubObject used only by create_milestone (ADR-004)
-from ruamel.yaml import YAML, YAMLError
+from ruamel.yaml import YAMLError
 
 from . import models as _models
 from .artifact_provider import GitHubArtifactProvider
@@ -87,9 +86,12 @@ from .models import (
     ValidationError,
     ViewItemResult,
     parse_issue_number,
+    resolve_repo,
 )
 from .parsing import (
+    _MdPost,
     build_body_extra_only,
+    dump_frontmatter,
     extract_description_from_issue_body,
     extract_groomed_section,
     extract_normalize_metadata,
@@ -98,6 +100,7 @@ from .parsing import (
     find_item,
     items_needing_issues,
     items_with_issues,
+    loads_frontmatter,
     normalize_issue_title,
     now_iso,
     parse_backlog,
@@ -113,59 +116,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from github.Repository import Repository
-
-
-# ---------------------------------------------------------------------------
-# Private MD frontmatter helpers (replaces loads_frontmatter/dump_frontmatter
-# imports from parsing.py — kept local to operations.py for legacy .md paths)
-# ---------------------------------------------------------------------------
-
-
-def _md_read_frontmatter(text: str) -> tuple[dict[str, object], str]:
-    """Parse ``---``-delimited YAML frontmatter + body from a markdown string.
-
-    Args:
-        text: Markdown string with optional ``---``-delimited YAML frontmatter.
-
-    Returns:
-        Tuple of (metadata dict, body string).
-
-    Raises:
-        YAMLError: When the frontmatter block is present but contains invalid YAML.
-    """
-    parts = text.split("---", 2)
-    if len(parts) < MIN_FRONTMATTER_PARTS:
-        return {}, text
-    y = YAML()
-    y.default_flow_style = False
-    raw = y.load(parts[1]) or {}
-    return dict(raw), parts[2].strip()
-
-
-def _md_write_frontmatter(metadata: dict[str, object], body: str) -> str:
-    """Serialise metadata dict + body back to a ``---``-delimited markdown string.
-
-    Args:
-        metadata: Frontmatter metadata dict.
-        body: Markdown body string (below the frontmatter).
-
-    Returns:
-        Markdown string with YAML frontmatter block followed by the body.
-    """
-    y = YAML()
-    y.default_flow_style = False
-    buf = io.StringIO()
-    y.dump(dict(metadata), buf)
-    return f"---\n{buf.getvalue()}---\n\n{body.strip()}\n"
-
-
-def _repo(repo: str) -> str:
-    """Resolve repo slug at call time, falling back to the live module global.
-
-    Returns:
-        Resolved repository slug.
-    """
-    return repo or _models.DEFAULT_REPO
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +240,8 @@ def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str,
         set_synced: When ``True``, stamps ``metadata.last_synced`` with now.
     """
     text = filepath.read_text(encoding="utf-8")
-    meta, body = _md_read_frontmatter(text)
+    post = loads_frontmatter(text)
+    meta = post.metadata
     for key, value in updates.items():
         if key == "metadata" and isinstance(value, dict):
             raw_nested = meta.get("metadata")
@@ -311,7 +262,7 @@ def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str,
         )
         nested_dict2["last_synced"] = now_iso()
         meta["metadata"] = nested_dict2
-    filepath.write_text(_md_write_frontmatter(meta, body), encoding="utf-8")
+    filepath.write_text(dump_frontmatter(_MdPost(meta, post.content)), encoding="utf-8")
 
 
 def update_item_metadata(
@@ -492,7 +443,7 @@ def _auto_register_plan_artifact(item: BacklogItem, plan: str, repo: str = "", o
         return
 
     try:
-        provider = GitHubArtifactProvider(repo=_repo(repo))
+        provider = GitHubArtifactProvider(repo=resolve_repo(repo))
         registry = ArtifactRegistry()
         manifest = provider.get_manifest(issue_number)
         entry = ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, path=plan)
@@ -1004,8 +955,8 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
     if not text.startswith("---"):
         return None
     try:
-        raw_meta, body = _md_read_frontmatter(text)
-        fm: dict[str, object] = {k: (v if isinstance(v, dict) else str(v)) for k, v in raw_meta.items()}
+        post = loads_frontmatter(text)
+        fm: dict[str, object] = {k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()}
     except (ValueError, KeyError, TypeError, YAMLError):
         return None
     meta_raw = fm.get("metadata")
@@ -1013,10 +964,10 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
     md = extract_normalize_metadata(fm, meta)
     if not md["name"]:
         return None
-    parsed = _parse_md_body_extra_fields(body)
+    parsed = _parse_md_body_extra_fields(post.content)
     if parsed[0] and not md["description"]:
         md["description"] = parsed[0]
-    groomed = extract_groomed_section(body)
+    groomed = extract_groomed_section(post.content)
     new_body = build_body_extra_only(parsed[1], parsed[2], parsed[3], parsed[4], parsed[5], groomed)
     new_meta: dict[str, object] = {
         "name": md["name"],
@@ -1032,7 +983,7 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
             "groomed": md["groomed"],
         },
     }
-    return _md_write_frontmatter(new_meta, new_body)
+    return dump_frontmatter(_MdPost(new_meta, new_body))
 
 
 def _normalize_item_file(filepath: Path, dry_run: bool, output: Output | None = None) -> bool:
@@ -1271,8 +1222,8 @@ def _pull_item_update_md(
         return True, diff_str
 
     final_body = _md_reconstruct_body_from_sections(local_sections, github_sections, result_sections)
-    md_meta, _md_old_body = _md_read_frontmatter(filepath.read_text(encoding="utf-8"))
-    filepath.write_text(_md_write_frontmatter(md_meta, final_body), encoding="utf-8")
+    md_post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
+    filepath.write_text(dump_frontmatter(_MdPost(md_post.metadata, final_body)), encoding="utf-8")
     out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
     return True, ""
 
@@ -1297,8 +1248,8 @@ def _pull_md_force(
         out.info(f"  [dry-run] Would overwrite {filepath.name} from #{issue_num}: {title}")
         diff_str = generate_diff(local_body, github_body) if diff_mode else ""
         return True, diff_str
-    md_meta, _md_old_body = _md_read_frontmatter(filepath.read_text(encoding="utf-8"))
-    filepath.write_text(_md_write_frontmatter(md_meta, github_body), encoding="utf-8")
+    md_post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
+    filepath.write_text(dump_frontmatter(_MdPost(md_post.metadata, github_body)), encoding="utf-8")
     out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
     return True, ""
 
