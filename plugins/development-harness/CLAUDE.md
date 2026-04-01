@@ -352,6 +352,52 @@ Layer-0 operational specifications (pipeline flow, artifact conventions, touchpo
 
 ---
 
+## Testing MCP Servers Against Fresh Source Code
+
+Built-in MCP tool calls (`mcp__plugin_dh_backlog__*`, `mcp__plugin_dh_sam__*`) run against the **plugin cache**, not the current source. After modifying `backlog_core/` or `sam_schema/`, the cache is stale until a session restart + version bump. To test changes immediately, use `fastmcp` CLI against the source files:
+
+Run all commands from the **project root** (where `pyproject.toml` lives). `$(pwd)` resolves to the project root at execution time.
+
+**Backlog server** (`scripts/run_backlog_server.py`):
+
+```bash
+# List all 42 tools
+uv run fastmcp list \
+  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_backlog_server.py"
+
+# View a backlog item (full content)
+uv run fastmcp call \
+  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
+  --target backlog_view \
+  --input-json '{"selector": "groom-milestone", "summary": false}'
+
+# Search backlog items
+uv run fastmcp call \
+  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
+  --target backlog_list \
+  --input-json '{"search": "sdlc", "limit": 3}'
+```
+
+**SAM server** (`scripts/run_sam_server.py`):
+
+```bash
+# List all 8 tools
+uv run fastmcp list \
+  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_sam_server.py"
+
+# List all plans
+uv run fastmcp call \
+  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_sam_server.py" \
+  --target sam_list \
+  --input-json '{}'
+```
+
+**Why `--command` is required**: The server files use relative imports (`from . import models`) and sibling packages (`import dh_paths`). Running `fastmcp call server.py` directly breaks module resolution. The `--command` flag launches the runner script as a subprocess with the correct Python path, matching how the plugin cache launches the server.
+
+**When to use this vs built-in MCP calls**: Use `fastmcp call` to verify behavior after editing `backlog_core/` or `sam_schema/` source files. Use built-in MCP calls for normal workflow operations where the cached server is sufficient.
+
+---
+
 ## Backend Providers
 
 When discussing, extending, or adding backend providers for the development harness — including state management, task management, planning, issues, jobs, milestones, or boards — read [docs/backend-providers.md](./docs/backend-providers.md) first. Amend that document with any new points, references, discoveries, or user inputs that arise during the conversation.
