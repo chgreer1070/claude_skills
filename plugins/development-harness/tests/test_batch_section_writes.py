@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import backlog_core.models as models
 import backlog_core.operations as ops
 import pytest
-from backlog_core.models import BacklogError, BacklogItem, Output
+from backlog_core.models import BacklogConfig, BacklogError, BacklogItem, Output
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,7 +55,7 @@ def _write_item_file(
 
 def _backlog_dir() -> Path:
     """Return the current (monkeypatched) BACKLOG_DIR."""
-    return models.BACKLOG_DIR
+    return models.get_backlog_dir()
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +81,16 @@ def _isolate_backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     fake_dir = dh_paths.backlog_dir(project_root=fake_project_root)
     fake_dir.mkdir(parents=True, exist_ok=True)
 
-    monkeypatch.setattr(models, "BACKLOG_DIR", fake_dir)
+    existing = models._config
+    monkeypatch.setattr(
+        models,
+        "_config",
+        BacklogConfig(
+            repo_root=fake_project_root,
+            backlog_dir=fake_dir,
+            default_repo=existing.default_repo if existing is not None else "",
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

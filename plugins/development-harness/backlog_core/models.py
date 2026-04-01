@@ -6,6 +6,7 @@ All models use Pydantic BaseModel for natural integration with FastMCP 3.x.
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import os
 import re
@@ -47,28 +48,79 @@ def _resolve_repo_root(project_dir: str | None = None) -> Path:
     return _dh_paths.git_project_root()
 
 
-_REPO_ROOT = _resolve_repo_root()
-BACKLOG_DIR: Path = _dh_paths.backlog_dir(_REPO_ROOT)
+@dataclasses.dataclass
+class BacklogConfig:
+    """Immutable configuration bundle set once at server startup.
+
+    Attributes:
+        repo_root: Absolute path to the repository root.
+        backlog_dir: Absolute path to the backlog directory
+            (``~/.dh/projects/{slug}/backlog/``).
+        default_repo: ``owner/repo`` slug for GitHub API calls.
+    """
+
+    repo_root: Path
+    backlog_dir: Path
+    default_repo: str
+
+
+# Single mutable config cell — replaces the three bare module globals.
+_config: BacklogConfig | None = None
+
+
+def get_config() -> BacklogConfig:
+    """Return the active :class:`BacklogConfig`.
+
+    Returns:
+        The :class:`BacklogConfig` set by the last call to :func:`init_paths`.
+
+    Raises:
+        RuntimeError: When :func:`init_paths` has not been called yet.
+    """
+    if _config is None:
+        raise RuntimeError("BacklogConfig is not initialised — call init_paths() before accessing config.")
+    return _config
 
 
 def get_repo_root() -> Path:
     """Return the current project (git) root.
 
     Returns:
-        Absolute path to the repository root.  Updated when :func:`init` is
-        called with a ``project_dir`` argument.
+        Absolute path to the repository root.  Updated when :func:`init_paths`
+        is called.
     """
-    return _REPO_ROOT
+    return get_config().repo_root
 
 
-def init(project_dir: str | None = None, repo: str | None = None) -> None:
-    """Re-initialise module-level path and repository constants.
+def get_backlog_dir() -> Path:
+    """Return the backlog directory path.
+
+    Returns:
+        Absolute path to the backlog directory
+        (``~/.dh/projects/{slug}/backlog/``).  Updated when :func:`init_paths`
+        is called.
+    """
+    return get_config().backlog_dir
+
+
+def get_default_repo() -> str:
+    """Return the default repository slug.
+
+    Returns:
+        ``owner/repo`` slug set by the last call to :func:`init_paths`, or an
+        empty string when slug discovery found nothing.
+    """
+    return get_config().default_repo
+
+
+def init_paths(project_dir: str | None = None, repo: str | None = None) -> None:
+    """Initialise (or re-initialise) the module config from startup arguments.
 
     Call this once at server startup (before any tool runs) when the server is
-    launched with ``--project-dir`` or a known ``repo`` slug.  Mutates module
-    globals ``_REPO_ROOT``, ``BACKLOG_DIR``, and ``DEFAULT_REPO`` in-place.
+    launched with ``--project-dir`` or a known ``repo`` slug.  Replaces the
+    module-level :data:`_config` instance with a new :class:`BacklogConfig`.
 
-    Path resolution now delegates to :mod:`dh_paths` so that ``BACKLOG_DIR``
+    Path resolution delegates to :mod:`dh_paths` so that ``backlog_dir``
     points to ``~/.dh/projects/{slug}/backlog/``.
 
     Args:
@@ -77,14 +129,48 @@ def init(project_dir: str | None = None, repo: str | None = None) -> None:
         repo: Explicit ``owner/repo`` slug override.  When ``None``, calls
             :func:`discover_repo` to resolve the slug dynamically.
     """
-    global _REPO_ROOT, BACKLOG_DIR, DEFAULT_REPO  # noqa: PLW0603
-    _REPO_ROOT = _resolve_repo_root(project_dir)
-    BACKLOG_DIR = _dh_paths.backlog_dir(_REPO_ROOT)
+    global _config  # noqa: PLW0603
+    repo_root = _resolve_repo_root(project_dir)
+    backlog_dir = _dh_paths.backlog_dir(repo_root)
     if repo is not None:
-        DEFAULT_REPO = _validate_repo_slug(repo)
+        default_repo = _validate_repo_slug(repo)
     else:
         discover_repo.cache_clear()
-        DEFAULT_REPO = discover_repo()
+        default_repo = discover_repo()
+    _config = BacklogConfig(repo_root=repo_root, backlog_dir=backlog_dir, default_repo=default_repo)
+
+
+#: Backward-compat alias — server.py imports ``init as _init_models``.
+init = init_paths
+
+
+def __getattr__(name: str) -> object:
+    """Module-level ``__getattr__`` for backward-compat attribute access.
+
+    Intercepts ``_REPO_ROOT``, ``BACKLOG_DIR``, and ``DEFAULT_REPO`` so that
+    code using ``_models.BACKLOG_DIR`` continues to work without importing a
+    stale snapshot.  All three delegate to :func:`get_config`.
+
+    Returns:
+        The current value for the requested compat attribute.
+
+    Raises:
+        AttributeError: For any name not handled here.
+    """
+    if name == "BACKLOG_DIR":
+        return get_config().backlog_dir
+    if name == "DEFAULT_REPO":
+        return get_config().default_repo
+    if name == "_REPO_ROOT":
+        return get_config().repo_root
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+# Initialise at import time so existing code that reads module attrs before
+# calling init_paths() still works (matches pre-refactor behaviour).
+_config = BacklogConfig(
+    repo_root=_resolve_repo_root(), backlog_dir=_dh_paths.backlog_dir(_resolve_repo_root()), default_repo=""
+)
 
 
 # ---------------------------------------------------------------------------
@@ -171,8 +257,8 @@ def _discover_via_env() -> str | None:
 def _discover_via_git() -> str | None:
     """Parse the ``origin`` remote URL via GitPython to extract ``owner/repo``.
 
-    Opens :class:`git.Repo` at :data:`_REPO_ROOT` (resolved project root from
-    :func:`dh_paths.infer_project_root`, ``DH_PROJECT_ROOT``, etc.), with
+    Opens :class:`git.Repo` at :func:`get_repo_root` (resolved project root
+    from :func:`dh_paths.infer_project_root`, ``DH_PROJECT_ROOT``, etc.), with
     ``search_parent_directories=True`` so a subdirectory of a worktree still
     resolves.  Does **not** use the process cwd — MCP stdio servers often
     start with cwd outside the user's repository (plugin cache, ``/``, IDE).
@@ -182,7 +268,7 @@ def _discover_via_git() -> str | None:
         found, there is no ``origin`` remote, or the URL cannot be parsed.
     """
     try:
-        repo = git.Repo(_REPO_ROOT, search_parent_directories=True)
+        repo = git.Repo(get_repo_root(), search_parent_directories=True)
         url = repo.remote().url
     except (git.InvalidGitRepositoryError, git.NoSuchPathError, ValueError):
         return None
@@ -237,24 +323,18 @@ def discover_repo() -> str:
     raise RepoDiscoveryError(methods_tried=methods_tried, details=details)
 
 
-#: Populated at server startup by :func:`init`. Not set at import time to avoid
-#: triggering git I/O during module import. Call :func:`discover_repo` directly
-#: when a default is needed before ``init()`` has run.
-DEFAULT_REPO: str = ""
-
-
 def resolve_repo(repo: str) -> str:
-    """Resolve a repo slug, falling back to the live ``DEFAULT_REPO`` global.
+    """Resolve a repo slug, falling back to the configured default.
 
     Args:
         repo: Caller-supplied ``owner/repo`` slug, or empty string to use the
-            module-level default.
+            default from :func:`get_default_repo`.
 
     Returns:
-        ``repo`` when non-empty; otherwise the current value of
-        :data:`DEFAULT_REPO`.
+        ``repo`` when non-empty; otherwise the value of
+        :func:`get_default_repo`.
     """
-    return repo or DEFAULT_REPO
+    return repo or get_default_repo()
 
 
 # ---------------------------------------------------------------------------

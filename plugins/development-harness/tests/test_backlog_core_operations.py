@@ -11,9 +11,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+import backlog_core.models as _bc_models
 import backlog_core.operations as ops
 import pytest
 from backlog_core.models import (
+    BacklogConfig,
     BacklogItem,
     BacklogItemMetadata,
     DuplicateItemError,
@@ -132,9 +134,16 @@ def _isolate_backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     fake_dir = dh_paths.backlog_dir(project_root=fake_project_root)
     fake_dir.mkdir(parents=True, exist_ok=True)
 
-    import backlog_core.models as models
-
-    monkeypatch.setattr(models, "BACKLOG_DIR", fake_dir)
+    existing = _bc_models._config
+    monkeypatch.setattr(
+        _bc_models,
+        "_config",
+        BacklogConfig(
+            repo_root=fake_project_root,
+            backlog_dir=fake_dir,
+            default_repo=existing.default_repo if existing is not None else "",
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +165,7 @@ class TestAddItemCreatesLocalFile:
 
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         result = add_item(title="My New Feature", description="Does something useful", priority="P1")
 
         files = list(fake_dir.glob("*.yaml"))
@@ -249,7 +258,7 @@ class TestAddItemDuplicateDetection:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Implement Error Recovery", priority="P1", topic="implement-error-recovery")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
@@ -265,7 +274,7 @@ class TestAddItemDuplicateDetection:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Implement Error Recovery", priority="P1", topic="implement-error-recovery")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
@@ -368,7 +377,7 @@ class TestListItemsFiltering:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="No Status Item", priority="P2", topic="no-status-item")
         mock_batch = mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
@@ -411,7 +420,7 @@ class TestViewItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Viewable Item", priority="P1", topic="viewable-item")
         mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
 
@@ -440,7 +449,7 @@ class TestViewItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         body_text = "Line 0\nLine 1\nLine 2\nLine 3\nLine 4"
         _write_item(fake_dir, title="Paginated Item", priority="P2", topic="paginated-item", extra_body=body_text)
         mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
@@ -461,7 +470,7 @@ class TestViewItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         body_text = "\n".join(f"Line {i}" for i in range(5))
         _write_item(fake_dir, title="Full Body Item", priority="P2", topic="full-body-item", extra_body=body_text)
         mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
@@ -534,7 +543,7 @@ class TestCloseItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Closeable Item", priority="P1", topic="closeable-item")
         mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
         mocker.patch("backlog_core.operations.close_github_issue")
@@ -556,7 +565,7 @@ class TestCloseItem:
         import backlog_core.models as models
         from backlog_core.models import BacklogError
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         filepath = _write_item(fake_dir, title="PR Blocked Close", priority="P1", topic="pr-blocked-close")
         item_with_issue = BacklogItem(title="PR Blocked Close", section="P1", issue="#5", file_path=str(filepath))
         mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
@@ -577,7 +586,7 @@ class TestCloseItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         filepath = _write_item(fake_dir, title="Force Close Item", priority="P1", topic="force-close-item")
         item_with_issue = BacklogItem(title="Force Close Item", section="P1", issue="#6", file_path=str(filepath))
         mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
@@ -641,7 +650,7 @@ class TestResolveItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Resolvable Item", priority="P2", topic="resolvable-item")
         mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
         mocker.patch("backlog_core.operations.resolve_github_issue")
@@ -662,7 +671,7 @@ class TestResolveItem:
         import backlog_core.models as models
         from backlog_core.models import BacklogError
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         filepath = _write_item(fake_dir, title="PR Blocked Resolve", priority="P1", topic="pr-blocked-resolve")
         item_with_issue = BacklogItem(title="PR Blocked Resolve", section="P1", issue="#8", file_path=str(filepath))
         mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
@@ -683,7 +692,7 @@ class TestResolveItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         filepath = _write_item(fake_dir, title="Force Resolve Item", priority="P1", topic="force-resolve-item")
         item_with_issue = BacklogItem(title="Force Resolve Item", section="P1", issue="#9", file_path=str(filepath))
         mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
@@ -746,7 +755,7 @@ def test_github_only_falls_back_to_pull(
     """
     import backlog_core.models as models
 
-    fake_dir: Path = models.BACKLOG_DIR
+    fake_dir: Path = models.get_backlog_dir()
 
     def _write_cache_file(selector: str, repo: str, output: object = None) -> None:
         _write_item(fake_dir, title=title, priority=priority, topic=topic, issue="#999")
@@ -801,7 +810,7 @@ def test_list_items_section_derived_from_priority(
     """
     import backlog_core.models as models
 
-    fake_dir: Path = models.BACKLOG_DIR
+    fake_dir: Path = models.get_backlog_dir()
     _write_item(fake_dir, title=f"{priority} Item", priority=priority, topic=topic)
     mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
@@ -831,7 +840,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Old Title", topic="old-title")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
@@ -856,7 +865,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Linked Item", topic="linked-item", issue="42")
 
         mock_repo = mocker.Mock()
@@ -885,7 +894,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="No Issue Item", topic="no-issue-item", issue="")
         mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
 
@@ -907,7 +916,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Desc Item", topic="desc-item")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
@@ -929,7 +938,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Desc GitHub Item", topic="desc-gh-item", issue="99")
         mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
 
@@ -1494,7 +1503,7 @@ class TestGroomItemEntryBlocks:
 
         import backlog_core.models as _m
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         filepath = _write_item(backlog_dir, title="Test Entry Groom", priority="P1", topic="test-entry-groom")
 
         out = Output()
@@ -1516,7 +1525,7 @@ class TestGroomItemEntryBlocks:
 
         import backlog_core.models as _m
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         # Use .yaml file so parse_backlog() finds the item after the first save_item call
         filepath = _write_item_yaml(backlog_dir, title="Multi Entry", priority="P1", topic="multi-entry")
 
@@ -1552,7 +1561,7 @@ class TestGroomItemAppend:
 
         import backlog_core.models as _m
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         filepath = _write_item(backlog_dir, title="Append First", priority="P1", topic="append-first")
 
         out = Output()
@@ -1580,7 +1589,7 @@ class TestGroomItemAppend:
 
         import backlog_core.models as _m
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         # Use .yaml file so parse_backlog() finds the item after the first save_item call
         filepath = _write_item_yaml(backlog_dir, title="Append Multi", priority="P1", topic="append-multi")
 
@@ -1607,7 +1616,7 @@ class TestGroomItemAppend:
 
         import backlog_core.models as _m
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         filepath = _write_item(backlog_dir, title="Append Default", priority="P1", topic="append-default")
 
         out = Output()
@@ -1638,7 +1647,7 @@ class TestStrikeEntryOperation:
 
         import backlog_core.models as _m
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         # Use .yaml file so strike_entry's parse_backlog() re-finds the item after groom_item saves it
         filepath = _write_item_yaml(backlog_dir, title="Strike Test", priority="P1", topic="strike-test")
 
@@ -1669,7 +1678,7 @@ class TestStrikeEntryOperation:
 
         import backlog_core.models as _m
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         _write_item(backlog_dir, title="No Entry", priority="P1", topic="no-entry")
 
         out = Output()
@@ -1695,7 +1704,7 @@ class TestPullItemsEntryAwareMerge:
         import backlog_core.models as _m
         from backlog_core.models import Output
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
 
         local_entry = "<div><sub>2026-01-01T00:00:00Z</sub>\n\nLocal content\n</div>"
         _write_item(
@@ -1741,7 +1750,7 @@ class TestPullItemsEntryAwareMerge:
         import backlog_core.models as _m
         from backlog_core.models import Output
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
 
         struck_entry = (
             "<div><sub>2026-01-01T00:00:00Z</sub>\n"
@@ -1796,7 +1805,7 @@ class TestPullItemsResilienceToFetchErrors:
         """
         import backlog_core.models as _m
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
 
         good_body = "## Description\n\nSome content"
         filepath = backlog_dir / "p1-good-item.md"
@@ -1906,7 +1915,7 @@ class TestRefreshClosedIssueReconciliation:
         import backlog_core.models as models
 
         # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
-        fake_dir = models.BACKLOG_DIR
+        fake_dir = models.get_backlog_dir()
 
         filepath = _write_item(fake_dir, title="Closable Item", issue="#50", topic="closable-item")
 
@@ -1955,7 +1964,7 @@ class TestRefreshClosedIssueReconciliation:
         import backlog_core.models as models
 
         # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
-        fake_dir = models.BACKLOG_DIR
+        fake_dir = models.get_backlog_dir()
 
         filepath = _write_item(fake_dir, title="Already Done", issue="#60", topic="already-done", skip=True)
         original_content = filepath.read_text(encoding="utf-8")
@@ -2005,7 +2014,7 @@ class TestRefreshClosedIssueReconciliation:
         import backlog_core.models as models
 
         # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
-        fake_dir = models.BACKLOG_DIR
+        fake_dir = models.get_backlog_dir()
 
         _write_item(fake_dir, title="Ambiguous Item", issue="#70", topic="ambiguous-item")
 
@@ -2247,7 +2256,7 @@ class TestSyncIncrementalParseBacklogCallCount:
         import backlog_core.models as models
         import dh_paths
 
-        fake_dir = models.BACKLOG_DIR
+        fake_dir = models.get_backlog_dir()
         _write_item(fake_dir, title="Item Alpha", issue="#101", topic="item-alpha", priority="P1")
         _write_item(fake_dir, title="Item Beta", issue="#102", topic="item-beta", priority="P1")
         _write_item(fake_dir, title="Item Gamma", issue="#103", topic="item-gamma", priority="P1")
@@ -2332,7 +2341,7 @@ class TestGroomItemMarkGroomed:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
         filepath = _write_item_yaml(backlog_dir, title="Mark Groomed Local", priority="P1", topic="mark-groomed-local")
 
@@ -2363,7 +2372,7 @@ class TestGroomItemMarkGroomed:
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
         mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
         _write_item_yaml(
             backlog_dir, title="Mark Groomed Github", priority="P1", topic="mark-groomed-github", issue="#123"
@@ -2396,7 +2405,7 @@ class TestGroomItemMarkGroomed:
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
         mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         filepath = _write_item(
             backlog_dir, title="Mark Groomed False", priority="P1", topic="mark-groomed-false", issue="#456"
         )
@@ -2430,7 +2439,7 @@ class TestGroomItemMarkGroomed:
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
         mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
         _write_item_yaml(
             backlog_dir, title="Mark Groomed Batch", priority="P1", topic="mark-groomed-batch", issue="#789"
@@ -2462,7 +2471,7 @@ class TestGroomItemMarkGroomed:
         mocker.patch("backlog_core.operations.update_item", return_value={"error": "some error"})
         mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
 
-        backlog_dir = _m.BACKLOG_DIR
+        backlog_dir = _m.get_backlog_dir()
         filepath = _write_item(
             backlog_dir, title="Mark Groomed Error", priority="P1", topic="mark-groomed-error", issue="#999"
         )

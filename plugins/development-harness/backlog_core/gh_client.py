@@ -1178,9 +1178,9 @@ def probe_backend_status(repo: str = "") -> BackendStatus:
         BackendStatus with availability, open/total issue counts, cache
         total count, and last sync timestamp populated from observed state.
     """
-    yaml_files = list(_models.BACKLOG_DIR.glob("*.yaml"))
+    yaml_files = list(_models.get_backlog_dir().glob("*.yaml"))
     yaml_stems = {f.stem for f in yaml_files}
-    md_files = [f for f in _models.BACKLOG_DIR.glob("*.md") if f.stem not in yaml_stems]
+    md_files = [f for f in _models.get_backlog_dir().glob("*.md") if f.stem not in yaml_stems]
     cache_total_count = len(yaml_files) + len(md_files)
 
     last_sync_path = _dh_paths.state_root() / ".last_sync"

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
+import backlog_core.models as _bc_models
 import pytest
 
 if TYPE_CHECKING:
@@ -64,10 +65,19 @@ def backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     bd = dh_paths.backlog_dir(project_root=fake_project_root)
     bd.mkdir(parents=True, exist_ok=True)
 
-    # Only models.py exports BACKLOG_DIR at module level. parsing.py and
-    # operations.py access it via `_models.BACKLOG_DIR`, so patching models
-    # is sufficient to redirect all consumers.
-    monkeypatch.setattr("backlog_core.models.BACKLOG_DIR", bd)
+    # Redirect backlog_dir via _config so get_backlog_dir() returns the temp path.
+    # parsing.py and operations.py call _models.get_backlog_dir(); patching _config
+    # is the correct interception point after the BacklogConfig refactor.
+    existing = _bc_models._config
+    monkeypatch.setattr(
+        _bc_models,
+        "_config",
+        _bc_models.BacklogConfig(
+            repo_root=existing.repo_root if existing is not None else fake_project_root,
+            backlog_dir=bd,
+            default_repo=existing.default_repo if existing is not None else "",
+        ),
+    )
     return bd
 
 

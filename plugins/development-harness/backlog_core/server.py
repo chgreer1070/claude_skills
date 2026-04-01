@@ -77,6 +77,7 @@ _REGEX_SLASH_MIN_LEN = 2
 
 # Sentinel: prevents _bootstrap_beads from running more than once per process.
 # Tests reset via monkeypatch.setattr("backlog_core.server._beads_bootstrapped", False).
+# TODO(H05): Move to FastMCP lifespan context — eliminate module-level singleton.
 _beads_bootstrapped: bool = False
 
 
@@ -1076,6 +1077,7 @@ async def backlog_update_sam_task_status(
 # ---------------------------------------------------------------------------
 
 _artifact_registry = ArtifactRegistry()
+# TODO(H05): Move to FastMCP lifespan context — eliminate module-level singleton.
 _artifact_provider: GitHubArtifactProvider | None = None
 
 
@@ -1107,13 +1109,10 @@ def _get_artifact_provider() -> GitHubArtifactProvider:
     """
     global _artifact_provider  # noqa: PLW0603
     if _artifact_provider is None:
-        repo = _models.DEFAULT_REPO
+        repo = _models.get_default_repo()
         if not repo:
             raise GitHubUnavailableError("DEFAULT_REPO not set — GitHub credentials or repo slug missing")
-        _artifact_provider = GitHubArtifactProvider(
-            repo=repo,
-            root_worktree=_models._REPO_ROOT,  # noqa: SLF001
-        )
+        _artifact_provider = GitHubArtifactProvider(repo=repo, root_worktree=_models.get_repo_root())
     return _artifact_provider
 
 
@@ -1686,14 +1685,11 @@ def _try_register_dispatch_plan_artifact(issue_number: int, plan_path: Path) -> 
     """
     log = _logging.getLogger(__name__)
     try:
-        repo = _models.DEFAULT_REPO
+        repo = _models.get_default_repo()
         if not repo:
             log.warning("dispatch_create_plan: skipping artifact registration — DEFAULT_REPO not set")
             return
-        provider = GitHubArtifactProvider(
-            repo=repo,
-            root_worktree=_models._REPO_ROOT,  # noqa: SLF001
-        )
+        provider = GitHubArtifactProvider(repo=repo, root_worktree=_models.get_repo_root())
         entry = ArtifactEntry(
             artifact_type=ArtifactType.DISPATCH_PLAN,
             path=str(plan_path),
@@ -2031,6 +2027,7 @@ async def dispatch_conflicts(
 
 #: Lazily created YAML parser for migration helpers (preserve_quotes prevents
 #: round-trip mutations when loading frontmatter).
+# TODO(H05): Move to FastMCP lifespan context — eliminate module-level singleton.
 _migrate_yaml: _YAML | None = None
 
 
@@ -2402,7 +2399,7 @@ def _migrate_dry_run(issue_number: int | None) -> dict:
         issue number — filtered entries are counted in ``would_skip`` but not
         included individually.
     """
-    repo_root = _models._REPO_ROOT  # noqa: SLF001
+    repo_root = _models.get_repo_root()
     candidates, filtered_count = _migrate_discover_candidates(repo_root, issue_number, [])
 
     details: list[dict] = []
@@ -2484,7 +2481,7 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
         skipped entries are counted in ``skipped`` but not listed individually
         to keep the response compact.
     """
-    repo_root = _models._REPO_ROOT  # noqa: SLF001
+    repo_root = _models.get_repo_root()
     provider = _get_artifact_provider()
 
     backlog_items: list[dict] = []
@@ -2593,6 +2590,7 @@ async def artifact_migrate(
 # ---------------------------------------------------------------------------
 
 #: Lazily created singleton DispatchStateManager.
+# TODO(H05): Move to FastMCP lifespan context — eliminate module-level singleton.
 _dispatch_state_mgr: _DispatchStateManager | None = None
 
 #: Path to the spawn.py script resolved once at module level.

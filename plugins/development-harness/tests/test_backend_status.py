@@ -17,9 +17,10 @@ import json
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
+import backlog_core.models as _bc_models
 import pytest
 from backlog_core.gh_client import probe_backend_status
-from backlog_core.models import BackendAvailability, BackendStatus
+from backlog_core.models import BackendAvailability, BackendStatus, BacklogConfig
 from backlog_core.server import mcp
 from fastmcp.client import Client
 from github import GithubException
@@ -315,8 +316,19 @@ def probe_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     backlog_dir = tmp_path / "backlog"
     backlog_dir.mkdir()
 
-    # Redirect BACKLOG_DIR used by probe_backend_status via _models.BACKLOG_DIR
-    monkeypatch.setattr("backlog_core.models.BACKLOG_DIR", backlog_dir)
+    # Redirect BACKLOG_DIR used by probe_backend_status via _config.backlog_dir.
+    # monkeypatch.setattr on BACKLOG_DIR no longer works after the BacklogConfig
+    # refactor — get_backlog_dir() reads from _config, not a module-level var.
+    existing = _bc_models._config
+    monkeypatch.setattr(
+        _bc_models,
+        "_config",
+        BacklogConfig(
+            repo_root=tmp_path,
+            backlog_dir=backlog_dir,
+            default_repo=existing.default_repo if existing is not None else "",
+        ),
+    )
 
     # Redirect dh_paths.state_root() so .last_sync resolves under tmp_path
     state_root = tmp_path / "state"

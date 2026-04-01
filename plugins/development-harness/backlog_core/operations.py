@@ -1023,8 +1023,8 @@ def _pull_item_create_new(
     slug = title_to_slug(title)
     priority = item.priority or "P2"
     filename = f"{priority.lower()}-{slug}.yaml"
-    filepath = _models.BACKLOG_DIR / filename
-    _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    filepath = _models.get_backlog_dir() / filename
+    _models.get_backlog_dir().mkdir(parents=True, exist_ok=True)
     if dry_run:
         out.info(f"  [dry-run] Would create {filename} from #{issue_num}: {title}")
         return True
@@ -1329,13 +1329,13 @@ def _resolve_filepath(priority: str, slug: str) -> Path:
     Returns:
         A Path that does not yet exist on disk.
     """
-    _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    _models.get_backlog_dir().mkdir(parents=True, exist_ok=True)
     base = f"{priority.lower()}-{slug}"
-    filepath = _models.BACKLOG_DIR / f"{base}.yaml"
+    filepath = _models.get_backlog_dir() / f"{base}.yaml"
     idx = 0
     while filepath.exists():
         idx += 1
-        filepath = _models.BACKLOG_DIR / f"{base}-{idx}.yaml"
+        filepath = _models.get_backlog_dir() / f"{base}-{idx}.yaml"
     return filepath
 
 
@@ -3168,7 +3168,7 @@ def strike_entry(
 
     # Sync to GitHub if item has an issue
     if item.issue:
-        repository = try_get_github(_models.DEFAULT_REPO)
+        repository = try_get_github(_models.get_default_repo())
         if repository:
             try:
                 num = parse_issue_number(item.issue)
@@ -3197,12 +3197,12 @@ def normalize_items(dry_run: bool = False, output: Output | None = None) -> dict
         Dict with count of normalized items.
     """
     out = output or Output()
-    if not _models.BACKLOG_DIR.exists():
-        msg = f"{_models.BACKLOG_DIR} not found"
+    if not _models.get_backlog_dir().exists():
+        msg = f"{_models.get_backlog_dir()} not found"
         raise BacklogError(msg)
     pattern = re.compile(r"^(p0|p1|p2|ideas|completed)-[a-z0-9-]+\.(md|yaml)$", re.IGNORECASE)
-    yaml_files = list(_models.BACKLOG_DIR.glob("*.yaml"))
-    md_files = list(_models.BACKLOG_DIR.glob("*.md"))
+    yaml_files = list(_models.get_backlog_dir().glob("*.yaml"))
+    md_files = list(_models.get_backlog_dir().glob("*.md"))
     yaml_stems = {f.stem for f in yaml_files}
     all_candidate_files = yaml_files + [f for f in md_files if f.stem not in yaml_stems]
     files = sorted(f for f in all_candidate_files if pattern.match(f.name))
@@ -3265,9 +3265,9 @@ def _write_issue_node_to_cache(
     if filepath is None:
         slug = title_to_slug(clean_title)
         filename = f"{fields.priority.lower()}-{slug}.yaml"
-        filepath = _models.BACKLOG_DIR / filename
+        filepath = _models.get_backlog_dir() / filename
 
-    _models.BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    _models.get_backlog_dir().mkdir(parents=True, exist_ok=True)
 
     diff_str = ""
     if filepath.exists():

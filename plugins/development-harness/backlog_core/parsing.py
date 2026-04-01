@@ -356,7 +356,7 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
     Returns:
         List of BacklogItem instances with section, title, and parsed fields.
     """
-    if not _models.BACKLOG_DIR.exists():
+    if not _models.get_backlog_dir().exists():
         return []
     prefix_to_section = {
         "p0-": "P0",
@@ -369,8 +369,8 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
     }
     # Collect .yaml files first (new format), then .md files (legacy).
     # When a stem has both .yaml and .md, .yaml takes precedence.
-    yaml_files = list(_models.BACKLOG_DIR.glob("*.yaml"))
-    md_files = list(_models.BACKLOG_DIR.glob("*.md"))
+    yaml_files = list(_models.get_backlog_dir().glob("*.yaml"))
+    md_files = list(_models.get_backlog_dir().glob("*.md"))
     yaml_stems = {f.stem for f in yaml_files}
     all_files = sorted(yaml_files + [f for f in md_files if f.stem not in yaml_stems])
 
