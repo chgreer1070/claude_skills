@@ -161,7 +161,11 @@ class TestBacklogItemModelDump:
         assert "skip" not in result
 
     def test_model_dump_excludes_raw_body(self) -> None:
-        """raw_body has been removed from BacklogItem; it must not appear in dumps."""
+        """raw_body is an excluded runtime field and must not appear in model_dump output.
+
+        ``raw_body`` is declared with ``exclude=True`` so that legacy ``.md`` parsing
+        results are not serialised to YAML.  This test guards that the exclusion holds.
+        """
         item = BacklogItem()
         result = item.model_dump()
         assert "raw_body" not in result

@@ -662,45 +662,53 @@ class BacklogItem(BaseModel):
         if self.section and not self.priority and not meta.priority:
             meta.priority = self.section
 
-        resolved_priority = _apply(self.priority, "priority")
-        resolved_issue = _apply(self.issue, "issue")
-        resolved_source = _apply(self.source, "source", default="Not specified")
-        resolved_added = _apply(self.added, "added")
-        resolved_status = _apply(self.status, "status")
-        resolved_plan = _apply(self.plan, "plan")
-        resolved_item_type = _apply(self.item_type, "item_type", default="Feature")
-        resolved_groomed = _apply(self.groomed, "groomed")
-        resolved_last_synced = _apply(self.last_synced, "last_synced")
-        resolved_research_first = _apply(self.research_first, "research_first")
-        resolved_files = _apply(self.files, "files")
-        resolved_suggested_location = _apply(self.suggested_location, "suggested_location")
-        resolved_topic = _apply(self.topic, "topic")
+        _apply(self.priority, "priority")
+        _apply(self.issue, "issue")
+        _apply(self.source, "source", default="Not specified")
+        _apply(self.added, "added")
+        _apply(self.status, "status")
+        _apply(self.plan, "plan")
+        _apply(self.item_type, "item_type", default="Feature")
+        _apply(self.groomed, "groomed")
+        _apply(self.last_synced, "last_synced")
+        _apply(self.research_first, "research_first")
+        _apply(self.files, "files")
+        _apply(self.suggested_location, "suggested_location")
+        _apply(self.topic, "topic")
 
         # type_ is an alias for metadata.item_type — treat as an override.
         if self.type_:
             meta.item_type = self.type_
-            resolved_item_type = self.type_
 
-        # Reflect the resolved values back to the flat fields so both access
-        # forms are always equivalent.
-        self.priority = resolved_priority
-        self.issue = resolved_issue
-        self.source = resolved_source or "Not specified"
-        self.added = resolved_added
-        self.status = resolved_status
-        self.plan = resolved_plan
-        self.item_type = resolved_item_type
+        # Re-validate metadata through BacklogItemMetadata field validators.
+        # _apply() and the direct attribute assignments above use setattr(), which
+        # bypasses Pydantic validators.  For example, priority='IDEA' stored via
+        # setattr is not normalised to 'Ideas' until the model is reconstructed.
+        # model_validate() re-runs all @field_validator methods so the stored values
+        # match what a freshly loaded YAML round-trip would produce.
+        self.metadata = BacklogItemMetadata.model_validate(meta.model_dump())
+
+        # Reflect the validated values back to the flat fields so both access
+        # forms are always equivalent.  Use self.metadata (post-validation) as
+        # the source of truth to keep flat fields in sync.
+        self.priority = self.metadata.priority
+        self.issue = self.metadata.issue
+        self.source = self.metadata.source or "Not specified"
+        self.added = self.metadata.added
+        self.status = self.metadata.status
+        self.plan = self.metadata.plan
+        self.item_type = self.metadata.item_type
         # type_ is the BacklogItem-level alias for metadata.item_type — keep in sync
         # so YAML-loaded items (which have type_='' on disk but metadata.item_type set)
         # expose the correct value via item.type_.  Invariant: after construction,
         # item.type_ == item.item_type == item.metadata.item_type.
-        self.type_ = resolved_item_type
-        self.groomed = resolved_groomed
-        self.last_synced = resolved_last_synced
-        self.research_first = resolved_research_first
-        self.files = resolved_files
-        self.suggested_location = resolved_suggested_location
-        self.topic = resolved_topic
+        self.type_ = self.metadata.item_type
+        self.groomed = self.metadata.groomed
+        self.last_synced = self.metadata.last_synced
+        self.research_first = self.metadata.research_first
+        self.files = self.metadata.files
+        self.suggested_location = self.metadata.suggested_location
+        self.topic = self.metadata.topic
 
         return self
 
