@@ -989,6 +989,7 @@ class ViewItemResult(BaseModel):
     body_total_lines: int | None = None
     messages: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
 
 
 class SectionMeta(ExtTypedDict):

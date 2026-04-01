@@ -2472,6 +2472,7 @@ def view_item(
 
     result.messages = out.messages
     result.warnings = out.warnings
+    result.errors = out.errors
     return result
 
 

@@ -811,7 +811,7 @@ async def test_backlog_view_default_includes_content():
          existing callers — tests, skills, agents — continue to work without modification.
     """
     # Arrange
-    op_result = {
+    op_result = _make_view_result({
         "title": "My Feature",
         "priority": "P1",
         "body": "## Groomed (2026-03-22)\n- [ ] entry one",
@@ -824,7 +824,7 @@ async def test_backlog_view_default_includes_content():
         },
         "messages": [],
         "warnings": [],
-    }
+    })
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
@@ -850,8 +850,8 @@ async def test_backlog_view_compact_mode_omits_body():
          Large backlog items can have 53K+ character bodies — compact mode is essential
          for token-efficient metadata queries.
     """
-    # Arrange — operations.view_item returns compact dict (body already popped by operations layer)
-    op_result = {
+    # Arrange — operations.view_item returns compact result (body cleared by operations layer)
+    op_result = _make_view_result({
         "title": "My Feature",
         "priority": "P1",
         "sections_metadata": [
@@ -860,7 +860,7 @@ async def test_backlog_view_compact_mode_omits_body():
         ],
         "messages": [],
         "warnings": [],
-    }
+    })
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
@@ -869,8 +869,8 @@ async def test_backlog_view_compact_mode_omits_body():
     # Assert
     call_kwargs = mock_view.call_args.kwargs
     assert call_kwargs["include_content"] is False
-    assert "body" not in response, "Compact mode must not include 'body' key"
-    assert "sections" not in response, "Compact mode must not include 'sections' key"
+    assert not response.get("body"), "Compact mode must have no body content"
+    assert not response.get("sections"), "Compact mode must have no sections content"
 
 
 async def test_backlog_view_compact_mode_includes_sections_metadata():
@@ -890,13 +890,13 @@ async def test_backlog_view_compact_mode_includes_sections_metadata():
         {"name": "Groomed (2026-03-22)", "num_entries": 5, "num_struck": 2},
         {"name": "Concerns", "num_entries": 3, "num_struck": 0},
     ]
-    op_result = {
+    op_result = _make_view_result({
         "title": "My Feature",
         "priority": "P1",
         "sections_metadata": compact_sections,
         "messages": [],
         "warnings": [],
-    }
+    })
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result):
@@ -936,7 +936,7 @@ async def test_backlog_view_summary_true_returns_compact_manifest():
          receive just enough metadata to decide whether to fetch the full body.
     """
     # Arrange
-    op_result = {
+    op_result = _make_view_result({
         "title": "SAM Ready Feature",
         "priority": "P1",
         "issue": "#36",
@@ -946,8 +946,7 @@ async def test_backlog_view_summary_true_returns_compact_manifest():
         "sections": {},
         "messages": [],
         "warnings": [],
-        "errors": [],
-    }
+    })
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result):
@@ -975,7 +974,7 @@ async def test_backlog_view_summary_true_hint_contains_selector():
     Why: The hint is actionable only if the selector is correct for the caller's context.
     """
     # Arrange
-    op_result = {
+    op_result = _make_view_result({
         "title": "My Feature Title",
         "issue": "#99",
         "state": "open",
@@ -983,8 +982,7 @@ async def test_backlog_view_summary_true_hint_contains_selector():
         "body": "",
         "messages": [],
         "warnings": [],
-        "errors": [],
-    }
+    })
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result):
@@ -1003,7 +1001,7 @@ async def test_backlog_view_summary_true_plan_path_none_when_absent():
     Why: Callers must distinguish "has a plan" from "no plan" without parsing body.
     """
     # Arrange
-    op_result = {
+    op_result = _make_view_result({
         "title": "No Plan Yet",
         "issue": "#10",
         "state": "open",
@@ -1011,8 +1009,7 @@ async def test_backlog_view_summary_true_plan_path_none_when_absent():
         "body": "## Description\nThis item has no plan file yet.",
         "messages": [],
         "warnings": [],
-        "errors": [],
-    }
+    })
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result):
@@ -1031,7 +1028,7 @@ async def test_backlog_view_summary_true_closed_issue_status_is_closed():
     Why: Callers use status to skip further processing on closed items.
     """
     # Arrange
-    op_result = {
+    op_result = _make_view_result({
         "title": "Resolved Item",
         "issue": "#5",
         "state": "closed",
@@ -1039,8 +1036,7 @@ async def test_backlog_view_summary_true_closed_issue_status_is_closed():
         "body": "",
         "messages": [],
         "warnings": [],
-        "errors": [],
-    }
+    })
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result):
@@ -1061,7 +1057,7 @@ async def test_backlog_view_summary_false_returns_full_response():
          for callers that need the full body, comments, and timeline.
     """
     # Arrange
-    op_result = {
+    op_result = _make_view_result({
         "title": "My Feature",
         "issue": "#42",
         "state": "open",
@@ -1076,8 +1072,7 @@ async def test_backlog_view_summary_false_returns_full_response():
         },
         "messages": [],
         "warnings": [],
-        "errors": [],
-    }
+    })
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result):
@@ -1104,7 +1099,7 @@ async def test_backlog_view_summary_true_full_chars_reflects_full_response_size(
     import json as _json_test
 
     # Arrange
-    op_result = {
+    op_result = _make_view_result({
         "title": "Budget Item",
         "issue": "#7",
         "state": "open",
@@ -1113,9 +1108,9 @@ async def test_backlog_view_summary_true_full_chars_reflects_full_response_size(
         "sections": {},
         "messages": [],
         "warnings": [],
-        "errors": [],
-    }
-    expected_full_chars = len(_json_test.dumps({**op_result}))
+    })
+    # _full_chars is computed from model_dump() which includes all ViewItemResult fields.
+    expected_full_chars = len(_json_test.dumps(op_result.model_dump()))
 
     # Act
     with patch("backlog_core.operations.view_item", return_value=op_result):
@@ -1641,7 +1636,7 @@ def test_backlog_list_topic_param_schema():
 
 async def test_backlog_view_show_numeric_string_converts_to_int():
     """backlog_view converts show='2' (string) to int 2 before passing to view_item."""
-    op_result = {"title": "My Item", "body": "content"}
+    op_result = _make_view_result({"title": "My Item", "body": "content"})
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
         await _call("backlog_view", {"selector": "#1", "show": "2"})
 
@@ -1651,7 +1646,7 @@ async def test_backlog_view_show_numeric_string_converts_to_int():
 
 async def test_backlog_view_show_non_numeric_string_passed_as_str():
     """backlog_view passes show='last' as a string (not converted to int)."""
-    op_result = {"title": "My Item", "body": "content"}
+    op_result = _make_view_result({"title": "My Item", "body": "content"})
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
         await _call("backlog_view", {"selector": "#1", "show": "last"})
 
@@ -1669,7 +1664,12 @@ async def test_backlog_view_show_non_numeric_string_passed_as_str():
             {"file_path": "f"},
         ),
         ("backlog_list", {}, "backlog_core.operations.list_items", {"items": []}),
-        ("backlog_view", {"selector": "#1", "summary": False}, "backlog_core.operations.view_item", {"title": "T"}),
+        (
+            "backlog_view",
+            {"selector": "#1", "summary": False},
+            "backlog_core.operations.view_item",
+            _make_view_result({"title": "T"}),
+        ),
         ("backlog_sync", {}, "backlog_core.operations.sync_items", {"created": 0}),
         ("backlog_normalize", {}, "backlog_core.operations.normalize_items", {"normalized": 0}),
         ("backlog_pull", {}, "backlog_core.operations.pull_items", {"pulled": 0}),
