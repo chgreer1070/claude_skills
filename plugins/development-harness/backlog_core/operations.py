@@ -2353,6 +2353,52 @@ def _populate_yaml_item_compact(data: dict, item: BacklogItem) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Public API: VIEW — helpers
+# ---------------------------------------------------------------------------
+
+
+def _assemble_view_content(
+    data: dict[str, object],
+    item: BacklogItem | None,
+    *,
+    include_content: bool,
+    section: str | None,
+    show: str | int | None,
+    since: str | None,
+    offset: int,
+    limit: int,
+) -> None:
+    """Populate *data* with body/sections for ``view_item``.
+
+    Mutates *data* in place — adds ``body``, ``sections``, or
+    ``sections_metadata`` depending on *include_content*.
+    """
+    body = str(data.get("body", ""))
+
+    if include_content:
+        if body:
+            data["sections"] = _build_sections_metadata(body, show, since)
+            # Prepend section index so agents see it regardless of body source.
+            if item and item.sections:
+                index = _render_section_index(item)
+                if index:
+                    data["body"] = index + "\n" + body
+                    body = data["body"]
+        elif item and item.sections:
+            _populate_yaml_item_content(data, item, section)
+            body = str(data.get("body", ""))
+        if body and (offset > 0 or limit > 0):
+            _paginate_body(data, body, offset, limit)
+    else:
+        body = str(data.pop("body", ""))
+        data.pop("sections", None)
+        if body:
+            data["sections_metadata"] = _build_sections_compact(body)
+        elif item and item.sections:
+            _populate_yaml_item_compact(data, item)
+
+
+# ---------------------------------------------------------------------------
 # Public API: VIEW
 # ---------------------------------------------------------------------------
 
@@ -2408,6 +2454,10 @@ def view_item(
     if issue_num:
         if not view_enrich_from_github(result, issue_num, repo) and not item:
             raise ItemNotFoundError(selector)
+        # Restore groomed date from local item — the enrichment path has no
+        # access to local YAML frontmatter, so preserve the date string.
+        if item:
+            result.groomed = item.metadata.groomed
     elif not item:
         raise ItemNotFoundError(selector)
 
@@ -2421,25 +2471,16 @@ def view_item(
 
     data = result.model_dump()
 
-    body = data.get("body", "")
-
-    if include_content:
-        # Full-content path.
-        if body:
-            data["sections"] = _build_sections_metadata(body, parsed_show, since)
-        elif item and item.sections:
-            _populate_yaml_item_content(data, item, section)
-            body = data.get("body", "")
-        if body and (offset > 0 or limit > 0):
-            _paginate_body(data, body, offset, limit)
-    else:
-        # Compact path: pop body and sections, add lightweight section inventory.
-        body = data.pop("body", "")
-        data.pop("sections", None)
-        if body:
-            data["sections_metadata"] = _build_sections_compact(body)
-        elif item and item.sections:
-            _populate_yaml_item_compact(data, item)
+    _assemble_view_content(
+        data,
+        item,
+        include_content=include_content,
+        section=section,
+        show=parsed_show,
+        since=since,
+        offset=offset,
+        limit=limit,
+    )
 
     return {**data, **out.to_dict()}
 
