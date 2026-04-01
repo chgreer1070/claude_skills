@@ -320,7 +320,7 @@ def parse_issue_body(body: str, existing: BacklogItem | None = None) -> BacklogI
 
     for heading, content in sections_raw.items():
         # Strip leading "## " to get the plain heading name
-        heading_name = heading.lstrip("# ").strip()
+        heading_name = heading.removeprefix("## ").strip()
 
         if heading_name == "Description":
             description = content.strip()

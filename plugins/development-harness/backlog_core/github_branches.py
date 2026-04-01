@@ -33,7 +33,6 @@ BRANCH_PREFIX = "milestone/"
 
 # GitHub API status code for merge conflicts
 _HTTP_CONFLICT = 409
-_HTTP_NO_CONTENT = 204
 _HTTP_UNPROCESSABLE = 422
 
 # Slug validation: must start with alphanumeric and contain only alphanumeric, dots, underscores, hyphens

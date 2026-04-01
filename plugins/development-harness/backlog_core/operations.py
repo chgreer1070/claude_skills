@@ -961,14 +961,7 @@ def _parse_md_body_extra_fields(body: str) -> tuple[str, str, str, str, str, str
     Returns:
         Tuple of (desc, suggested, research, decision, files_val, required_work).
     """
-    field_map = {
-        "description": 0,
-        "suggested location": 1,
-        "research first": 2,
-        "decision needed": 3,
-        "files": 4,
-        "required work": 5,
-    }
+    field_map = _models.FIELD_TO_INDEX
     field_re = re.compile(r"^\*\*([^*]+)\*\*:\s*(.*)$", re.DOTALL)
     result: list[str] = ["", "", "", "", "", ""]
     current_key = ""
@@ -1317,33 +1310,36 @@ def _pull_item(
     force: bool,
     diff_mode: bool = False,
     output: Output | None = None,
-) -> tuple[bool, str]:
+) -> tuple[bool, bool, str]:
     """Pull GitHub issue body into local per-item file.
 
     Returns:
-        Tuple of (was_pulled, diff_string). diff_string is non-empty only when
-        diff_mode is True and dry_run is True.
+        Tuple of (was_pulled, had_error, diff_string).
+        had_error is True when the GitHub fetch failed (404, network error, etc.).
+        diff_string is non-empty only when diff_mode is True and dry_run is True.
     """
     out = output or Output()
     issue_ref = item.issue
     issue_num = parse_issue_number(issue_ref)
     if issue_num is None:
-        return False, ""
+        return False, False, ""
 
     title = item.title
     filepath_str = item.file_path
 
     github_body = fetch_github_issue_body(repo_obj, issue_num, output=out)
     if github_body is None:
-        return False, ""
+        out.error(f"#{issue_num}: fetch failed (404 or network error) — skipped")
+        return False, True, ""
 
     if not filepath_str or not Path(filepath_str).exists():
         created = _pull_item_create_new(item, issue_num, issue_ref, title, github_body, dry_run, output=out)
-        return created, ""
+        return created, False, ""
 
-    return _pull_item_update_existing(
+    was_pulled, diff_str = _pull_item_update_existing(
         item, issue_num, title, Path(filepath_str), github_body, dry_run, force, diff_mode=diff_mode, output=out
     )
+    return was_pulled, False, diff_str
 
 
 # ---------------------------------------------------------------------------
@@ -3497,24 +3493,37 @@ def pull_items(
         out.info("No items with GitHub issue numbers found.")
         return {"pulled": 0, **out.to_dict()}
 
-    out.info(f"Checking {len(candidates)} item(s) with GitHub issues...")
+    total = len(candidates)
+    out.info(f"Checking {total} item(s) with GitHub issues...")
     repository = get_github(repo)
     pulled = 0
+    skipped = 0
     diff_parts: list[str] = []
     for item in candidates:
-        was_pulled, diff_str = _pull_item(item, repository, dry_run, force, diff_mode=diff, output=out)
+        was_pulled, had_error, diff_str = _pull_item(item, repository, dry_run, force, diff_mode=diff, output=out)
         if was_pulled:
             pulled += 1
+        elif had_error:
+            skipped += 1
         if diff_str:
             diff_parts.append(diff_str)
 
-    if pulled == 0:
+    if pulled == 0 and skipped == 0:
         out.info("Nothing to pull — local files are up to date.")
     else:
         suffix = " [dry-run]" if dry_run else ""
-        out.info(f"Pulled {pulled} item(s){suffix}.")
+        parts = [f"Pulled {pulled} of {total} item(s){suffix}"]
+        if skipped:
+            parts.append(f"{skipped} skipped due to fetch errors")
+        out.info(", ".join(parts) + ".")
 
-    result: dict[str, int | bool | str | list[str]] = {"pulled": pulled, "dry_run": dry_run, **out.to_dict()}
+    result: dict[str, int | bool | str | list[str]] = {
+        "pulled": pulled,
+        "skipped": skipped,
+        "total": total,
+        "dry_run": dry_run,
+        **out.to_dict(),
+    }
     if diff and diff_parts:
         result["diff"] = "\n".join(diff_parts)
     return result

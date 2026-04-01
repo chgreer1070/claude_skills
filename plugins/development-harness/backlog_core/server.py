@@ -1704,12 +1704,12 @@ def _try_register_dispatch_plan_artifact(issue_number: int, plan_path: Path) -> 
         updated_manifest = _artifact_registry.register(manifest, entry)
         provider.set_manifest(issue_number, updated_manifest)
         log.info("dispatch_create_plan: registered dispatch-plan artifact %s for issue #%d", plan_path, issue_number)
-    except Exception:
+    except (BacklogError, _GithubException) as exc:
         log.warning(
-            "dispatch_create_plan: artifact registration failed for issue #%d (path=%s)",
+            "dispatch_create_plan: artifact registration failed for issue #%d (path=%s): %s",
             issue_number,
             plan_path,
-            exc_info=True,
+            exc,
         )
 
 

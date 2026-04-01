@@ -12,18 +12,13 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from backlog_core.models import DispatchItemRecord, DispatchWaveRecord
+from backlog_core.parsing import now_iso as _now_iso
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-
-def _now_iso() -> str:
-    """Return current UTC time as an ISO 8601 string."""
-    return datetime.now(UTC).isoformat()
 
 
 class DispatchStateManager:
