@@ -204,7 +204,9 @@ def test_parse_md_body_sections_entry_blocks_produce_entries() -> None:
     """Entry block HTML produces individual Entry objects, not a synthetic one."""
     result = parse_md_body_sections(_ENTRY_BLOCK_BODY)
 
-    rtica = result["rt-ica"]
+    # Legacy .md headings like "## RT-ICA" are normalised to the canonical
+    # underscore key "rt_ica" so they are visible to render_issue_body.
+    rtica = result["rt_ica"]
     assert isinstance(rtica, Section)
     assert len(rtica.entries) == 1
     assert rtica.entries[0].id == "2026-03-22T01:51:03Z"
@@ -214,7 +216,7 @@ def test_parse_md_body_sections_entry_block_content_captured() -> None:
     """Entry content is the text inside the <div><sub> block."""
     result = parse_md_body_sections(_ENTRY_BLOCK_BODY)
 
-    rtica = result["rt-ica"]
+    rtica = result["rt_ica"]
     assert isinstance(rtica, Section)
     assert "RT-ICA Snapshot" in rtica.entries[0].content
 
@@ -223,8 +225,8 @@ def test_parse_md_body_sections_multiple_entry_sections() -> None:
     """Multiple sections with entry blocks all land in the result."""
     result = parse_md_body_sections(_ENTRY_BLOCK_BODY)
 
-    assert "rt-ica" in result
-    assert "fact-check" in result
+    assert "rt_ica" in result
+    assert "fact_check" in result
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +298,7 @@ def test_parse_md_body_sections_duplicate_headings_merged() -> None:
     """Duplicate ## headings are merged — entries from both are present."""
     result = parse_md_body_sections(_DUPLICATE_HEADINGS_BODY)
 
-    rtica = result["rt-ica"]
+    rtica = result["rt_ica"]
     assert isinstance(rtica, Section)
     assert len(rtica.entries) == 2
 
@@ -305,7 +307,7 @@ def test_parse_md_body_sections_duplicate_headings_content_order() -> None:
     """Merged entries preserve document order: first occurrence, then second."""
     result = parse_md_body_sections(_DUPLICATE_HEADINGS_BODY)
 
-    rtica = result["rt-ica"]
+    rtica = result["rt_ica"]
     assert isinstance(rtica, Section)
     assert rtica.entries[0].id == "2026-03-22T01:51:03Z"
     assert rtica.entries[1].id == "2026-03-22T01:56:35Z"
@@ -408,14 +410,14 @@ def test_parse_item_file_sections_has_groomed() -> None:
 
 
 def test_parse_item_file_sections_has_rt_ica() -> None:
-    """'rt-ica' key is present in sections when ## RT-ICA heading exists."""
+    """'rt_ica' key is present in sections when ## RT-ICA heading exists."""
     from backlog_core.parsing import parse_item_file
 
     path = Path("test-item.md")
     item = parse_item_file(_FULL_ITEM_MD, path)
 
-    assert "rt-ica" in item.sections
-    assert isinstance(item.sections["rt-ica"], Section)
+    assert "rt_ica" in item.sections
+    assert isinstance(item.sections["rt_ica"], Section)
 
 
 def test_parse_item_file_existing_fields_unaffected() -> None:
@@ -480,7 +482,7 @@ def test_roundtrip_section_entries_preserved(tmp_path: Path) -> None:
 
     reloaded = load_item_text(yaml_path.read_text(encoding="utf-8"), yaml_path)
 
-    rtica = reloaded.sections.get("rt-ica")
+    rtica = reloaded.sections.get("rt_ica")
     assert isinstance(rtica, Section)
     assert len(rtica.entries) == 1
     assert rtica.entries[0].id == "2026-01-20T10:00:00Z"
@@ -545,8 +547,8 @@ def test_domain_model_identity_md_and_yaml_adapters_produce_equal_sections(tmp_p
     assert set(groomed_md.subsections.keys()) == set(groomed_yaml.subsections.keys())
 
     # Deep equality: Section entry ids match
-    rtica_md = item_from_md.sections.get("rt-ica")
-    rtica_yaml = item_from_yaml.sections.get("rt-ica")
+    rtica_md = item_from_md.sections.get("rt_ica")
+    rtica_yaml = item_from_yaml.sections.get("rt_ica")
     assert isinstance(rtica_md, Section)
     assert isinstance(rtica_yaml, Section)
     assert [e.id for e in rtica_md.entries] == [e.id for e in rtica_yaml.entries]

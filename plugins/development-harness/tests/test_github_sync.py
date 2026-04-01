@@ -522,13 +522,13 @@ class TestParseIssueBodyNoMetadata:
 
 
 class TestParseIssueBodyUnknownHeading:
-    """parse_issue_body: unknown ## headings are silently skipped."""
+    """parse_issue_body: unknown ## headings are preserved under unknown__ keys."""
 
     def test_parse_unknown_heading_does_not_raise(self) -> None:
-        """parse_issue_body ignores ## headings that are not in _HEADING_TO_KEY.
+        """parse_issue_body preserves ## headings that are not in _HEADING_TO_KEY.
 
-        Unknown headings must be skipped so that bodies with extra sections
-        (Story, Acceptance Criteria) do not break parsing.
+        Unknown headings must not raise and must be stored under ``unknown__``
+        prefixed keys so content is not silently dropped.
         """
         # Arrange
         body = (
@@ -545,11 +545,12 @@ class TestParseIssueBodyUnknownHeading:
         # Act
         result = parse_issue_body(body)
 
-        # Assert
+        # Assert — no bare key; sections stored under unknown__ prefix
         assert isinstance(result, BacklogItem)
-        # No sections created for Story or Acceptance Criteria
         assert "story" not in result.sections
         assert "acceptance_criteria" not in result.sections
+        assert "unknown__story" in result.sections
+        assert "unknown__acceptance_criteria" in result.sections
 
     def test_parse_issue_body_existing_carries_non_body_fields(self) -> None:
         """parse_issue_body with existing carries over title, issue, source, plan.
@@ -743,3 +744,89 @@ class TestMergeGroomedDateAndKeys:
         # Assert
         assert isinstance(merged_groomed, GroomedData)
         assert "Dependencies" in merged_groomed.subsections
+
+
+# ---------------------------------------------------------------------------
+# Unknown section preservation (A & B)
+# ---------------------------------------------------------------------------
+
+
+class TestUnknownSectionPreservation:
+    """parse_issue_body preserves unknown sections; render_issue_body emits them."""
+
+    def test_parse_unknown_section_stored_under_unknown_prefix(self) -> None:
+        """parse_issue_body stores unknown ## headings under the unknown__ prefix.
+
+        A heading not in _HEADING_TO_KEY must produce a key of the form
+        ``unknown__{normalised}`` in BacklogItem.sections.
+        """
+        body = "## Custom Analysis\n\n<div><sub>2026-01-01T00:00:00Z</sub>\n\nSome insight.\n</div>\n"
+        result = parse_issue_body(body)
+        assert "unknown__custom_analysis" in result.sections
+        sec = result.sections["unknown__custom_analysis"]
+        assert isinstance(sec, Section)
+
+    def test_parse_unknown_section_entry_content_preserved(self) -> None:
+        """Entry content within an unknown section is parsed and preserved."""
+        body = "## My Notes\n\n<div><sub>2026-03-01T10:00:00Z</sub>\n\nImportant note.\n</div>\n"
+        result = parse_issue_body(body)
+        sec = result.sections.get("unknown__my_notes")
+        assert isinstance(sec, Section)
+        assert len(sec.entries) == 1
+        assert "Important note." in sec.entries[0].content
+
+    def test_render_unknown_section_emits_heading(self) -> None:
+        """render_issue_body emits ## heading for unknown sections.
+
+        Sections stored under ``unknown__`` keys must be rendered so that the
+        round-trip is symmetric.
+        """
+        entry = Entry(id="2026-03-01T00:00:00Z", content="analysis result")
+        section = Section(entries=[entry])
+        item = _make_item(sections={"unknown__custom_analysis": section})
+        body = render_issue_body(item)
+        assert "## Custom Analysis" in body
+        assert "analysis result" in body
+
+    def test_unknown_section_round_trip(self) -> None:
+        """Unknown section survives parse → render → parse round-trip.
+
+        An unknown section present after the first parse must still be present
+        (same key, same entry count) after re-rendering and re-parsing.
+        """
+        # First parse: build from raw markdown
+        body = (
+            "<!-- backlog-metadata:\n"
+            "priority: P1\ntype: Feature\nstatus: open\nadded: 2026-01-01\n-->\n\n"
+            "## Impact Radius\n\n<div><sub>2026-03-01T00:00:00Z</sub>\n\nContent.\n</div>\n"
+        )
+        first_parsed = parse_issue_body(body)
+        assert "unknown__impact_radius" in first_parsed.sections
+
+        # Re-render then re-parse
+        rendered = render_issue_body(first_parsed)
+        second_parsed = parse_issue_body(rendered, first_parsed)
+
+        assert "unknown__impact_radius" in second_parsed.sections
+        sec = second_parsed.sections["unknown__impact_radius"]
+        assert isinstance(sec, Section)
+        assert len(sec.entries) == 1
+
+    def test_render_unknown_section_not_emitted_when_empty(self) -> None:
+        """render_issue_body does not emit an empty unknown section.
+
+        An unknown section with no entries must not produce a heading in the
+        rendered output, consistent with how known sections behave.
+        """
+        empty_section = Section(entries=[])
+        item = _make_item(sections={"unknown__ghost": empty_section})
+        body = render_issue_body(item)
+        assert "## Ghost" not in body
+
+    def test_heading_spacing_normalised_to_underscores(self) -> None:
+        """Multi-word unknown headings are stored with underscores, not spaces."""
+        body = "## My Custom Section\n\n<div><sub>2026-01-01T00:00:00Z</sub>\n\ndata\n</div>\n"
+        result = parse_issue_body(body)
+        # Space-separated key must not appear
+        assert "my_custom_section" not in result.sections
+        assert "unknown__my_custom_section" in result.sections

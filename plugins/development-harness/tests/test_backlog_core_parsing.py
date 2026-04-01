@@ -1149,19 +1149,19 @@ class TestViewResultFromLocalItem:
 
         assert result.file_path == "/tmp/p1-my-item.md"
 
-    def test_view_result_from_local_item_groomed_true_when_set(self) -> None:
-        item = BacklogItem(title="My Item", groomed="true", section="P1")
+    def test_view_result_from_local_item_groomed_date_when_set(self) -> None:
+        item = BacklogItem(title="My Item", groomed="2026-03-15", section="P1")
 
         result = view_result_from_local_item(item)
 
-        assert result.groomed is True
+        assert result.groomed == "2026-03-15"
 
-    def test_view_result_from_local_item_groomed_false_when_empty(self) -> None:
+    def test_view_result_from_local_item_groomed_empty_when_not_set(self) -> None:
         item = BacklogItem(title="My Item", groomed="", section="P1")
 
         result = view_result_from_local_item(item)
 
-        assert result.groomed is False
+        assert result.groomed == ""
 
     def test_view_result_from_local_item_returns_view_item_result_type(self) -> None:
         item = BacklogItem(title="My Item", section="P1")

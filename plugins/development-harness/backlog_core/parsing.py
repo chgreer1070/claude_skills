@@ -29,6 +29,7 @@ from .models import (
     GITHUB_ISSUE_URL_RE,
     MIN_FRONTMATTER_PARTS,
     ROLE_MAP,
+    SECTION_HEADING_ALIAS,
     SKIP_STATUS,
     BacklogItem,
     Entry,
@@ -996,7 +997,10 @@ def parse_md_body_sections(body_text: str, added_date: str = "0000-00-00") -> di
             else:
                 result[key] = parsed
         else:
-            key = heading_name.lower()
+            raw_key = heading_name.lower()
+            # Normalize legacy hyphenated keys (e.g. "fact-check") to canonical
+            # underscore form (e.g. "fact_check") so they are visible to render_issue_body.
+            key = SECTION_HEADING_ALIAS.get(raw_key, raw_key)
             parsed_section = _parse_section_entries(content, added_date)
             existing_section = result.get(key)
             if isinstance(existing_section, Section):
@@ -1026,7 +1030,7 @@ def view_result_from_local_item(item: BacklogItem) -> ViewItemResult:
         issue=item.issue,
         plan=item.plan,
         file_path=item.file_path,
-        groomed=bool(item.groomed),
+        groomed=item.metadata.groomed,
     )
     # Use fields already parsed on BacklogItem instead of re-reading the file
     result.description = item.description or ""

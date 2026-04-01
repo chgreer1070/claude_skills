@@ -350,9 +350,9 @@ class TestViewItemResult:
         result = ViewItemResult()
         assert result.title == ""
 
-    def test_view_item_result_default_groomed_false(self) -> None:
+    def test_view_item_result_default_groomed_empty(self) -> None:
         result = ViewItemResult()
-        assert result.groomed is False
+        assert result.groomed == ""
 
     def test_view_item_result_default_number_none(self) -> None:
         result = ViewItemResult()
@@ -374,9 +374,9 @@ class TestViewItemResult:
         result = ViewItemResult(labels=["type:feature", "status:open"])
         assert result.labels == ["type:feature", "status:open"]
 
-    def test_view_item_result_stores_groomed_true(self) -> None:
-        result = ViewItemResult(groomed=True)
-        assert result.groomed is True
+    def test_view_item_result_stores_groomed_date(self) -> None:
+        result = ViewItemResult(groomed="2026-03-15")
+        assert result.groomed == "2026-03-15"
 
 
 # ---------------------------------------------------------------------------

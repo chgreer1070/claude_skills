@@ -538,6 +538,17 @@ async def backlog_view(
     since: Annotated[
         str | None, Field(description="ISO date/datetime. Only entries at or after this timestamp are included.")
     ] = None,
+    section: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Section filter for YAML items (no effect on GitHub-only items with a raw body). "
+                "Accepts: numeric index '2', comma-separated indices '0,2,4', "
+                "regex '/impact.*/', or substring match 'RT-ICA'. "
+                "When provided, body and sections in the response reflect only the matched section(s)."
+            )
+        ),
+    ] = None,
 ) -> dict:
     """View a single backlog item or GitHub issue in detail.
 
@@ -548,6 +559,7 @@ async def backlog_view(
     entry counts only, omitting the full body and entry content.
     Use summary=False to receive the full response; summary=True (default) returns
     a 5-field routing manifest with _full_chars so the caller knows what was skipped.
+    Use section to filter the response to specific sections by index, title, or regex.
 
     Returns:
         When summary=True (default): compact dict with issue_number, title, labels,
@@ -573,6 +585,7 @@ async def backlog_view(
             limit=limit,
             show=parsed_show,
             since=since,
+            section=section,
             output=out,
         )
         full_response = {**result, **out.to_dict()}

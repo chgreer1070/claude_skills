@@ -84,6 +84,8 @@ class MilestoneNode(TypedDict):
     id: str
     number: int
     title: str
+    dueOn: str | None
+    state: str
 
 
 class AssigneeNode(TypedDict):
@@ -189,6 +191,8 @@ query GetIssue($owner: String!, $repo: String!, $number: Int!) {
         id
         number
         title
+        dueOn
+        state
       }
       assignees(first: 10) {
         nodes { login }
@@ -212,7 +216,7 @@ query ListIssues(
       nodes {
         id number title state body createdAt updatedAt
         labels(first: 50) { nodes { name id } }
-        milestone { id number title }
+        milestone { id number title dueOn state }
         assignees(first: 10) { nodes { login } }
       }
       pageInfo { hasNextPage endCursor }
@@ -403,10 +407,13 @@ def _parse_issue_node(raw: dict[str, Any]) -> IssueNode:
     milestone_raw: dict[str, Any] | None = raw.get("milestone")
     milestone: MilestoneNode | None = None
     if isinstance(milestone_raw, dict):
+        due_on_raw = milestone_raw.get("dueOn")
         milestone = {
             "id": str(milestone_raw["id"]) if "id" in milestone_raw else "",
             "number": int(milestone_raw["number"]) if "number" in milestone_raw else 0,
             "title": str(milestone_raw["title"]) if "title" in milestone_raw else "",
+            "dueOn": str(due_on_raw) if due_on_raw is not None else None,
+            "state": str(milestone_raw["state"]) if "state" in milestone_raw else "OPEN",
         }
 
     return {
@@ -1631,6 +1638,7 @@ def issue_to_local_fields(issue: IssueNode) -> IssueLocalFields:
                 status = lbl.split(":")[1]
                 break
     ms = issue["milestone"]
+    assignees = [a["login"] for a in issue["assignees"]]
     return IssueLocalFields(
         title=issue["title"],
         body=issue["body"],
@@ -1639,6 +1647,11 @@ def issue_to_local_fields(issue: IssueNode) -> IssueLocalFields:
         status=status,
         updated_at=issue["updatedAt"],
         milestone=ms["title"] if ms else "",
+        milestone_number=ms["number"] if ms else None,
+        milestone_due_on=ms["dueOn"] or "" if ms else "",
+        milestone_state=ms["state"] if ms else "",
+        assignees=assignees,
+        labels=labels,
     )
 
 

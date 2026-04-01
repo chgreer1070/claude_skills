@@ -15,11 +15,20 @@ from __future__ import annotations
 
 import re
 
+from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
 from .entry_blocks import parse_entries
 from .models import BacklogItem, Entry, GroomedData, Section
 from .parsing import extract_sections
 
-__all__ = ["merge_item", "parse_issue_body", "render_issue_body"]
+__all__ = [
+    "SECTION_HEADING",
+    "heading_to_section_key",
+    "heading_to_unknown_key",
+    "merge_item",
+    "parse_issue_body",
+    "render_issue_body",
+    "unknown_key_to_heading",
+]
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -37,6 +46,10 @@ _SECTION_HEADING: dict[str, str] = {
     "issue_classification": "Issue Classification",
 }
 
+#: Public alias for ``_SECTION_HEADING`` — importable by ``operations.py``
+#: and other consumers without accessing a private name.
+SECTION_HEADING: dict[str, str] = _SECTION_HEADING
+
 # Reverse lookup: heading text (lowercased) -> section key
 _HEADING_TO_KEY: dict[str, str] = {v.lower(): k for k, v in _SECTION_HEADING.items()}
 
@@ -52,6 +65,40 @@ def heading_to_section_key(heading_text: str) -> str | None:
         does not correspond to a known section.
     """
     return _HEADING_TO_KEY.get(heading_text.lower())
+
+
+def heading_to_unknown_key(heading_text: str) -> str:
+    """Convert an unknown section heading to a storage key.
+
+    Unknown headings are normalised by lowercasing and replacing spaces with
+    underscores.  The prefix ``"unknown__"`` is prepended so unknown section
+    keys never collide with known section keys (e.g. ``"fact_check"``).
+
+    Args:
+        heading_text: Raw heading text with ``##`` prefix stripped and whitespace
+            trimmed.
+
+    Returns:
+        Storage key such as ``"unknown__custom_analysis"``.
+    """
+    normalised = heading_text.lower().replace(" ", "_")
+    return f"unknown__{normalised}"
+
+
+def unknown_key_to_heading(key: str) -> str:
+    """Reconstruct a display heading from an unknown-section storage key.
+
+    Reverses :func:`heading_to_unknown_key`: strips the ``"unknown__"`` prefix,
+    replaces underscores with spaces, and title-cases the result.
+
+    Args:
+        key: Storage key such as ``"unknown__custom_analysis"``.
+
+    Returns:
+        Display heading such as ``"Custom Analysis"``.
+    """
+    stripped = key.removeprefix("unknown__")
+    return stripped.replace("_", " ").title()
 
 
 # Canonical render order for GroomedData subsections (heading text as stored in the dict)
@@ -130,15 +177,22 @@ def _render_groomed(groomed: GroomedData) -> str:
 # ---------------------------------------------------------------------------
 
 
-def render_issue_body(item: BacklogItem) -> str:
+def render_issue_body(item: BacklogItem, original_body: str | None = None) -> str:
     """Render a BacklogItem as a GitHub issue body markdown string.
 
     Embeds priority, type, status, and added metadata in an HTML comment block
     that is invisible in GitHub's rendered UI.  The description and all
     structured sections follow as visible markdown.
 
+    When ``original_body`` is provided, any ``## Artifact Manifest`` section
+    present in that body is extracted and re-appended to the rendered output so
+    that manifests are preserved through write-back operations.
+
     Args:
         item: BacklogItem to render.
+        original_body: Current GitHub issue body text, used to carry forward
+            the artifact manifest section.  When ``None``, no manifest is
+            appended (backwards-compatible default behaviour).
 
     Returns:
         Markdown-formatted issue body string ending with newline.
@@ -171,7 +225,27 @@ def render_issue_body(item: BacklogItem) -> str:
     if isinstance(groomed_sec, GroomedData):
         parts.append(_render_groomed(groomed_sec))
 
-    return "\n\n".join(parts) + "\n"
+    # Unknown sections — keys not in the known set and not "groomed"
+    known_keys = set(_SECTION_HEADING) | {"groomed"}
+    for key, sec in item.sections.items():
+        if key in known_keys:
+            continue
+        if not isinstance(sec, Section) or not sec.entries:
+            continue
+        heading = unknown_key_to_heading(key)
+        parts.append(f"## {heading}\n\n{_render_section_entries(sec)}")
+
+    rendered = "\n\n".join(parts) + "\n"
+
+    # Preserve the artifact manifest from the original body when available.
+    if original_body is not None:
+        issue_number = int(item.issue.lstrip("#")) if item.issue and item.issue.lstrip("#").isdigit() else 0
+        manifest = parse_manifest_section(original_body, issue_number)
+        if manifest.artifacts:
+            manifest_section = render_manifest_section(manifest)
+            rendered = replace_manifest_in_body(rendered, manifest_section)
+
+    return rendered
 
 
 # ---------------------------------------------------------------------------
@@ -264,6 +338,11 @@ def parse_issue_body(body: str, existing: BacklogItem | None = None) -> BacklogI
         if section_key is not None:
             entries = parse_entries(content, show="all")
             parsed_sections[section_key] = Section(entries=entries)
+        else:
+            # Unknown heading: store with prefixed key so it survives round-trips.
+            unknown_key = heading_to_unknown_key(heading_name)
+            entries = parse_entries(content, show="all")
+            parsed_sections[unknown_key] = Section(entries=entries)
 
     return BacklogItem(
         title=base.title,

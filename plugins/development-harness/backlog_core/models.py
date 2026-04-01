@@ -307,6 +307,16 @@ PRIORITY_SECTIONS: dict[str, str] = {
     "Ideas": "## Ideas",
 }
 
+# Heading alias normalization: lowercased heading text (with hyphens, as produced by
+# legacy .md parser) -> canonical underscore section key (as used in BacklogItem.sections).
+# Consumed by parsing.py (section key normalization) and the GitHub sync adapter
+# (reverse-lookup table for known headings).
+SECTION_HEADING_ALIAS: dict[str, str] = {
+    "fact-check": "fact_check",
+    "rt-ica": "rt_ica",
+    "issue-classification": "issue_classification",
+}
+
 # ---------------------------------------------------------------------------
 # Exception classes
 # ---------------------------------------------------------------------------
@@ -472,6 +482,7 @@ class BacklogItemMetadata(BaseModel):
     status: str = ""
     issue: str = ""
     last_synced: str = ""
+    updated_at: str = ""
     groomed: str = ""
     plan: str = ""
     topic: str = ""
@@ -479,6 +490,15 @@ class BacklogItemMetadata(BaseModel):
     files: str = ""
     suggested_location: str = ""
     close_reason: str = ""
+    assignees: list[str] = Field(default_factory=list)
+    labels: list[str] = Field(default_factory=list)
+    milestone: str = ""
+    milestone_number: int | None = None
+    milestone_due_on: str = ""
+    milestone_state: str = ""
+    layer: str = ""  # SDLC Layer 0 (framework), 1 (language), 2 (stack)
+    language: str = ""  # Language plugin identifier (e.g., "python", "typescript")
+    stack: str = ""  # Stack profile identifier (e.g., "fastapi", "nextjs")
 
     model_config = {"populate_by_name": True, "extra": "ignore"}
 
@@ -779,7 +799,7 @@ class ViewItemResult(BaseModel):
     plan: str = ""
     issue: str = ""
     file_path: str = ""
-    groomed: bool = False
+    groomed: str = ""
     status: str = ""
     number: int | None = None
     state: str = ""
@@ -822,7 +842,7 @@ class ViewItemResultCompact(BaseModel):
     plan: str = ""
     issue: str = ""
     file_path: str = ""
-    groomed: bool = False
+    groomed: str = ""
     status: str = ""
     number: int | None = None
     state: str = ""
@@ -846,6 +866,11 @@ class IssueLocalFields(BaseModel):
     status: str = "open"
     updated_at: str = ""
     milestone: str = ""
+    milestone_number: int | None = None
+    milestone_due_on: str = ""
+    milestone_state: str = ""
+    assignees: list[str] = Field(default_factory=list)
+    labels: list[str] = Field(default_factory=list)
 
 
 class SamTask(BaseModel):

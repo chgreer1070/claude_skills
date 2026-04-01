@@ -45,18 +45,22 @@ def make_label_node(name: str = "status:open", node_id: str = "LBL_abc123") -> d
     return {"name": name, "id": node_id}
 
 
-def make_milestone_node(node_id: str = "MS_001", number: int = 1, title: str = "v1.0") -> dict[str, Any]:
+def make_milestone_node(
+    node_id: str = "MS_001", number: int = 1, title: str = "v1.0", due_on: str | None = None, state: str = "OPEN"
+) -> dict[str, Any]:
     """Return a MilestoneNode-shaped dict (minimal reference embedded in issues).
 
     Args:
         node_id: GraphQL node ID.
         number: Milestone number.
         title: Milestone title.
+        due_on: ISO 8601 due date string, or None if not set.
+        state: Milestone state, ``"OPEN"`` or ``"CLOSED"``.
 
     Returns:
         Dict matching MilestoneNode TypedDict shape.
     """
-    return {"id": node_id, "number": number, "title": title}
+    return {"id": node_id, "number": number, "title": title, "dueOn": due_on, "state": state}
 
 
 def make_issue_node(**overrides: Any) -> dict[str, Any]:

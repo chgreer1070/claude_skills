@@ -136,7 +136,7 @@ class TestWorkBacklogItem:
         assert isinstance(result["priority"], str)
         assert result["issue"] == "#42"
         assert isinstance(result["body"], str)
-        assert isinstance(result["groomed"], bool)
+        assert isinstance(result["groomed"], str)
         assert isinstance(result["labels"], list)
         assert isinstance(result["milestone"], str)
 
@@ -1308,7 +1308,7 @@ class TestCompactBacklogView:
         assert isinstance(result["priority"], str)
         assert isinstance(result["file_path"], str)
         assert result["file_path"] != ""
-        assert isinstance(result["groomed"], bool)
+        assert isinstance(result["groomed"], str)
         assert isinstance(result["labels"], list)
         assert isinstance(result["messages"], list)
         assert isinstance(result["warnings"], list)

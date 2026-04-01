@@ -57,7 +57,13 @@ from .gh_client import (
     update_task_status,
     view_enrich_from_github,
 )
-from .github_sync import merge_item as merge_item_models, parse_issue_body as parse_issue_body_sync, render_issue_body
+from .github_sync import (
+    SECTION_HEADING as _SECTION_HEADING_MAP,
+    merge_item as merge_item_models,
+    parse_issue_body as parse_issue_body_sync,
+    render_issue_body,
+    unknown_key_to_heading,
+)
 from .models import (
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     MIN_FRONTMATTER_PARTS,
@@ -246,7 +252,9 @@ def _md_reconstruct_body_from_sections(
 # ---------------------------------------------------------------------------
 
 
-def _apply_updates_to_yaml_item(filepath: Path, updates: dict[str, str | dict[str, str]], set_synced: bool) -> None:
+def _apply_updates_to_yaml_item(
+    filepath: Path, updates: dict[str, str | dict[str, str | list[str] | int | None]], set_synced: bool
+) -> None:
     """Apply *updates* dict to a ``.yaml`` backlog item via yaml_io round-trip.
 
     Args:
@@ -271,7 +279,9 @@ def _apply_updates_to_yaml_item(filepath: Path, updates: dict[str, str | dict[st
     save_item(item)
 
 
-def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str, str]], set_synced: bool) -> None:
+def _apply_updates_to_md_item(
+    filepath: Path, updates: dict[str, str | dict[str, str | list[str] | int | None]], set_synced: bool
+) -> None:
     """Apply *updates* dict to a legacy ``.md`` backlog item via frontmatter round-trip.
 
     Args:
@@ -284,7 +294,7 @@ def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str,
     for key, value in updates.items():
         if key == "metadata" and isinstance(value, dict):
             raw_nested = meta.get("metadata")
-            nested_dict: dict[str, str] = (
+            nested_dict: dict[str, str | list[str] | int | None] = (
                 {str(k): str(v) for k, v in raw_nested.items()} if isinstance(raw_nested, dict) else {}
             )
             nested_dict.update(value)
@@ -295,7 +305,7 @@ def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str,
             meta[key] = value
     if set_synced and "metadata" not in updates:
         raw_nested = meta.get("metadata")
-        nested_dict2: dict[str, str] = (
+        nested_dict2: dict[str, str | list[str] | int | None] = (
             {str(k): str(v) for k, v in raw_nested.items()} if isinstance(raw_nested, dict) else {}
         )
         nested_dict2["last_synced"] = now_iso()
@@ -304,7 +314,10 @@ def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str,
 
 
 def update_item_metadata(
-    filepath: Path, updates: dict[str, str | dict[str, str]], set_synced: bool = False, output: Output | None = None
+    filepath: Path,
+    updates: dict[str, str | dict[str, str | list[str] | int | None]],
+    set_synced: bool = False,
+    output: Output | None = None,
 ) -> dict[str, str | bool | list[str]]:
     """Update per-item file frontmatter. Supports nested metadata.plan, metadata.issue, etc.
 
@@ -1991,30 +2004,149 @@ def _merge_section_entries(existing: _SectionMetadata, new_entries: list[dict[st
     return {"num_entries": active_count, "num_struck": struck_count, "entries": all_entries}
 
 
-def _render_sections_as_body(item: BacklogItem) -> str:
-    r"""Render a YAML BacklogItem's structured sections into a markdown body string.
+def _section_display_title(key: str, sec_data: Section | GroomedData) -> str:
+    """Return the human-readable title for a section key.
 
-    Produces ``## {name}\\n\\n{content}\\n\\n`` for each section, where content is
-    the joined entry contents.  Returns ``""`` when ``item.sections`` is empty.
+    Known keys are looked up in the inverse of ``_SECTION_HEADING``.  Unknown
+    keys with the ``"unknown__"`` prefix are reconstructed via
+    :func:`~.github_sync.unknown_key_to_heading`.  All other keys are
+    title-cased with underscores replaced by spaces.
 
     Args:
-        item: The BacklogItem whose sections to render.
+        key: Section storage key (e.g. ``"fact_check"``, ``"unknown__story"``).
+        sec_data: The section value (used to determine GroomedData date).
 
     Returns:
-        Markdown string representation of all sections, or ``""`` if none exist.
+        Display title string (e.g. ``"Fact-Check"``, ``"Story"``).
+    """
+    if key in _SECTION_HEADING_MAP:
+        return _SECTION_HEADING_MAP[key]
+    if key == "groomed":
+        if isinstance(sec_data, GroomedData):
+            return f"Groomed \u2014 {sec_data.date}" if sec_data.date else "Groomed"
+        return "Groomed"
+    if key.startswith("unknown__"):
+        return unknown_key_to_heading(key)
+    return key.replace("_", " ").title()
+
+
+def _render_section_index(item: BacklogItem) -> str:
+    r"""Render a ``## Sections`` index block listing all sections with counts.
+
+    Each line has the form ``[N] Title (M entries)`` where N is the zero-based
+    index and M is the active entry count.  For :class:`~.models.GroomedData`
+    the count reflects the number of subsections.
+
+    Returns empty string when *item.sections* is empty.
+
+    Args:
+        item: BacklogItem whose sections to index.
+
+    Returns:
+        Index block string ending with ``"\\n"`` or ``""`` when no sections.
     """
     if not item.sections:
         return ""
+    lines: list[str] = ["## Sections"]
+    for idx, (key, sec_data) in enumerate(item.sections.items()):
+        title = _section_display_title(key, sec_data)
+        if isinstance(sec_data, GroomedData):
+            count = len(sec_data.subsections)
+            lines.append(f"[{idx}] {title} ({count} subsections)")
+        elif isinstance(sec_data, Section):
+            active = sum(1 for e in sec_data.entries if not e.struck)
+            lines.append(f"[{idx}] {title} ({active} entries)")
+        else:
+            lines.append(f"[{idx}] {title}")
+    return "\n".join(lines) + "\n"
+
+
+def _filter_sections(item: BacklogItem, section: str) -> dict[str, Section | GroomedData]:
+    """Return a filtered subset of *item.sections* matching *section*.
+
+    The *section* parameter supports four forms:
+
+    - ``"2"`` -- single numeric index (zero-based).
+    - ``"0,2,4"`` -- comma-separated numeric indices.
+    - ``"/regex/"`` -- regex pattern delimited by ``/``.
+    - Any other string -- case-insensitive substring match against display title.
+
+    Args:
+        item: BacklogItem whose sections to filter.
+        section: Filter expression.
+
+    Returns:
+        Ordered dict of matching ``{key: sec_data}`` pairs.  Empty dict when
+        no sections match.
+    """
+    if not item.sections:
+        return {}
+
+    keys = list(item.sections.keys())
+
+    # --- comma-separated or single numeric index ---
+    stripped = section.strip()
+    index_parts = [p.strip() for p in stripped.split(",")]
+    if all(p.lstrip("-").isdigit() for p in index_parts if p):
+        indices = {int(p) for p in index_parts if p}
+        return {keys[i]: item.sections[keys[i]] for i in indices if 0 <= i < len(keys)}
+
+    # --- /regex/ pattern ---
+    if stripped.startswith("/") and stripped.endswith("/") and len(stripped) > 1:
+        pattern = stripped[1:-1]
+        compiled = re.compile(pattern, re.IGNORECASE)
+        return {k: item.sections[k] for k in keys if compiled.search(_section_display_title(k, item.sections[k]))}
+
+    # --- substring match ---
+    lower_filter = stripped.lower()
+    return {k: item.sections[k] for k in keys if lower_filter in _section_display_title(k, item.sections[k]).lower()}
+
+
+def _render_sections_as_body(item: BacklogItem, section: str | None = None) -> str:
+    r"""Render a YAML BacklogItem's structured sections into a markdown body string.
+
+    Prepends a ``## Sections`` index block (unless *section* filter is active
+    or *item.sections* is empty).  Renders ``## {title}\\n\\n{content}`` for
+    each section.  Returns ``""`` when *item.sections* is empty.
+
+    Args:
+        item: The BacklogItem whose sections to render.
+        section: Optional filter expression forwarded to :func:`_filter_sections`.
+            When ``None`` all sections are rendered (with index).
+
+    Returns:
+        Markdown string representation of sections, or ``""`` if none exist.
+    """
+    if not item.sections:
+        return ""
+
+    sections_to_render = _filter_sections(item, section) if section is not None else dict(item.sections)
+
+    if not sections_to_render:
+        return ""
+
     parts: list[str] = []
-    for sec_name, sec_data in item.sections.items():
-        if not isinstance(sec_data, Section):
-            continue
-        content = "\n".join(e.content for e in sec_data.entries if e.content)
-        parts.append(f"## {sec_name}\n\n{content}")
+    # Include the full section index only when rendering all sections
+    if section is None:
+        index_block = _render_section_index(item)
+        if index_block:
+            parts.append(index_block.rstrip("\n"))
+
+    for key, sec_data in sections_to_render.items():
+        title = _section_display_title(key, sec_data)
+        if isinstance(sec_data, GroomedData):
+            subsection_lines: list[str] = [f"## Groomed ({sec_data.date})"]
+            for sub_key, sub_val in sec_data.subsections.items():
+                subsection_lines.append(f"### {sub_key}\n\n{sub_val}")
+            parts.append("\n\n".join(subsection_lines))
+        elif isinstance(sec_data, Section):
+            content = "\n".join(e.content for e in sec_data.entries if e.content)
+            parts.append(f"## {title}\n\n{content}")
+
     return "\n\n".join(parts) + "\n\n" if parts else ""
 
 
-def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, _SectionMetadata]:
+def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, _SectionMetadata | dict[str, object]]:
     """Build sections metadata directly from a YAML BacklogItem's structured sections.
 
     Used when the item has no raw markdown body (i.e. it was created as a ``.yaml``
@@ -2024,20 +2156,23 @@ def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, _SectionMetad
         item: The BacklogItem whose sections to convert.
 
     Returns:
-        Mapping of section name to entry metadata in the same format as
-        ``_build_sections_metadata``.
+        Mapping of section name to entry metadata.  ``Section`` entries follow the
+        ``_SectionMetadata`` shape.  ``GroomedData`` entries use ``{"type":
+        "groomed", "date": ..., "subsections": {...}}`` so that callers can
+        distinguish and render them.
     """
-    result: dict[str, _SectionMetadata] = {}
+    result: dict[str, _SectionMetadata | dict[str, object]] = {}
     for sec_name, sec_data in item.sections.items():
-        if not isinstance(sec_data, Section):
-            continue
-        entries = sec_data.entries
-        entry_dicts: list[dict[str, str | bool]] = [
-            {"id": e.id, "struck": e.struck, "content": e.content} for e in entries
-        ]
-        active_count = sum(1 for e in entries if not e.struck)
-        struck_count = sum(1 for e in entries if e.struck)
-        result[sec_name] = {"num_entries": active_count, "num_struck": struck_count, "entries": entry_dicts}
+        if isinstance(sec_data, GroomedData):
+            result[sec_name] = {"type": "groomed", "date": sec_data.date, "subsections": sec_data.subsections}
+        elif isinstance(sec_data, Section):
+            entries = sec_data.entries
+            entry_dicts: list[dict[str, str | bool]] = [
+                {"id": e.id, "struck": e.struck, "content": e.content} for e in entries
+            ]
+            active_count = sum(1 for e in entries if not e.struck)
+            struck_count = sum(1 for e in entries if e.struck)
+            result[sec_name] = {"num_entries": active_count, "num_struck": struck_count, "entries": entry_dicts}
     return result
 
 
@@ -2160,6 +2295,45 @@ def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
             data["body_total_lines"] = total
 
 
+def _populate_yaml_item_content(data: dict, item: BacklogItem, section: str | None) -> None:
+    """Populate *data* with body and sections for a YAML item (full-content path).
+
+    YAML items have structured ``sections`` but no raw body string.  This helper
+    renders the body from the structured sections and populates ``data["body"]``
+    and ``data["sections"]``.  When *section* is provided the output is filtered.
+
+    Args:
+        data: Mutable result dict to update in-place.
+        item: YAML BacklogItem with structured sections.
+        section: Optional section filter expression; ``None`` renders all sections.
+    """
+    data["body"] = _render_sections_as_body(item, section=section)
+    if section is not None:
+        filtered_keys = set(_filter_sections(item, section).keys())
+        all_yaml_secs = _build_sections_from_yaml_item(item)
+        data["sections"] = {k: v for k, v in all_yaml_secs.items() if k in filtered_keys}
+    else:
+        data["sections"] = _build_sections_from_yaml_item(item)
+
+
+def _populate_yaml_item_compact(data: dict, item: BacklogItem) -> None:
+    """Populate *data* with sections_metadata for a YAML item (compact path).
+
+    Args:
+        data: Mutable result dict to update in-place.
+        item: YAML BacklogItem with structured sections.
+    """
+    yaml_sections = _build_sections_from_yaml_item(item)
+    data["sections_metadata"] = [
+        {
+            "name": name,
+            "num_entries": sec.get("num_entries", 0) if isinstance(sec, dict) else 0,
+            "num_struck": sec.get("num_struck", 0) if isinstance(sec, dict) else 0,
+        }
+        for name, sec in yaml_sections.items()
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Public API: VIEW
 # ---------------------------------------------------------------------------
@@ -2174,6 +2348,7 @@ def view_item(
     since: str | None = None,
     output: Output | None = None,
     include_content: bool = True,
+    section: str | None = None,
 ) -> dict[str, str | int | bool | list[str] | dict | None]:
     """View a backlog item or GitHub issue by URL, #N, bare number, or title.
 
@@ -2184,7 +2359,7 @@ def view_item(
             line-based skipping for plain-text bodies with no entry blocks).
         limit: Show at most N entry blocks (0 = all, no truncation); falls back
             to line-based limit for plain-text bodies with no entry blocks.
-        show: Entry filter forwarded to parse_entries — "all", "last", "first",
+        show: Entry filter forwarded to parse_entries -- "all", "last", "first",
               "struck", positive int (first N active), negative int (last N active),
               or a section name string (case-insensitive section filter).
               MCP clients may send numeric values as strings; those are converted
@@ -2194,11 +2369,17 @@ def view_item(
         include_content: When True (default), returns full body and section entries.
             When False, returns metadata and section inventory only (section names
             with entry counts, no body or entry content).
+        section: Optional section filter applied to YAML items that have structured
+            sections but no raw body.  Supports numeric index (``"2"``),
+            comma-separated indices (``"0,2"``), regex (``"/impact.*/``), or
+            substring match.  Ignored when the item has a raw body (GitHub items).
 
     Returns:
         Dict with item/issue details. When ``include_content=True``, includes
         ``body`` and ``sections`` keys. When ``include_content=False``, omits
         ``body`` and ``sections`` and includes ``sections_metadata`` instead.
+        When ``section`` is provided, ``body`` and ``sections`` reflect only the
+        matched section(s).
     """
     out = output or Output()
     item = find_item(parse_backlog(), selector)
@@ -2229,11 +2410,8 @@ def view_item(
         if body:
             data["sections"] = _build_sections_metadata(body, parsed_show, since)
         elif item and item.sections:
-            # YAML items have structured sections but no raw body; render body
-            # from sections so callers always receive a non-empty body string.
-            data["body"] = _render_sections_as_body(item)
-            body = data["body"]
-            data["sections"] = _build_sections_from_yaml_item(item)
+            _populate_yaml_item_content(data, item, section)
+            body = data.get("body", "")
         if body and (offset > 0 or limit > 0):
             _paginate_body(data, body, offset, limit)
     else:
@@ -2243,12 +2421,7 @@ def view_item(
         if body:
             data["sections_metadata"] = _build_sections_compact(body)
         elif item and item.sections:
-            # YAML items have no raw body; build compact metadata from structured sections.
-            yaml_sections = _build_sections_from_yaml_item(item)
-            data["sections_metadata"] = [
-                {"name": name, "num_entries": sec["num_entries"], "num_struck": sec["num_struck"]}
-                for name, sec in yaml_sections.items()
-            ]
+            _populate_yaml_item_compact(data, item)
 
     return {**data, **out.to_dict()}
 
@@ -2370,13 +2543,13 @@ def sync_push_groomed_content(
         if not num_str.isdigit():
             out.warn(f"  WARNING: Skipping item with invalid issue ref '{issue_ref}'")
             continue
-        body = render_issue_body(item)
         try:
             issue_num = int(num_str)
             issue_node = issue_lookup.get(issue_num)
             if issue_node is None:
                 out.warn(f"  WARNING: Issue #{num_str} not found in bulk fetch (may be closed)")
                 continue
+            body = render_issue_body(item, original_body=issue_node["body"])
             _update_issue_graphql(repository, issue_node["id"], body=body)
             out.info(f"  Updated issue #{num_str}: {item.title[:60]}")
             pushed += 1
@@ -2542,7 +2715,7 @@ def resolve_item(
         out.info("Item already resolved.")
         return {"title": item.title, "already_resolved": True, **out.to_dict()}
 
-    metadata: dict[str, str] = {"status": "done", "priority": "completed"}
+    metadata: dict[str, str | list[str] | int | None] = {"status": "done", "priority": "completed"}
     if plan:
         metadata["plan"] = plan
     update_item_metadata(Path(filepath_str), {"metadata": metadata}, output=out)
@@ -2990,9 +3163,9 @@ def strike_entry(
         if repository:
             try:
                 num = int(item.issue.lstrip("#"))
-                body = render_issue_body(item)
                 owner, repo_name = repository.full_name.split("/", 1)
                 issue_node = _fetch_issue_graphql(repository, owner, repo_name, num)
+                body = render_issue_body(item, original_body=issue_node["body"])
                 _update_issue_graphql(repository, issue_node["id"], body=body)
                 out.info(f"  Synced strike to GitHub issue {item.issue}")
             except (GithubException, BacklogError) as e:
@@ -3084,6 +3257,13 @@ def _write_issue_node_to_cache(
                     "type": fields.item_type,
                     "status": fields.status,
                     "last_synced": now_iso(),
+                    "updated_at": fields.updated_at,
+                    "assignees": fields.assignees,
+                    "labels": fields.labels,
+                    "milestone": fields.milestone,
+                    "milestone_number": fields.milestone_number,
+                    "milestone_due_on": fields.milestone_due_on,
+                    "milestone_state": fields.milestone_state,
                 },
             },
             output=out,
@@ -3107,6 +3287,13 @@ def _write_issue_node_to_cache(
             sections=remote_item.sections,
         )
         new_item.metadata.last_synced = now_iso()
+        new_item.metadata.updated_at = fields.updated_at
+        new_item.metadata.assignees = fields.assignees
+        new_item.metadata.labels = fields.labels
+        new_item.metadata.milestone = fields.milestone
+        new_item.metadata.milestone_number = fields.milestone_number
+        new_item.metadata.milestone_due_on = fields.milestone_due_on
+        new_item.metadata.milestone_state = fields.milestone_state
         new_item.file_path = str(filepath)
         save_item(new_item)
 
