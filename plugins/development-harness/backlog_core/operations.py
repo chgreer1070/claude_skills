@@ -1573,7 +1573,9 @@ def _build_issue_to_item_index(local_items: list[BacklogItem]) -> dict[int, Back
     return index
 
 
-def _reconcile_single_closed_issue(issue_node: IssueNode, issue_number: int, output: Output) -> int:
+def _reconcile_single_closed_issue(
+    issue_node: IssueNode, issue_number: int, output: Output, issue_to_item: dict[int, BacklogItem]
+) -> int:
     """Update a single closed issue's local cache file to status=closed.
 
     Used by the incremental sync path where each closed issue is processed
@@ -1583,6 +1585,9 @@ def _reconcile_single_closed_issue(issue_node: IssueNode, issue_number: int, out
         issue_node: GraphQL issue node already known to be CLOSED.
         issue_number: Issue number extracted from the node.
         output: Output collector for info/warn messages.
+        issue_to_item: Pre-built index from ``_build_issue_to_item_index``.
+            Callers must build this once before the per-issue loop to avoid
+            O(N) ``parse_backlog`` calls.
 
     Returns:
         1 if the local item was updated, 0 otherwise.
@@ -1590,8 +1595,6 @@ def _reconcile_single_closed_issue(issue_node: IssueNode, issue_number: int, out
     # Skip PRs
     if issue_node.get("isPullRequest"):
         return 0
-    local_items = parse_backlog()
-    issue_to_item = _build_issue_to_item_index(local_items)
     local_item = issue_to_item.get(issue_number)
     if local_item is None:
         return 0  # no local file — skip silently
@@ -1683,6 +1686,10 @@ def _sync_incremental(
     all_issues = sync_issues_graphql(
         repo_obj, owner, repo_name, state="OPEN,CLOSED", labels=label_names, since=since_dt
     )
+    # Build the index once here so _reconcile_single_closed_issue does not call
+    # parse_backlog() on every iteration (O(N*M) → O(N+M)).
+    local_items = parse_backlog()
+    issue_to_item = _build_issue_to_item_index(local_items)
     count = 0
     reconciled = 0
     for issue_node in all_issues:
@@ -1691,7 +1698,7 @@ def _sync_incremental(
             _write_issue_node_to_cache(issue_node, issue_number, out)
             count += 1
         else:
-            reconciled += _reconcile_single_closed_issue(issue_node, issue_number, out)
+            reconciled += _reconcile_single_closed_issue(issue_node, issue_number, out, issue_to_item)
     if count:
         out.info(f"  Refreshed {count} issue(s) from GitHub into local cache.")
     if reconciled:
