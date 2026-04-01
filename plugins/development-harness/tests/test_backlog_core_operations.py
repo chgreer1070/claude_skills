@@ -1779,6 +1779,81 @@ class TestPullItemsEntryAwareMerge:
 
 
 # ---------------------------------------------------------------------------
+# pull_items — resilience to per-item fetch failures
+# ---------------------------------------------------------------------------
+
+
+class TestPullItemsResilienceToFetchErrors:
+    """pull_items continues past per-item fetch failures and reports skipped count."""
+
+    def test_pull_continues_past_404_and_reports_skipped(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """pull_items skips 404 items and still processes the rest.
+
+        Tests: pull_items resilience — single 404 does not abort the batch.
+        How: Two items; first fetch returns None (simulating 404), second returns body.
+             Verify pulled=1, skipped=1, total=2, and errors is non-empty.
+        Why: A deleted or transferred issue must not halt a 427-item bulk pull.
+        """
+        import backlog_core.models as _m
+
+        backlog_dir = _m.BACKLOG_DIR
+
+        good_body = "## Description\n\nSome content"
+        filepath = backlog_dir / "p1-good-item.md"
+
+        _write_item(backlog_dir, title="Good Item", priority="P1", topic="good-item", issue="#10")
+
+        mocker.patch(
+            "backlog_core.operations.parse_backlog",
+            return_value=[
+                BacklogItem(title="Dead Issue", section="P1", issue="#404"),
+                BacklogItem(title="Good Item", section="P1", issue="#10", file_path=str(filepath)),
+            ],
+        )
+        mocker.patch("backlog_core.operations.sync_create_missing_issues")
+        mock_repo = mocker.MagicMock()
+        mocker.patch("backlog_core.operations.get_github", return_value=mock_repo)
+        # First call returns None (404 simulation), second returns a body
+        mocker.patch("backlog_core.operations.fetch_github_issue_body", side_effect=[None, good_body])
+
+        out = Output()
+        result = ops.pull_items(output=out)
+
+        assert result["total"] == 2
+        assert result["skipped"] == 1
+        assert result["pulled"] == 1
+        assert len(out.errors) == 1
+        assert "404" in out.errors[0] or "skipped" in out.errors[0]
+
+    def test_pull_all_failed_reports_zero_pulled(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """pull_items with all fetches failing reports pulled=0 and all items skipped.
+
+        Tests: All-failure scenario — pulled=0, skipped=total.
+        How: Two items, both fetches return None.
+        Why: Validates correct accounting when entire batch fails.
+        """
+        mocker.patch(
+            "backlog_core.operations.parse_backlog",
+            return_value=[
+                BacklogItem(title="Gone 1", section="P1", issue="#1"),
+                BacklogItem(title="Gone 2", section="P1", issue="#2"),
+            ],
+        )
+        mocker.patch("backlog_core.operations.sync_create_missing_issues")
+        mock_repo = mocker.MagicMock()
+        mocker.patch("backlog_core.operations.get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.fetch_github_issue_body", return_value=None)
+
+        out = Output()
+        result = ops.pull_items(output=out)
+
+        assert result["total"] == 2
+        assert result["skipped"] == 2
+        assert result["pulled"] == 0
+        assert len(out.errors) == 2
+
+
+# ---------------------------------------------------------------------------
 # refresh_local_cache_from_github — closed-issue reconciliation
 # ---------------------------------------------------------------------------
 
@@ -2141,6 +2216,100 @@ class TestRefreshLocalCacheIncrementalSync:
         assert len(calls) >= 1
         for call in calls:
             assert call["since"] is None
+
+
+# ---------------------------------------------------------------------------
+# _sync_incremental — parse_backlog call-count invariant (O(N+M) fix)
+# ---------------------------------------------------------------------------
+
+
+class TestSyncIncrementalParseBacklogCallCount:
+    """_sync_incremental calls parse_backlog exactly once regardless of closed-issue count.
+
+    Regression guard for the O(N*M) → O(N+M) fix: parse_backlog must be called
+    once before the reconciliation loop, not once per closed issue encountered.
+    """
+
+    def test_parse_backlog_called_once_for_multiple_closed_issues(self, mocker: MockerFixture) -> None:
+        """parse_backlog is called exactly once when reconciling 3+ closed issues.
+
+        Tests: O(N+M) invariant — parse_backlog must not be called per-issue.
+        How: Set up a .last_sync file so the incremental path is taken; write
+             3 local backlog items with issue refs; mock sync_issues_graphql to
+             return all 3 as CLOSED; spy on parse_backlog; call
+             refresh_local_cache_from_github; assert call_count == 1.
+        Why: Before the fix, _reconcile_single_closed_issue called parse_backlog()
+             internally on each invocation, producing O(N*M) filesystem reads.
+             The fix builds the index once in _sync_incremental before the loop.
+             A call_count > 1 means the regression has been reintroduced.
+        """
+        # Arrange — write 3 local items with distinct issue refs
+        import backlog_core.models as models
+        import dh_paths
+
+        fake_dir = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Item Alpha", issue="#101", topic="item-alpha", priority="P1")
+        _write_item(fake_dir, title="Item Beta", issue="#102", topic="item-beta", priority="P1")
+        _write_item(fake_dir, title="Item Gamma", issue="#103", topic="item-gamma", priority="P1")
+
+        # Write a .last_sync file so refresh_local_cache_from_github takes
+        # the incremental path (_sync_incremental) rather than _sync_full.
+        state_dir = dh_paths.state_root()
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / ".last_sync").write_text("2026-01-01T00:00:00+00:00", encoding="utf-8")
+
+        mock_repo = mocker.MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        # Return all 3 issues as CLOSED in the single OPEN,CLOSED combined fetch
+        closed_nodes = [
+            {
+                "number": 101,
+                "title": "Item Alpha",
+                "state": "CLOSED",
+                "closedAt": "2099-01-01T00:00:00+00:00",
+                "isPullRequest": False,
+                "id": "node-101",
+            },
+            {
+                "number": 102,
+                "title": "Item Beta",
+                "state": "CLOSED",
+                "closedAt": "2099-01-01T00:00:00+00:00",
+                "isPullRequest": False,
+                "id": "node-102",
+            },
+            {
+                "number": 103,
+                "title": "Item Gamma",
+                "state": "CLOSED",
+                "closedAt": "2099-01-01T00:00:00+00:00",
+                "isPullRequest": False,
+                "id": "node-103",
+            },
+        ]
+        mocker.patch("backlog_core.operations.sync_issues_graphql", return_value=closed_nodes)
+
+        # Spy on parse_backlog — let the real implementation run so reconciliation
+        # actually writes files, but count how many times it is invoked.
+        from backlog_core.parsing import parse_backlog as _real_parse_backlog
+
+        parse_backlog_spy = mocker.patch("backlog_core.operations.parse_backlog", side_effect=_real_parse_backlog)
+
+        out = Output()
+
+        # Act
+        result = ops.refresh_local_cache_from_github(output=out)
+
+        # Assert — parse_backlog called exactly once, not once per closed issue
+        assert parse_backlog_spy.call_count == 1, (
+            f"parse_backlog was called {parse_backlog_spy.call_count} time(s); "
+            f"expected exactly 1. A call count > 1 indicates _reconcile_single_closed_issue "
+            f"is calling parse_backlog() per iteration (O(N*M) regression)."
+        )
+        # Sanity-check: the 3 closed issues were actually reconciled
+        assert result["reconciled"] == 3
 
 
 # ---------------------------------------------------------------------------
