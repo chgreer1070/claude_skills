@@ -237,6 +237,33 @@ Additional escalation points exist within stages (e.g., NEEDS_WORK loop limits, 
 
 ---
 
+## Complete-Implementation Pre-Phase Gates
+
+The `/dh:complete-implementation` skill runs quality gates after all S5 execution tasks reach COMPLETE status. Before building the QG plan, it runs a sequence of pre-phase checks. As of commit f230ae0d, the sequence is:
+
+**Pre-Phase 1: TN Verification Check** — checks for a TN verification report from `tn-verification-gate`. If regressed criteria are found, emits `COMPLETION BLOCKED — TN Verification Failed` and stops.
+
+**Pre-Phase 1a: Migration Fidelity Sign-Off** — activates when migration signals are detected in the issue title, body, or task `acceptance_criteria` fields (keywords: "migrat", "convert format", "replace .md", "format conversion", "move from", "transition from", or deletion-related acceptance criteria). When activated, confirms four items before allowing QG plan creation to proceed:
+
+1. Fidelity check on real data — evidence exists showing content completeness was asserted against real production records, not only synthetic fixtures
+2. Content completeness verified — field-by-field completeness confirmed, not only structural validity
+3. Constrained field values enumerated — all distinct values of constrained fields were enumerated from real data and are handled in the target model
+4. Deletion deferred or confirmed — if source files were deleted, deletion occurred after zero-data-loss confirmation
+
+If any item is unconfirmed, emits `COMPLETION BLOCKED — Migration Fidelity Gate` and stops. QG plan creation, T1 dispatch, and SAM state updates are all deferred until the gate clears.
+
+If no migration signals are detected, the gate is skipped entirely.
+
+**Pre-Phase: Artifact Discovery** — queries the artifact manifest for all plan artifacts linked to the issue, enabling worktree-isolated agents to access plan files via `artifact_read` instead of filesystem paths.
+
+**Pre-Phase 1b: Process Accumulated Concerns** — checks the backlog item for a `## Concerns` section accumulated during `/implement-feature` and routes unresolved concerns to the QG plan.
+
+After all pre-phases complete, the skill builds the SAM-enforced QG plan (6 phases).
+
+For the full pre-phase logic, see the `complete-implementation` skill: `/dh:complete-implementation`.
+
+---
+
 ## Artifact Naming Conventions
 
 **Pattern:** `{stage-prefix}-{scope-or-id}.md`

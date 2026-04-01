@@ -543,34 +543,31 @@ async def backlog_list(
 
 
 def _build_compact_manifest(
-    result: dict[str, str | int | bool | list[str] | dict | None],
-    full_response: dict[str, str | int | bool | list[str] | dict | None],
-    selector: str,
+    result: _models.ViewItemResult, full_response: dict[str, object], selector: str
 ) -> dict[str, object]:
     """Build the compact routing manifest returned by ``backlog_view(summary=True)``.
+
+    Args:
+        result: Typed ViewItemResult from view_item.
+        full_response: Full serialised response dict (used only for size hint).
+        selector: Original selector string for _hint message.
 
     Returns:
         Compact dict with issue_number, title, labels, status, plan_path,
         and size hint for the full response.
     """
     full_chars = len(_json.dumps(full_response))
-    body_text = str(result.get("body") or "")
-    plan_match = _re.search(r"^[Pp]lan:\s*(\S+)", body_text, _re.MULTILINE)
+    plan_match = _re.search(r"^[Pp]lan:\s*(\S+)", result.body, _re.MULTILINE)
     plan_path: str | None = plan_match.group(1) if plan_match else None
-    issue_field = str(result.get("issue") or "")
     issue_number: int | None = None
-    num_match = _re.search(r"(\d+)", issue_field)
+    num_match = _re.search(r"(\d+)", result.issue)
     if num_match:
         issue_number = int(num_match.group(1))
-    labels_raw = result.get("labels", [])
-    labels: list[str] = labels_raw if isinstance(labels_raw, list) else []
-    state = str(result.get("state") or "")
-    status: str = "closed" if state == "closed" else "open"
-    sections_index = result.get("sections_index")
+    status: str = "closed" if result.state == "closed" else "open"
     compact: dict[str, object] = {
         "issue_number": issue_number,
-        "title": result.get("title", ""),
-        "labels": labels,
+        "title": result.title,
+        "labels": result.labels,
         "status": status,
         "plan_path": plan_path,
         "_summary": True,
@@ -580,8 +577,8 @@ def _build_compact_manifest(
             f"Load specific sections: backlog_view(selector='{selector}', summary=False, section='<index, title, or /regex/>')"
         ),
     }
-    if sections_index:
-        compact["sections_index"] = sections_index
+    if result.sections_index:
+        compact["sections_index"] = result.sections_index
     return compact
 
 
@@ -673,7 +670,7 @@ async def backlog_view(
             section=section,
             output=out,
         )
-        full_response = {**result, **out.to_dict()}
+        full_response = result.model_dump()
         if not summary:
             return full_response
         return _build_compact_manifest(result, full_response, selector)

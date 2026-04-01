@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, patch
 
 import backlog_core.server as _server_mod
 import pytest
-from backlog_core.models import BackendAvailability, BackendStatus, BacklogError, Output
+from backlog_core.models import BackendAvailability, BackendStatus, BacklogError, Output, ViewItemResult
 from backlog_core.server import _beads_lifespan, mcp
 from fastmcp.client import Client
 
@@ -38,6 +38,16 @@ def _make_output_dict(
 ) -> dict[str, list[str]]:
     """Build the Output.to_dict() structure returned by all operations."""
     return {"messages": messages or [], "warnings": warnings or [], "errors": errors or []}
+
+
+def _make_view_result(data: dict) -> ViewItemResult:
+    """Build a ViewItemResult from a plain dict, used for mocking view_item return values.
+
+    Extra keys not in ViewItemResult (e.g. 'errors') are silently dropped via
+    model_validate's ignore-extra behaviour.  This lets existing test dicts be
+    converted without rewriting every key.
+    """
+    return ViewItemResult.model_validate(data)
 
 
 def _extract_log_messages(mock_log: AsyncMock, level: str | None = None) -> list[str]:
@@ -742,7 +752,7 @@ async def test_backlog_list_backend_error_path_includes_backend_key():
 
 async def test_backlog_view_success_returns_item_detail():
     """backlog_view calls operations.view_item and merges result with output."""
-    op_result = {
+    op_result = _make_view_result({
         "title": "My Feature",
         "priority": "P1",
         "description": "details",
@@ -751,14 +761,14 @@ async def test_backlog_view_success_returns_item_detail():
         "plan": "",
         "issue": "#42",
         "file_path": "/tmp/p1-my-feature.md",
-        "groomed": False,
+        "groomed": "",
         "status": "",
         "number": 42,
         "state": "open",
         "body": "## Details\nsome content",
         "labels": ["priority:p1"],
         "milestone": "",
-    }
+    })
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
         response = await _call("backlog_view", {"selector": "#42", "summary": False})
 
@@ -773,7 +783,7 @@ async def test_backlog_view_success_returns_item_detail():
 
 async def test_backlog_view_passes_pagination_params():
     """backlog_view forwards offset and limit to operations."""
-    op_result = {"title": "Item", "body": "line1\nline2\nline3"}
+    op_result = _make_view_result({"title": "Item", "body": "line1\nline2\nline3"})
     with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
         await _call("backlog_view", {"selector": "Item", "offset": 5, "limit": 20})
 

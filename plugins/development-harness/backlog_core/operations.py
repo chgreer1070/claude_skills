@@ -14,7 +14,7 @@ import re
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, NotRequired, TypedDict
+from typing import TYPE_CHECKING, NotRequired, TypedDict, cast
 
 import dh_paths as _dh_paths
 from dispatch_schema.core.models import ConflictGroup
@@ -2215,15 +2215,15 @@ def _build_sections_compact(body: str) -> list[dict[str, str | int]]:
     return result
 
 
-def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
-    """Apply offset/limit pagination to the ``body`` field of *data* in-place.
+def _paginate_body_result(result: ViewItemResult, body: str, offset: int, limit: int) -> None:
+    """Apply offset/limit pagination to the ``body`` field of *result* in-place.
 
     Paginates by entry blocks when the body contains timestamped entry blocks
     (``<div><sub>…</sub>…</div>``). Falls back to line-based pagination for
     plain-text bodies that contain no entry blocks.
 
     Args:
-        data: Mutable result dict whose ``body`` key will be replaced.
+        result: Mutable ViewItemResult whose ``body`` field will be replaced.
         body: Original (unpaginated) body text.
         offset: Number of leading entry blocks (or lines) to skip.
         limit: Maximum entry blocks (or lines) to keep (0 = unlimited).
@@ -2236,12 +2236,12 @@ def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
         sliced = entries[offset:] if offset > 0 else entries
         if limit > 0:
             sliced = sliced[:limit]
-        data["body"] = "\n\n".join(_render_entry_raw(e) for e in sliced)
+        result.body = "\n\n".join(_render_entry_raw(e) for e in sliced)
         remaining = total - offset - len(sliced)
         if remaining > 0:
-            data["body_truncated"] = True
-            data["body_remaining_entries"] = remaining
-            data["body_total_entries"] = total
+            result.body_truncated = True
+            result.body_remaining_entries = remaining
+            result.body_total_entries = total
     else:
         # Fallback: line-based pagination for plain-text bodies with no entry blocks
         lines = body.splitlines()
@@ -2250,23 +2250,23 @@ def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
             lines = lines[offset:]
         if limit > 0:
             lines = lines[:limit]
-        data["body"] = "\n".join(lines)
+        result.body = "\n".join(lines)
         remaining = total - offset - len(lines)
         if remaining > 0:
-            data["body_truncated"] = True
-            data["body_remaining_lines"] = remaining
-            data["body_total_lines"] = total
+            result.body_truncated = True
+            result.body_remaining_lines = remaining
+            result.body_total_lines = total
 
 
-def _populate_yaml_item_content(data: dict, item: BacklogItem, section: str | None) -> None:
-    """Populate *data* with body and sections for a YAML item (full-content path).
+def _populate_yaml_item_content(result: ViewItemResult, item: BacklogItem, section: str | None) -> None:
+    """Populate *result* with body and sections for a YAML item (full-content path).
 
     YAML items have structured ``sections`` but no raw body string.  This helper
-    renders the body from the structured sections and populates ``data["body"]``
-    and ``data["sections"]``.  When *section* is provided the output is filtered.
+    renders the body from the structured sections and populates ``result.body``
+    and ``result.sections``.  When *section* is provided the output is filtered.
 
     Args:
-        data: Mutable result dict to update in-place.
+        result: Mutable ViewItemResult to update in-place.
         item: YAML BacklogItem with structured sections.
         section: Optional section filter expression; ``None`` renders all sections.
     """
@@ -2274,11 +2274,27 @@ def _populate_yaml_item_content(data: dict, item: BacklogItem, section: str | No
         filtered = _filter_sections(item, section)
         # Build a temporary item with only the filtered sections for rendering
         filtered_item = BacklogItem(title=item.title, sections=filtered)
-        data["body"] = render_sections_as_body(filtered_item)
-        data["sections"] = _build_sections_from_yaml_item(filtered_item)
+        result.body = render_sections_as_body(filtered_item)
+        result.sections = cast("dict[str, dict[str, object]]", _build_sections_from_yaml_item(filtered_item))
     else:
-        data["body"] = render_sections_as_body(item)
-        data["sections"] = _build_sections_from_yaml_item(item)
+        result.body = render_sections_as_body(item)
+        result.sections = cast("dict[str, dict[str, object]]", _build_sections_from_yaml_item(item))
+
+
+def _int_field(sec: _SectionMetadata | dict[str, object], key: str) -> int:
+    """Return an integer field from a section metadata dict, defaulting to 0.
+
+    Args:
+        sec: Section metadata dict or _SectionMetadata TypedDict.
+        key: Dict key to retrieve.
+
+    Returns:
+        Integer value of the field, or 0 if absent or non-integer.
+    """
+    if not isinstance(sec, dict):
+        return 0
+    val = sec.get(key, 0)
+    return val if isinstance(val, int) else 0
 
 
 def _compact_entry_count(sec: _SectionMetadata | dict[str, object]) -> int:
@@ -2296,20 +2312,16 @@ def _compact_entry_count(sec: _SectionMetadata | dict[str, object]) -> int:
     return int(entries) if isinstance(entries, int) else 0
 
 
-def _populate_yaml_item_compact(data: dict, item: BacklogItem) -> None:
-    """Populate *data* with sections_metadata for a YAML item (compact path).
+def _populate_yaml_item_compact(result: ViewItemResult, item: BacklogItem) -> None:
+    """Populate *result* with sections_metadata for a YAML item (compact path).
 
     Args:
-        data: Mutable result dict to update in-place.
+        result: Mutable ViewItemResult to update in-place.
         item: YAML BacklogItem with structured sections.
     """
     yaml_sections = _build_sections_from_yaml_item(item)
-    data["sections_metadata"] = [
-        {
-            "name": name,
-            "num_entries": _compact_entry_count(sec),
-            "num_struck": sec.get("num_struck", 0) if isinstance(sec, dict) else 0,
-        }
+    result.sections_metadata = [
+        _models.SectionMeta(name=name, num_entries=_compact_entry_count(sec), num_struck=_int_field(sec, "num_struck"))
         for name, sec in yaml_sections.items()
     ]
 
@@ -2320,7 +2332,7 @@ def _populate_yaml_item_compact(data: dict, item: BacklogItem) -> None:
 
 
 def _assemble_view_content(
-    data: dict[str, object],
+    result: ViewItemResult,
     item: BacklogItem | None,
     *,
     include_content: bool,
@@ -2330,42 +2342,50 @@ def _assemble_view_content(
     offset: int,
     limit: int,
 ) -> None:
-    """Populate *data* with body/sections for ``view_item``.
+    """Populate *result* with body/sections for ``view_item``.
 
-    Mutates *data* in place — adds ``body``, ``sections``, or
-    ``sections_metadata`` depending on *include_content*.  Always adds
+    Mutates *result* in place — sets ``body``, ``sections``, or
+    ``sections_metadata`` depending on *include_content*.  Always sets
     ``sections_index`` when *include_content* is ``False`` and the item has
     structured sections, so callers can discover available sections without
     loading the full body.
     """
-    body = str(data.get("body", ""))
+    body = result.body
 
     if include_content:
         if body:
-            data["sections"] = _build_sections_metadata(body, show, since)
+            result.sections = cast("dict[str, dict[str, object]]", _build_sections_metadata(body, show, since))
             # Prepend section index so agents see it regardless of body source.
             if item and item.sections:
                 index = _render_section_index(item)
                 if index:
-                    data["body"] = index + "\n" + body
+                    result.body = index + "\n" + body
         elif item and item.sections:
-            _populate_yaml_item_content(data, item, section)
-            body = str(data.get("body", ""))
+            _populate_yaml_item_content(result, item, section)
+            body = result.body
         if body and (offset > 0 or limit > 0):
-            _paginate_body(data, body, offset, limit)
+            _paginate_body_result(result, body, offset, limit)
     else:
-        body = str(data.pop("body", ""))
-        data.pop("sections", None)
+        body = result.body
+        result.body = ""
+        result.sections = {}
         if body:
-            data["sections_metadata"] = _build_sections_compact(body)
+            result.sections_metadata = [
+                _models.SectionMeta(
+                    name=str(s.get("name", "")),
+                    num_entries=int(s.get("num_entries", 0)),
+                    num_struck=int(s.get("num_struck", 0)),
+                )
+                for s in _build_sections_compact(body)
+            ]
         elif item and item.sections:
-            _populate_yaml_item_compact(data, item)
+            _populate_yaml_item_compact(result, item)
         # Always include section index in summary mode so agents know what sections
         # exist on first access, without needing a second round-trip.
         if item and item.sections:
             index = _render_section_index(item)
             if index:
-                data["sections_index"] = index
+                result.sections_index = index
 
 
 # ---------------------------------------------------------------------------
@@ -2383,7 +2403,7 @@ def view_item(
     output: Output | None = None,
     include_content: bool = True,
     section: str | None = None,
-) -> dict[str, str | int | bool | list[str] | dict | None]:
+) -> ViewItemResult:
     """View a backlog item or GitHub issue by URL, #N, bare number, or title.
 
     Args:
@@ -2409,11 +2429,11 @@ def view_item(
             substring match.  Ignored when the item has a raw body (GitHub items).
 
     Returns:
-        Dict with item/issue details. When ``include_content=True``, includes
-        ``body`` and ``sections`` keys. When ``include_content=False``, omits
-        ``body`` and ``sections`` and includes ``sections_metadata`` instead.
-        When ``section`` is provided, ``body`` and ``sections`` reflect only the
-        matched section(s).
+        ViewItemResult with item/issue details. When ``include_content=True``,
+        ``body`` and ``sections`` are populated. When ``include_content=False``,
+        ``body`` and ``sections`` are cleared and ``sections_metadata`` is set
+        instead. When ``section`` is provided, ``body`` and ``sections`` reflect
+        only the matched section(s).
     """
     out = output or Output()
     item = find_item(parse_backlog(), selector)
@@ -2439,10 +2459,8 @@ def view_item(
         except ValueError:
             parsed_show = show
 
-    data = result.model_dump()
-
     _assemble_view_content(
-        data,
+        result,
         item,
         include_content=include_content,
         section=section,
@@ -2452,7 +2470,9 @@ def view_item(
         limit=limit,
     )
 
-    return {**data, **out.to_dict()}
+    result.messages = out.messages
+    result.warnings = out.warnings
+    return result
 
 
 # ---------------------------------------------------------------------------

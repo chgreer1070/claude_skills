@@ -24,6 +24,7 @@ from backlog_core.models import (
     Output,
     PullRequestRef,
     ValidationError,
+    ViewItemResult,
 )
 from backlog_core.operations import add_item, close_item, list_items, resolve_item, view_item
 
@@ -409,14 +410,35 @@ class TestListItemsFiltering:
 
 
 class TestViewItem:
-    """view_item returns ViewItemResult-shaped dict for local items and raises for unknowns."""
+    """view_item returns ViewItemResult for local items and raises for unknowns."""
+
+    def test_view_item_returns_view_item_result_type(self, mocker: MockerFixture) -> None:
+        """Verify view_item returns a ViewItemResult instance, not a raw dict.
+
+        Tests: view_item return type contract.
+        How: Write a local item; call view_item; assert isinstance(result, ViewItemResult).
+        Why: Callers should receive a typed model, not an untyped dict, so attribute
+             access is safe and the type checker can enforce the contract.
+        """
+
+        import backlog_core.models as models
+
+        fake_dir: Path = models.get_backlog_dir()
+        _write_item(fake_dir, title="Type Check Item", priority="P1", topic="type-check-item")
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        result = view_item("Type Check Item")
+
+        assert isinstance(result, ViewItemResult)
+        assert isinstance(result.messages, list)
+        assert isinstance(result.warnings, list)
 
     def test_view_item_known_title_returns_result(self, mocker: MockerFixture) -> None:
-        """Verify view_item returns a dict with title field for a known item.
+        """Verify view_item returns ViewItemResult with title field for a known item.
 
         Tests: view_item happy path with title selector.
         How: Write a local item; call view_item with the title; check result fields.
-        Why: Callers depend on the returned dict to display item details.
+        Why: Callers depend on the returned model to display item details.
         """
         import backlog_core.models as models
 
@@ -426,7 +448,7 @@ class TestViewItem:
 
         result = view_item("Viewable Item")
 
-        assert result["title"] == "Viewable Item"
+        assert result.title == "Viewable Item"
 
     def test_view_item_unknown_selector_raises_item_not_found_error(self, mocker: MockerFixture) -> None:
         """Verify view_item raises ItemNotFoundError for an unrecognised selector.
@@ -456,8 +478,7 @@ class TestViewItem:
 
         result = view_item("Paginated Item", offset=1, limit=2)
 
-        returned_body: str = str(result.get("body", ""))
-        body_lines = returned_body.splitlines()
+        body_lines = result.body.splitlines()
         # Only 2 lines returned starting from line 1
         assert len(body_lines) <= 2
 
@@ -477,7 +498,7 @@ class TestViewItem:
 
         result = view_item("Full Body Item", offset=0, limit=0)
 
-        assert "body_truncated" not in result
+        assert result.body_truncated is False
 
     def test_view_item_returns_section_entries(self, mocker: MockerFixture) -> None:
         """view_item response includes sections dict with entry metadata.
@@ -497,7 +518,7 @@ class TestViewItem:
         ops.groom_item(selector="View Test", section="Decision", content="Entry 2.", output=out)
         result = view_item(selector="View Test", output=out)
 
-        sections = result.get("sections", {})
+        sections = result.sections
         assert isinstance(sections, dict), "sections must be a dict"
         assert "Decision" in sections, f"Expected 'Decision' in sections, got: {list(sections.keys())}"
         assert sections["Decision"]["num_entries"] == 2

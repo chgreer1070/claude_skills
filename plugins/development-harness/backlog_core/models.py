@@ -980,6 +980,15 @@ class ViewItemResult(BaseModel):
     labels: list[str] = Field(default_factory=list)
     milestone: str = ""
     sections: dict[str, dict[str, object]] = Field(default_factory=dict)
+    sections_metadata: list[SectionMeta] = Field(default_factory=list)
+    sections_index: str = ""
+    body_truncated: bool = False
+    body_remaining_entries: int | None = None
+    body_total_entries: int | None = None
+    body_remaining_lines: int | None = None
+    body_total_lines: int | None = None
+    messages: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class SectionMeta(ExtTypedDict):
