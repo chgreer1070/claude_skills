@@ -184,7 +184,7 @@ class BacklogListItem(TypedDict):
     type: str
     topic: str
     file_path: NotRequired[str]
-    groomed: NotRequired[bool]
+    groomed: NotRequired[str]
     status: NotRequired[str]
     milestone: NotRequired[str]
 
