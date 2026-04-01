@@ -175,18 +175,33 @@ flowchart TD
     Proceed --> Continue
 ```
 
-The discovery skill runs its full interactive confirmation loop (WHO/WHAT/WHEN/WHY gathering)
-and registers the result as a `feature-context` artifact. The exit signal is a non-zero count
-from `artifact_list(issue_number={N}, artifact_type='feature-context')`. After confirmation,
-Step 3.1 (Auto-Groom) will detect the artifact and pass it to the grooming swarm.
+The discovery skill gathers WHO/WHAT/WHEN/WHY requirements and registers the result as a
+`feature-context` artifact. The exit signal is a non-zero count from
+`artifact_list(issue_number={N}, artifact_type='feature-context')`.
+
+**AUTO_MODE continuation**: After `dh:discovery` returns, do NOT yield to the user. Immediately
+call `artifact_list` to verify the artifact was registered, then proceed to Step 3.1 without
+presenting a summary or asking for confirmation. The `dh:discovery` skill skips its user
+confirmation gate in AUTO_MODE — no additional acknowledgment is needed from this skill.
+
+**Interactive mode**: `dh:discovery` presents the ARTIFACT:DISCOVERY summary and requests user
+confirmation before completing. After user confirmation, Step 3.1 (Auto-Groom) will detect the
+artifact and pass it to the grooming swarm.
 
 ## Phase 3: Prepare
 
 ### Step 3.1: Auto-Groom (if needed)
 
-**Trigger:** item not yet groomed (no `groomed: true` in `backlog_list` output).
+**Trigger:** always — runs for both groomed and ungroomed items.
 
-Load [step-procedures.md](./references/step-procedures.md#step-3-1-groom-check) for groomed-content retrieval, groom skill invocation, and continuation.
+- **Ungroomed** (`groomed` absent or empty): invoke `groom-backlog-item` immediately.
+- **Groomed** (`groomed` = date string): run two-phase staleness check before consuming
+  cached content. Phase 1 detects functional commits on Impact Radius files since the groom
+  date. Phase 2 classifies drift as FUNCTIONAL_DRIFT (re-groom), SUPERSEDED (close), or
+  COSMETIC_ONLY (proceed).
+
+Load [step-procedures.md](./references/step-procedures.md#step-3-1-groom-check) for
+staleness detection procedure, groomed-content retrieval, groom skill invocation, and continuation.
 
 ### Step 3.2: RT-ICA Gate
 

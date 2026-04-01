@@ -2354,3 +2354,771 @@ def test_bootstrap_beads_lifespan_is_registered_in_fastmcp_constructor() -> None
     assert server_lifespan is _beads_lifespan, (
         f"mcp._lifespan is {server_lifespan!r}, expected _beads_lifespan {_beads_lifespan!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# GAP-1: NOT operator
+# ---------------------------------------------------------------------------
+
+
+def test_apply_search_filter_not_excludes_matching_item():
+    """_apply_search_filter NOT term excludes items that match the term.
+
+    How: Three items; query "backlog NOT quality". Items with "backlog" but
+    also "quality" in the haystack must be excluded. Items with "backlog"
+    only must be included.
+    Why: Validates the _NotPred short-circuit path and its interaction with
+    the pre-computed haystack.
+    """
+    from backlog_core.server import _apply_search_filter
+
+    items: list[dict[str, str | bool]] = [
+        {"title": "Backlog grooming", "section": "P1", "topic": "process", "type": "Chore", "body": ""},
+        {"title": "Backlog quality review", "section": "P1", "topic": "quality", "type": "Chore", "body": ""},
+        {"title": "Auth refactor", "section": "P2", "topic": "security", "type": "Refactor", "body": ""},
+    ]
+
+    result = _apply_search_filter(items, "backlog NOT quality")
+    titles = [i["title"] for i in result]
+
+    assert "Backlog grooming" in titles, "Item matching 'backlog' only must be included"
+    assert "Backlog quality review" not in titles, "Item matching both 'backlog' and 'quality' must be excluded"
+    assert "Auth refactor" not in titles, "Item not matching 'backlog' must be excluded"
+
+
+def test_apply_search_filter_not_with_field_prefix():
+    """_apply_search_filter NOT with field:value syntax excludes field matches.
+
+    How: Query "title:backlog AND NOT type:feature". Items with "backlog" in
+    title but type Feature must be excluded; those with other types must be
+    included.
+    Why: Validates that NOT correctly negates field-specific predicates.
+    """
+    from backlog_core.server import _apply_search_filter
+
+    items: list[dict[str, str | bool]] = [
+        {"title": "Backlog feature X", "section": "P1", "topic": "backlog", "type": "Feature", "body": ""},
+        {"title": "Backlog chore Y", "section": "P1", "topic": "backlog", "type": "Chore", "body": ""},
+        {"title": "Unrelated item", "section": "P2", "topic": "other", "type": "Bug", "body": ""},
+    ]
+
+    result = _apply_search_filter(items, "title:backlog AND NOT type:feature")
+    titles = [i["title"] for i in result]
+
+    assert "Backlog chore Y" in titles
+    assert "Backlog feature X" not in titles
+    assert "Unrelated item" not in titles
+
+
+async def test_backlog_list_search_not_operator_excludes_term():
+    """backlog_list search with NOT operator excludes items containing the negated term.
+
+    How: Two items — one matching both terms, one matching only the positive
+    term. Query "backlog NOT quality". Only the non-quality item must appear.
+    Why: End-to-end validation of NOT through the MCP transport.
+    """
+    op_result = {
+        "items": [
+            {"title": "Backlog grooming", "section": "P1", "topic": "process", "type": "Chore", "body": ""},
+            {"title": "Backlog quality review", "section": "P1", "topic": "quality", "type": "Chore", "body": ""},
+        ]
+    }
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "backlog NOT quality"})
+
+    titles = [i["title"] for i in response["items"]]
+    assert "Backlog grooming" in titles
+    assert "Backlog quality review" not in titles
+
+
+# ---------------------------------------------------------------------------
+# GAP-2: Mixed AND/OR with parenthetical grouping
+# ---------------------------------------------------------------------------
+
+
+def test_apply_search_filter_parenthetical_grouping_or_within_and():
+    """_apply_search_filter supports (A OR B) AND C grouping.
+
+    How: Query "(auth OR deploy) AND quality". Items must match either
+    'auth' or 'deploy', AND also 'quality'. Items matching only auth or
+    deploy without quality must be excluded.
+    Why: Validates the recursive-descent parser handles grouped OR inside
+    an AND expression correctly.
+    """
+    from backlog_core.server import _apply_search_filter
+
+    items: list[dict[str, str | bool]] = [
+        {"title": "Auth quality gate", "section": "P1", "topic": "security", "type": "Feature", "body": ""},
+        {"title": "Auth service", "section": "P1", "topic": "security", "type": "Feature", "body": ""},
+        {"title": "Deploy quality check", "section": "P2", "topic": "infra", "type": "Chore", "body": ""},
+        {"title": "Refactor models", "section": "P3", "topic": "quality", "type": "Refactor", "body": ""},
+    ]
+
+    result = _apply_search_filter(items, "(auth OR deploy) AND quality")
+    titles = [i["title"] for i in result]
+
+    assert "Auth quality gate" in titles
+    assert "Deploy quality check" in titles
+    assert "Auth service" not in titles, "Matches auth but not quality — must be excluded"
+    assert "Refactor models" not in titles, "Matches quality but not auth/deploy — must be excluded"
+
+
+def test_apply_search_filter_parenthetical_not_inside_group():
+    """_apply_search_filter supports NOT inside a parenthetical group.
+
+    How: Query "(backlog AND NOT quality) OR deploy". Items matching the
+    parenthetical expression (backlog without quality) OR 'deploy' must be
+    included.
+    Why: Validates correct precedence when NOT appears inside parentheses.
+    """
+    from backlog_core.server import _apply_search_filter
+
+    items: list[dict[str, str | bool]] = [
+        {"title": "Backlog grooming", "section": "P1", "topic": "process", "type": "Chore", "body": ""},
+        {"title": "Backlog quality review", "section": "P1", "topic": "quality", "type": "Chore", "body": ""},
+        {"title": "Deploy pipeline", "section": "P2", "topic": "infra", "type": "Chore", "body": ""},
+        {"title": "Auth service", "section": "P3", "topic": "security", "type": "Feature", "body": ""},
+    ]
+
+    result = _apply_search_filter(items, "(backlog AND NOT quality) OR deploy")
+    titles = [i["title"] for i in result]
+
+    assert "Backlog grooming" in titles
+    assert "Deploy pipeline" in titles
+    assert "Backlog quality review" not in titles
+    assert "Auth service" not in titles
+
+
+async def test_backlog_list_search_grouped_or_and():
+    """backlog_list search with parenthetical grouping returns correct items.
+
+    How: Query "(auth OR deploy) AND quality". Only items that match
+    (auth OR deploy) AND quality must appear in the response.
+    Why: End-to-end validation of parenthetical grouping through MCP transport.
+    """
+    op_result = {
+        "items": [
+            {"title": "Auth quality gate", "section": "P1", "topic": "security", "type": "Feature", "body": ""},
+            {"title": "Auth service", "section": "P1", "topic": "security", "type": "Feature", "body": ""},
+            {"title": "Deploy quality check", "section": "P2", "topic": "infra", "type": "Chore", "body": ""},
+            {"title": "Refactor models", "section": "P3", "topic": "quality", "type": "Refactor", "body": ""},
+        ]
+    }
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "(auth OR deploy) AND quality"})
+
+    titles = [i["title"] for i in response["items"]]
+    assert "Auth quality gate" in titles
+    assert "Deploy quality check" in titles
+    assert "Auth service" not in titles
+    assert "Refactor models" not in titles
+
+
+# ---------------------------------------------------------------------------
+# GAP-3: count_only parameter on backlog_list
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_list_count_only_returns_count_key():
+    """backlog_list with count_only=True returns {"count": N} only.
+
+    How: Two items in op_result. Call backlog_list with count_only=True.
+    Assert the response contains "count" and not "items".
+    Why: Validates the count_only short-circuit before pagination and
+    backend status queries.
+    """
+    op_result = {
+        "items": [
+            {"title": "Item A", "section": "P1", "topic": "a", "type": "Feature", "body": ""},
+            {"title": "Item B", "section": "P2", "topic": "b", "type": "Bug", "body": ""},
+        ]
+    }
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"count_only": True})
+
+    assert "count" in response, "count_only response must include 'count' key"
+    assert response["count"] == 2
+    assert "items" not in response, "count_only response must not include 'items' key"
+    assert "pagination" not in response, "count_only response must not include 'pagination' key"
+
+
+async def test_backlog_list_count_only_respects_search_filter():
+    """backlog_list count_only=True reflects the filtered item count, not the raw list count.
+
+    How: Three items; search="auth". Only one matches. count_only=True must
+    return {"count": 1}.
+    Why: Ensures the count is computed after applying all filters, not before.
+    """
+    op_result = {
+        "items": [
+            {"title": "Auth service", "section": "P1", "topic": "security", "type": "Feature", "body": ""},
+            {"title": "Deploy pipeline", "section": "P2", "topic": "infra", "type": "Chore", "body": ""},
+            {"title": "Auth token refresh", "section": "P1", "topic": "security", "type": "Bug", "body": ""},
+        ]
+    }
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"count_only": True, "search": "auth"})
+
+    assert response["count"] == 2, f"Expected 2 auth items, got {response['count']}"
+
+
+async def test_backlog_list_count_only_false_returns_full_response():
+    """backlog_list with count_only=False (default) returns the normal full response.
+
+    How: Call backlog_list without count_only (defaults False). Assert the
+    normal keys are present.
+    Why: Confirms the default behaviour is unchanged by the new parameter.
+    """
+    op_result = {"items": [{"title": "Item X", "section": "P1", "topic": "x", "type": "Feature", "body": ""}]}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    assert "items" in response
+    assert "pagination" in response
+    assert "count" in response
+
+
+# ---------------------------------------------------------------------------
+# Primitive 1: match_context flag on backlog_list
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_list_match_context_false_default_unchanged():
+    """backlog_list with match_context omitted produces identical response to current behaviour.
+
+    Tests: default=False contract — no 'matches' key on any item, no regression.
+    How: Call backlog_list without match_context. Assert no item has a 'matches' key.
+    Why: The default must be a pure no-op so all existing callers continue working.
+    """
+    items = [
+        {"title": "Auth token bug", "section": "P1", "topic": "security", "type": "Bug", "body": ""},
+        {"title": "Deploy pipeline", "section": "P2", "topic": "infra", "type": "Feature", "body": ""},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth"})
+
+    for item in response["items"]:
+        assert "matches" not in item, f"Item {item['title']!r} must not have 'matches' when match_context is False"
+
+
+async def test_backlog_list_match_context_true_returns_matches_key_per_item():
+    """backlog_list with match_context=True includes a 'matches' list on each returned item.
+
+    Tests: response shape when match_context is enabled — each item gets a non-empty matches list.
+    How: Call backlog_list with search='auth' and match_context=True. Assert every
+         returned item has a 'matches' key that is a non-empty list.
+    Why: match_context is the core contract — callers use the matches list to determine
+         where in the item a search term was found without fetching the full item body.
+    """
+    items = [{"title": "Auth token bug", "section": "P1", "topic": "security", "type": "Bug", "body": ""}]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth", "match_context": True})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "matches" in item, "Item must have a 'matches' key when match_context=True"
+    assert isinstance(item["matches"], list)
+    assert len(item["matches"]) > 0
+
+
+async def test_backlog_list_match_context_title_match_attributed_to_title_field():
+    """backlog_list match_context=True attributes a title match to field='title'.
+
+    Tests: field attribution for title matches — match entry must have field='title'.
+    How: Search for a term that only appears in the title. Assert the match entry
+         has field='title', term equal to the search term, and a non-empty snippet.
+    Why: Callers use the field value to decide whether to read more. A title match
+         means the item is likely a direct hit; callers can de-dup without fetching body.
+    """
+    items = [{"title": "Auth token bug", "section": "P1", "topic": "security", "type": "Bug", "body": ""}]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth", "match_context": True})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "matches" in item
+    title_matches = [m for m in item["matches"] if m.get("field") == "title"]
+    assert len(title_matches) > 0, "Expected at least one match attributed to 'title'"
+    match_entry = title_matches[0]
+    assert match_entry["term"] == "auth"
+    assert isinstance(match_entry["snippet"], str)
+    assert len(match_entry["snippet"]) > 0
+
+
+async def test_backlog_list_match_context_body_match_attributed_to_named_section():
+    """backlog_list match_context=True attributes a body match to its named section.
+
+    Tests: section attribution for body matches — field must be 'body:<section-name>'
+           not the bare string 'body'.
+    How: Provide an item whose body contains a section header followed by text containing
+         the search term. Assert the match entry field is 'body:<section-name>'.
+    Why: Section attribution is the key capability — 'body:acceptance-criteria' tells
+         the caller exactly where to look, enabling targeted backlog_view calls.
+    """
+    items = [
+        {
+            "title": "Pipeline feature",
+            "section": "P1",
+            "topic": "infra",
+            "type": "Feature",
+            "body": (
+                "## Description\nImplements the core pipeline.\n"
+                "## Acceptance Criteria\n- quality gate must pass before merging\n"
+                "## Notes\nLow priority."
+            ),
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "quality", "match_context": True})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "matches" in item
+    body_matches = [m for m in item["matches"] if m.get("field", "").startswith("body:")]
+    assert len(body_matches) > 0, "Expected at least one match attributed to a named body section"
+    match_entry = body_matches[0]
+    # field must identify the section, not just 'body'
+    assert match_entry["field"] != "body", f"Field must be 'body:<section>', got {match_entry['field']!r}"
+    assert "quality" in match_entry["snippet"].lower()
+
+
+async def test_backlog_list_match_context_multiple_terms_produce_multiple_matches():
+    """backlog_list match_context=True with two matching terms produces one match entry per term.
+
+    Tests: multi-term match context — each matching term gets its own entry in the matches list.
+    How: Search 'auth AND bug' against an item that has both terms. Assert the matches list
+         contains at least two entries (one per term).
+    Why: Callers need to know which terms matched where. A single matches entry for a
+         multi-term query cannot answer that question.
+    """
+    items = [{"title": "Auth token bug", "section": "P1", "topic": "security", "type": "Bug", "body": ""}]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth AND bug", "match_context": True})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "matches" in item
+    assert len(item["matches"]) >= 2, (
+        f"Expected ≥2 match entries for 'auth AND bug', got {len(item['matches'])}: {item['matches']}"
+    )
+
+
+async def test_backlog_list_match_context_match_entry_has_required_keys():
+    """backlog_list match_context=True every match entry contains 'field', 'term', 'snippet'.
+
+    Tests: match entry schema — all three required keys must be present on every entry.
+    How: Search for a single term with match_context=True. Assert each entry in the
+         matches list has exactly the keys field, term, and snippet.
+    Why: Callers depend on a stable schema. Missing keys produce KeyError in consumers.
+    """
+    items = [{"title": "Auth service", "section": "P1", "topic": "", "type": "Feature", "body": ""}]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth", "match_context": True})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    for match_entry in item["matches"]:
+        assert "field" in match_entry, f"match entry missing 'field': {match_entry}"
+        assert "term" in match_entry, f"match entry missing 'term': {match_entry}"
+        assert "snippet" in match_entry, f"match entry missing 'snippet': {match_entry}"
+
+
+# ---------------------------------------------------------------------------
+# Primitive 2: item_depth on backlog_list
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_list_item_depth_zero_default_response_unchanged():
+    """backlog_list with item_depth=0 (default) produces identical response to current.
+
+    Tests: depth=0 is a pure no-op — no extra keys on items, no regression.
+    How: Call backlog_list with item_depth=0 explicitly. Assert no item has
+         'description_snippet' or 'section_names' keys.
+    Why: depth=0 is the default contract. Existing callers must not be broken.
+    """
+    items = [{"title": "Auth service", "section": "P1", "topic": "", "type": "Feature", "body": ""}]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"item_depth": 0})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "description_snippet" not in item, "depth=0 must not add description_snippet"
+    assert "section_names" not in item, "depth=0 must not add section_names"
+
+
+async def test_backlog_list_item_depth_one_adds_description_snippet():
+    """backlog_list item_depth=1 adds a truncated description (≤300 chars) per item.
+
+    Tests: depth=1 response shape — description_snippet key present and ≤300 chars.
+    How: Provide an item with a 500-char description. Call with item_depth=1.
+         Assert description_snippet is present and its length is ≤300.
+    Why: depth=1 is the primary de-dup level — callers scan snippets to eliminate
+         non-matching candidates without fetching full items.
+    """
+    long_description = "A" * 500
+    items = [
+        {
+            "title": "Auth service",
+            "section": "P1",
+            "topic": "",
+            "type": "Feature",
+            "description": long_description,
+            "body": "",
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"item_depth": 1})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "description_snippet" in item, "depth=1 must add description_snippet"
+    assert len(item["description_snippet"]) <= 300, (
+        f"description_snippet must be ≤300 chars, got {len(item['description_snippet'])}"
+    )
+
+
+async def test_backlog_list_item_depth_one_adds_section_names():
+    """backlog_list item_depth=1 adds a list of section names present in the item.
+
+    Tests: depth=1 section_names key — list of strings naming every section.
+    How: Provide an item whose body contains two named sections. Call with item_depth=1.
+         Assert section_names is a list containing the expected section names.
+    Why: Callers use section_names to decide which section to fetch with backlog_view
+         without loading any section content.
+    """
+    items = [
+        {
+            "title": "Pipeline feature",
+            "section": "P1",
+            "topic": "",
+            "type": "Feature",
+            "description": "Implements core pipeline",
+            "body": "## Acceptance Criteria\n- passes CI\n## Impact Radius\n- affects deploy",
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"item_depth": 1})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "section_names" in item, "depth=1 must add section_names"
+    assert isinstance(item["section_names"], list)
+    assert len(item["section_names"]) >= 1
+
+
+async def test_backlog_list_item_depth_two_adds_full_description():
+    """backlog_list item_depth=2 adds the complete description (not truncated).
+
+    Tests: depth=2 description is full-length — no 300-char truncation.
+    How: Provide an item with a 500-char description. Call with item_depth=2.
+         Assert full_description is present and equals the original 500-char string.
+    Why: depth=2 gives callers enough context to make a de-dup decision for all but
+         the most ambiguous cases without fetching the full item.
+    """
+    long_description = "B" * 500
+    items = [
+        {
+            "title": "Auth service",
+            "section": "P1",
+            "topic": "",
+            "type": "Feature",
+            "description": long_description,
+            "body": "",
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"item_depth": 2})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "full_description" in item, "depth=2 must add full_description"
+    assert item["full_description"] == long_description
+
+
+async def test_backlog_list_item_depth_two_adds_section_first_lines():
+    """backlog_list item_depth=2 adds the first line of each section per item.
+
+    Tests: depth=2 section_first_lines key — dict mapping section name to first line.
+    How: Provide an item with two sections each having multiple lines. Call with item_depth=2.
+         Assert section_first_lines is a dict and each value is a single line (no newlines).
+    Why: First lines disambiguate sections — callers can skip unrelated sections and
+         use backlog_view(sections=[...]) to load only the relevant ones.
+    """
+    items = [
+        {
+            "title": "Pipeline feature",
+            "section": "P1",
+            "topic": "",
+            "type": "Feature",
+            "description": "Implements core pipeline",
+            "body": "## Acceptance Criteria\n- passes CI\n- green build\n## Impact Radius\n- affects deploy\n- requires restart",
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"item_depth": 2})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "section_first_lines" in item, "depth=2 must add section_first_lines"
+    assert isinstance(item["section_first_lines"], dict)
+    for section_name, first_line in item["section_first_lines"].items():
+        assert "\n" not in first_line, (
+            f"section_first_lines[{section_name!r}] must be a single line, got {first_line!r}"
+        )
+
+
+async def test_backlog_list_item_depth_three_returns_full_item_content():
+    """backlog_list item_depth=3 includes full item content equivalent to backlog_view.
+
+    Tests: depth=3 includes body key with the complete item body text.
+    How: Provide an item with body text. Call with item_depth=3.
+         Assert the returned item has a 'body' key equal to the source body.
+    Why: depth=3 allows callers to get full item content in a list call, avoiding
+         a separate backlog_view call for items they will definitely read in full.
+    """
+    body_text = "## Description\nFull content here.\n## Acceptance Criteria\n- all tests pass"
+    items = [
+        {
+            "title": "Auth service",
+            "section": "P1",
+            "topic": "",
+            "type": "Feature",
+            "description": "Auth implementation",
+            "body": body_text,
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"item_depth": 3})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "body" in item, "depth=3 must include 'body' key with full item content"
+    assert item["body"] == body_text
+
+
+async def test_backlog_list_item_depth_zero_omitted_is_same_as_explicit_zero():
+    """backlog_list item_depth omitted is identical to item_depth=0 — no extra keys.
+
+    Tests: the default value is 0 and produces the same output as explicit depth=0.
+    How: Call backlog_list twice — once without item_depth, once with item_depth=0.
+         Assert both item shapes are identical (no depth-specific keys).
+    Why: The default must be backward-compatible. Introducing item_depth must not
+         change the response shape for any caller that does not pass the parameter.
+    """
+    items = [{"title": "Item A", "section": "P1", "topic": "", "type": "Feature", "body": ""}]
+    op_result = {"items": items}
+    depth_keys = {"description_snippet", "section_names", "full_description", "section_first_lines"}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response_default = await _call("backlog_list", {})
+        response_zero = await _call("backlog_list", {"item_depth": 0})
+
+    for item in response_default["items"]:
+        for key in depth_keys:
+            assert key not in item, f"Default call must not have '{key}'"
+    for item in response_zero["items"]:
+        for key in depth_keys:
+            assert key not in item, f"item_depth=0 call must not have '{key}'"
+
+
+async def test_backlog_list_match_context_and_item_depth_one_no_body_leak():
+    """match_context=True combined with item_depth=1 must not return body in the response.
+
+    Tests: the call-order interaction — _enrich_with_match_context runs before
+    _apply_item_depth, so match snippets are extracted from body before depth=1
+    removes it. If the order were reversed, body would survive in the response.
+
+    How: Provide an item with a large body containing the search term. Call with
+         match_context=True AND item_depth=1. Assert body is absent, matches is
+         present, and description_snippet is present.
+    Why: Regression guard for the feature interaction bug where body (53KB in
+         production) reappeared when both parameters were used together.
+    """
+    body_text = "## Background\n\nThis improves quality and testing coverage.\n" + "x" * 500
+    items = [
+        {
+            "title": "Quality improvement",
+            "section": "P1",
+            "topic": "",
+            "type": "Feature",
+            "description": "Improve quality and testing",
+            "body": body_text,
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "quality", "match_context": True, "item_depth": 1})
+
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "body" not in item, "item_depth=1 must remove body even when match_context=True"
+    assert "matches" in item, "match_context=True must add matches key"
+    assert len(item["matches"]) > 0, "search term 'quality' must produce at least one match"
+    assert "description_snippet" in item, "item_depth=1 must add description_snippet"
+
+
+# ---------------------------------------------------------------------------
+# Primitive 3: sections parameter on backlog_view
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_view_sections_none_default_returns_unchanged_response():
+    """backlog_view with sections=None (default) returns the full response unchanged.
+
+    Tests: default=None contract — sections parameter is a pure opt-in, no regression.
+    How: Call backlog_view without sections param. Assert full title and body keys present.
+    Why: All existing callers omit sections. The default must preserve their response shape.
+    """
+    op_result = _make_view_result({
+        "title": "Auth service",
+        "priority": "P1",
+        "body": "## Description\nFull body.\n## Acceptance Criteria\n- tests pass",
+        "sections": {
+            "Description": {"num_entries": 1, "num_struck": 0, "entries": []},
+            "Acceptance Criteria": {"num_entries": 1, "num_struck": 0, "entries": []},
+        },
+    })
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#42", "summary": False})
+
+    assert response["title"] == "Auth service"
+    assert "body" in response
+
+
+async def test_backlog_view_sections_single_section_returns_only_that_section():
+    """backlog_view sections=['description'] returns only the description section plus identity fields.
+
+    Tests: single-section filter — only the requested section is in the response body/sections.
+    How: Provide an item with two sections. Request sections=['description'].
+         Assert the response contains description data and does not contain the other section.
+    Why: Targeted section reads reduce token consumption when callers only need one
+         discriminating section (e.g., 'description' for de-dup checks).
+    """
+    op_result = _make_view_result({
+        "title": "Auth service",
+        "priority": "P1",
+        "number": 42,
+        "status": "open",
+        "state": "open",
+        "body": "## Description\nFull auth description.\n## Acceptance Criteria\n- tests pass",
+        "sections": {
+            "description": {
+                "num_entries": 1,
+                "num_struck": 0,
+                "entries": [{"id": "e1", "struck": False, "content": "Full auth description."}],
+            },
+            "acceptance-criteria": {
+                "num_entries": 1,
+                "num_struck": 0,
+                "entries": [{"id": "e2", "struck": False, "content": "tests pass"}],
+            },
+        },
+    })
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#42", "summary": False, "sections": ["description"]})
+
+    # Identity fields always included
+    assert response["title"] == "Auth service"
+    assert response["number"] == 42
+    # Sections dict should only contain the requested section
+    if response.get("sections"):
+        assert "acceptance-criteria" not in response["sections"], (
+            "Non-requested section 'acceptance-criteria' must be excluded"
+        )
+
+
+async def test_backlog_view_sections_multiple_sections_returns_all_requested():
+    """backlog_view sections=['description', 'acceptance-criteria'] returns both requested sections.
+
+    Tests: multi-section filter — all requested sections are present, unrequested ones absent.
+    How: Provide an item with three sections. Request two of them.
+         Assert both requested sections are present and the third is absent.
+    Why: De-dup workflow needs description + acceptance criteria in one targeted call.
+    """
+    op_result = _make_view_result({
+        "title": "Pipeline feature",
+        "priority": "P1",
+        "number": 99,
+        "state": "open",
+        "body": (
+            "## Description\nCore pipeline implementation.\n"
+            "## Acceptance Criteria\n- CI passes\n"
+            "## Impact Radius\n- affects deploy"
+        ),
+        "sections": {
+            "description": {"num_entries": 1, "num_struck": 0, "entries": []},
+            "acceptance-criteria": {"num_entries": 1, "num_struck": 0, "entries": []},
+            "impact-radius": {"num_entries": 1, "num_struck": 0, "entries": []},
+        },
+    })
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call(
+            "backlog_view", {"selector": "#99", "summary": False, "sections": ["description", "acceptance-criteria"]}
+        )
+
+    assert response["title"] == "Pipeline feature"
+    if response.get("sections"):
+        assert "impact-radius" not in response["sections"], "Unrequested section 'impact-radius' must be excluded"
+
+
+async def test_backlog_view_sections_invalid_section_name_silently_omitted():
+    """backlog_view sections with an invalid name silently omits it — no error raised.
+
+    Tests: invalid section name handling — response has no error key, response is valid.
+    How: Request a section name that does not exist on the item. Assert no error key
+         in the response and identity fields are still present.
+    Why: Items have dynamic section names. Callers should not crash when requesting a
+         section that a particular item does not have (e.g., not all items have 'impact-radius').
+    """
+    op_result = _make_view_result({
+        "title": "Auth service",
+        "priority": "P1",
+        "number": 42,
+        "state": "open",
+        "body": "## Description\nContent here.",
+        "sections": {"description": {"num_entries": 1, "num_struck": 0, "entries": []}},
+    })
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call(
+            "backlog_view", {"selector": "#42", "summary": False, "sections": ["nonexistent-section-xyz"]}
+        )
+
+    assert "error" not in response, f"Must not return an error for invalid section name, got: {response.get('error')}"
+    assert response["title"] == "Auth service"
+
+
+async def test_backlog_view_sections_always_includes_identity_fields():
+    """backlog_view sections filter always includes number, title, status, type, priority.
+
+    Tests: always-included identity fields — present regardless of which sections are requested.
+    How: Request a single content section. Assert number, title, status, type, and priority
+         are all in the response.
+    Why: Callers need identity fields to confirm they have the right item, even in
+         targeted reads. These fields are the minimum required for any consumer.
+    """
+    op_result = _make_view_result({
+        "title": "Auth service",
+        "priority": "P1",
+        "number": 42,
+        "status": "needs-grooming",
+        "state": "open",
+        "body": "## Description\nContent.",
+        "sections": {"description": {"num_entries": 1, "num_struck": 0, "entries": []}},
+    })
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#42", "summary": False, "sections": ["description"]})
+
+    assert "title" in response, "title must always be present in sections-filtered response"
+    assert "number" in response, "number must always be present in sections-filtered response"
+    assert "priority" in response, "priority must always be present in sections-filtered response"

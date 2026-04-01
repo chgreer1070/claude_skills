@@ -2192,6 +2192,7 @@ def _build_list_entry(item: BacklogItem, status_map: dict[int, IssueStatus]) -> 
         "plan": item.plan,
         "type": item.type_,
         "topic": item.topic,
+        "description": item.description,
         "body": _build_item_search_body(item),
     }
     if item.file_path:

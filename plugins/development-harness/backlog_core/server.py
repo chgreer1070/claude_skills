@@ -53,7 +53,7 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Callable
 
     from .operations import ImpactRadiusItem as _ImpactRadiusItem
 
@@ -214,22 +214,232 @@ def _item_matches_term(item: dict[str, str | bool], term: str, haystack: str | N
     return needle in hs
 
 
+# ---------------------------------------------------------------------------
+# Search expression AST — predicates defined first so the parser can annotate
+# return types without forward references.
+# ---------------------------------------------------------------------------
+
+
+class _Predicate:
+    """Base class for search predicates.
+
+    Subclasses implement ``__call__(item, haystack) -> bool``.
+    """
+
+    def __call__(self, item: dict[str, str | bool], haystack: str) -> bool:
+        """Evaluate the predicate against a single backlog item.
+
+        Args:
+            item: Backlog item dict.
+            haystack: Pre-computed full-text string from ``_build_haystack``.
+
+        Returns:
+            True if the item matches the predicate.
+        """
+        raise NotImplementedError
+
+
+@dataclasses.dataclass
+class _TermPred(_Predicate):
+    """Match a single leaf term against an item."""
+
+    term: str
+
+    def __call__(self, item: dict[str, str | bool], haystack: str) -> bool:
+        return _item_matches_term(item, self.term, haystack)
+
+
+@dataclasses.dataclass
+class _AndPred(_Predicate):
+    """Conjunction: both sub-predicates must match."""
+
+    left: _Predicate
+    right: _Predicate
+
+    def __call__(self, item: dict[str, str | bool], haystack: str) -> bool:
+        return self.left(item, haystack) and self.right(item, haystack)
+
+
+@dataclasses.dataclass
+class _OrPred(_Predicate):
+    """Disjunction: at least one sub-predicate must match."""
+
+    left: _Predicate
+    right: _Predicate
+
+    def __call__(self, item: dict[str, str | bool], haystack: str) -> bool:
+        return self.left(item, haystack) or self.right(item, haystack)
+
+
+@dataclasses.dataclass
+class _NotPred(_Predicate):
+    """Negation: the sub-predicate must not match."""
+
+    operand: _Predicate
+
+    def __call__(self, item: dict[str, str | bool], haystack: str) -> bool:
+        return not self.operand(item, haystack)
+
+
+class _TruePred(_Predicate):
+    """Always-true predicate used as a safe no-op fallback."""
+
+    def __call__(self, item: dict[str, str | bool], haystack: str) -> bool:
+        return True
+
+
+# ---------------------------------------------------------------------------
+# Tokenizer and recursive-descent parser
+# ---------------------------------------------------------------------------
+
+
+def _tokenize_search(search: str) -> list[str]:
+    """Tokenize a search query into a flat list of tokens.
+
+    Tokens are one of: ``(``, ``)``, ``AND``, ``OR``, ``NOT``, or a bare term
+    string.  Keywords are matched case-insensitively and emitted in uppercase.
+    Whitespace between tokens is consumed.  Terms that contain colons (field
+    prefixes), slashes (regex), or other non-keyword text are preserved as-is.
+
+    Args:
+        search: Raw search query string.
+
+    Returns:
+        List of string tokens.
+    """
+    tokens: list[str] = []
+    i = 0
+    n = len(search)
+    while i < n:
+        if search[i].isspace():
+            i += 1
+            continue
+        if search[i] in "()":
+            tokens.append(search[i])
+            i += 1
+            continue
+        j = i
+        while j < n and not search[j].isspace() and search[j] not in "()":
+            j += 1
+        word = search[i:j]
+        upper = word.upper()
+        tokens.append(upper if upper in {"AND", "OR", "NOT"} else word)
+        i = j
+    return tokens
+
+
+class _SearchParser:
+    """Recursive descent parser for search queries.
+
+    Grammar (precedence: NOT > AND > OR)::
+
+        expr     := or_expr
+        or_expr  := and_expr ( OR and_expr )*
+        and_expr := not_expr ( AND not_expr )*
+        not_expr := NOT not_expr | atom
+        atom     := LPAREN expr RPAREN | TERM
+
+    The parse result is a ``_Predicate`` callable ``(item, haystack) -> bool``.
+    """
+
+    def __init__(self, tokens: list[str]) -> None:
+        self._tokens = tokens
+        self._pos = 0
+
+    def _peek(self) -> str | None:
+        """Return the next token without consuming it, or None at end-of-input."""
+        if self._pos < len(self._tokens):
+            return self._tokens[self._pos]
+        return None
+
+    def _consume(self) -> str:
+        """Consume and return the next token.
+
+        Returns:
+            The token at the current position.
+        """
+        tok = self._tokens[self._pos]
+        self._pos += 1
+        return tok
+
+    def parse(self) -> _Predicate:
+        """Parse all tokens and return a root predicate.
+
+        Remaining unparsed tokens after the top-level ``or_expr`` are joined
+        with implicit AND so that malformed partial queries still match
+        sensibly rather than silently ignoring trailing terms.
+
+        Returns:
+            Callable predicate representing the full expression.
+        """
+        pred = self._parse_or()
+        while self._peek() is not None and self._peek() not in {")", "OR"}:
+            if self._peek() == "AND":
+                self._consume()
+            right = self._parse_not()
+            pred = _AndPred(pred, right)
+        return pred
+
+    def _parse_or(self) -> _Predicate:
+        left = self._parse_and()
+        while self._peek() == "OR":
+            self._consume()
+            right = self._parse_and()
+            left = _OrPred(left, right)
+        return left
+
+    def _parse_and(self) -> _Predicate:
+        left = self._parse_not()
+        while self._peek() == "AND":
+            self._consume()
+            right = self._parse_not()
+            left = _AndPred(left, right)
+        return left
+
+    def _parse_not(self) -> _Predicate:
+        if self._peek() == "NOT":
+            self._consume()
+            operand = self._parse_not()
+            return _NotPred(operand)
+        return self._parse_atom()
+
+    def _parse_atom(self) -> _Predicate:
+        tok = self._peek()
+        if tok == "(":
+            self._consume()
+            pred = self._parse_or()
+            if self._peek() == ")":
+                self._consume()
+            return pred
+        if tok is not None and tok not in {"AND", "OR", "NOT", ")"}:
+            self._consume()
+            return _TermPred(tok)
+        # Empty or unexpected token — safe no-op fallback.
+        return _TruePred()
+
+
 def _apply_search_filter(items: list[dict[str, str | bool]], search: str) -> list[dict[str, str | bool]]:
     """Filter items using the full-text search query syntax.
 
-    Query syntax (case-insensitive keywords):
+    Query syntax (operator precedence: NOT > AND > OR):
+
     - ``term1 OR term2``  — item matches if either term matches.
     - ``term1 AND term2`` — item matches only if both terms match.
-    - Bare text without AND/OR — original substring behaviour (single term).
+    - ``NOT term`` — item matches only if the term does *not* match.
+    - ``(term1 OR term2) AND term3`` — parenthetical grouping controls precedence.
+    - Bare text without operators — original substring behaviour (single term).
 
-    OR and AND keywords are whitespace-delimited and case-insensitive.  Mixed
-    AND/OR in a single query is not supported; AND takes precedence when both
-    appear.
+    Operators are whitespace-delimited and case-insensitive.
 
     Each individual term supports:
+
     - ``/regex/`` or ``regex:pattern`` — regex match
     - ``field:value`` — field-specific substring match
     - plain text — substring match across all default fields
+
+    Args:
+        items: Backlog item dicts to filter.
+        search: Query string.
 
     Returns:
         Filtered list of items that match the search query.
@@ -238,30 +448,368 @@ def _apply_search_filter(items: list[dict[str, str | bool]], search: str) -> lis
     if not search:
         return items
 
-    # Tokenise on whitespace-delimited AND / OR operators (case-insensitive).
-    upper = search.upper()
-    if " AND " in upper:
-        # Split on first-level AND; each part is a term (may itself contain spaces
-        # for field:value terms like "title:auth deploy").
-        and_parts = _re.split(r"(?i)\s+AND\s+", search)
-        result = []
-        for item in items:
-            hs = _build_haystack(item)
-            if all(_item_matches_term(item, part, hs) for part in and_parts):
-                result.append(item)
-        return result
+    tokens = _tokenize_search(search)
+    parser = _SearchParser(tokens)
+    predicate = parser.parse()
 
-    if " OR " in upper:
-        or_parts = _re.split(r"(?i)\s+OR\s+", search)
-        result = []
-        for item in items:
-            hs = _build_haystack(item)
-            if any(_item_matches_term(item, part, hs) for part in or_parts):
-                result.append(item)
-        return result
+    result = []
+    for item in items:
+        hs = _build_haystack(item)
+        if predicate(item, hs):
+            result.append(item)
+    return result
 
-    # No operator — treat entire query as a single term (existing behaviour).
-    return [item for item in items if _item_matches_term(item, search, _build_haystack(item))]
+
+# ---------------------------------------------------------------------------
+# Primitive 1: match_context helpers
+# ---------------------------------------------------------------------------
+
+# Snippet window: characters before and after the match position.
+_SNIPPET_WINDOW = 60
+
+
+def _parse_body_sections(body: str) -> list[tuple[str, str]]:
+    """Parse a markdown body string into (section_slug, text) tuples.
+
+    Splits on ``## Heading`` lines. Text before the first heading is attributed
+    to ``"body:preamble"``.
+
+    Args:
+        body: Raw markdown body string.
+
+    Returns:
+        List of (section_slug, text) pairs in document order.
+    """
+    sections: list[tuple[str, str]] = []
+    current_slug = "body:preamble"
+    current_parts: list[str] = []
+    for line in body.splitlines(keepends=True):
+        if line.startswith("## "):
+            if current_parts:
+                sections.append((current_slug, "".join(current_parts)))
+            heading = line[3:].strip()
+            current_slug = "body:" + heading.lower().replace(" ", "-")
+            current_parts = []
+        else:
+            current_parts.append(line)
+    if current_parts:
+        sections.append((current_slug, "".join(current_parts)))
+    return sections
+
+
+def _make_snippet(text: str, start: int, end: int) -> str:
+    """Extract a snippet around a match position.
+
+    Args:
+        text: The full text in which the match was found.
+        start: Match start index.
+        end: Match end (exclusive) index.
+
+    Returns:
+        Up to 2*_SNIPPET_WINDOW + (end-start) characters centred on the match.
+    """
+    snip_start = max(0, start - _SNIPPET_WINDOW)
+    snip_end = min(len(text), end + _SNIPPET_WINDOW)
+    snippet = text[snip_start:snip_end]
+    if snip_start > 0:
+        snippet = "..." + snippet
+    if snip_end < len(text):
+        snippet += "..."
+    return snippet
+
+
+_META_FIELDS: tuple[str, ...] = ("title", "section", "topic", "type")
+
+
+def _match_body_sections(
+    item: dict[str, str | bool], term: str, needle_fn: Callable[[str], tuple[int, int] | None]
+) -> list[dict[str, str]]:
+    """Return match entries for all body sections where needle_fn returns a span.
+
+    Args:
+        item: Backlog item dict.
+        term: The original search term (stored in each match entry).
+        needle_fn: Callable that takes a text string and returns a (start, end)
+            span tuple on match, or ``None`` when there is no match.
+
+    Returns:
+        List of match-context dicts for body sections that matched.
+    """
+    body_str = str(item.get("body", "") or "")
+    matches: list[dict[str, str]] = []
+    for section_slug, section_text in _parse_body_sections(body_str):
+        span = needle_fn(section_text)
+        if span is not None:
+            matches.append({"field": section_slug, "term": term, "snippet": _make_snippet(section_text, *span)})
+    return matches
+
+
+def _collect_regex_matches(item: dict[str, str | bool], term: str, pattern_str: str) -> list[dict[str, str]] | None:
+    """Collect matches for a regex term.
+
+    Args:
+        item: Backlog item dict.
+        term: The original search term.
+        pattern_str: Raw regex pattern extracted from the term.
+
+    Returns:
+        List of match-context dicts, or ``None`` if the regex is invalid
+        (caller should fall through to plain-text matching).
+    """
+    try:
+        pattern = _re.compile(pattern_str, _re.IGNORECASE)
+    except _re.error:
+        return None
+    matches: list[dict[str, str]] = []
+    for field in _META_FIELDS:
+        field_text = str(item.get(field, "") or "")
+        m = pattern.search(field_text)
+        if m:
+            matches.append({"field": field, "term": term, "snippet": _make_snippet(field_text, m.start(), m.end())})
+    matches.extend(
+        _match_body_sections(item, term, lambda t: (m.start(), m.end()) if (m := pattern.search(t)) else None)
+    )
+    return matches
+
+
+def _collect_field_matches(
+    item: dict[str, str | bool], term: str, field_name: str, value_needle: str
+) -> list[dict[str, str]]:
+    """Collect matches for a field:value term.
+
+    Args:
+        item: Backlog item dict.
+        term: The original search term.
+        field_name: The field to search (e.g. ``"title"``, ``"body"``).
+        value_needle: Casefolded substring to find.
+
+    Returns:
+        List of match-context dicts.
+    """
+    if field_name == "body":
+        return _match_body_sections(
+            item,
+            term,
+            lambda t: (pos, pos + len(value_needle)) if (pos := t.casefold().find(value_needle)) != -1 else None,
+        )
+    field_text = str(item.get(field_name, "") or "")
+    pos = field_text.casefold().find(value_needle)
+    if pos != -1:
+        return [{"field": field_name, "term": term, "snippet": _make_snippet(field_text, pos, pos + len(value_needle))}]
+    return []
+
+
+def _collect_plain_matches(item: dict[str, str | bool], term: str) -> list[dict[str, str]]:
+    """Collect matches for a plain-text term across all fields.
+
+    Args:
+        item: Backlog item dict.
+        term: The original search term (used as the needle after casefolding).
+
+    Returns:
+        List of match-context dicts.
+    """
+    needle = term.casefold()
+    matches: list[dict[str, str]] = []
+    for field in _META_FIELDS:
+        field_text = str(item.get(field, "") or "")
+        pos = field_text.casefold().find(needle)
+        if pos != -1:
+            matches.append({"field": field, "term": term, "snippet": _make_snippet(field_text, pos, pos + len(needle))})
+    matches.extend(
+        _match_body_sections(
+            item, term, lambda t: (pos, pos + len(needle)) if (pos := t.casefold().find(needle)) != -1 else None
+        )
+    )
+    return matches
+
+
+def _collect_match_context(item: dict[str, str | bool], term: str) -> list[dict[str, str]]:
+    """Return match context entries for *term* against *item*.
+
+    Each returned dict has ``field``, ``term``, and ``snippet`` keys.
+    Body matches are attributed to the named markdown section (e.g.
+    ``"body:acceptance-criteria"``), not the bare string ``"body"``.
+
+    Args:
+        item: Backlog item dict.
+        term: A single search term (no AND/OR/NOT operators).
+
+    Returns:
+        List of match-context dicts (empty when the term does not match).
+    """
+    term = term.strip()
+    if not term:
+        return []
+
+    # Regex form: /pattern/ or regex:pattern
+    if (term.startswith("/") and term.endswith("/") and len(term) > _REGEX_SLASH_MIN_LEN) or term.startswith("regex:"):
+        pattern_str = term[1:-1] if term.startswith("/") else term[len("regex:") :]
+        result = _collect_regex_matches(item, term, pattern_str)
+        if result is not None:
+            return result
+        # Invalid regex — fall through to plain text.
+
+    # Field-specific form: field:value
+    if ":" in term:
+        field, _, value = term.partition(":")
+        field_name = field.strip().lower()
+        value_needle = value.strip().casefold()
+        if field_name in _SEARCH_FIELDS:
+            return _collect_field_matches(item, term, field_name, value_needle)
+        # Unknown field prefix — fall through to plain text.
+
+    return _collect_plain_matches(item, term)
+
+
+def _extract_leaf_terms(search: str) -> list[str]:
+    """Extract all leaf (non-operator) terms from a search query string.
+
+    Args:
+        search: Raw search query string.
+
+    Returns:
+        List of term strings in left-to-right order.
+    """
+    OPERATORS = frozenset({"AND", "OR", "NOT"})
+    tokens = _tokenize_search(search)
+    return [t for t in tokens if t not in OPERATORS and t not in {"(", ")"}]
+
+
+def _enrich_with_match_context(items: list[dict[str, str | bool]], search: str | None) -> list[dict[str, object]]:
+    """Add ``matches`` key to each item based on the search query terms.
+
+    Only items that already passed the search filter are enriched.
+
+    Args:
+        items: Items filtered by ``_apply_search_filter``.
+        search: The original search query string, or ``None``.
+
+    Returns:
+        New list of dicts (widened to ``dict[str, object]``) with ``matches``
+        added to each item.
+    """
+    enriched: list[dict[str, object]] = []
+    terms = _extract_leaf_terms(search) if search else []
+    for item in items:
+        wide: dict[str, object] = dict(item)
+        all_matches: list[dict[str, str]] = []
+        for term in terms:
+            all_matches.extend(_collect_match_context(item, term))
+        wide["matches"] = all_matches
+        enriched.append(wide)
+    return enriched
+
+
+# ---------------------------------------------------------------------------
+# Primitive 2: item_depth helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_body_section_names(body: str) -> list[str]:
+    """Return the list of section names present in a markdown body string.
+
+    Args:
+        body: Raw markdown body string.
+
+    Returns:
+        List of section heading strings in document order.
+    """
+    return [line[3:].strip() for line in body.splitlines() if line.startswith("## ")]
+
+
+def _parse_body_section_first_lines(body: str) -> dict[str, str]:
+    """Return a mapping of section name to the first non-empty content line.
+
+    Args:
+        body: Raw markdown body string.
+
+    Returns:
+        Dict mapping section heading to first non-empty content line.
+    """
+    result: dict[str, str] = {}
+    current_heading: str | None = None
+    found_first: bool = False
+    for line in body.splitlines():
+        if line.startswith("## "):
+            current_heading = line[3:].strip()
+            found_first = False
+            result[current_heading] = ""
+        elif current_heading is not None and not found_first and line.strip():
+            result[current_heading] = line.strip()
+            found_first = True
+    return result
+
+
+# Minimum depth level that adds full description and section previews.
+_ITEM_DEPTH_FULL: int = 2
+
+# Depth level that retains the raw body field (full item content).
+_ITEM_DEPTH_BODY: int = 3
+
+# Maximum description snippet length for item_depth=1.
+_DESCRIPTION_SNIPPET_LEN: int = 300
+
+
+def _apply_item_depth(item: dict[str, object], depth: int) -> dict[str, object]:
+    """Augment a list-entry item dict according to the requested depth level.
+
+    - ``0`` -- no changes (returns item cast to dict[str, object]).
+    - ``1`` -- adds ``description_snippet`` (<=300 chars) and ``section_names``.
+    - ``2`` -- adds ``full_description`` and ``section_first_lines``.
+    - ``3`` -- body already in the dict; no additional mutation.
+
+    Args:
+        item: A single backlog list entry dict.
+        depth: Requested depth level (0-3).
+
+    Returns:
+        New dict widened to ``dict[str, object]`` with depth-specific keys added.
+    """
+    wide: dict[str, object] = dict(item)
+    if depth <= 0:
+        return wide
+    body = str(item.get("body", "") or "")
+    description = str(item.get("description", "") or "")
+    if depth >= 1:
+        wide["description_snippet"] = description[:_DESCRIPTION_SNIPPET_LEN]
+        wide["section_names"] = _parse_body_section_names(body)
+    if depth >= _ITEM_DEPTH_FULL:
+        wide["full_description"] = description
+        wide["section_first_lines"] = _parse_body_section_first_lines(body)
+    # depth 1 and 2: remove body (replaced by structured depth fields above).
+    # depth 3: body is the full content — retain it for callers that need it.
+    if depth < _ITEM_DEPTH_BODY:
+        wide.pop("body", None)
+    return wide
+
+
+# ---------------------------------------------------------------------------
+# Primitive 3: backlog_view section filter
+# ---------------------------------------------------------------------------
+
+_VIEW_ALWAYS_INCLUDE: frozenset[str] = frozenset({"number", "title", "status", "type", "priority"})
+
+
+def _filter_view_sections(response: dict[str, object], sections: list[str]) -> dict[str, object]:
+    """Filter the backlog_view response to only the requested sections.
+
+    Identity fields (number, title, status, type, priority) are always included.
+    The ``sections`` dict in the response is filtered to the named keys only.
+    All other top-level keys are preserved.
+
+    Args:
+        response: Full serialised ViewItemResult dict.
+        sections: List of section name strings to include.
+
+    Returns:
+        Filtered response dict (same object, mutated in place).
+    """
+    requested: frozenset[str] = frozenset(sections)
+    raw_sections = response.get("sections")
+    if isinstance(raw_sections, dict):
+        response["sections"] = {k: v for k, v in raw_sections.items() if k in requested}
+    return response
 
 
 def _parse_args() -> argparse.Namespace:
@@ -429,12 +977,12 @@ async def backlog_list(
             description=(
                 "Full-text search across the complete item content — title, section, topic, "
                 "type, description, acceptance criteria, and all section body text. "
-                "Supports OR/AND operators (e.g. 'auth OR deploy'), "
+                "Supports OR/AND/NOT operators (e.g. 'auth OR deploy', 'backlog NOT quality'), "
+                "parenthetical grouping ('(auth OR deploy) AND quality'), "
                 "regex patterns (/pattern/ or regex:pattern), "
                 "field-specific search (title:auth, type:bug, topic:devops, section:P1, body:sdlc-layers), "
                 "and plain case-insensitive substring matching. "
-                "OR/AND are whitespace-delimited and case-insensitive. "
-                "Mixed AND/OR in a single query is not supported; AND takes precedence. "
+                "Operator precedence: NOT > AND > OR. "
                 "Combine with other filters (section=, type=, topic=) to narrow results further."
             )
         ),
@@ -452,6 +1000,41 @@ async def backlog_list(
             ),
         ),
     ] = 0,
+    count_only: Annotated[
+        bool,
+        Field(
+            description=(
+                'When True, return only {"count": N} without fetching item content. '
+                "Use to check result-set size before committing to a full fetch."
+            )
+        ),
+    ] = False,
+    match_context: Annotated[
+        bool,
+        Field(
+            description=(
+                "When True, each returned item includes a 'matches' list showing where search "
+                "terms were found (field, term, snippet). Body matches are attributed to the named "
+                "section (e.g. 'body:acceptance-criteria'). Only meaningful when search is also set. "
+                "Default False preserves the existing response shape."
+            )
+        ),
+    ] = False,
+    item_depth: Annotated[
+        int,
+        Field(
+            ge=0,
+            le=3,
+            description=(
+                "Controls how much content is returned per item. "
+                "0 (default): compact format — number, title, status, type, priority only. "
+                "1: adds description_snippet (first 300 chars) and section_names list. "
+                "2: adds full_description and section_first_lines dict. "
+                "3: full item content including complete body. "
+                "Use depth=3 only with small limit values (≤5) to avoid large responses."
+            ),
+        ),
+    ] = 0,
 ) -> dict:
     """List all open backlog items.
 
@@ -465,8 +1048,10 @@ async def backlog_list(
     Use include_closed=true to include items with terminal status (done, resolved, closed).
     Use search for full-text search across the complete item content (title, section, topic,
     type, description, and all section body text including acceptance criteria and impact radius).
-    Search supports OR/AND operators (e.g. 'auth OR deploy'), regex (/pattern/ or regex:pattern),
+    Search supports OR/AND/NOT operators (e.g. 'auth OR deploy', 'backlog NOT quality'),
+    parenthetical grouping ((auth OR deploy) AND quality), regex (/pattern/ or regex:pattern),
     field-specific syntax (title:auth, type:bug, topic:devops, body:sdlc-layers), and plain substring matching.
+    Use count_only=true to return only {"count": N} without fetching item content.
     Use offset and limit to paginate results. When limit=0, auto-pagination keeps the
     response under 4400 tokens (cl100k_base encoding). When has_more=true, call again
     with the offset shown in next_call.
@@ -476,6 +1061,7 @@ async def backlog_list(
         Each item includes state (open/closed) and status (workflow status from status:* labels).
         pagination contains offset, limit, total, and has_more. When has_more=true,
         next_call provides the suggested follow-up call string.
+        When count_only=True, returns only {"count": N}.
         On error, dict contains an error key.
     """
     out = Output()
@@ -512,6 +1098,10 @@ async def backlog_list(
 
     total = len(all_items)
 
+    # count_only short-circuit: return only the item count without page content.
+    if count_only:
+        return {"count": total}
+
     # ADR-5: cache_open_count reflects the same filter as the items list.
     backend_status.cache_open_count = total
 
@@ -536,11 +1126,22 @@ async def backlog_list(
     page_items = all_items[offset : offset + effective_limit]
     has_more = (offset + effective_limit) < total
 
+    # Primitive 2 and 1: enrich page items when depth or match context is requested.
+    # Order matters: match context must read body BEFORE item_depth removes it.
+    # Step 1 — add match snippets (reads body from original page_items)
+    # Step 2 — apply depth (may remove body from the already-enriched items)
+    # Use a widened list type to accommodate the richer value types added by enrichment.
+    enriched_items: list[dict[str, object]] | list[dict[str, str | bool]]
+    enriched_items = _enrich_with_match_context(page_items, search) if match_context else page_items
+
+    if item_depth > 0:
+        enriched_items = [_apply_item_depth(dict(it), item_depth) for it in enriched_items]
+
     pagination: dict = {"offset": offset, "limit": effective_limit, "total": total, "has_more": has_more}
     response: dict = {
         **result,
-        "items": page_items,
-        "count": len(page_items),
+        "items": enriched_items,
+        "count": len(enriched_items),
         "pagination": pagination,
         "backend": backend_status.model_dump(),
         **out.to_dict(),
@@ -630,6 +1231,17 @@ async def backlog_view(
             )
         ),
     ] = None,
+    sections: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "When provided, filter the returned sections dict to only the named sections. "
+                "Identity fields (number, title, status, type, priority) are always included. "
+                "Invalid or missing section names are silently omitted — no error is raised. "
+                "Default None returns the full response unchanged."
+            )
+        ),
+    ] = None,
 ) -> dict:
     """View a single backlog item or GitHub issue in detail.
 
@@ -642,6 +1254,8 @@ async def backlog_view(
     a compact routing manifest that always includes sections_index so callers know
     exactly which sections exist before deciding what to load.
     Use section to filter the response to specific sections by index, title, or regex.
+    Use sections=[...] to return only the named sections plus identity fields
+    (number, title, status, type, priority).
 
     Progressive disclosure pattern:
         Step 1 — call with summary=True (default) to get sections_index and metadata.
@@ -680,6 +1294,9 @@ async def backlog_view(
         )
         full_response = result.model_dump()
         if not summary:
+            # Primitive 3: filter to named sections when requested.
+            if sections is not None:
+                full_response = _filter_view_sections(full_response, sections)
             return full_response
         return _build_compact_manifest(result, full_response, selector)
     except BacklogError as e:
