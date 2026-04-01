@@ -19,10 +19,12 @@ from backlog_core.models import (
     BacklogItem,
     BacklogItemMetadata,
     DuplicateItemError,
+    GroomedSectionMetadata,
     IssueStatus,
     ItemNotFoundError,
     Output,
     PullRequestRef,
+    SectionEntryMetadata,
     ValidationError,
     ViewItemResult,
 )
@@ -521,8 +523,9 @@ class TestViewItem:
         sections = result.sections
         assert isinstance(sections, dict), "sections must be a dict"
         assert "Decision" in sections, f"Expected 'Decision' in sections, got: {list(sections.keys())}"
-        assert sections["Decision"]["num_entries"] == 2
-        assert len(sections["Decision"]["entries"]) == 2
+        decision = cast("SectionEntryMetadata", sections["Decision"])
+        assert decision["num_entries"] == 2
+        assert len(decision["entries"]) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -2511,3 +2514,304 @@ class TestGroomItemMarkGroomed:
         assert result.get("mark_groomed_applied") is not True
         body = filepath.read_text(encoding="utf-8")
         assert "status: groomed" not in body
+
+
+# ---------------------------------------------------------------------------
+# view_item: unknown section keys survive into ViewItemResult.sections
+# ---------------------------------------------------------------------------
+
+
+class TestViewItemUnknownSections:
+    """Unknown section keys (unknown__ prefix) survive through view_item into ViewItemResult.sections.
+
+    These tests prove that `_build_sections_from_yaml_item` preserves freeform
+    `unknown__` prefixed keys — produced by `parse_issue_body` from GitHub issue
+    body headings not in `_HEADING_TO_KEY` — when assembling `ViewItemResult.sections`.
+    """
+
+    def test_unknown_section_key_present_in_view_result_sections(self, mocker: MockerFixture) -> None:
+        """Unknown-prefixed section key survives through view_item into ViewItemResult.sections.
+
+        Tests: _build_sections_from_yaml_item does not filter out unknown__ keys.
+        How: Write a YAML item with an unknown__impact_radius section; call view_item;
+             assert the key is present in result.sections.
+        Why: MCP clients receive result.sections as JSON — unknown section keys must
+             appear in the output or downstream consumers silently lose issue body content.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-unknown-section-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="unknown-section-item"
+        )
+        item = _m.BacklogItem(
+            title="Unknown Section Item",
+            description="Test item with unknown sections",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "unknown__impact_radius": Section(
+                    entries=[
+                        Entry(id="20260101T120000", content="Affects authentication module"),
+                        Entry(id="20260101T120001", content="No downstream impact expected"),
+                    ]
+                )
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Unknown Section Item")
+
+        # Assert
+        assert isinstance(result, ViewItemResult)
+        assert "unknown__impact_radius" in result.sections, (
+            f"Expected 'unknown__impact_radius' in sections, got: {list(result.sections.keys())}"
+        )
+        # Confirm value shape is SectionEntryMetadata (not groomed)
+        section_meta = cast("SectionEntryMetadata", result.sections["unknown__impact_radius"])
+        assert "num_entries" in section_meta
+
+    def test_unknown_section_has_correct_section_entry_metadata_shape(self, mocker: MockerFixture) -> None:
+        """Unknown section value has SectionEntryMetadata shape with num_entries, num_struck, entries.
+
+        Tests: _build_sections_from_yaml_item wraps Section objects in SectionEntryMetadata.
+        How: Write YAML item with unknown__ section; call view_item; assert TypedDict shape.
+        Why: MCP clients read num_entries and entries — wrong shape breaks consumers.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-unknown-shape-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="unknown-shape-item"
+        )
+        item = _m.BacklogItem(
+            title="Unknown Shape Item",
+            description="Test shape of unknown sections",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "unknown__story": Section(entries=[Entry(id="20260101T130000", content="As a developer I want tests")])
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Unknown Shape Item")
+
+        # Assert
+        section_meta = cast("SectionEntryMetadata", result.sections["unknown__story"])
+        assert "num_entries" in section_meta
+        assert "num_struck" in section_meta
+        assert "entries" in section_meta
+        assert isinstance(section_meta["entries"], list)
+
+    def test_unknown_section_entry_content_is_preserved(self, mocker: MockerFixture) -> None:
+        """Entry content inside an unknown section is not lost in ViewItemResult.sections.
+
+        Tests: Entry content round-trips from BacklogItem.sections into ViewItemResult.sections.
+        How: Write YAML item with known entry content in unknown__ section; call view_item;
+             assert entry content matches.
+        Why: Silent content loss would cause MCP clients to display empty section entries.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-unknown-content-item.yaml"
+
+        expected_content = "Must handle rate limits gracefully"
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="unknown-content-item"
+        )
+        item = _m.BacklogItem(
+            title="Unknown Content Item",
+            description="Test content preservation",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "unknown__acceptance_criteria": Section(
+                    entries=[
+                        Entry(id="20260101T140000", content=expected_content),
+                        Entry(id="20260101T140001", content="Must log errors to stderr"),
+                    ]
+                )
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Unknown Content Item")
+
+        # Assert
+        section_meta = cast("SectionEntryMetadata", result.sections["unknown__acceptance_criteria"])
+        section_entries = section_meta["entries"]
+        contents = [e["content"] for e in section_entries]
+        assert expected_content in contents, f"Expected '{expected_content}' in entry contents, got: {contents}"
+        assert len(section_entries) == 2
+
+    def test_unknown_section_num_entries_matches_active_entry_count(self, mocker: MockerFixture) -> None:
+        """num_entries in unknown section metadata equals the count of non-struck entries.
+
+        Tests: active/struck entry counting for unknown__ prefixed keys.
+        How: Write item with 3 entries, 1 struck; assert num_entries=2, num_struck=1.
+        Why: MCP clients display entry counts — must be accurate regardless of key prefix.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-unknown-count-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="unknown-count-item"
+        )
+        item = _m.BacklogItem(
+            title="Unknown Count Item",
+            description="Test entry counting",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "unknown__notes": Section(
+                    entries=[
+                        Entry(id="20260101T150000", content="Active note one"),
+                        Entry(id="20260101T150001", content="Active note two"),
+                        Entry(
+                            id="20260101T150002", content="Struck note", struck=True, struck_at="2026-01-02T00:00:00Z"
+                        ),
+                    ]
+                )
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Unknown Count Item")
+
+        # Assert
+        section_meta = cast("SectionEntryMetadata", result.sections["unknown__notes"])
+        assert section_meta["num_entries"] == 2
+        assert section_meta["num_struck"] == 1
+
+    def test_unknown_section_coexists_with_known_section(self, mocker: MockerFixture) -> None:
+        """Unknown and known sections coexist in ViewItemResult.sections with correct shapes.
+
+        Tests: _build_sections_from_yaml_item preserves both known and unknown__ keys simultaneously.
+        How: Write YAML item with rt_ica (known) and unknown__story sections; call view_item;
+             assert both keys present with correct SectionEntryMetadata shapes.
+        Why: Real GitHub issues have mixed headings — known and unknown must both survive.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-mixed-sections-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="mixed-sections-item"
+        )
+        item = _m.BacklogItem(
+            title="Mixed Sections Item",
+            description="Test mixed known and unknown sections",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "rt_ica": Section(entries=[Entry(id="20260101T160000", content="Risk: breaking change in public API")]),
+                "unknown__story": Section(entries=[Entry(id="20260101T160001", content="As a user I want feature X")]),
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Mixed Sections Item")
+
+        # Assert
+        assert "rt_ica" in result.sections, f"Expected 'rt_ica' in sections, got: {list(result.sections.keys())}"
+        assert "unknown__story" in result.sections, (
+            f"Expected 'unknown__story' in sections, got: {list(result.sections.keys())}"
+        )
+        rt_ica_meta = cast("SectionEntryMetadata", result.sections["rt_ica"])
+        assert rt_ica_meta["num_entries"] == 1
+        assert rt_ica_meta["entries"][0]["content"] == "Risk: breaking change in public API"
+
+        story_meta = cast("SectionEntryMetadata", result.sections["unknown__story"])
+        assert story_meta["num_entries"] == 1
+        assert story_meta["entries"][0]["content"] == "As a user I want feature X"
+
+    def test_unknown_section_coexists_with_groomed_section(self, mocker: MockerFixture) -> None:
+        """Unknown section and groomed section coexist with their respective metadata shapes.
+
+        Tests: SectionEntryMetadata and GroomedSectionMetadata shapes both appear in sections.
+        How: Write YAML item with groomed (GroomedData) and unknown__ (Section) keys; call view_item;
+             assert groomed key has type=groomed and unknown key has num_entries shape.
+        Why: GroomedSectionMetadata and SectionEntryMetadata are discriminated by presence of
+             the "type" key — MCP clients must receive both shapes correctly.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, GroomedData, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-groomed-unknown-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="groomed-unknown-item"
+        )
+        item = _m.BacklogItem(
+            title="Groomed Unknown Item",
+            description="Test groomed alongside unknown",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "groomed": GroomedData(date="2026-01-15", subsections={"summary": "Feature is ready for review"}),
+                "unknown__implementation_notes": Section(
+                    entries=[
+                        Entry(id="20260101T170000", content="Use existing retry logic"),
+                        Entry(id="20260101T170001", content="Avoid touching auth module"),
+                    ]
+                ),
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Groomed Unknown Item")
+
+        # Assert: groomed section has GroomedSectionMetadata shape
+        assert "groomed" in result.sections, f"Expected 'groomed' in sections, got: {list(result.sections.keys())}"
+        groomed_meta = cast("GroomedSectionMetadata", result.sections["groomed"])
+        assert groomed_meta.get("type") == "groomed"
+        assert "subsections" in groomed_meta
+        assert groomed_meta["subsections"]["summary"] == "Feature is ready for review"
+
+        # Assert: unknown section has SectionEntryMetadata shape
+        assert "unknown__implementation_notes" in result.sections, (
+            f"Expected 'unknown__implementation_notes' in sections, got: {list(result.sections.keys())}"
+        )
+        unknown_meta = cast("SectionEntryMetadata", result.sections["unknown__implementation_notes"])
+        assert "num_entries" in unknown_meta
+        assert unknown_meta["num_entries"] == 2
+        assert len(unknown_meta["entries"]) == 2
