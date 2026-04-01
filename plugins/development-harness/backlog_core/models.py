@@ -345,7 +345,7 @@ def resolve_repo(repo: str) -> str:
 SECTION_RE = re.compile(r"^##\s+(P0|P1|P2|Ideas)")
 GITHUB_ISSUE_URL_RE = re.compile(r"https?://github\.com/([^/]+/[^/]+)/issues/(\d+)")
 COMMIT_PREFIX_RE = re.compile(r"^(feat|fix|refactor|docs|chore|perf|test|ci):\s*", re.IGNORECASE)
-_COMMIT_PREFIX_RE = COMMIT_PREFIX_RE  # backwards-compat alias; import COMMIT_PREFIX_RE in new code
+
 
 # ---------------------------------------------------------------------------
 # Scalar constants

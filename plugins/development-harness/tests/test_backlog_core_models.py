@@ -11,8 +11,8 @@ from pathlib import Path
 import backlog_core.models as _bc_models
 import pytest
 from backlog_core.models import (
-    _COMMIT_PREFIX_RE,
     BACKLOG_DIR,
+    COMMIT_PREFIX_RE,
     DEFAULT_REPO,
     TYPE_TO_LABEL,
     BacklogConfig,
@@ -588,33 +588,33 @@ class TestConstants:
 
 
 class TestCommitPrefixRegex:
-    """_COMMIT_PREFIX_RE strips conventional-commit prefixes."""
+    """COMMIT_PREFIX_RE strips conventional-commit prefixes."""
 
     @pytest.mark.parametrize("prefix", ["feat", "fix", "refactor", "docs", "chore", "perf", "test", "ci"])
     def test_commit_prefix_re_matches_known_prefix(self, prefix: str) -> None:
         text = f"{prefix}: My Title"
-        assert _COMMIT_PREFIX_RE.match(text) is not None
+        assert COMMIT_PREFIX_RE.match(text) is not None
 
     @pytest.mark.parametrize("prefix", ["feat", "fix", "refactor", "docs", "chore", "perf", "test", "ci"])
     def test_commit_prefix_re_strips_prefix_leaving_title(self, prefix: str) -> None:
         text = f"{prefix}: My Title"
-        result = _COMMIT_PREFIX_RE.sub("", text)
+        result = COMMIT_PREFIX_RE.sub("", text)
         assert result == "My Title"
 
     def test_commit_prefix_re_case_insensitive_upper(self) -> None:
-        assert _COMMIT_PREFIX_RE.match("FEAT: Something") is not None
+        assert COMMIT_PREFIX_RE.match("FEAT: Something") is not None
 
     def test_commit_prefix_re_case_insensitive_mixed(self) -> None:
-        assert _COMMIT_PREFIX_RE.match("Fix: Something") is not None
+        assert COMMIT_PREFIX_RE.match("Fix: Something") is not None
 
     def test_commit_prefix_re_no_match_on_plain_title(self) -> None:
-        assert _COMMIT_PREFIX_RE.match("My plain title") is None
+        assert COMMIT_PREFIX_RE.match("My plain title") is None
 
     def test_commit_prefix_re_no_match_on_unknown_prefix(self) -> None:
-        assert _COMMIT_PREFIX_RE.match("wip: My Title") is None
+        assert COMMIT_PREFIX_RE.match("wip: My Title") is None
 
     def test_commit_prefix_re_strips_trailing_space(self) -> None:
-        result = _COMMIT_PREFIX_RE.sub("", "feat: Title With Spaces")
+        result = COMMIT_PREFIX_RE.sub("", "feat: Title With Spaces")
         assert result == "Title With Spaces"
 
 

@@ -10,6 +10,7 @@ import io
 import logging
 import operator
 import re
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -100,7 +101,7 @@ def _make_yaml() -> YAML:
         YAML instance with wide width to prevent unwanted line-wrapping.
     """
     y = YAML(typ="rt")
-    y.width = 2147483647
+    y.width = sys.maxsize
     y.preserve_quotes = False
     return y
 
@@ -415,7 +416,7 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
             else:
                 item_text = filepath.read_text(encoding="utf-8")
                 item = parse_item_file(item_text, filepath)
-        except (KeyError, TypeError, ValueError, AttributeError, YAMLError, OSError) as exc:
+        except (YAMLError, OSError, ValueError, KeyError) as exc:
             log.warning("Skipping corrupt backlog file %s: %s", filepath, exc)
             continue
         # Filename-derived section; override with metadata if available

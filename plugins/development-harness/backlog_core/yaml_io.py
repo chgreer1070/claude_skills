@@ -8,6 +8,7 @@ transition period.
 from __future__ import annotations
 
 import logging
+import sys
 import warnings
 from io import StringIO
 from pathlib import Path
@@ -122,7 +123,7 @@ def save_item(item: BacklogItem, path: Path | None = None) -> None:
     data = item.model_dump(exclude={"file_path", "skip"})
     yaml = YAML(typ="rt")
     yaml.default_flow_style = False
-    yaml.width = 2147483647
+    yaml.width = sys.maxsize
     with resolved.open("w", encoding="utf-8") as fh:
         yaml.dump(data, fh)
 
