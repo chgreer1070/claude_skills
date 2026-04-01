@@ -20,7 +20,8 @@
       "Bash(bc:*)",
       "Bash(diffstat:*)",
       "Bash(npm:*)",
-      "Bash(bd:*)"
+      "Bash(bd:*)",
+      "Bash(uv run fastmcp :*)"
     ],
     "deny": []
   },
