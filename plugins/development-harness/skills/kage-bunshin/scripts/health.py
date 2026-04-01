@@ -101,20 +101,26 @@ def extract_actions(text: str, n: int) -> list[str]:
     return actions[-n:]
 
 
-def agent_last_actions(name: str, lead_session: str | None, jsonl_dir: Path, n: int = 5) -> tuple[list[str], str]:
+def agent_last_actions(
+    name: str, lead_session: str | None, jsonl_dir: Path, n: int = 5, agent_id: str | None = None
+) -> tuple[list[str], str]:
     """Find the agent's JSONL session and return last N actions.
 
     For the team-lead:  use lead_session directly (exact file known).
-    For sub-agents:     sub-agent sessions have the agent name in the first ~3 KB
-                        (session init / prompt record), while the team-lead session
-                        only references the name deep inside teammate messages.
-                        Candidates are sorted by how early the name appears.
+    For sub-agents:     sub-agent sessions have the agent name or agentId in the
+                        first ~3 KB (session init / prompt record), while the
+                        team-lead session only references the name deep inside
+                        teammate messages.  Candidates are sorted by how early
+                        either search term appears (whichever is earlier wins).
 
     Args:
-        name: Agent name used to search JSONL session files.
+        name: Bare agent name (e.g. ``t1-step-procedures``).
         lead_session: Session ID for the team lead, or None for sub-agents.
         jsonl_dir: Directory containing .jsonl session files.
         n: Maximum number of actions to return.
+        agent_id: Full agentId string (e.g. ``t1-step-procedures@impl-p1135``).
+            When provided, both ``name`` and ``agent_id`` are searched; the
+            earlier match position in each file is used as the sort key.
 
     Returns:
         Tuple of (action_lines, session_filename). Empty list and empty string on failure.
@@ -135,9 +141,16 @@ def agent_last_actions(name: str, lead_session: str | None, jsonl_dir: Path, n: 
             head = jf.read_bytes()[:3000].decode("utf-8", errors="ignore")
         except OSError:
             continue
-        pos = head.find(name)
-        if pos != -1:
-            candidates.append((pos, jf))
+        positions: list[int] = []
+        pos_name = head.find(name)
+        if pos_name != -1:
+            positions.append(pos_name)
+        if agent_id:
+            pos_id = head.find(agent_id)
+            if pos_id != -1:
+                positions.append(pos_id)
+        if positions:
+            candidates.append((min(positions), jf))
 
     if not candidates:
         return [], ""
@@ -195,7 +208,10 @@ def run_health(team_name: str | None, jsonl_dir: Path | None) -> None:
         print(f"\n▶ {member_name}  [{atype}]")
 
         actions, session = agent_last_actions(
-            name=member_name, lead_session=lead_session if is_lead else None, jsonl_dir=resolved_jsonl_dir
+            name=member_name,
+            lead_session=lead_session if is_lead else None,
+            jsonl_dir=resolved_jsonl_dir,
+            agent_id=m.get("agentId"),
         )
         if session:
             print(f"  session: {session}")
