@@ -4,6 +4,14 @@ The SAM 7-stage pipeline with ARL touchpoint gates. This is the default flow use
 
 ---
 
+## Design Principles
+
+- Each stage produces a file-based artifact — no stage relies on conversation memory.
+- Human escalation follows ARL constraint analysis, not arbitrary checkpoints.
+- Artifact handoffs are stateless: any stage can be re-entered from its input artifact without replaying prior stages.
+
+---
+
 ## Pipeline Overview
 
 ```mermaid
@@ -25,6 +33,16 @@ flowchart TD
     S7 -->|NOT_CERTIFIED| S4
     S7 -->|CERTIFIED| Done([Feature Complete])
 ```
+
+---
+
+## Artifact Flow (Linear)
+
+```text
+User Request → DISCOVERY → PLAN → PLAN (contextualized) → TASK(s) → EXECUTION(s) → REVIEW(s) → VERIFICATION
+```
+
+Each arrow represents a file-based artifact handoff. No stage reads from conversation state.
 
 ---
 
@@ -158,6 +176,8 @@ flowchart TD
 - Check for regressions in existing functionality
 - Verify cross-task dependencies are satisfied
 
+**Output:** `ARTIFACT:REVIEW({task-id})` — verdict document per task.
+
 **Output verdicts:**
 
 - `COMPLETE` — All acceptance criteria met, quality gates passed
@@ -185,6 +205,8 @@ flowchart TD
 - Check integration points function correctly
 - Verify no regressions in existing functionality
 - Generate certification report
+
+**Output:** `ARTIFACT:VERIFICATION({feature-slug})` — certification report for the feature.
 
 **Output verdicts:**
 
@@ -263,3 +285,4 @@ Read these together to get the full system picture:
 
 - SAM methodology: <https://github.com/bitflight-devops/stateless-agent-methodology>
 - ARL human touchpoint model: [./human-touchpoint-model.md](./human-touchpoint-model.md)
+- SAM definition (work-backlog-item skill): [../../../skills/work-backlog-item/references/sam-definition.md](../../../skills/work-backlog-item/references/sam-definition.md)

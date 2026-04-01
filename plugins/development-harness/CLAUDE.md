@@ -319,6 +319,15 @@ Load these documents based on what you are doing. They contain the system design
 - Load [Plan Artifact Lifecycle](./docs/plan-artifact-lifecycle.md) — immutable vs mutable artifacts, divergence classification, annotation rules
 - Load [Artifact Conventions](./skills/development-harness/references/artifact-conventions.md) — storage model, file naming, cross-reference tokens
 
+**Modifying or extending the SDLC layer architecture (Layer 0/1/2 design):**
+
+- Load [Layer 0 README](./docs/sdlc-layers/layer-0/README.md) — framework design: evidence discipline, orchestrator discipline, context-fit complexity, RT-ICA gate, verification protocol
+- Load [Layer 1 README](./docs/sdlc-layers/layer-1/README.md) — language plugin design: harness role mapping, workflow pattern taxonomy, linting discovery protocol
+- Load [Layer 2 README](./docs/sdlc-layers/layer-2/README.md) — stack profile design: profile schema, profile templates
+- Load [ARL Meta Layer](./docs/sdlc-layers/arl-meta-layer.md) — ARL human probing design across layers
+
+Note: Four layer-0 design documents (artifact-conventions, task-file-format, sam-pipeline, arl-touchpoints) were consolidated into the canonical skill references on 2026-03-31. The layer-0 files now contain redirects to the canonical locations. The remaining layer-0 files (evidence-discipline, orchestrator-discipline, context-fit-complexity, rt-ica-gate, verification-protocol) contain design principles with no operational equivalent — they are authoritative in place.
+
 ### Documentation Update Triggers
 
 After completing your work, update the architectural documents above if your changes fall into these categories:
@@ -337,7 +346,9 @@ After completing your work, update the architectural documents above if your cha
 
 ## Layer Model
 
-This harness implements the **SDLC Layer Separation Architecture**. Layer 0 = framework (this harness); Layer 1 = language plugin; Layer 2 = stack profile (optional). See [docs/sdlc-layers/](./docs/sdlc-layers/) and [docs/sdlc-layers/layer-2/](./docs/sdlc-layers/layer-2/).
+This harness implements the **SDLC Layer Separation Architecture**. Layer 0 = framework (this harness); Layer 1 = language plugin; Layer 2 = stack profile (optional). See [docs/sdlc-layers/](./docs/sdlc-layers/).
+
+Layer-0 operational specifications (pipeline flow, artifact conventions, touchpoint model, task format) live in the skill references and docs — see "Required Reading by Task Type" above. Layer-0 design principles (evidence discipline, orchestrator discipline, context-fit complexity) live in [docs/sdlc-layers/layer-0/](./docs/sdlc-layers/layer-0/).
 
 ---
 
