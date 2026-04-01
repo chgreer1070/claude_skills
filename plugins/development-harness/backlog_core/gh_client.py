@@ -16,10 +16,11 @@ import os
 import re
 import sys
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, Literal
 
 import dh_paths as _dh_paths
 from github import Auth, Github, GithubException
+from typing_extensions import TypedDict
 
 from . import models as _models
 from .models import (

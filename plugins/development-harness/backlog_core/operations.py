@@ -14,12 +14,13 @@ import re
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, NotRequired, cast
 
 import dh_paths as _dh_paths
 from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject  # GithubObject used only by create_milestone (ADR-004)
 from ruamel.yaml import YAMLError
+from typing_extensions import TypedDict
 
 from . import models as _models
 from .artifact_provider import GitHubArtifactProvider
@@ -75,6 +76,7 @@ from .models import (
     DuplicateItemError,
     Entry,
     GroomedData,
+    GroomedSectionMetadata,
     IssueLocalFields,
     IssueStatus,
     ItemNotFoundError,
@@ -83,6 +85,8 @@ from .models import (
     SamTask,
     SamTasksResult,
     Section,
+    SectionEntryDict,
+    SectionEntryMetadata,
     ValidationError,
     ViewItemResult,
     parse_issue_number,
@@ -154,12 +158,9 @@ class ListItemsResult(TypedDict):
     errors: list[str]
 
 
-class _SectionMetadata(TypedDict):
-    """Per-section entry counts and row metadata for view/issue body parsing."""
-
-    num_entries: int
-    num_struck: int
-    entries: list[dict[str, str | bool]]
+# _SectionMetadata is the internal alias for the public SectionEntryMetadata type defined in
+# models.py.  Internal operations.py code continues to use the private name unchanged.
+_SectionMetadata = SectionEntryMetadata
 
 
 class ListCommentsResult(TypedDict):
@@ -1947,16 +1948,16 @@ def list_items(
 _ENTRY_FILTER_KEYWORDS: frozenset[str] = frozenset({"all", "struck", "last", "first"})
 
 
-def _merge_section_entries(existing: _SectionMetadata, new_entries: list[dict[str, str | bool]]) -> _SectionMetadata:
+def _merge_section_entries(existing: _SectionMetadata, new_entries: list[SectionEntryDict]) -> _SectionMetadata:
     """Merge *new_entries* into *existing* section metadata dict.
 
     Returns:
         Updated section metadata dict.
     """
-    all_entries: list[dict[str, str | bool]] = list(existing["entries"]) + new_entries
-    active_count = sum(1 for e in all_entries if not e.get("struck"))
-    struck_count = sum(1 for e in all_entries if e.get("struck"))
-    return {"num_entries": active_count, "num_struck": struck_count, "entries": all_entries}
+    all_entries: list[SectionEntryDict] = list(existing["entries"]) + new_entries
+    active_count = sum(1 for e in all_entries if not e["struck"])
+    struck_count = sum(1 for e in all_entries if e["struck"])
+    return _SectionMetadata(num_entries=active_count, num_struck=struck_count, entries=all_entries)
 
 
 def _section_display_title(key: str, groomed_date: str = "") -> str:
@@ -2109,7 +2110,7 @@ def render_sections_as_body(item: BacklogItem, section: str | None = None) -> st
     return "\n\n".join(parts) + "\n\n" if parts else ""
 
 
-def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, _SectionMetadata | dict[str, object]]:
+def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, SectionEntryMetadata | GroomedSectionMetadata]:
     """Build sections metadata directly from a YAML BacklogItem's structured sections.
 
     Used when the item has no raw markdown body (i.e. it was created as a ``.yaml``
@@ -2120,26 +2121,29 @@ def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, _SectionMetad
 
     Returns:
         Mapping of section name to entry metadata.  ``Section`` entries follow the
-        ``_SectionMetadata`` shape.  ``GroomedData`` entries use ``{"type":
-        "groomed", "date": ..., "subsections": {...}}`` so that callers can
-        distinguish and render them.
+        :class:`SectionEntryMetadata` shape.  ``GroomedData`` entries follow the
+        :class:`GroomedSectionMetadata` shape (``"type": "groomed"`` discriminator).
     """
-    result: dict[str, _SectionMetadata | dict[str, object]] = {}
+    result: dict[str, SectionEntryMetadata | GroomedSectionMetadata] = {}
     for sec_name, sec_data in item.sections.items():
         if isinstance(sec_data, GroomedData):
-            result[sec_name] = {"type": "groomed", "date": sec_data.date, "subsections": sec_data.subsections}
+            result[sec_name] = GroomedSectionMetadata(
+                type="groomed", date=sec_data.date, subsections=sec_data.subsections
+            )
         elif isinstance(sec_data, Section):
             entries = sec_data.entries
-            entry_dicts: list[dict[str, str | bool]] = [
-                {"id": e.id, "struck": e.struck, "content": e.content} for e in entries
+            entry_dicts: list[SectionEntryDict] = [
+                SectionEntryDict(id=e.id, struck=e.struck, content=e.content) for e in entries
             ]
             active_count = sum(1 for e in entries if not e.struck)
             struck_count = sum(1 for e in entries if e.struck)
-            result[sec_name] = {"num_entries": active_count, "num_struck": struck_count, "entries": entry_dicts}
+            result[sec_name] = _SectionMetadata(num_entries=active_count, num_struck=struck_count, entries=entry_dicts)
     return result
 
 
-def _build_sections_metadata(body: str, show: str | int | None, since: str | None) -> dict[str, _SectionMetadata]:
+def _build_sections_metadata(
+    body: str, show: str | int | None, since: str | None
+) -> dict[str, SectionEntryMetadata | GroomedSectionMetadata]:
     """Extract ``### ``-delimited sections from *body* into a metadata dict.
 
     Args:
@@ -2165,7 +2169,7 @@ def _build_sections_metadata(body: str, show: str | int | None, since: str | Non
     elif show is not None:
         entry_show = show
 
-    sections: dict[str, _SectionMetadata] = {}
+    sections: dict[str, SectionEntryMetadata | GroomedSectionMetadata] = {}
     for i, hdr in enumerate(section_headers):
         sec_name = hdr.group(1).strip()
         start = hdr.end()
@@ -2174,13 +2178,19 @@ def _build_sections_metadata(body: str, show: str | int | None, since: str | Non
         if section_name_filter is not None and sec_name.lower() != section_name_filter.lower():
             continue
         entries = parse_entries(sec_body, show=entry_show, since=since)
-        entry_dicts = [{"id": e.id, "struck": e.struck, "content": e.content} for e in entries]
+        entry_dicts: list[SectionEntryDict] = [
+            SectionEntryDict(id=e.id, struck=e.struck, content=e.content) for e in entries
+        ]
         if sec_name in sections:
-            sections[sec_name] = _merge_section_entries(sections[sec_name], entry_dicts)
+            # _build_sections_metadata only produces SectionEntryMetadata entries; the union
+            # type on the dict is widened for the return type but the merge path is always entry-block.
+            sections[sec_name] = _merge_section_entries(cast("SectionEntryMetadata", sections[sec_name]), entry_dicts)
         else:
             active_count = sum(1 for e in entries if not e.struck)
             struck_count = sum(1 for e in entries if e.struck)
-            sections[sec_name] = {"num_entries": active_count, "num_struck": struck_count, "entries": entry_dicts}
+            sections[sec_name] = _SectionMetadata(
+                num_entries=active_count, num_struck=struck_count, entries=entry_dicts
+            )
     return sections
 
 
@@ -2275,17 +2285,18 @@ def _populate_yaml_item_content(result: ViewItemResult, item: BacklogItem, secti
         # Build a temporary item with only the filtered sections for rendering
         filtered_item = BacklogItem(title=item.title, sections=filtered)
         result.body = render_sections_as_body(filtered_item)
-        result.sections = cast("dict[str, dict[str, object]]", _build_sections_from_yaml_item(filtered_item))
+        result.sections = _build_sections_from_yaml_item(filtered_item)
     else:
         result.body = render_sections_as_body(item)
-        result.sections = cast("dict[str, dict[str, object]]", _build_sections_from_yaml_item(item))
+        result.sections = _build_sections_from_yaml_item(item)
 
 
-def _int_field(sec: _SectionMetadata | dict[str, object], key: str) -> int:
+def _int_field(sec: _SectionMetadata | GroomedSectionMetadata, key: str) -> int:
     """Return an integer field from a section metadata dict, defaulting to 0.
 
     Args:
-        sec: Section metadata dict or _SectionMetadata TypedDict.
+        sec: Section metadata dict — either a :class:`SectionEntryMetadata` or
+            :class:`GroomedSectionMetadata` instance.
         key: Dict key to retrieve.
 
     Returns:
@@ -2297,7 +2308,7 @@ def _int_field(sec: _SectionMetadata | dict[str, object], key: str) -> int:
     return val if isinstance(val, int) else 0
 
 
-def _compact_entry_count(sec: _SectionMetadata | dict[str, object]) -> int:
+def _compact_entry_count(sec: _SectionMetadata | GroomedSectionMetadata) -> int:
     """Return the entry/subsection count for a section metadata dict.
 
     For groomed sections (``{"type": "groomed", "subsections": {...}}``), returns
@@ -2354,7 +2365,7 @@ def _assemble_view_content(
 
     if include_content:
         if body:
-            result.sections = cast("dict[str, dict[str, object]]", _build_sections_metadata(body, show, since))
+            result.sections = _build_sections_metadata(body, show, since)
             # Prepend section index so agents see it regardless of body source.
             if item and item.sections:
                 index = _render_section_index(item)

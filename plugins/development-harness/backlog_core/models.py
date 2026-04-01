@@ -13,11 +13,11 @@ import re
 import sys
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Literal
 
 import git
 from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
-from typing_extensions import TypedDict as ExtTypedDict
+from typing_extensions import TypedDict, TypedDict as ExtTypedDict
 
 # ---------------------------------------------------------------------------
 # Path constants — via dh_paths
@@ -961,6 +961,65 @@ class PullRequestRef(BaseModel):
     url: str
 
 
+class SectionEntryDict(TypedDict):
+    """A single entry row within a :class:`SectionEntryMetadata` entries list.
+
+    Produced by :func:`operations._build_sections_from_yaml_item` from an
+    :class:`Entry` model.  Fields map directly to :attr:`Entry.id`,
+    :attr:`Entry.struck`, and :attr:`Entry.content`.
+    """
+
+    id: str
+    """Unique identifier for this entry block, derived from its timestamp."""
+
+    struck: bool
+    """``True`` when the entry has been struck (retracted); ``False`` while active."""
+
+    content: str
+    """Full text content of the entry."""
+
+
+class SectionEntryMetadata(TypedDict):
+    """Per-section entry counts and row metadata for regular (entry-block) sections.
+
+    Returned as values in :attr:`ViewItemResult.sections` when the section contains
+    timestamped entry blocks (``<div><sub>…</sub>…</div>``).  Use the ``"entries"``
+    key to iterate individual entry dicts; each entry dict follows the
+    :class:`SectionEntryDict` shape.
+
+    Discriminated from :class:`GroomedSectionMetadata` by the absence of a ``"type"``
+    key (or by checking ``isinstance(value, dict) and "entries" in value``).
+    """
+
+    num_entries: int
+    """Count of active (non-struck) entries in this section."""
+
+    num_struck: int
+    """Count of struck (completed/removed) entries in this section."""
+
+    entries: list[SectionEntryDict]
+    """List of entry dicts following :class:`SectionEntryDict` shape."""
+
+
+class GroomedSectionMetadata(TypedDict):
+    """Per-section metadata for groomed sections in :attr:`ViewItemResult.sections`.
+
+    Returned as values in :attr:`ViewItemResult.sections` when the section was
+    produced by a grooming pass (i.e. backed by a :class:`GroomedData` model).
+    Discriminated from :class:`SectionEntryMetadata` by the presence of
+    ``"type": "groomed"``.
+    """
+
+    type: str
+    """Discriminator — always ``"groomed"`` for this shape."""
+
+    date: str
+    """ISO date string of when the item was groomed."""
+
+    subsections: dict[str, str]
+    """Named subsections produced during grooming."""
+
+
 class ViewItemResult(BaseModel):
     """Result of viewing a single backlog item, optionally enriched with GitHub data."""
 
@@ -979,7 +1038,7 @@ class ViewItemResult(BaseModel):
     body: str = ""
     labels: list[str] = Field(default_factory=list)
     milestone: str = ""
-    sections: dict[str, dict[str, object]] = Field(default_factory=dict)
+    sections: dict[str, SectionEntryMetadata | GroomedSectionMetadata] = Field(default_factory=dict)
     sections_metadata: list[SectionMeta] = Field(default_factory=list)
     sections_index: str = ""
     body_truncated: bool = False
