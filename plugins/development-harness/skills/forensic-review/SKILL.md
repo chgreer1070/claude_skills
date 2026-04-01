@@ -180,6 +180,7 @@ Remediation tasks follow the same CLEAR format as original tasks. They:
 - Distinguish blocking findings from advisory findings
 - Do not add new requirements — review against the ORIGINAL acceptance criteria
 - Report findings with file:line evidence, not vague observations
+- **Verification Gap findings are always BLOCKING.** Any finding that describes a check which cannot detect the class of failure it is supposed to detect must be classified as BLOCKING, not advisory or minor. Examples that must be BLOCKING: "Round-trip check does not validate section content"; "Fidelity check only verifies structural validity"; "Tests use synthetic fixtures; no real data tested"; "Acceptance criteria verify that output is valid, not that output is complete". Classification rule: if a finding can be described as "the safety net cannot catch what it was designed to catch," that finding is BLOCKING regardless of other severity heuristics. Consequence: if the reviewer identifies a verification gap, the verdict is NEEDS_WORK and the finding must be addressed in a remediation cycle — not moved to a follow-on backlog item.
 
 ## Success Criteria
 

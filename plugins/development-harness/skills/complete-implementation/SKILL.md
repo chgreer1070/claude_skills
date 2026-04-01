@@ -293,6 +293,53 @@ Fix the regressions, then re-run /complete-implementation.
 
 ---
 
+## Pre-Phase 1a: Migration Fidelity Sign-Off
+
+Before proceeding to Artifact Discovery, check for migration signals.
+
+**Detection: scan for migration signals**
+
+Check:
+1. Issue title — contains: "migrat", "convert format", "replace .md", "format conversion", "move from", "transition from"
+2. Issue body / description section — same keywords
+3. P{NNN}.yaml tasks — read each task's `acceptance_criteria` field for: "delete", "remove source", "after migration complete", "drop the source"
+
+Note: `acceptance_criteria` is a dedicated `str` field on the Task model (`sam_schema/core/models.py`) — it can be read directly, not parsed out of a body blob.
+
+If no signal found → skip this gate and proceed to Artifact Discovery.
+
+If any signal found → gate activates.
+
+**Gate logic (when activated)**
+
+Before proceeding, confirm ALL four items. Read the plan artifacts and execution history to find evidence for each.
+
+- [ ] **Fidelity check on real data**: evidence exists (file path or commit SHA) showing a content completeness assertion was run against real production records — not only synthetic fixtures — and passed with zero data loss
+- [ ] **Content completeness verified**: the check verified field-by-field completeness, not only that output is structurally valid (loads without error)
+- [ ] **Constrained field values enumerated**: all distinct values of constrained fields were enumerated from real data before migration and are all handled in the target model
+- [ ] **Deletion deferred or confirmed**: if source files were deleted, deletion occurred after zero-data-loss confirmation
+
+If any item is unconfirmed, emit:
+
+```text
+COMPLETION BLOCKED — Migration Fidelity Gate
+
+Unconfirmed items:
+- [list each unchecked item]
+
+To unblock: run `uv run plugins/development-harness/scripts/verify_migration_fidelity.py`
+against real production data and provide the path to the generated report in
+`.tmp/scratch/reports/`. A passing report (zero data loss, all sections preserved) confirms
+items 1 and 2. Alternatively, a commit SHA showing the completeness assertion was run on
+real files is accepted.
+```
+
+Do NOT build the QG plan, dispatch T1, or apply any SAM state until all four items are confirmed.
+
+If all confirmed → proceed to Artifact Discovery.
+
+---
+
 ## Pre-Phase: Artifact Discovery
 
 When the parent story issue number is known (from the plan's `issue` field or the backlog item), query the artifact manifest to discover all plan artifacts for this feature:
