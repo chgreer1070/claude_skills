@@ -168,8 +168,9 @@ def __getattr__(name: str) -> object:
 
 # Initialise at import time so existing code that reads module attrs before
 # calling init_paths() still works (matches pre-refactor behaviour).
+_initial_repo_root = _resolve_repo_root()
 _config = BacklogConfig(
-    repo_root=_resolve_repo_root(), backlog_dir=_dh_paths.backlog_dir(_resolve_repo_root()), default_repo=""
+    repo_root=_initial_repo_root, backlog_dir=_dh_paths.backlog_dir(_initial_repo_root), default_repo=""
 )
 
 

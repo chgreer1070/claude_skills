@@ -542,13 +542,57 @@ async def backlog_list(
     return response
 
 
+def _build_compact_manifest(result: dict, full_response: dict, selector: str) -> dict[str, object]:
+    """Build the compact routing manifest returned by ``backlog_view(summary=True)``.
+
+    Returns:
+        Compact dict with issue_number, title, labels, status, plan_path,
+        and size hint for the full response.
+    """
+    full_chars = len(_json.dumps(full_response))
+    body_text = str(result.get("body") or "")
+    plan_match = _re.search(r"^[Pp]lan:\s*(\S+)", body_text, _re.MULTILINE)
+    plan_path: str | None = plan_match.group(1) if plan_match else None
+    issue_field = str(result.get("issue") or "")
+    issue_number: int | None = None
+    num_match = _re.search(r"(\d+)", issue_field)
+    if num_match:
+        issue_number = int(num_match.group(1))
+    labels_raw = result.get("labels", [])
+    labels: list[str] = labels_raw if isinstance(labels_raw, list) else []
+    state = str(result.get("state") or "")
+    status: str = "closed" if state == "closed" else "open"
+    sections_index = result.get("sections_index")
+    compact: dict[str, object] = {
+        "issue_number": issue_number,
+        "title": result.get("title", ""),
+        "labels": labels,
+        "status": status,
+        "plan_path": plan_path,
+        "_summary": True,
+        "_full_chars": full_chars,
+        "_hint": (
+            f"Load full content: backlog_view(selector='{selector}', summary=False)\n"
+            f"Load specific sections: backlog_view(selector='{selector}', summary=False, section='<index, title, or /regex/>')"
+        ),
+    }
+    if sections_index:
+        compact["sections_index"] = sections_index
+    return compact
+
+
 @mcp.tool
 async def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
     summary: Annotated[
         bool,
         Field(
-            description="When True (default), returns a compact 5-field routing manifest (issue_number, title, labels, status, plan_path) plus _full_chars and _hint. When False, returns the full response unchanged."
+            description=(
+                "When True (default), returns a compact routing manifest with issue_number, title, labels, "
+                "status, plan_path, sections_index (all available sections as [N] Title (count) lines), "
+                "_full_chars, and _hint showing how to load full content or specific sections. "
+                "When False, returns the full response unchanged."
+            )
         ),
     ] = True,
     include_content: Annotated[
@@ -586,12 +630,21 @@ async def backlog_view(
     Use include_content=False to get a compact response with section names and
     entry counts only, omitting the full body and entry content.
     Use summary=False to receive the full response; summary=True (default) returns
-    a 5-field routing manifest with _full_chars so the caller knows what was skipped.
+    a compact routing manifest that always includes sections_index so callers know
+    exactly which sections exist before deciding what to load.
     Use section to filter the response to specific sections by index, title, or regex.
+
+    Progressive disclosure pattern:
+        Step 1 — call with summary=True (default) to get sections_index and metadata.
+        Step 2 — load only the sections needed:
+            backlog_view(selector="...", summary=False, section="Fact-Check")
+            backlog_view(selector="...", summary=False, section="0,1,3")
+            backlog_view(selector="...", summary=False, section="/acceptance|plan/")
 
     Returns:
         When summary=True (default): compact dict with issue_number, title, labels,
-        status, plan_path, _summary, _full_chars, and _hint.
+        status, plan_path, sections_index (all sections as [N] Title (count) lines),
+        _summary, _full_chars, and _hint with section-loading syntax.
         When summary=False: dict with title, priority, issue, plan, file_path, body,
         sections metadata, and output messages/warnings.
         On error, dict contains an error key.
@@ -619,30 +672,7 @@ async def backlog_view(
         full_response = {**result, **out.to_dict()}
         if not summary:
             return full_response
-        # Build compact routing manifest.
-        full_chars = len(_json.dumps(full_response))
-        body_text = str(result.get("body") or "")
-        plan_match = _re.search(r"^[Pp]lan:\s*(\S+)", body_text, _re.MULTILINE)
-        plan_path: str | None = plan_match.group(1) if plan_match else None
-        issue_field = str(result.get("issue") or "")
-        issue_number: int | None = None
-        num_match = _re.search(r"(\d+)", issue_field)
-        if num_match:
-            issue_number = int(num_match.group(1))
-        labels_raw = result.get("labels", [])
-        labels: list[str] = labels_raw if isinstance(labels_raw, list) else []
-        state = str(result.get("state") or "")
-        status: str = "closed" if state == "closed" else "open"
-        return {
-            "issue_number": issue_number,
-            "title": result.get("title", ""),
-            "labels": labels,
-            "status": status,
-            "plan_path": plan_path,
-            "_summary": True,
-            "_full_chars": full_chars,
-            "_hint": f"Call backlog_view(selector='{selector}', summary=False) for full body, comments, and timeline",
-        }
+        return _build_compact_manifest(result, full_response, selector)
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
 

@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from github import GithubException
 
 from .gh_client import _HTTP_NOT_FOUND, get_github
-from .models import BacklogError, BranchConflictError, BranchInfo, MergeResult, Output, resolve_repo as _repo
+from .models import BacklogError, BranchConflictError, BranchInfo, MergeResult, Output, resolve_repo
 
 if TYPE_CHECKING:
     from github.Branch import Branch
@@ -100,7 +100,7 @@ def _get_repo(repo: str) -> Repository:
     Raises:
         GitHubUnavailableError: If ``GITHUB_TOKEN`` is not set.
     """
-    return get_github(_repo(repo))
+    return get_github(resolve_repo(repo))
 
 
 def _branch_info_from_branch(branch: Branch) -> BranchInfo:
@@ -165,7 +165,7 @@ def create_integration_branch(
         base = gh_repo.get_branch(base_branch)
     except GithubException as exc:
         if exc.status == _HTTP_NOT_FOUND:
-            msg = f"Base branch '{base_branch}' not found in {_repo(repo)}"
+            msg = f"Base branch '{base_branch}' not found in {resolve_repo(repo)}"
             raise BacklogError(msg) from exc
         raise
 
@@ -177,7 +177,7 @@ def create_integration_branch(
         gh_repo.create_git_ref(ref=ref_path, sha=base_sha)
     except GithubException as exc:
         if exc.status == _HTTP_UNPROCESSABLE:
-            msg = f"Branch '{name}' already exists in {_repo(repo)}"
+            msg = f"Branch '{name}' already exists in {resolve_repo(repo)}"
             if output:
                 output.warn(msg)
             raise BacklogError(msg) from exc

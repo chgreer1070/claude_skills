@@ -53,6 +53,7 @@ if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
 import typer
+from backlog_core.models import get_backlog_dir
 from backlog_core.operations import render_sections_as_body
 from backlog_core.yaml_io import load_item
 from pydantic import ValidationError
@@ -65,7 +66,7 @@ from ruamel.yaml import YAMLError
 if TYPE_CHECKING:
     from backlog_core.models import BacklogItem
 
-_DEFAULT_BACKLOG_DIR = Path.home() / ".dh/projects/-home-ubuntulinuxqa2-repos-claude_skills/backlog"
+_DEFAULT_BACKLOG_DIR: Path = get_backlog_dir()
 _REPORT_DIR = Path(__file__).resolve().parents[3] / ".tmp/scratch/reports"
 _TODAY = datetime.now(tz=UTC).date().strftime("%Y%m%d")
 _REPORT_PATH = _REPORT_DIR / f"migration-fidelity-verification-{_TODAY}.md"

@@ -2054,20 +2054,17 @@ def _filter_sections(item: BacklogItem, section: str) -> dict[str, Section | Gro
         pattern = stripped[1:-1]
         compiled = re.compile(pattern, re.IGNORECASE)
         return {
-            k: item.sections[k]
-            for k in keys
-            if compiled.search(
-                _section_display_title(k, v.date if isinstance(v := item.sections[k], GroomedData) else "")
-            )
+            k: sec
+            for k, sec in item.sections.items()
+            if compiled.search(_section_display_title(k, sec.date if isinstance(sec, GroomedData) else ""))
         }
 
     # --- substring match ---
     lower_filter = stripped.lower()
     return {
-        k: item.sections[k]
-        for k in keys
-        if lower_filter
-        in _section_display_title(k, v.date if isinstance(v := item.sections[k], GroomedData) else "").lower()
+        k: sec
+        for k, sec in item.sections.items()
+        if lower_filter in _section_display_title(k, sec.date if isinstance(sec, GroomedData) else "").lower()
     }
 
 
@@ -2278,11 +2275,25 @@ def _populate_yaml_item_content(data: dict, item: BacklogItem, section: str | No
         # Build a temporary item with only the filtered sections for rendering
         filtered_item = BacklogItem(title=item.title, sections=filtered)
         data["body"] = render_sections_as_body(filtered_item)
-        all_yaml_secs = _build_sections_from_yaml_item(item)
-        data["sections"] = {k: v for k, v in all_yaml_secs.items() if k in filtered}
+        data["sections"] = _build_sections_from_yaml_item(filtered_item)
     else:
         data["body"] = render_sections_as_body(item)
         data["sections"] = _build_sections_from_yaml_item(item)
+
+
+def _compact_entry_count(sec: _SectionMetadata | dict[str, object]) -> int:
+    """Return the entry/subsection count for a section metadata dict.
+
+    For groomed sections (``{"type": "groomed", "subsections": {...}}``), returns
+    the subsection count.  For regular sections, returns ``num_entries``.
+    """
+    if not isinstance(sec, dict):
+        return 0
+    if sec.get("type") == "groomed":
+        subs = sec.get("subsections")
+        return len(subs) if isinstance(subs, dict) else 0
+    entries = sec.get("num_entries")
+    return int(entries) if isinstance(entries, int) else 0
 
 
 def _populate_yaml_item_compact(data: dict, item: BacklogItem) -> None:
@@ -2296,7 +2307,7 @@ def _populate_yaml_item_compact(data: dict, item: BacklogItem) -> None:
     data["sections_metadata"] = [
         {
             "name": name,
-            "num_entries": sec.get("num_entries", 0) if isinstance(sec, dict) else 0,
+            "num_entries": _compact_entry_count(sec),
             "num_struck": sec.get("num_struck", 0) if isinstance(sec, dict) else 0,
         }
         for name, sec in yaml_sections.items()
@@ -2322,7 +2333,10 @@ def _assemble_view_content(
     """Populate *data* with body/sections for ``view_item``.
 
     Mutates *data* in place — adds ``body``, ``sections``, or
-    ``sections_metadata`` depending on *include_content*.
+    ``sections_metadata`` depending on *include_content*.  Always adds
+    ``sections_index`` when *include_content* is ``False`` and the item has
+    structured sections, so callers can discover available sections without
+    loading the full body.
     """
     body = str(data.get("body", ""))
 
@@ -2334,7 +2348,6 @@ def _assemble_view_content(
                 index = _render_section_index(item)
                 if index:
                     data["body"] = index + "\n" + body
-                    body = data["body"]
         elif item and item.sections:
             _populate_yaml_item_content(data, item, section)
             body = str(data.get("body", ""))
@@ -2347,6 +2360,12 @@ def _assemble_view_content(
             data["sections_metadata"] = _build_sections_compact(body)
         elif item and item.sections:
             _populate_yaml_item_compact(data, item)
+        # Always include section index in summary mode so agents know what sections
+        # exist on first access, without needing a second round-trip.
+        if item and item.sections:
+            index = _render_section_index(item)
+            if index:
+                data["sections_index"] = index
 
 
 # ---------------------------------------------------------------------------
