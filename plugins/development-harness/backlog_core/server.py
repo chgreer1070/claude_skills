@@ -542,7 +542,11 @@ async def backlog_list(
     return response
 
 
-def _build_compact_manifest(result: dict, full_response: dict, selector: str) -> dict[str, object]:
+def _build_compact_manifest(
+    result: dict[str, str | int | bool | list[str] | dict | None],
+    full_response: dict[str, str | int | bool | list[str] | dict | None],
+    selector: str,
+) -> dict[str, object]:
     """Build the compact routing manifest returned by ``backlog_view(summary=True)``.
 
     Returns:
