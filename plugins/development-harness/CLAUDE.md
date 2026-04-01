@@ -294,6 +294,47 @@ Do NOT use when:
 
 ---
 
+## Required Reading by Task Type
+
+Load these documents based on what you are doing. They contain the system design knowledge required for that work to succeed.
+
+**Modifying the pipeline process, stage sequencing, or touchpoint gates:**
+
+- Load [Default Development Flow](./skills/development-harness/references/default-development-flow.md) — defines the S1-S7 pipeline, ARL gates, and stage handoffs
+- Load [Artifact Conventions](./skills/development-harness/references/artifact-conventions.md) — artifact naming, required sections per type, cross-referencing tokens
+
+**Modifying data structures, domain models, or task/plan schemas:**
+
+- Load [Domain model source](./sam_schema/core/models.py) — authoritative `Task` and `Plan` Pydantic models. This is the source of truth for all field definitions.
+- Load [Task File Format](./docs/TASK_FILE_FORMAT.md) — field reference, authorized writers, sam CLI usage. **Drift warning**: this is a snapshot. Verify fields against `models.py` before relying on it for implementation.
+- Load [Workflow Architecture Diagram](./docs/workflow-architecture-diagram.md) — data shapes, publisher-consumer map, SAM state machine, hook trigger conditions
+
+**Modifying the backlog lifecycle, grooming, or issue state machine:**
+
+- Load [Backlog Item Lifecycle](./docs/backlog-item-lifecycle.md) — end-to-end issue journey from creation through closure
+- Load [Backend Providers](./docs/backend-providers.md) — pluggable backend abstractions, GitHub/GitLab/Linear capabilities
+
+**Modifying artifact handling, divergence detection, or plan management:**
+
+- Load [Plan Artifact Lifecycle](./docs/plan-artifact-lifecycle.md) — immutable vs mutable artifacts, divergence classification, annotation rules
+- Load [Artifact Conventions](./skills/development-harness/references/artifact-conventions.md) — storage model, file naming, cross-reference tokens
+
+### Documentation Update Triggers
+
+After completing your work, update the architectural documents above if your changes fall into these categories:
+
+| Change type | Update required |
+|---|---|
+| Process change (new stage, changed sequencing, new touchpoint) | Yes — update Default Development Flow |
+| Data structure change (new field, changed type, new entity) | Yes — update `models.py` first, then Task File Format |
+| New or removed MCP tool | Yes — update Workflow Architecture Diagram |
+| New artifact type or changed artifact lifecycle | Yes — update Artifact Conventions and Plan Artifact Lifecycle |
+| Refactoring (same behavior, different code structure) | No |
+| Agent prompt changes (better instructions, same behavior) | No |
+| UI/UX changes | No |
+
+---
+
 ## Layer Model
 
 This harness implements the **SDLC Layer Separation Architecture**. Layer 0 = framework (this harness); Layer 1 = language plugin; Layer 2 = stack profile (optional). See [docs/sdlc-layers/](./docs/sdlc-layers/) and [docs/sdlc-layers/layer-2/](./docs/sdlc-layers/layer-2/).
