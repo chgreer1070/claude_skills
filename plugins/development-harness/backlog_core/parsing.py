@@ -87,9 +87,9 @@ class _MdPost:
     Both attributes are mutable so callers can patch them before serialising.
     """
 
-    def __init__(self, metadata: dict[str, Any], content: str) -> None:
+    def __init__(self, metadata: dict[str, str | dict[str, str]], content: str) -> None:
         """Initialize post with parsed metadata dict and body content."""
-        self.metadata: dict[str, Any] = metadata
+        self.metadata: dict[str, str | dict[str, str]] = metadata
         self.content: str = content
 
 
@@ -103,6 +103,31 @@ def _make_yaml() -> YAML:
     y.width = 2147483647
     y.preserve_quotes = False
     return y
+
+
+def _validate_metadata(raw: dict[str, Any]) -> dict[str, str | dict[str, str]]:
+    """Coerce raw YAML metadata values to ``str`` or ``dict[str, str]`` at the parse boundary.
+
+    YAML can produce integers, booleans, lists, or ``None`` for any scalar field.
+    This function ensures every value is either a plain string or a shallow mapping
+    of strings to strings before the metadata dict reaches any consumer.
+
+    - Scalar values (int, float, bool, None, list, …) are coerced to ``str``.
+    - Mapping values have their own values coerced to ``str`` (one level deep).
+
+    Args:
+        raw: The raw metadata dict produced by the YAML parser.
+
+    Returns:
+        A new dict with all values typed as ``str | dict[str, str]``.
+    """
+    result: dict[str, str | dict[str, str]] = {}
+    for k, v in raw.items():
+        if isinstance(v, dict):
+            result[str(k)] = {str(dk): str(dv) for dk, dv in v.items()}
+        else:
+            result[str(k)] = str(v) if v is not None else ""
+    return result
 
 
 def loads_frontmatter(text: str) -> _MdPost:
@@ -125,7 +150,7 @@ def loads_frontmatter(text: str) -> _MdPost:
         return _MdPost({}, text)
     y = _make_yaml()
     raw = y.load(parts[1]) or {}
-    metadata: dict[str, Any] = dict(raw) if raw else {}
+    metadata = _validate_metadata(dict(raw) if raw else {})
     return _MdPost(metadata, parts[2].strip())
 
 
@@ -252,7 +277,7 @@ def parse_issue_selector(selector: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def _fm_str(fm: dict[str, object], meta: dict[str, str], key: str, fm_key: str = "") -> str:
+def _fm_str(fm: dict[str, str | dict[str, str]], meta: dict[str, str], key: str, fm_key: str = "") -> str:
     """Resolve a string field from metadata dict with frontmatter fallback.
 
     Returns:
@@ -261,17 +286,19 @@ def _fm_str(fm: dict[str, object], meta: dict[str, str], key: str, fm_key: str =
     return str(meta.get(key) or fm.get(fm_key or key) or "")
 
 
-def _parse_frontmatter(text: str) -> tuple[dict[str, object], dict[str, str], str]:
+def _parse_frontmatter(text: str) -> tuple[dict[str, str | dict[str, str]], dict[str, str], str]:
     """Parse frontmatter and metadata from item text.
+
+    ``loads_frontmatter`` guarantees all metadata values are ``str`` or
+    ``dict[str, str]`` via ``_validate_metadata``, so no further coercion is
+    needed here.
 
     Returns:
         Tuple of (frontmatter_dict, metadata_dict, body_text).
     """
     try:
         post = loads_frontmatter(text)
-        fm: dict[str, object] = (
-            {k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()} if post.metadata else {}
-        )
+        fm: dict[str, str | dict[str, str]] = post.metadata or {}
         body: str = post.content or ""
     except YAMLError:
         # Structural YAML corruption (e.g. duplicate keys, bad anchors) cannot be
@@ -901,6 +928,9 @@ def _parse_section_entries(content: str, added_date: str) -> Section:
     blocks) is wrapped in a single synthetic ``Entry`` so the data model
     stays uniform.
 
+    Edge case: text appearing after the last ``</div>`` closing tag is captured
+    as an additional synthetic ``Entry`` so no content is dropped.
+
     Args:
         content: Raw text content of a section body.
         added_date: YYYY-MM-DD date used to construct a synthetic entry id
@@ -921,6 +951,13 @@ def _parse_section_entries(content: str, added_date: str) -> Section:
 
         entries = [_parse_match_to_entry(m) for m in matches]
         _deduplicate_timestamps(entries)
+
+        # Edge case 3: capture any text that appears after the last </div>.
+        last_match_end = matches[-1].end()
+        trailing = content[last_match_end:].strip()
+        if trailing:
+            entries.append(Entry(id="", content=trailing))
+
         return Section(entries=entries)
 
     # No entry blocks — wrap raw content in a synthetic entry.
@@ -936,6 +973,10 @@ def _parse_groomed_section(heading_name: str, content: str, added_date: str) -> 
     values are stored verbatim so existing ``entry_blocks`` operations work
     without re-parsing.
 
+    Edge case 2: when a ``## Groomed`` section has body content but no
+    ``### `` subsections, the entire body is stored under the key
+    ``"Content"`` so no text is silently dropped.
+
     Args:
         heading_name: Full heading text after ``## ``, e.g. ``"Groomed (2026-02-28)"``.
         content: Raw text content under the heading (after the heading line).
@@ -947,6 +988,9 @@ def _parse_groomed_section(heading_name: str, content: str, added_date: str) -> 
     date_match = re.search(r"\((\d{4}-\d{2}-\d{2})\)", heading_name)
     date = date_match.group(1) if date_match else added_date
     subsections = _split_h3_subsections(content)
+    # Edge case 2: body present but no ### subsection markers — preserve body verbatim.
+    if not subsections and content.strip():
+        subsections = {"Content": content.strip()}
     return GroomedData(date=date, subsections=subsections)
 
 
@@ -985,6 +1029,22 @@ def parse_md_body_sections(body_text: str, added_date: str = "0000-00-00") -> di
     """
     segments = _split_body_h2(body_text)
     result: dict[str, Section | GroomedData] = {}
+
+    # Edge case 1: capture body text that precedes the first ## heading as "preamble".
+    if segments:
+        raw_lines = body_text.splitlines()
+        ast_headings = _ast_h2_headings(body_text)
+        positioned = _map_headings_to_lines(ast_headings, raw_lines, target_level=2)
+        if positioned:
+            first_heading_line = positioned[0][0]
+            pre_heading_text = "\n".join(raw_lines[:first_heading_line]).strip()
+            if pre_heading_text:
+                synthetic_id = f"{added_date}T00:00:00Z"
+                result["preamble"] = Section(entries=[Entry(id=synthetic_id, content=pre_heading_text)])
+    elif body_text.strip():
+        # No ## headings at all — entire body is preamble.
+        synthetic_id = f"{added_date}T00:00:00Z"
+        result["preamble"] = Section(entries=[Entry(id=synthetic_id, content=body_text.strip())])
 
     for heading_name, content in segments:
         groomed_match = _GROOMED_DATE_RE.match(heading_name.strip())
@@ -1054,7 +1114,7 @@ def view_result_from_local_item(item: BacklogItem) -> ViewItemResult:
 # ---------------------------------------------------------------------------
 
 
-def extract_normalize_metadata(fm: dict[str, object], meta: dict[str, str]) -> dict[str, str]:
+def extract_normalize_metadata(fm: dict[str, str | dict[str, str]], meta: dict[str, str]) -> dict[str, str]:
     """Extract normalized metadata from frontmatter and metadata dicts.
 
     Returns:

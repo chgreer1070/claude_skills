@@ -159,7 +159,16 @@ def _item_field_text(item: dict[str, str | bool], field: str) -> str:
     return str(item.get(field, "") or "").casefold()
 
 
-def _item_matches_term(item: dict[str, str | bool], term: str) -> bool:
+def _build_haystack(item: dict[str, str | bool]) -> str:
+    """Return a single casefolded string combining all default search fields.
+
+    Building the haystack is O(fields) per item.  Pre-computing it once before
+    evaluating multiple terms avoids rebuilding it for every (item, term) pair.
+    """
+    return " ".join(_item_field_text(item, f) for f in _SEARCH_FIELDS)
+
+
+def _item_matches_term(item: dict[str, str | bool], term: str, haystack: str | None = None) -> bool:
     """Return True if a single search term matches the item.
 
     Supported term forms (evaluated in order):
@@ -171,6 +180,13 @@ def _item_matches_term(item: dict[str, str | bool], term: str) -> bool:
       names fall back to full-text substring match.
     - plain text — case-insensitive substring match across all default fields
       (existing behaviour, fully preserved).
+
+    Args:
+        item: Backlog item dict.
+        term: A single search term (no AND/OR operators).
+        haystack: Pre-computed full-text string from ``_build_haystack``.
+            When provided, avoids rebuilding the haystack inside this call.
+            Pass ``None`` (default) to let this function build it on demand.
     """
     term = term.strip()
     if not term:
@@ -185,8 +201,8 @@ def _item_matches_term(item: dict[str, str | bool], term: str) -> bool:
             # Invalid regex — fall through to plain substring match on the raw term.
             pass
         else:
-            haystack = " ".join(_item_field_text(item, f) for f in _SEARCH_FIELDS)
-            return bool(pattern.search(haystack))
+            hs = haystack if haystack is not None else _build_haystack(item)
+            return bool(pattern.search(hs))
 
     # Field-specific form: field:value
     if ":" in term:
@@ -199,7 +215,8 @@ def _item_matches_term(item: dict[str, str | bool], term: str) -> bool:
 
     # Plain text — existing case-insensitive substring match across all fields.
     needle = term.casefold()
-    return needle in " ".join(_item_field_text(item, f) for f in _SEARCH_FIELDS)
+    hs = haystack if haystack is not None else _build_haystack(item)
+    return needle in hs
 
 
 def _apply_search_filter(items: list[dict[str, str | bool]], search: str) -> list[dict[str, str | bool]]:
@@ -232,14 +249,24 @@ def _apply_search_filter(items: list[dict[str, str | bool]], search: str) -> lis
         # Split on first-level AND; each part is a term (may itself contain spaces
         # for field:value terms like "title:auth deploy").
         and_parts = _re.split(r"(?i)\s+AND\s+", search)
-        return [item for item in items if all(_item_matches_term(item, part) for part in and_parts)]
+        result = []
+        for item in items:
+            hs = _build_haystack(item)
+            if all(_item_matches_term(item, part, hs) for part in and_parts):
+                result.append(item)
+        return result
 
     if " OR " in upper:
         or_parts = _re.split(r"(?i)\s+OR\s+", search)
-        return [item for item in items if any(_item_matches_term(item, part) for part in or_parts)]
+        result = []
+        for item in items:
+            hs = _build_haystack(item)
+            if any(_item_matches_term(item, part, hs) for part in or_parts):
+                result.append(item)
+        return result
 
     # No operator — treat entire query as a single term (existing behaviour).
-    return [item for item in items if _item_matches_term(item, search)]
+    return [item for item in items if _item_matches_term(item, search, _build_haystack(item))]
 
 
 def _parse_args() -> argparse.Namespace:

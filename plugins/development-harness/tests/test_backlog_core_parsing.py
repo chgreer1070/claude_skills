@@ -9,6 +9,7 @@ from backlog_core.models import BacklogItem, ViewItemResult
 from backlog_core.parsing import (
     _MdPost,
     _parse_frontmatter,
+    _validate_metadata,
     build_body_extra_only,
     build_issue_body,
     build_issue_body_from_file,
@@ -1825,3 +1826,137 @@ Second paragraph with **bold**.
         # Assert
         assert reparsed.content == new_body
         assert reparsed.metadata["name"] == "My Item"
+
+
+# ---------------------------------------------------------------------------
+# TestValidateMetadata
+# ---------------------------------------------------------------------------
+
+
+class TestValidateMetadata:
+    """Tests for _validate_metadata — the YAML metadata boundary coercion function."""
+
+    def test_integer_value_coerced_to_string(self) -> None:
+        """Integer values must be coerced to strings at the YAML boundary.
+
+        Tests: _validate_metadata scalar coercion
+        How: Pass raw dict with int value, assert result value is str
+        Why: YAML parses unquoted numbers as int; downstream consumers expect str
+        """
+        result = _validate_metadata({"priority": 1})
+
+        assert result["priority"] == "1"
+        assert isinstance(result["priority"], str)
+
+    def test_none_value_coerced_to_empty_string(self) -> None:
+        """None values (YAML null) must be coerced to empty string.
+
+        Tests: _validate_metadata None handling
+        How: Pass raw dict with None value, assert result value is ''
+        Why: YAML null appears as None in Python; `str(None)` would give 'None',
+             which is misleading in a metadata context — empty string is correct.
+        """
+        result = _validate_metadata({"status": None})
+
+        assert result["status"] == ""
+
+    def test_list_value_coerced_to_string(self) -> None:
+        """List values must be coerced to their string representation.
+
+        Tests: _validate_metadata list coercion
+        How: Pass raw dict with list value, assert result value is str
+        Why: YAML sequences are valid YAML but invalid as BacklogItem field values;
+             coercing to str preserves the data and prevents silent AttributeError.
+        """
+        result = _validate_metadata({"tags": ["a", "b"]})
+
+        assert isinstance(result["tags"], str)
+
+    def test_bool_value_coerced_to_string(self) -> None:
+        """Boolean values must be coerced to strings.
+
+        Tests: _validate_metadata bool coercion
+        How: Pass raw dict with bool value, assert result value is 'True' or 'False'
+        Why: YAML parses 'true'/'false' as Python bool; field consumers expect str.
+        """
+        result = _validate_metadata({"groomed": True})
+
+        assert result["groomed"] == "True"
+        assert isinstance(result["groomed"], str)
+
+    def test_nested_dict_values_coerced_to_str(self) -> None:
+        """Values inside a nested mapping must be coerced to strings.
+
+        Tests: _validate_metadata nested dict coercion
+        How: Pass raw dict with nested dict whose values include int and None,
+             assert inner values are all str
+        Why: The metadata sub-dict in YAML items may contain non-string values
+             (e.g. priority: 2); _parse_frontmatter reads them as dict[str, str].
+        """
+        result = _validate_metadata({"metadata": {"priority": 2, "added": None}})
+
+        inner = result["metadata"]
+        assert isinstance(inner, dict)
+        assert inner["priority"] == "2"
+        assert inner["added"] == "None"  # dict values use str(), not the None-to-empty rule
+
+    def test_string_values_pass_through_unchanged(self) -> None:
+        """String values must not be modified.
+
+        Tests: _validate_metadata no-op for already-valid input
+        How: Pass raw dict with string values, assert result matches input exactly
+        Why: Normal frontmatter is all strings; this must be a no-op for valid input.
+        """
+        result = _validate_metadata({"name": "My Item", "status": "open"})
+
+        assert result["name"] == "My Item"
+        assert result["status"] == "open"
+
+    def test_loads_frontmatter_coerces_non_string_yaml_values(self) -> None:
+        """Non-string YAML values are coerced to strings by loads_frontmatter.
+
+        Tests: integration of _validate_metadata inside loads_frontmatter
+        How: Parse YAML with integer priority, boolean groomed, and null issue;
+             assert metadata values are all strings after parsing.
+        Why: _validate_metadata is the boundary guard — this test verifies it
+             is wired in at the correct point (loads_frontmatter, not later).
+        """
+        text = """\
+---
+name: Boundary Test
+priority: 2
+groomed: true
+issue: null
+---
+Body.
+"""
+        post = loads_frontmatter(text)
+
+        assert post.metadata["name"] == "Boundary Test"
+        assert post.metadata["priority"] == "2"
+        assert post.metadata["groomed"] == "True"
+        assert post.metadata["issue"] == ""
+
+    def test_parse_item_file_with_non_string_frontmatter_values(self, tmp_path: Path) -> None:
+        """parse_item_file tolerates non-string YAML values via _validate_metadata coercion.
+
+        Tests: end-to-end non-string value handling through parse_item_file
+        How: Build a YAML frontmatter string with integer priority and boolean groomed,
+             parse it, assert the resulting BacklogItem has string fields.
+        Why: The full parse pipeline must be robust to YAML producing non-str values;
+             this is the consumer-level regression test for the boundary guard.
+        """
+        text = """\
+---
+name: Full Pipeline Test
+description: testing non-string coercion
+priority: 1
+groomed: false
+status: open
+---
+"""
+        item = parse_item_file(text, tmp_path / "item.md")
+
+        assert item.title == "Full Pipeline Test"
+        assert item.priority == "1"
+        assert isinstance(item.priority, str)

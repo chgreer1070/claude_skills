@@ -245,19 +245,19 @@ def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str,
     for key, value in updates.items():
         if key == "metadata" and isinstance(value, dict):
             raw_nested = meta.get("metadata")
-            nested_dict: dict[str, object] = (
+            nested_dict: dict[str, str] = (
                 {str(k): str(v) for k, v in raw_nested.items()} if isinstance(raw_nested, dict) else {}
             )
             for mk, mv in value.items():
-                nested_dict[mk] = mv.model_dump() if isinstance(mv, MilestoneInfo) else mv
+                nested_dict[mk] = json.dumps(mv.model_dump()) if isinstance(mv, MilestoneInfo) else str(mv)
             if set_synced:
                 nested_dict["last_synced"] = now_iso()
             meta["metadata"] = nested_dict
         else:
-            meta[key] = value
+            meta[key] = value if isinstance(value, str) else {str(k): str(v) for k, v in value.items()}
     if set_synced and "metadata" not in updates:
         raw_nested = meta.get("metadata")
-        nested_dict2: dict[str, object] = (
+        nested_dict2: dict[str, str] = (
             {str(k): str(v) for k, v in raw_nested.items()} if isinstance(raw_nested, dict) else {}
         )
         nested_dict2["last_synced"] = now_iso()
@@ -956,7 +956,9 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
         return None
     try:
         post = loads_frontmatter(text)
-        fm: dict[str, object] = {k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()}
+        fm: dict[str, str | dict[str, str]] = {
+            k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()
+        }
     except (ValueError, KeyError, TypeError, YAMLError):
         return None
     meta_raw = fm.get("metadata")
@@ -969,7 +971,7 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
         md["description"] = parsed[0]
     groomed = extract_groomed_section(post.content)
     new_body = build_body_extra_only(parsed[1], parsed[2], parsed[3], parsed[4], parsed[5], groomed)
-    new_meta: dict[str, object] = {
+    new_meta: dict[str, str | dict[str, str]] = {
         "name": md["name"],
         "description": md["description"],
         "metadata": {
@@ -2069,7 +2071,7 @@ def _filter_sections(item: BacklogItem, section: str) -> dict[str, Section | Gro
     }
 
 
-def _render_sections_as_body(item: BacklogItem, section: str | None = None) -> str:
+def render_sections_as_body(item: BacklogItem, section: str | None = None) -> str:
     r"""Render a YAML BacklogItem's structured sections into a markdown body string.
 
     Prepends a ``## Sections`` index block (unless *section* filter is active
@@ -2275,11 +2277,11 @@ def _populate_yaml_item_content(data: dict, item: BacklogItem, section: str | No
         filtered = _filter_sections(item, section)
         # Build a temporary item with only the filtered sections for rendering
         filtered_item = BacklogItem(title=item.title, sections=filtered)
-        data["body"] = _render_sections_as_body(filtered_item)
+        data["body"] = render_sections_as_body(filtered_item)
         all_yaml_secs = _build_sections_from_yaml_item(item)
         data["sections"] = {k: v for k, v in all_yaml_secs.items() if k in filtered}
     else:
-        data["body"] = _render_sections_as_body(item)
+        data["body"] = render_sections_as_body(item)
         data["sections"] = _build_sections_from_yaml_item(item)
 
 

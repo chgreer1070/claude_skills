@@ -444,3 +444,98 @@ from backlog_core.entry_blocks import wrap_entry_with_timestamp
 def test_wrap_entry_with_timestamp():
     result = wrap_entry_with_timestamp("Some content.", "2026-01-15T00:00:00Z")
     assert result == "<div><sub>2026-01-15T00:00:00Z</sub>\n\nSome content.\n</div>"
+
+
+# ---------------------------------------------------------------------------
+# _resolve_duplicate_ids() and _deduplicate_timestamps() — shared dedup logic
+# ---------------------------------------------------------------------------
+from backlog_core.entry_blocks import _deduplicate_timestamps, _resolve_duplicate_ids
+
+
+def test_resolve_duplicate_ids_suffixes_duplicates():
+    """Duplicate IDs must be suffixed with -0, -1, etc."""
+    entries = [
+        Entry(id="2026-03-10T08:00:00Z", content="First."),
+        Entry(id="2026-03-10T08:00:00Z", content="Second."),
+        Entry(id="2026-03-10T08:00:00Z", content="Third."),
+    ]
+    _resolve_duplicate_ids(entries)
+    assert entries[0].id == "2026-03-10T08:00:00Z-0"
+    assert entries[1].id == "2026-03-10T08:00:00Z-1"
+    assert entries[2].id == "2026-03-10T08:00:00Z-2"
+
+
+def test_resolve_duplicate_ids_returns_modified_count():
+    """Return value must equal the number of entries whose id was changed."""
+    entries = [
+        Entry(id="2026-03-10T08:00:00Z", content="First."),
+        Entry(id="2026-03-10T08:00:00Z", content="Second."),
+        Entry(id="2026-03-10T09:00:00Z", content="Unique."),
+    ]
+    count = _resolve_duplicate_ids(entries)
+    assert count == 2
+
+
+def test_resolve_duplicate_ids_no_duplicates_returns_zero():
+    """When all IDs are unique, return 0 and leave entries unchanged."""
+    entries = [Entry(id="2026-03-10T08:00:00Z", content="A."), Entry(id="2026-03-10T09:00:00Z", content="B.")]
+    count = _resolve_duplicate_ids(entries)
+    assert count == 0
+    assert entries[0].id == "2026-03-10T08:00:00Z"
+    assert entries[1].id == "2026-03-10T09:00:00Z"
+
+
+def test_deduplicate_timestamps_returns_modified_count():
+    """_deduplicate_timestamps must return count of modified IDs (not None)."""
+    entries = [Entry(id="2026-03-10T08:00:00Z", content="First."), Entry(id="2026-03-10T08:00:00Z", content="Second.")]
+    result = _deduplicate_timestamps(entries)
+    assert result == 2
+    assert entries[0].id == "2026-03-10T08:00:00Z-0"
+    assert entries[1].id == "2026-03-10T08:00:00Z-1"
+
+
+def test_deduplicate_timestamps_delegates_to_resolve_duplicate_ids():
+    """_deduplicate_timestamps and _resolve_duplicate_ids must produce identical results."""
+    entries_a = [
+        Entry(id="2026-03-10T08:00:00Z", content="First."),
+        Entry(id="2026-03-10T08:00:00Z", content="Second."),
+        Entry(id="2026-03-10T09:00:00Z", content="Unique."),
+    ]
+    entries_b = [
+        Entry(id="2026-03-10T08:00:00Z", content="First."),
+        Entry(id="2026-03-10T08:00:00Z", content="Second."),
+        Entry(id="2026-03-10T09:00:00Z", content="Unique."),
+    ]
+    count_a = _resolve_duplicate_ids(entries_a)
+    count_b = _deduplicate_timestamps(entries_b)
+    assert count_a == count_b
+    assert [e.id for e in entries_a] == [e.id for e in entries_b]
+
+
+def test_rewrite_by_entry_id_uses_same_dedup_logic_as_parse():
+    """rewrite_section(entry_id=...) with duplicate timestamps must resolve
+    IDs the same way parse_entries() does, so a suffixed ID from parse
+    round-trips correctly through rewrite."""
+    existing = (
+        "<div><sub>2026-03-10T08:00:00Z</sub>\n\nFirst.\n</div>\n\n"
+        "<div><sub>2026-03-10T08:00:00Z</sub>\n\nSecond.\n</div>\n\n"
+        "<div><sub>2026-03-10T09:00:00Z</sub>\n\nThird.\n</div>"
+    )
+    # parse_entries assigns: -0, -1 to the two duplicates; third stays as-is
+    parsed = parse_entries(existing)
+    assert parsed[0].id == "2026-03-10T08:00:00Z-0"
+    assert parsed[1].id == "2026-03-10T08:00:00Z-1"
+    assert parsed[2].id == "2026-03-10T09:00:00Z"
+
+    # rewrite targeting the second duplicate must use the same suffixed ID
+    result = rewrite_section(
+        existing_body=existing,
+        new_content="Replaced second.",
+        entry_id="2026-03-10T08:00:00Z-1",
+        added_date="2026-01-01",
+    )
+    entries = parse_entries(result)
+    assert len(entries) == 3
+    assert entries[0].content == "First."
+    assert entries[1].content == "Replaced second."
+    assert entries[2].content == "Third."

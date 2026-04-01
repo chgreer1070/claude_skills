@@ -1,4 +1,4 @@
-"""Tests for section index, section filtering, and _render_sections_as_body.
+"""Tests for section index, section filtering, and render_sections_as_body.
 
 Covers:
 - C: Section index emitted at the top of the rendered body
@@ -20,8 +20,8 @@ from backlog_core.models import BacklogItem, Entry, GroomedData, Section
 from backlog_core.operations import (
     _filter_sections,
     _render_section_index,
-    _render_sections_as_body,
     _section_display_title,
+    render_sections_as_body,
 )
 
 # ---------------------------------------------------------------------------
@@ -137,17 +137,17 @@ class TestRenderSectionIndex:
 
 
 # ---------------------------------------------------------------------------
-# _render_sections_as_body — index prepended
+# render_sections_as_body — index prepended
 # ---------------------------------------------------------------------------
 
 
 class TestRenderSectionsAsBodyIndex:
-    """_render_sections_as_body prepends the section index when no filter is active."""
+    """render_sections_as_body prepends the section index when no filter is active."""
 
     def test_index_present_in_full_render(self) -> None:
         """Full render includes ## Sections index block before sections."""
         item = _item(sections={"fact_check": Section(entries=[_entry("x")])})
-        body = _render_sections_as_body(item)
+        body = render_sections_as_body(item)
         assert "## Sections" in body
         # Index appears before the section content
         assert body.index("## Sections") < body.index("## Fact-Check")
@@ -155,14 +155,14 @@ class TestRenderSectionsAsBodyIndex:
     def test_no_index_when_empty_sections(self) -> None:
         """No sections → empty string (no index, no body)."""
         item = _item(sections={})
-        assert _render_sections_as_body(item) == ""
+        assert render_sections_as_body(item) == ""
 
     def test_no_index_when_section_filter_active(self) -> None:
         """When section filter is active, no index block is prepended."""
         item = _item(
             sections={"fact_check": Section(entries=[_entry("fc")]), "rt_ica": Section(entries=[_entry("rt")])}
         )
-        body = _render_sections_as_body(item, section="0")
+        body = render_sections_as_body(item, section="0")
         assert "## Sections" not in body
         assert "## Fact-Check" in body
 
@@ -170,7 +170,7 @@ class TestRenderSectionsAsBodyIndex:
         """GroomedData is rendered with ## Groomed (date) and ### subsections."""
         groomed = GroomedData(date="2026-03-15", subsections={"Priority": "High"})
         item = _item(sections={"groomed": groomed})
-        body = _render_sections_as_body(item)
+        body = render_sections_as_body(item)
         assert "## Groomed (2026-03-15)" in body
         assert "### Priority" in body
         assert "High" in body
@@ -293,12 +293,12 @@ class TestFilterSectionsByRegex:
 
 
 # ---------------------------------------------------------------------------
-# _render_sections_as_body with section filter — body and sections filtered
+# render_sections_as_body with section filter — body and sections filtered
 # ---------------------------------------------------------------------------
 
 
 class TestRenderSectionsAsBodyFiltered:
-    """_render_sections_as_body with section filter returns only matched sections."""
+    """render_sections_as_body with section filter returns only matched sections."""
 
     def test_filter_by_index_returns_only_that_section(self) -> None:
         """section='1' returns only the second section's content."""
@@ -308,14 +308,14 @@ class TestRenderSectionsAsBodyFiltered:
                 "rt_ica": Section(entries=[_entry("rt content")]),
             }
         )
-        body = _render_sections_as_body(item, section="1")
+        body = render_sections_as_body(item, section="1")
         assert "rt content" in body
         assert "fact content" not in body
 
     def test_filter_no_match_returns_empty(self) -> None:
         """section filter with no match returns empty string."""
         item = _item(sections={"fact_check": Section(entries=[_entry("fc")])})
-        body = _render_sections_as_body(item, section="Nonexistent")
+        body = render_sections_as_body(item, section="Nonexistent")
         assert body == ""
 
     def test_filter_comma_indices_returns_multiple(self) -> None:
@@ -327,7 +327,7 @@ class TestRenderSectionsAsBodyFiltered:
                 "unknown__notes": Section(entries=[_entry("note")]),
             }
         )
-        body = _render_sections_as_body(item, section="0,2")
+        body = render_sections_as_body(item, section="0,2")
         assert "## Fact-Check" in body
         assert "## Notes" in body
         assert "## RT-ICA" not in body

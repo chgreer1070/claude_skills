@@ -377,10 +377,14 @@ def test_parse_md_body_sections_empty_body_returns_empty_dict() -> None:
     assert result == {}
 
 
-def test_parse_md_body_sections_body_with_no_headings_returns_empty_dict() -> None:
-    """Body text with no ## headings produces an empty dict."""
+def test_parse_md_body_sections_body_with_no_headings_returns_preamble() -> None:
+    """Body text with no ## headings is preserved as a 'preamble' section (edge case 1)."""
+    from backlog_core.models import Section
+
     result = parse_md_body_sections("Just some text with no headings.\n")
-    assert result == {}
+    assert "preamble" in result
+    assert isinstance(result["preamble"], Section)
+    assert result["preamble"].entries[0].content == "Just some text with no headings."
 
 
 # ---------------------------------------------------------------------------

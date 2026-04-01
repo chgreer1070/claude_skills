@@ -393,33 +393,35 @@ class DispatchStateManager:
             pid: int = row["pid"]
             try:
                 os.kill(pid, 0)
-            except ProcessLookupError:
-                # PID does not exist — process is dead.
-                error_msg = f"Process died unexpectedly (PID {pid})"
-                self.set_item_failed(
-                    milestone=row["milestone"], wave_num=row["wave_num"], issue=row["issue"], error=error_msg
-                )
-                stale.append(
-                    DispatchItemRecord(
-                        milestone=row["milestone"],
-                        wave_num=row["wave_num"],
-                        issue=row["issue"],
-                        title=row["title"],
-                        status="failed",
-                        pid=pid,
-                        started_at=row["started_at"] or "",
-                        completed_at="",
-                        result="",
-                        error=error_msg,
-                        cost=None,
-                        result_file=row["result_file"] or "",
-                        error_file=row["error_file"] or "",
+            except OSError as exc:
+                if isinstance(exc, PermissionError):
+                    # PID exists but we don't have permission to signal it.
+                    # Process is alive; leave as-is.
+                    pass
+                else:
+                    # ProcessLookupError (no such PID) or any other OSError
+                    # subclass raised by container runtimes — treat as dead.
+                    error_msg = f"Process died unexpectedly (PID {pid})"
+                    self.set_item_failed(
+                        milestone=row["milestone"], wave_num=row["wave_num"], issue=row["issue"], error=error_msg
                     )
-                )
-            except PermissionError:
-                # PID exists but we don't have permission to signal it.
-                # Process is alive; leave as-is.
-                pass
+                    stale.append(
+                        DispatchItemRecord(
+                            milestone=row["milestone"],
+                            wave_num=row["wave_num"],
+                            issue=row["issue"],
+                            title=row["title"],
+                            status="failed",
+                            pid=pid,
+                            started_at=row["started_at"] or "",
+                            completed_at="",
+                            result="",
+                            error=error_msg,
+                            cost=None,
+                            result_file=row["result_file"] or "",
+                            error_file=row["error_file"] or "",
+                        )
+                    )
         return stale
 
     # ------------------------------------------------------------------
