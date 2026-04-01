@@ -1648,7 +1648,7 @@ def issue_to_local_fields(issue: IssueNode) -> IssueLocalFields:
         updated_at=issue["updatedAt"],
         milestone=ms["title"] if ms else "",
         milestone_number=ms["number"] if ms else None,
-        milestone_due_on=ms["dueOn"] or "" if ms else "",
+        milestone_due_on=(ms["dueOn"] or "") if ms else "",
         milestone_state=ms["state"] if ms else "",
         assignees=assignees,
         labels=labels,

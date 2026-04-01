@@ -59,6 +59,7 @@ from .gh_client import (
 )
 from .github_sync import (
     SECTION_HEADING as _SECTION_HEADING_MAP,
+    _render_groomed as _render_groomed_md,
     merge_item as merge_item_models,
     parse_issue_body as parse_issue_body_sync,
     render_issue_body,
@@ -75,6 +76,7 @@ from .models import (
     DuplicateItemError,
     Entry,
     GroomedData,
+    IssueLocalFields,
     IssueStatus,
     ItemNotFoundError,
     Output,
@@ -2088,8 +2090,11 @@ def _filter_sections(item: BacklogItem, section: str) -> dict[str, Section | Gro
     stripped = section.strip()
     index_parts = [p.strip() for p in stripped.split(",")]
     if all(p.lstrip("-").isdigit() for p in index_parts if p):
+        n = len(keys)
         indices = {int(p) for p in index_parts if p}
-        return {keys[i]: item.sections[keys[i]] for i in indices if 0 <= i < len(keys)}
+        # Normalise negative indices (Python-style: -1 = last)
+        resolved = {(i % n) for i in indices if -n <= i < n}
+        return {keys[i]: item.sections[keys[i]] for i in sorted(resolved)}
 
     # --- /regex/ pattern ---
     if stripped.startswith("/") and stripped.endswith("/") and len(stripped) > 1:
@@ -2133,13 +2138,10 @@ def _render_sections_as_body(item: BacklogItem, section: str | None = None) -> s
             parts.append(index_block.rstrip("\n"))
 
     for key, sec_data in sections_to_render.items():
-        title = _section_display_title(key, sec_data)
         if isinstance(sec_data, GroomedData):
-            subsection_lines: list[str] = [f"## Groomed ({sec_data.date})"]
-            for sub_key, sub_val in sec_data.subsections.items():
-                subsection_lines.append(f"### {sub_key}\n\n{sub_val}")
-            parts.append("\n\n".join(subsection_lines))
+            parts.append(_render_groomed_md(sec_data))
         elif isinstance(sec_data, Section):
+            title = _section_display_title(key, sec_data)
             content = "\n".join(e.content for e in sec_data.entries if e.content)
             parts.append(f"## {title}\n\n{content}")
 
@@ -2307,12 +2309,15 @@ def _populate_yaml_item_content(data: dict, item: BacklogItem, section: str | No
         item: YAML BacklogItem with structured sections.
         section: Optional section filter expression; ``None`` renders all sections.
     """
-    data["body"] = _render_sections_as_body(item, section=section)
     if section is not None:
-        filtered_keys = set(_filter_sections(item, section).keys())
+        filtered = _filter_sections(item, section)
+        # Build a temporary item with only the filtered sections for rendering
+        filtered_item = BacklogItem(title=item.title, sections=filtered)
+        data["body"] = _render_sections_as_body(filtered_item)
         all_yaml_secs = _build_sections_from_yaml_item(item)
-        data["sections"] = {k: v for k, v in all_yaml_secs.items() if k in filtered_keys}
+        data["sections"] = {k: v for k, v in all_yaml_secs.items() if k in filtered}
     else:
+        data["body"] = _render_sections_as_body(item)
         data["sections"] = _build_sections_from_yaml_item(item)
 
 
@@ -3204,6 +3209,29 @@ def normalize_items(dry_run: bool = False, output: Output | None = None) -> dict
 
 
 # ---------------------------------------------------------------------------
+# Helpers: issue field → metadata mapping
+# ---------------------------------------------------------------------------
+
+
+def _issue_fields_to_metadata(fields: IssueLocalFields) -> dict[str, str | list[str] | int | None]:
+    """Extract the GitHub-synced metadata fields from an IssueLocalFields instance.
+
+    Returns:
+        Dict suitable for merging into BacklogItemMetadata or passing as
+        a nested ``"metadata"`` update dict to :func:`update_item_metadata`.
+    """
+    return {
+        "updated_at": fields.updated_at,
+        "assignees": fields.assignees,
+        "labels": fields.labels,
+        "milestone": fields.milestone,
+        "milestone_number": fields.milestone_number,
+        "milestone_due_on": fields.milestone_due_on,
+        "milestone_state": fields.milestone_state,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Public API: PULL
 # ---------------------------------------------------------------------------
 
@@ -3257,13 +3285,7 @@ def _write_issue_node_to_cache(
                     "type": fields.item_type,
                     "status": fields.status,
                     "last_synced": now_iso(),
-                    "updated_at": fields.updated_at,
-                    "assignees": fields.assignees,
-                    "labels": fields.labels,
-                    "milestone": fields.milestone,
-                    "milestone_number": fields.milestone_number,
-                    "milestone_due_on": fields.milestone_due_on,
-                    "milestone_state": fields.milestone_state,
+                    **_issue_fields_to_metadata(fields),
                 },
             },
             output=out,
@@ -3287,13 +3309,8 @@ def _write_issue_node_to_cache(
             sections=remote_item.sections,
         )
         new_item.metadata.last_synced = now_iso()
-        new_item.metadata.updated_at = fields.updated_at
-        new_item.metadata.assignees = fields.assignees
-        new_item.metadata.labels = fields.labels
-        new_item.metadata.milestone = fields.milestone
-        new_item.metadata.milestone_number = fields.milestone_number
-        new_item.metadata.milestone_due_on = fields.milestone_due_on
-        new_item.metadata.milestone_state = fields.milestone_state
+        for attr, val in _issue_fields_to_metadata(fields).items():
+            setattr(new_item.metadata, attr, val)
         new_item.file_path = str(filepath)
         save_item(new_item)
 

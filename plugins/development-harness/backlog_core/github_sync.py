@@ -40,18 +40,17 @@ _GROOMED_HEADING_RE = re.compile(r"^##\s+Groomed\s*\(([^)]*)\)")
 _SUBSECTION_RE = re.compile(r"### ([^\n]+)\n([\s\S]*?)(?=\n### |\Z)")
 
 # Section key (used in BacklogItem.sections) -> GitHub markdown heading text
-_SECTION_HEADING: dict[str, str] = {
+SECTION_HEADING: dict[str, str] = {
     "fact_check": "Fact-Check",
     "rt_ica": "RT-ICA",
     "issue_classification": "Issue Classification",
 }
 
-#: Public alias for ``_SECTION_HEADING`` — importable by ``operations.py``
-#: and other consumers without accessing a private name.
-SECTION_HEADING: dict[str, str] = _SECTION_HEADING
-
 # Reverse lookup: heading text (lowercased) -> section key
-_HEADING_TO_KEY: dict[str, str] = {v.lower(): k for k, v in _SECTION_HEADING.items()}
+_HEADING_TO_KEY: dict[str, str] = {v.lower(): k for k, v in SECTION_HEADING.items()}
+
+# All known section keys plus "groomed" — used to identify unknown sections in render_issue_body
+_KNOWN_SECTION_KEYS: frozenset[str] = frozenset(SECTION_HEADING) | {"groomed"}
 
 
 def heading_to_section_key(heading_text: str) -> str | None:
@@ -214,7 +213,7 @@ def render_issue_body(item: BacklogItem, original_body: str | None = None) -> st
         parts.append(f"## Description\n\n{item.description}")
 
     # Entry-bearing sections in definition order
-    for key, heading in _SECTION_HEADING.items():
+    for key, heading in SECTION_HEADING.items():
         sec = item.sections.get(key)
         if not isinstance(sec, Section) or not sec.entries:
             continue
@@ -226,9 +225,8 @@ def render_issue_body(item: BacklogItem, original_body: str | None = None) -> st
         parts.append(_render_groomed(groomed_sec))
 
     # Unknown sections — keys not in the known set and not "groomed"
-    known_keys = set(_SECTION_HEADING) | {"groomed"}
     for key, sec in item.sections.items():
-        if key in known_keys:
+        if key in _KNOWN_SECTION_KEYS:
             continue
         if not isinstance(sec, Section) or not sec.entries:
             continue
