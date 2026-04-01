@@ -462,7 +462,7 @@ Total: 380 tests across the `backlog-core` package.
 - Python 3.11 or newer
 - `GITHUB_TOKEN` environment variable (for GitHub operations)
 - `uv` for running the CLI script
-- Dependencies (managed by `uv` / `pyproject.toml`): `fastmcp>=3.0.2`, `pygithub>=2.8.1`, `pydantic>=2.12.3`, `python-frontmatter>=1.1.0`
+- Dependencies (managed by `uv` / `pyproject.toml`): `fastmcp>=3.0.2`, `pygithub>=2.8.1`, `pydantic>=2.12.3`, `ruamel.yaml>=0.18.0`
 
 ---
 

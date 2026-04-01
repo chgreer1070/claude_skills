@@ -2,13 +2,11 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#   "typer>=0.21.0",
-#   "rich>=13.0",
+#   "typer>=0.21.2",
 #   "ruamel.yaml>=0.18.0",
 #   "pydantic>=2.12.3",
 #   "pygithub>=2.8.1",
 #   "gitpython>=3.1.0",
-#   "python-frontmatter>=1.1.0",
 # ]
 # ///
 """dh_migrate — migrate project state from legacy .claude/ layout to ~/.dh/.
