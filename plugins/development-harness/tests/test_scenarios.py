@@ -49,7 +49,6 @@ class TestCreateBacklogItem:
                 "priority": "P1",
                 "description": "A test item",
                 "source": "test",
-                "create_issue": True,
                 "force": True,
             },
         )
@@ -208,13 +207,13 @@ class TestWorkBacklogItem:
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)
 
-    async def test_update_create_github_issue(self, backlog_dir, mock_github, write_test_item):
-        """Scenario 10: backlog_update with create_issue=True creates a GitHub issue."""
+    async def test_update_creates_github_issue_when_missing(self, backlog_dir, mock_github, write_test_item):
+        """Scenario 10: backlog_update creates a GitHub issue when the item lacks one."""
         write_test_item("Issue Create Test", priority="P1")
         mock_github["try_get_github"].return_value = MagicMock()
         mock_github["create_issue_for_item"].return_value = 99
 
-        result = await _call("backlog_update", {"selector": "Issue Create Test", "create_issue": True})
+        result = await _call("backlog_update", {"selector": "Issue Create Test"})
 
         assert result["title"] == "Issue Create Test"
         assert result["issue_num"] == 99
@@ -613,7 +612,6 @@ class TestRecursionGuardScenarios:
                 "priority": "P1",
                 "description": "Follow-up identified when recursion depth limit was reached",
                 "source": "Depth limit exceeded on #42 at depth 5",
-                "create_issue": False,
                 "force": True,
             },
         )
@@ -636,7 +634,6 @@ class TestRecursionGuardScenarios:
                 "priority": "P2",
                 "description": "Blocked for planning — needs scoping before implementation",
                 "source": "BLOCKED-FOR-PLANNING",
-                "create_issue": False,
                 "force": True,
             },
         )
@@ -651,7 +648,6 @@ class TestRecursionGuardScenarios:
                 "priority": "P2",
                 "description": "Blocked for planning — needs scoping before implementation",
                 "source": "BLOCKED-FOR-PLANNING",
-                "create_issue": False,
                 "force": False,
             },
         )
@@ -670,7 +666,6 @@ class TestRecursionGuardScenarios:
                 "priority": "P2",
                 "description": "Separate domain concern identified during quality gate",
                 "source": "Quality gate follow-up from #42 — out-of-scope: separate domain concern",
-                "create_issue": False,
                 "force": True,
             },
         )
@@ -697,7 +692,6 @@ class TestRecursionGuardScenarios:
                 "priority": "P1",
                 "description": "Item created when scope section absent — defaults to in-scope",
                 "source": "in-scope default",
-                "create_issue": False,
                 "force": True,
             },
         )
@@ -755,7 +749,6 @@ class TestLifecycles:
                 "priority": "P1",
                 "description": "Full lifecycle test",
                 "source": "test",
-                "create_issue": True,
                 "force": True,
             },
         )
@@ -800,7 +793,6 @@ class TestLifecycles:
                 "priority": "P1",
                 "description": "Will be resolved",
                 "source": "test",
-                "create_issue": True,
                 "force": True,
             },
         )

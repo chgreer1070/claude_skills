@@ -32,9 +32,9 @@ After extracting item fields (Step 2), check for an existing linked issue:
 
 ## Step 2.3: Create GitHub Issue
 
-Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `create_issue=true`.
+Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"`.
 
-The tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter. Check the returned dict for an `error` key.
+The tool creates the issue automatically when the item lacks one and writes `issue: '#N'` back to the per-item file frontmatter. Check the returned dict for an `error` key.
 
 ## Step 2.4: Set In-Progress Label
 
@@ -199,4 +199,4 @@ GitHub setup complete.
   metadata.status   →  Issue closed
 ```
 
-The issue body template is built into the `backlog_update(create_issue=true)` MCP tool — it generates the story format automatically from the per-item file fields.
+The issue body template is built into the `backlog_update` MCP tool — it generates the story format automatically from the per-item file fields.

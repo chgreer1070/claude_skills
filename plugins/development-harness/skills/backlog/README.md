@@ -185,7 +185,6 @@ mcp__plugin_dh_backlog__backlog_add(
     description="New items can be created without checking for near-duplicates.",
     source="Session observation",
     type="Bug",                 # Feature, Bug, Refactor, Docs, or Chore
-    create_issue=True,          # default: True
     force=False,                # skip fuzzy duplicate check
 )
 # Returns: {filepath, filename, title, priority, issue_num?, messages, warnings}
@@ -337,7 +336,6 @@ mcp__plugin_dh_backlog__backlog_update(
     plan="plan/tasks-7-slug.md",          # attach a plan file
     status="in-progress",                  # set item status
     verified=False,                        # apply status:verified label (SAM items only)
-    create_issue=False,                    # create GitHub issue if missing
     groomed_content="### Priority\n...",   # full groomed section replacement
     section="Priority",                    # incremental section update
     content="P1 — blocks item creation.", # content for named section
@@ -397,7 +395,7 @@ The skill requires `GITHUB_TOKEN` in the environment for all GitHub operations. 
 
 What the integration provides:
 
-- **Issue creation**: `backlog_add` with `create_issue=True` creates a GitHub Issue and stores the `#N` reference in local frontmatter
+- **Issue creation**: `backlog_add` always creates a GitHub Issue and stores the `#N` reference in local frontmatter
 - **Label management**: State transitions update GitHub labels automatically (`status:needs-grooming`, `status:in-progress`, etc.)
 - **Body sync**: Groomed content is synced to the issue body when the item has a linked issue
 - **Milestone assignment**: `group-items-to-milestone` writes milestone number to both the local frontmatter and the GitHub Issue milestone field

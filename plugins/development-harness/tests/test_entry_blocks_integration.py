@@ -21,9 +21,7 @@ def test_full_entry_lifecycle(backlog_dir, mock_github):
     out = Output()
 
     # Create
-    operations.add_item(
-        title="Lifecycle Test", priority="P1", description="Test lifecycle", output=out, create_issue=False
-    )
+    operations.add_item(title="Lifecycle Test", priority="P1", description="Test lifecycle", output=out)
 
     # Append two entries to Decision section with unique timestamps
     operations.groom_item(selector="Lifecycle Test", section="Decision", content="First decision.", output=out)

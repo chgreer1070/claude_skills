@@ -80,7 +80,7 @@ Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUse
 [AUTO] Type: Feature — inferred from "integrate" keyword
 ```
 
-Proceed to Step 2 (validate). Skip Step 7 (GitHub issue) — auto mode does not create GitHub issues unless `--create-issue` is also passed.
+Proceed to Step 2 (validate).
 
 **If `<mode/>` is empty (guided intake):**
 
@@ -243,18 +243,10 @@ Call the `mcp__plugin_dh_backlog__backlog_add` tool:
 | `type` | `"{type}"` |
 | `how_to_reproduce` | `"{reproduction steps}"` if provided; omit parameter entirely if not |
 | `verbatim_user_report` | `"{exact user words}"` — always provide; never omit |
-| `create_issue` | `true` if P0/P1 and user confirmed; `false` if P2/Ideas or user declined |
 
 Check the returned dict for `error` key.
 
 **Note on `research_first`:** The `--research-first` CLI flag has no MCP equivalent. The `research_first` parameter does not exist on `backlog_add`. Embed research questions directly in the `description` parameter instead.
-
-**`create_issue` logic:**
-
-- P0 or P1 + (guided/quick mode with user said Yes, or `--auto` with `--create-issue` passed): `create_issue=true`
-- P2 or Idea: `create_issue=false`
-- P0 or P1 + user said No (skip): `create_issue=false`
-- `--auto` mode without `--create-issue` flag: `create_issue=false`
 
 ### Step 6: Confirm Write
 
@@ -283,7 +275,7 @@ Next steps:
 ## Completion Criteria
 
 - `backlog_add` MCP tool invoked successfully (no `error` key in response)
-- GitHub Issue created and linked (P0/P1 only, if create_issue=true; MCP tool handles)
+- GitHub Issue created and linked (MCP tool handles)
 - Next-step commands shown to user
 
 ## Handoff

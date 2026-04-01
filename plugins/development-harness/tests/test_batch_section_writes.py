@@ -133,7 +133,8 @@ class TestHandleBatchGroomedLocalWrites:
 
         ops._handle_batch_groomed(item, {"Plan": "Single plan content."}, repo="owner/repo")
 
-        content = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        content = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "Single plan content." in content
 
     def test_multiple_sections_all_appear_in_file(self, tmp_path: Path, mocker: MockerFixture) -> None:
@@ -153,7 +154,8 @@ class TestHandleBatchGroomedLocalWrites:
             repo="owner/repo",
         )
 
-        content = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        content = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "The plan text." in content
         assert "The research text." in content
         assert "The decision text." in content
@@ -441,7 +443,8 @@ class TestGroomItemWithSections:
 
         ops.groom_item(selector="Groom Sections Item", sections={"Plan": "Groomed plan content."}, repo="owner/repo")
 
-        content = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        content = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "Groomed plan content." in content
 
     def test_sections_returns_sections_written_with_all_names(self, mocker: MockerFixture) -> None:
@@ -496,7 +499,8 @@ class TestGroomItemWithSections:
         )
 
         assert result.get("groomed_updated") is True
-        content = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        content = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "Legacy single-section content." in content
 
     def test_multi_section_batch_all_sections_in_file(self, mocker: MockerFixture) -> None:
@@ -519,7 +523,8 @@ class TestGroomItemWithSections:
             repo="owner/repo",
         )
 
-        content = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        content = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "Batch plan text." in content
         assert "Batch research text." in content
         assert "Batch decision text." in content

@@ -403,6 +403,85 @@ class TestSaveItem:
         # Assert
         assert "skip:" not in content
 
+    def test_save_item_with_md_file_path_auto_migrates_to_yaml(self, tmp_path: Path) -> None:
+        """save_item auto-migrates when item.file_path ends with .md.
+
+        When path is omitted and item.file_path is an .md path, save_item must
+        write the .yaml file, rename the original .md to .md.bak, and update
+        item.file_path to the .yaml path.
+        """
+        # Arrange
+        md_path = tmp_path / "item.md"
+        md_path.write_text("# placeholder", encoding="utf-8")
+        item = BacklogItem(
+            title="Auto-migrate test",
+            description="Testing .md to .yaml auto-migration.",
+            priority="P2",
+            item_type="Chore",
+            status="open",
+            added="2026-03-31",
+            file_path=str(md_path),
+        )
+
+        # Act
+        save_item(item)
+
+        # Assert — .yaml written
+        yaml_path = tmp_path / "item.yaml"
+        assert yaml_path.exists(), f"Expected {yaml_path} to exist after auto-migration"
+        # Assert — .md.bak created
+        bak_path = tmp_path / "item.md.bak"
+        assert bak_path.exists(), f"Expected {bak_path} to exist after auto-migration"
+        # Assert — item.file_path updated to .yaml
+        assert item.file_path == str(yaml_path.resolve())
+
+    def test_save_item_with_yaml_file_path_writes_to_same_path(self, tmp_path: Path) -> None:
+        """save_item writes to item.file_path when it ends with .yaml and path is None.
+
+        No renaming should occur; item.file_path is updated to the resolved path.
+        """
+        # Arrange
+        yaml_path = tmp_path / "item.yaml"
+        item = BacklogItem(
+            title="Yaml path test",
+            description="Direct .yaml path.",
+            priority="P1",
+            item_type="Feature",
+            status="open",
+            added="2026-03-31",
+            file_path=str(yaml_path),
+        )
+
+        # Act
+        save_item(item)
+
+        # Assert — file written
+        assert yaml_path.exists(), f"Expected {yaml_path} to exist"
+        # Assert — item.file_path updated to resolved path
+        assert item.file_path == str(yaml_path.resolve())
+        # Assert — no stray .bak file
+        assert not (tmp_path / "item.yaml.bak").exists()
+
+    def test_save_item_with_no_path_and_no_file_path_raises(self) -> None:
+        """save_item raises ValueError when path is None and item.file_path is empty.
+
+        Fail-fast: the caller must supply a write destination.
+        """
+        # Arrange
+        item = BacklogItem(
+            title="No path test",
+            description="Item with no file_path.",
+            priority="P3",
+            item_type="Chore",
+            status="open",
+            added="2026-03-31",
+            file_path="",
+        )
+
+        # Act / Assert
+        with pytest.raises(ValueError, match="file_path is empty"):
+            save_item(item)
+
 
 # ---------------------------------------------------------------------------
 # Round-trip: load → save → load

@@ -327,7 +327,9 @@ class TestHandleUpdateGroomedAcWiring:
 
         ops._handle_update_groomed(item, "Formal criterion here.", "Acceptance Criteria", repo="owner/repo")
 
-        content = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; the content is now at the .yaml path.
+        written_path = filepath.with_suffix(".yaml")
+        content = written_path.read_text(encoding="utf-8")
         assert "Formal criterion here." in content
 
 
@@ -416,6 +418,8 @@ class TestHandleBatchGroomedAcWiring:
             item, {"Acceptance Criteria": "Formal AC content.", "Plan": "Plan content."}, repo="owner/repo"
         )
 
-        content = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; the content is now at the .yaml path.
+        written_path = filepath.with_suffix(".yaml")
+        content = written_path.read_text(encoding="utf-8")
         assert "Formal AC content." in content
         assert "Plan content." in content

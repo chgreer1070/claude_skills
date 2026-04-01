@@ -67,7 +67,10 @@ _LIST_TOKEN_BUDGET = 4_400
 _enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
 
 # Fields searched by default when no field-specific prefix is given.
-_SEARCH_FIELDS: tuple[str, ...] = ("title", "section", "topic", "type")
+# ``body`` contains the full item content (description + all section entries)
+# built by operations._build_item_body so that plain-text and regex searches
+# cover the complete backlog item, not just the 4 metadata fields.
+_SEARCH_FIELDS: tuple[str, ...] = ("title", "section", "topic", "type", "body")
 
 # Minimum length for a valid /pattern/ regex term (e.g. "/x/" has length 3).
 _REGEX_SLASH_MIN_LEN = 2
@@ -160,10 +163,11 @@ def _item_matches_term(item: dict[str, str | bool], term: str) -> bool:
 
     Supported term forms (evaluated in order):
     - ``/pattern/`` or ``regex:pattern`` — compiled regex matched against all
-      default search fields joined with a space.
+      default search fields joined with a space (title, section, topic, type,
+      and full body content).
     - ``field:value`` — substring match restricted to a named field
-      (``title``, ``section``, ``topic``, ``type``).  Unknown field names fall
-      back to full-text substring match.
+      (``title``, ``section``, ``topic``, ``type``, ``body``).  Unknown field
+      names fall back to full-text substring match.
     - plain text — case-insensitive substring match across all default fields
       (existing behaviour, fully preserved).
     """
@@ -283,10 +287,9 @@ async def backlog_add(
     type_: Annotated[
         str, Field(description="Item type: Feature, Bug, Refactor, Docs, or Chore", alias="type")
     ] = "Feature",
-    create_issue: Annotated[bool, Field(description="Create a GitHub issue for this item")] = True,
     force: Annotated[bool, Field(description="Skip fuzzy duplicate check")] = False,
 ) -> dict:
-    """Add a new item to the backlog. Creates a per-item file and optionally a GitHub issue.
+    """Add a new item to the backlog. Creates a per-item file and a GitHub issue.
 
     Use priority P0 for must-have, P1 for should-have, P2 for could-have,
     or Ideas for exploratory items.
@@ -304,7 +307,6 @@ async def backlog_add(
             description=description,
             source=source,
             type_=type_,
-            create_issue=create_issue,
             force=force,
             output=out,
         )
@@ -389,11 +391,12 @@ async def backlog_list(
         str | None,
         Field(
             description=(
-                "Full-text search across title, section, topic, and type simultaneously. "
+                "Full-text search across the complete item content — title, section, topic, "
+                "type, description, acceptance criteria, and all section body text. "
                 "Supports OR/AND operators (e.g. 'auth OR deploy'), "
                 "regex patterns (/pattern/ or regex:pattern), "
-                "field-specific search (title:auth, type:bug, topic:devops, section:P1), "
-                "and plain case-insensitive substring matching (existing behaviour). "
+                "field-specific search (title:auth, type:bug, topic:devops, section:P1, body:sdlc-layers), "
+                "and plain case-insensitive substring matching. "
                 "OR/AND are whitespace-delimited and case-insensitive. "
                 "Mixed AND/OR in a single query is not supported; AND takes precedence. "
                 "Combine with other filters (section=, type=, topic=) to narrow results further."
@@ -424,9 +427,10 @@ async def backlog_list(
     Use type_ to filter by metadata.type exact match (e.g. Bug, Feature).
     Use topic to filter by metadata.topic substring match.
     Use include_closed=true to include items with terminal status (done, resolved, closed).
-    Use search for full-text search across title, section, topic, and type.
+    Use search for full-text search across the complete item content (title, section, topic,
+    type, description, and all section body text including acceptance criteria and impact radius).
     Search supports OR/AND operators (e.g. 'auth OR deploy'), regex (/pattern/ or regex:pattern),
-    field-specific syntax (title:auth, type:bug, topic:devops), and plain substring matching.
+    field-specific syntax (title:auth, type:bug, topic:devops, body:sdlc-layers), and plain substring matching.
     Use offset and limit to paginate results. When limit=0, auto-pagination keeps the
     response under 4400 tokens (cl100k_base encoding). When has_more=true, call again
     with the offset shown in next_call.
@@ -725,9 +729,6 @@ async def backlog_update(
         str | None,
         Field(description="Set item status (e.g. 'in-progress'). Updates GitHub issue labels when applicable."),
     ] = None,
-    create_issue: Annotated[
-        bool, Field(description="Create a GitHub issue for this item if it lacks one (P0/P1 items only)")
-    ] = False,
     section: Annotated[
         str | None, Field(description="Section name for groomed content update (use with content parameter)")
     ] = None,
@@ -762,7 +763,7 @@ async def backlog_update(
         ),
     ] = False,
 ) -> dict:
-    """Update a backlog item: attach a plan, set status, create a GitHub issue, or write groomed content.
+    """Update a backlog item: attach a plan, set status, or write groomed content.
 
     For groomed content, provide section + content for section updates.
     Use entry_id to replace a specific entry, or replace_section=True to
@@ -783,7 +784,6 @@ async def backlog_update(
             selector=selector,
             plan=plan,
             status=status,
-            create_issue=create_issue,
             section=section,
             content=content,
             title=title,

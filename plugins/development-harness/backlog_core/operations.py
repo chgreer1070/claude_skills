@@ -347,7 +347,7 @@ def _apply_updates_to_yaml_item(filepath: Path, updates: dict[str, str | dict[st
             setattr(item.metadata, key, str(value))
     if set_synced:
         item.metadata.last_synced = now_iso()
-    save_item(item, filepath)
+    save_item(item)
 
 
 def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str, str]], set_synced: bool) -> None:
@@ -717,7 +717,7 @@ def _write_groomed_to_yaml_item(
         )
         item.sections[section_name] = section
 
-    save_item(item, filepath)
+    save_item(item)
 
 
 def _write_groomed_to_item_file(
@@ -880,8 +880,7 @@ def _handle_update_groomed(
 
     # Step 1: Write to GitHub FIRST (canonical source of truth), but only if
     # the item already has an issue. Groom must not create a new issue as a
-    # side-effect — callers that want issue creation use backlog_add or
-    # backlog_sync with create_issue=True.
+    # side-effect — issue creation is handled by backlog_add and backlog_update.
     github_synced = False
     if issue_ref:
         github_synced = _write_groomed_to_github(issue_ref, groomed_content_val, section_name, repo, output=out)
@@ -950,7 +949,7 @@ def _handle_batch_groomed(
         )
         batch_item.sections[section_name] = section
         written.append(section_name)
-    save_item(batch_item, filepath)
+    save_item(batch_item)
     out.info(f"Updated {filepath.name} with {len(written)} groomed section(s)")
 
     if "Acceptance Criteria" in sections:
@@ -1161,7 +1160,8 @@ def _pull_item_create_new(
         plan=item.plan,
         sections=remote_item.sections,
     )
-    save_item(new_item, filepath)
+    new_item.file_path = str(filepath)
+    save_item(new_item)
     out.info(f"  Created #{issue_num} -> {filename}: {title}")
     return True
 
@@ -1273,7 +1273,9 @@ def _pull_item_update_yaml(
     """
     out = output or Output()
     remote_item = parse_issue_body_sync(github_body, item)
+    remote_item.file_path = item.file_path
     merged = merge_item_models(item, remote_item)
+    merged.file_path = item.file_path
     modified = merged.sections != item.sections or merged.description != item.description
 
     if not modified:
@@ -1283,7 +1285,7 @@ def _pull_item_update_yaml(
         out.info(f"  [dry-run] Would merge #{issue_num} -> {filepath.name}: {title}")
         return True, ""
 
-    save_item(remote_item if force else merged, filepath)
+    save_item(remote_item if force else merged)
     out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
     return True, ""
 
@@ -1526,12 +1528,11 @@ def add_item(
     research_first: str = "",
     files: str = "",
     suggested_location: str = "",
-    create_issue: bool = True,
     force: bool = False,
     repo: str = "",
     output: Output | None = None,
 ) -> dict[str, str | int | bool | list[str]]:
-    """Add item to backlog. Creates per-item file and optionally a GitHub issue.
+    """Add item to backlog. Creates per-item file and a GitHub issue.
 
     Returns:
         Dict with title, priority, filepath, and optionally issue_num.
@@ -1547,20 +1548,19 @@ def add_item(
     # GH-first: try to create GitHub Issue BEFORE writing local file
     issue_num: int | None = None
     issue_ref = ""
-    if create_issue:
-        item_data = BacklogItem(
-            title=title,
-            description=description,
-            source=source,
-            added=today_str,
-            priority=priority,
-            item_type=type_,
-            research_first=research_first,
-            files=files,
-            suggested_location=suggested_location,
-        )
-        issue_num = _try_create_github_issue(item_data, repo, out)
-        issue_ref = f"#{issue_num}" if issue_num else ""
+    item_data = BacklogItem(
+        title=title,
+        description=description,
+        source=source,
+        added=today_str,
+        priority=priority,
+        item_type=type_,
+        research_first=research_first,
+        files=files,
+        suggested_location=suggested_location,
+    )
+    issue_num = _try_create_github_issue(item_data, repo, out)
+    issue_ref = f"#{issue_num}" if issue_num else ""
 
     # Build BacklogItem and write as YAML (single write)
     item_to_write = BacklogItem(
@@ -1578,7 +1578,8 @@ def add_item(
     )
     if issue_num:
         item_to_write.metadata.last_synced = now_iso()
-    save_item(item_to_write, filepath)
+    item_to_write.file_path = str(filepath)
+    save_item(item_to_write)
 
     out.info(f"Backlog item created.\n  Title: {title}\n  Priority: {priority}\n  File: {filepath.name}")
     if issue_num:
@@ -1944,12 +1945,39 @@ def _filter_closed_items(items: list[BacklogItem], include_closed: bool) -> list
     return [it for it in items if it.status not in _TERMINAL_STATUSES]
 
 
+def _build_item_search_body(item: BacklogItem) -> str:
+    """Return all searchable text content of a backlog item as a single string.
+
+    Concatenates the item description with every non-struck Section entry
+    content and every GroomedData subsection value, separated by spaces.
+    This string is stored in the ``body`` field of list entries so that
+    full-text search covers the complete item content.
+
+    Args:
+        item: The BacklogItem whose sections to render.
+
+    Returns:
+        Space-joined string of all content fragments.
+    """
+    parts: list[str] = []
+    if item.description:
+        parts.append(item.description)
+    for sec in item.sections.values():
+        if isinstance(sec, Section):
+            parts.extend(e.content for e in sec.entries if not e.struck and e.content)
+        elif isinstance(sec, GroomedData):
+            parts.extend(v for v in sec.subsections.values() if v)
+    return " ".join(parts)
+
+
 def _build_list_entry(item: BacklogItem, status_map: dict[int, IssueStatus]) -> dict[str, str | bool]:
     """Build the result dict for a single backlog item.
 
     Returns:
-        Dict with section, title, issue, plan, type, topic, state, status,
-        milestone, and optional file_path and groomed fields.
+        Dict with section, title, issue, plan, type, topic, body, state,
+        status, milestone, and optional file_path and groomed fields.
+        The ``body`` field contains the full searchable text (description
+        plus all section entry content) for use by the search filter.
     """
     entry: dict[str, str | bool] = {
         "section": item.section,
@@ -1958,6 +1986,7 @@ def _build_list_entry(item: BacklogItem, status_map: dict[int, IssueStatus]) -> 
         "plan": item.plan,
         "type": item.type_,
         "topic": item.topic,
+        "body": _build_item_search_body(item),
     }
     if item.file_path:
         entry["file_path"] = item.file_path
@@ -2717,7 +2746,6 @@ def update_item(
     selector: str,
     plan: str | None = None,
     status: str | None = None,
-    create_issue: bool = False,
     groomed_file: str | None = None,
     groomed_content: str | None = None,
     section: str | None = None,
@@ -2735,13 +2763,12 @@ def update_item(
     append: bool = False,
     sections: dict[str, str] | None = None,
 ) -> dict[str, str | int | bool | list[str] | dict[str, str | int | bool]]:
-    """Update item: add Plan, set status:in-progress, create issue, apply verified label, or write groomed content.
+    """Update item: add Plan, set status:in-progress, apply verified label, or write groomed content.
 
     Args:
         selector: Item selector (title, issue ref, or file path).
         plan: Plan string to apply to the item.
         status: Status string to set (e.g. "in-progress").
-        create_issue: Create a GitHub issue for the item if absent.
         groomed_file: Path to a file containing groomed content.
         groomed_content: Raw groomed content string.
         section: Section name for single-section update.
@@ -2808,7 +2835,7 @@ def update_item(
         result["plan"] = plan
         _auto_register_plan_artifact(item, plan, repo, output=out)
 
-    if create_issue and not item.issue and item.section in {"P0", "P1"}:
+    if not item.issue:
         issue_num = _create_issue_and_update_item(item, repo, output=out)
         if issue_num:
             out.info(f"  Issue: #{issue_num}")
@@ -2876,7 +2903,6 @@ def groom_item(
             selector=selector,
             plan=None,
             status=None,
-            create_issue=False,
             groomed_file=groomed_file,
             groomed_content=groomed_content,
             section=section,
@@ -2975,7 +3001,7 @@ def _strike_yaml_entry(filepath: Path, entry_id: str, reason: str, section: str 
                 entry.struck = True
                 entry.struck_at = struck_at
                 entry.struck_reason = reason
-                save_item(item, filepath)
+                save_item(item)
                 return
 
     msg = f"Entry '{entry_id}' not found"
@@ -3160,7 +3186,8 @@ def _write_issue_node_to_cache(
             sections=remote_item.sections,
         )
         new_item.metadata.last_synced = now_iso()
-        save_item(new_item, filepath)
+        new_item.file_path = str(filepath)
+        save_item(new_item)
 
     return filepath, diff_str
 

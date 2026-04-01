@@ -102,7 +102,7 @@ async def test_backlog_add_success_returns_merged_result():
 
 
 async def test_backlog_add_passes_optional_params():
-    """backlog_add forwards source, type_, create_issue, and force to operations."""
+    """backlog_add forwards source, type_, and force to operations."""
     op_result = {"file_path": "/tmp/p0-bug.md", "title": "Bug", "priority": "P0"}
     with patch("backlog_core.operations.add_item", return_value=op_result) as mock_add:
         await _call(
@@ -113,7 +113,6 @@ async def test_backlog_add_passes_optional_params():
                 "description": "A real bug",
                 "source": "CI pipeline",
                 "type": "Bug",
-                "create_issue": False,
                 "force": True,
             },
         )
@@ -121,7 +120,6 @@ async def test_backlog_add_passes_optional_params():
     call_kwargs = mock_add.call_args.kwargs
     assert call_kwargs["source"] == "CI pipeline"
     assert call_kwargs["type_"] == "Bug"
-    assert call_kwargs["create_issue"] is False
     assert call_kwargs["force"] is True
 
 
@@ -462,6 +460,68 @@ async def test_backlog_list_search_invalid_regex_falls_back_to_plain_text():
     returned_titles = [item["title"] for item in response["items"]]
     assert "/[invalid/ literal" in returned_titles
     assert "Unrelated" not in returned_titles
+
+
+async def test_backlog_list_search_matches_body_content():
+    """backlog_list search= matches items where the body field contains the needle.
+
+    The ``body`` field carries full item content (description, acceptance criteria,
+    section entries) so searches for strings that only appear in the body — not in
+    title/section/topic/type — must still return the item.
+    """
+    items = [
+        {
+            "title": "Improve pipeline",
+            "section": "P1",
+            "topic": "devops",
+            "type": "Feature",
+            "body": "Acceptance criteria reference sdlc-layers architecture design",
+        },
+        {
+            "title": "Auth service refactor",
+            "section": "P2",
+            "topic": "security",
+            "type": "Refactor",
+            "body": "Fix oauth token handling",
+        },
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "sdlc-layers"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    assert "Improve pipeline" in returned_titles
+    assert "Auth service refactor" not in returned_titles
+
+
+async def test_backlog_list_search_body_field_specific_prefix():
+    """backlog_list search='body:sdlc-layers' restricts match to the body field only."""
+    items = [
+        {
+            "title": "sdlc-layers overview",  # matches title
+            "section": "P1",
+            "topic": "",
+            "type": "Docs",
+            "body": "General documentation",
+        },
+        {
+            "title": "Pipeline task",
+            "section": "P1",
+            "topic": "",
+            "type": "Feature",
+            "body": "Implements sdlc-layers integration",  # matches body
+        },
+        {"title": "Unrelated task", "section": "P2", "topic": "", "type": "Bug", "body": "Fixes a crash"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "body:sdlc-layers"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    # Only the item whose body contains "sdlc-layers" matches the body: prefix
+    assert "Pipeline task" in returned_titles
+    assert "sdlc-layers overview" not in returned_titles
+    assert "Unrelated task" not in returned_titles
 
 
 async def test_backlog_list_response_includes_pagination_key_always():
@@ -1142,21 +1202,19 @@ async def test_backlog_update_success_with_plan():
     assert call_kwargs["selector"] == "Feature"
     assert call_kwargs["plan"] == "plan/tasks-feature.md"
     assert call_kwargs["status"] is None
-    assert call_kwargs["create_issue"] is False
     assert call_kwargs["section"] is None
     assert call_kwargs["content"] is None
     assert response["title"] == "Feature"
 
 
-async def test_backlog_update_passes_status_and_create_issue():
-    """backlog_update forwards status and create_issue to operations."""
+async def test_backlog_update_passes_status():
+    """backlog_update forwards status to operations."""
     op_result = {"title": "Item", "changes": ["status updated"]}
     with patch("backlog_core.operations.update_item", return_value=op_result) as mock_update:
-        await _call("backlog_update", {"selector": "Item", "status": "in-progress", "create_issue": True})
+        await _call("backlog_update", {"selector": "Item", "status": "in-progress"})
 
     call_kwargs = mock_update.call_args.kwargs
     assert call_kwargs["status"] == "in-progress"
-    assert call_kwargs["create_issue"] is True
 
 
 async def test_backlog_update_passes_section_content():

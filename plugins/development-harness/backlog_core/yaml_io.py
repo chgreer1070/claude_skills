@@ -7,17 +7,18 @@ transition period.
 
 from __future__ import annotations
 
+import logging
 import warnings
 from io import StringIO
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import Literal
 
 from ruamel.yaml import YAML
 
 from .models import BacklogItem
 from .parsing import parse_item_file
 
-if TYPE_CHECKING:
-    from pathlib import Path
+_log = logging.getLogger(__name__)
 
 __all__ = ["detect_format", "load_item", "load_item_text", "save_item"]
 
@@ -76,22 +77,56 @@ def load_item(path: Path) -> BacklogItem:
     return item
 
 
-def save_item(item: BacklogItem, path: Path) -> None:
+def save_item(item: BacklogItem, path: Path | None = None) -> None:
     """Write a backlog item to a YAML file.
 
     Always writes ``.yaml`` format regardless of the original file extension.
     Line-wrapping is disabled so long field values are not broken.
 
+    When *path* is ``None``, the destination is resolved from ``item.file_path``:
+
+    - ``.yaml`` → write to that path.
+    - ``.md`` → write to the same stem with ``.yaml`` suffix; rename the
+      original ``.md`` to ``.md.bak`` (auto-migration on write).
+    - empty / ``None`` → raises :class:`ValueError`.
+
+    After writing, ``item.file_path`` is updated to the resolved ``.yaml`` path.
+
     Args:
         item: The ``BacklogItem`` to serialise.
-        path: Destination path (should have ``.yaml`` suffix).
+        path: Destination path.  When ``None``, resolved from ``item.file_path``.
+
+    Raises:
+        ValueError: When *path* is ``None`` and ``item.file_path`` is empty or
+            ``None``.
     """
+    resolved: Path
+    if path is not None:
+        resolved = path
+    else:
+        raw = item.file_path
+        if not raw:
+            raise ValueError(
+                "save_item: path argument is None and item.file_path is empty — cannot determine write destination."
+            )
+        src = Path(raw)
+        if src.suffix == ".md":
+            resolved = src.with_suffix(".yaml")
+            if src.exists():
+                bak = src.with_suffix(".md.bak")
+                src.rename(bak)
+                _log.warning("Auto-migrated %s to %s", src, resolved)
+        else:
+            resolved = src
+
     data = item.model_dump(exclude={"file_path", "skip"})
     yaml = YAML(typ="rt")
     yaml.default_flow_style = False
     yaml.width = 2147483647
-    with path.open("w", encoding="utf-8") as fh:
+    with resolved.open("w", encoding="utf-8") as fh:
         yaml.dump(data, fh)
+
+    item.file_path = str(resolved.resolve())
 
 
 def load_item_text(text: str, path: Path) -> BacklogItem:

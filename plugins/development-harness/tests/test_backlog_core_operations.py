@@ -149,7 +149,7 @@ class TestAddItemCreatesLocalFile:
         """Verify add_item creates exactly one .yaml file in BACKLOG_DIR.
 
         Tests: add_item file creation (T04: new items use .yaml extension).
-        How: Call add_item with create_issue=False; check one .yaml file exists.
+        How: Call add_item with GitHub mocked; check one .yaml file exists.
         Why: The primary side-effect of add_item is writing a local cache file.
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
@@ -157,9 +157,7 @@ class TestAddItemCreatesLocalFile:
         import backlog_core.models as models
 
         fake_dir: Path = models.BACKLOG_DIR
-        result = add_item(
-            title="My New Feature", description="Does something useful", priority="P1", create_issue=False
-        )
+        result = add_item(title="My New Feature", description="Does something useful", priority="P1")
 
         files = list(fake_dir.glob("*.yaml"))
         assert len(files) == 1
@@ -174,7 +172,7 @@ class TestAddItemCreatesLocalFile:
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        result = add_item(title="Return Shape Check", description="desc", priority="P2", create_issue=False)
+        result = add_item(title="Return Shape Check", description="desc", priority="P2")
 
         assert result["title"] == "Return Shape Check"
         assert result["priority"] == "P2"
@@ -189,27 +187,27 @@ class TestAddItemCreatesLocalFile:
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        result = add_item(title="Frontmatter Title Test", description="desc", priority="P1", create_issue=False)
+        result = add_item(title="Frontmatter Title Test", description="desc", priority="P1")
 
         filepath = Path(str(result["file_path"]))
         text = filepath.read_text(encoding="utf-8")
         assert "Frontmatter Title Test" in text
 
-    def test_add_item_no_github_calls_when_create_issue_false(self, mocker: MockerFixture) -> None:
-        """Verify no GitHub API calls are made when create_issue=False.
+    def test_add_item_always_calls_github(self, mocker: MockerFixture) -> None:
+        """Verify add_item always attempts GitHub issue creation via try_get_github.
 
-        Tests: add_item create_issue=False code path.
-        How: Patch try_get_github and assert it is never called.
-        Why: Explicit local-only mode must not trigger GitHub side-effects.
+        Tests: add_item always-create-issue invariant.
+        How: Patch try_get_github returning None; assert it was called.
+        Why: GitHub Issues is the source of truth — every item must have an issue.
         """
-        mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
+        mock_try_gh = mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        add_item(title="Local Only Item", description="desc", priority="P2", create_issue=False)
+        add_item(title="Local Only Item", description="desc", priority="P2")
 
-        mock_try_gh.assert_not_called()
+        mock_try_gh.assert_called_once()
 
-    def test_add_item_with_create_issue_true_calls_github(self, mocker: MockerFixture) -> None:
-        """Verify add_item calls try_get_github when create_issue=True.
+    def test_add_item_calls_github_and_returns_issue_num(self, mocker: MockerFixture) -> None:
+        """Verify add_item calls try_get_github and returns issue_num on success.
 
         Tests: add_item GH-first integration path.
         How: Patch try_get_github to return a mock repo, verify it was called.
@@ -219,11 +217,11 @@ class TestAddItemCreatesLocalFile:
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
         mocker.patch("backlog_core.operations.create_issue_for_item", return_value=42)
 
-        result = add_item(title="GH First Item", description="desc", priority="P1", create_issue=True)
+        result = add_item(title="GH First Item", description="desc", priority="P1")
 
         assert result.get("issue_num") == 42
 
-    def test_add_item_with_create_issue_true_returns_issue_num(self, mocker: MockerFixture) -> None:
+    def test_add_item_returns_issue_num_from_github(self, mocker: MockerFixture) -> None:
         """Verify add_item return dict includes issue_num when GitHub issue is created.
 
         Tests: add_item issue_num in return value.
@@ -234,7 +232,7 @@ class TestAddItemCreatesLocalFile:
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
         mocker.patch("backlog_core.operations.create_issue_for_item", return_value=99)
 
-        result = add_item(title="Issue Num Item", description="desc", priority="P1", create_issue=True)
+        result = add_item(title="Issue Num Item", description="desc", priority="P1")
 
         assert result["issue_num"] == 99
 
@@ -256,7 +254,7 @@ class TestAddItemDuplicateDetection:
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
         with pytest.raises(DuplicateItemError):
-            add_item(title="Implement Error Recovery Logic", description="desc", priority="P1", create_issue=False)
+            add_item(title="Implement Error Recovery Logic", description="desc", priority="P1")
 
     def test_add_item_force_bypasses_duplicate_check(self, mocker: MockerFixture) -> None:
         """Verify add_item with force=True creates item despite existing duplicate.
@@ -271,9 +269,7 @@ class TestAddItemDuplicateDetection:
         _write_item(fake_dir, title="Implement Error Recovery", priority="P1", topic="implement-error-recovery")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        result = add_item(
-            title="Implement Error Recovery Logic", description="desc", priority="P1", create_issue=False, force=True
-        )
+        result = add_item(title="Implement Error Recovery Logic", description="desc", priority="P1", force=True)
 
         assert result["title"] == "Implement Error Recovery Logic"
 
@@ -286,9 +282,7 @@ class TestAddItemDuplicateDetection:
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        result = add_item(
-            title="Completely Unique Novel Feature", description="desc", priority="P2", create_issue=False
-        )
+        result = add_item(title="Completely Unique Novel Feature", description="desc", priority="P2")
 
         assert "file_path" in result
 
@@ -489,7 +483,7 @@ class TestViewItem:
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
         out = Output()
-        ops.add_item(title="View Test", priority="P1", description="Test", output=out, create_issue=False)
+        ops.add_item(title="View Test", priority="P1", description="Test", output=out)
         ops.groom_item(selector="View Test", section="Decision", content="Entry 1.", output=out)
         ops.groom_item(selector="View Test", section="Decision", content="Entry 2.", output=out)
         result = view_item(selector="View Test", output=out)
@@ -1406,6 +1400,85 @@ class TestBuildListEntryTypeTopicFields:
 
 
 # ---------------------------------------------------------------------------
+# _build_item_body: full-text body construction
+# ---------------------------------------------------------------------------
+
+
+class TestBuildItemBody:
+    """_build_item_body returns searchable text from description and section entries."""
+
+    def test_build_item_body_includes_description(self, mocker: MockerFixture) -> None:
+        """_build_item_body includes item.description in the returned string.
+
+        Tests: description field included in body.
+        How: Create BacklogItem with description; call list_items and check body field.
+        Why: Body search must find items by description text.
+        """
+        item = BacklogItem(title="Auth feature", section="P1", skip=False, description="Implements oauth2 token flow")
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items()
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert "oauth2 token flow" in str(items[0].get("body", ""))
+
+    def test_build_item_body_includes_section_entries(self, mocker: MockerFixture) -> None:
+        """_build_item_body includes Section entry content in the returned string.
+
+        Tests: Section entry text included in body.
+        How: Create BacklogItem with a Section containing entries; check body field.
+        Why: Acceptance criteria and other section content must be searchable.
+        """
+        from backlog_core.models import Entry, Section
+
+        entries = [
+            Entry(id="20260101T120000", content="Implement sdlc-layers integration"),
+            Entry(id="20260101T120001", content="Write unit tests"),
+        ]
+        item = BacklogItem(
+            title="Pipeline task", section="P1", skip=False, sections={"Acceptance Criteria": Section(entries=entries)}
+        )
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items()
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        body = str(items[0].get("body", ""))
+        assert "sdlc-layers integration" in body
+        assert "unit tests" in body
+
+    def test_build_item_body_excludes_struck_entries(self, mocker: MockerFixture) -> None:
+        """_build_item_body omits struck (retracted) entry content from the body.
+
+        Tests: struck entries excluded from body.
+        How: Create BacklogItem with a struck entry; verify that content is absent from body.
+        Why: Struck entries are retracted and must not influence search results.
+        """
+        from backlog_core.models import Entry, Section
+
+        entries = [
+            Entry(
+                id="20260101T120000", content="sdlc-layers retracted note", struck=True, struck_at="2026-01-01T12:00:00"
+            ),
+            Entry(id="20260101T120001", content="active note"),
+        ]
+        item = BacklogItem(title="Struck test", section="P1", skip=False, sections={"Notes": Section(entries=entries)})
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items()
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        body = str(items[0].get("body", ""))
+        assert "sdlc-layers retracted note" not in body
+        assert "active note" in body
+
+
+# ---------------------------------------------------------------------------
 # Entry block integration: groom_item with section+content
 # ---------------------------------------------------------------------------
 
@@ -1430,8 +1503,8 @@ class TestGroomItemEntryBlocks:
         )
         assert "error" not in result
 
-        # Read the file directly and check for P964 YAML entry block
-        body = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        body = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "entries:" in body
         assert "content: First decision made." in body
 
@@ -1488,7 +1561,8 @@ class TestGroomItemAppend:
         )
         assert "error" not in result
 
-        body = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        body = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "First concern." in body
         # No entry-block wrapping when append=True
         assert "<div><sub>" not in body
@@ -1539,7 +1613,8 @@ class TestGroomItemAppend:
         out = Output()
         ops.groom_item(selector="Append Default", section="Decision", content="Default behaviour.", output=out)
 
-        body = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        body = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "Default behaviour." in body
         # Default (append=False) must still produce P964 YAML entry blocks
         assert "entries:" in body
@@ -2169,7 +2244,8 @@ class TestGroomItemMarkGroomed:
         assert "error" not in result
         mock_apply.assert_not_called()
         assert result.get("mark_groomed_applied") is not True
-        body = filepath.read_text(encoding="utf-8")
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        body = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
         assert "status: groomed" not in body
 
     def test_groom_item_mark_groomed_with_batch_sections(self, tmp_path: Path, mocker: MockerFixture) -> None:
