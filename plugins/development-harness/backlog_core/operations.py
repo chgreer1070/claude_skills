@@ -79,6 +79,7 @@ from .models import (
     IssueLocalFields,
     IssueStatus,
     ItemNotFoundError,
+    MilestoneInfo,
     Output,
     SamTask,
     SamTasksResult,
@@ -255,9 +256,7 @@ def _md_reconstruct_body_from_sections(
 # ---------------------------------------------------------------------------
 
 
-def _apply_updates_to_yaml_item(
-    filepath: Path, updates: dict[str, str | dict[str, str | list[str] | int | None]], set_synced: bool
-) -> None:
+def _apply_updates_to_yaml_item(filepath: Path, updates: dict[str, str | dict[str, object]], set_synced: bool) -> None:
     """Apply *updates* dict to a ``.yaml`` backlog item via yaml_io round-trip.
 
     Args:
@@ -282,9 +281,7 @@ def _apply_updates_to_yaml_item(
     save_item(item)
 
 
-def _apply_updates_to_md_item(
-    filepath: Path, updates: dict[str, str | dict[str, str | list[str] | int | None]], set_synced: bool
-) -> None:
+def _apply_updates_to_md_item(filepath: Path, updates: dict[str, str | dict[str, object]], set_synced: bool) -> None:
     """Apply *updates* dict to a legacy ``.md`` backlog item via frontmatter round-trip.
 
     Args:
@@ -297,10 +294,11 @@ def _apply_updates_to_md_item(
     for key, value in updates.items():
         if key == "metadata" and isinstance(value, dict):
             raw_nested = meta.get("metadata")
-            nested_dict: dict[str, str | list[str] | int | None] = (
+            nested_dict: dict[str, object] = (
                 {str(k): str(v) for k, v in raw_nested.items()} if isinstance(raw_nested, dict) else {}
             )
-            nested_dict.update(value)
+            for mk, mv in value.items():
+                nested_dict[mk] = mv.model_dump() if isinstance(mv, MilestoneInfo) else mv
             if set_synced:
                 nested_dict["last_synced"] = now_iso()
             meta["metadata"] = nested_dict
@@ -308,7 +306,7 @@ def _apply_updates_to_md_item(
             meta[key] = value
     if set_synced and "metadata" not in updates:
         raw_nested = meta.get("metadata")
-        nested_dict2: dict[str, str | list[str] | int | None] = (
+        nested_dict2: dict[str, object] = (
             {str(k): str(v) for k, v in raw_nested.items()} if isinstance(raw_nested, dict) else {}
         )
         nested_dict2["last_synced"] = now_iso()
@@ -317,10 +315,7 @@ def _apply_updates_to_md_item(
 
 
 def update_item_metadata(
-    filepath: Path,
-    updates: dict[str, str | dict[str, str | list[str] | int | None]],
-    set_synced: bool = False,
-    output: Output | None = None,
+    filepath: Path, updates: dict[str, str | dict[str, object]], set_synced: bool = False, output: Output | None = None
 ) -> dict[str, str | bool | list[str]]:
     """Update per-item file frontmatter. Supports nested metadata.plan, metadata.issue, etc.
 
@@ -2775,7 +2770,7 @@ def resolve_item(
         out.info("Item already resolved.")
         return {"title": item.title, "already_resolved": True, **out.to_dict()}
 
-    metadata: dict[str, str | list[str] | int | None] = {"status": "done", "priority": "completed"}
+    metadata: dict[str, object] = {"status": "done", "priority": "completed"}
     if plan:
         metadata["plan"] = plan
     update_item_metadata(Path(filepath_str), {"metadata": metadata}, output=out)
@@ -3270,7 +3265,7 @@ def normalize_items(dry_run: bool = False, output: Output | None = None) -> dict
 # ---------------------------------------------------------------------------
 
 
-def _issue_fields_to_metadata(fields: IssueLocalFields) -> dict[str, str | list[str] | int | None]:
+def _issue_fields_to_metadata(fields: IssueLocalFields) -> dict[str, str | list[str] | MilestoneInfo]:
     """Extract the GitHub-synced metadata fields from an IssueLocalFields instance.
 
     Returns:
@@ -3282,9 +3277,7 @@ def _issue_fields_to_metadata(fields: IssueLocalFields) -> dict[str, str | list[
         "assignees": fields.assignees,
         "labels": fields.labels,
         "milestone": fields.milestone,
-        "milestone_number": fields.milestone_number,
-        "milestone_due_on": fields.milestone_due_on,
-        "milestone_state": fields.milestone_state,
+        "milestone_info": fields.milestone_info,
     }
 
 

@@ -493,6 +493,22 @@ _TYPE_ALIASES: dict[str, str] = {"documentation": "Docs"}
 _ADDED_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+class MilestoneInfo(BaseModel):
+    """Structured milestone reference embedded in backlog metadata.
+
+    Consolidates the three flat milestone fields (``milestone_number``,
+    ``milestone_due_on``, ``milestone_state``) that previously appeared
+    separately on :class:`BacklogItemMetadata` and :class:`IssueLocalFields`.
+
+    ``state`` is constrained to the two values GitHub's GraphQL API returns.
+    """
+
+    title: str = ""
+    number: int | None = None
+    due_on: str = ""
+    state: Literal["OPEN", "CLOSED"] = "OPEN"
+
+
 class BacklogItemMetadata(BaseModel):
     """Typed metadata fields for a backlog item, persisted to YAML frontmatter.
 
@@ -519,14 +535,48 @@ class BacklogItemMetadata(BaseModel):
     assignees: list[str] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
     milestone: str = ""
-    milestone_number: int | None = None
-    milestone_due_on: str = ""
-    milestone_state: str = ""
+    milestone_info: MilestoneInfo = Field(default_factory=MilestoneInfo)
     layer: str = ""  # SDLC Layer 0 (framework), 1 (language), 2 (stack)
     language: str = ""  # Language plugin identifier (e.g., "python", "typescript")
     stack: str = ""  # Stack profile identifier (e.g., "fastapi", "nextjs")
 
     model_config = {"populate_by_name": True, "extra": "ignore"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_flat_milestone_fields(cls, data: dict[str, object]) -> dict[str, object]:
+        """Populate ``milestone_info`` from legacy flat milestone fields on load.
+
+        Existing YAML frontmatter files may contain ``milestone_number``,
+        ``milestone_due_on``, and ``milestone_state`` as top-level keys.
+        This validator reads those keys and merges them into ``milestone_info``
+        so that old files load correctly without data loss.
+
+        The flat keys are consumed here and not forwarded; ``extra="ignore"``
+        on the model config ensures any remaining unknown keys are dropped.
+
+        Args:
+            data: Raw dict of field values before Pydantic model construction.
+
+        Returns:
+            Updated dict with ``milestone_info`` populated from flat keys when
+            present and ``milestone_info`` is not already supplied.
+        """
+        if not isinstance(data, dict):
+            return data
+        if "milestone_info" in data:
+            return data
+        flat_number = data.pop("milestone_number", None)
+        flat_due_on = data.pop("milestone_due_on", None)
+        flat_state = data.pop("milestone_state", None)
+        if flat_number is not None or flat_due_on is not None or flat_state is not None:
+            ms_number: int | None = int(flat_number) if isinstance(flat_number, int) else None
+            ms_due_on: str = str(flat_due_on) if isinstance(flat_due_on, str) and flat_due_on else ""
+            ms_state: Literal["OPEN", "CLOSED"] = (
+                "CLOSED" if isinstance(flat_state, str) and flat_state == "CLOSED" else "OPEN"
+            )
+            data["milestone_info"] = MilestoneInfo(number=ms_number, due_on=ms_due_on, state=ms_state)
+        return data
 
     @field_validator("priority")
     @classmethod
@@ -892,9 +942,7 @@ class IssueLocalFields(BaseModel):
     status: str = "open"
     updated_at: str = ""
     milestone: str = ""
-    milestone_number: int | None = None
-    milestone_due_on: str = ""
-    milestone_state: str = ""
+    milestone_info: MilestoneInfo = Field(default_factory=MilestoneInfo)
     assignees: list[str] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
 

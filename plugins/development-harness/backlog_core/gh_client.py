@@ -16,7 +16,7 @@ import os
 import re
 import sys
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 import dh_paths as _dh_paths
 from github import Auth, Github, GithubException
@@ -31,6 +31,7 @@ from .models import (
     GitHubUnavailableError,
     IssueLocalFields,
     IssueStatus,
+    MilestoneInfo,
     Output,
     PullRequestRef,
     SamTask,
@@ -86,7 +87,7 @@ class MilestoneNode(TypedDict):
     number: int
     title: str
     dueOn: str | None
-    state: str
+    state: Literal["OPEN", "CLOSED"]
 
 
 class AssigneeNode(TypedDict):
@@ -414,7 +415,7 @@ def _parse_issue_node(raw: dict[str, Any]) -> IssueNode:
             "number": int(milestone_raw["number"]) if "number" in milestone_raw else 0,
             "title": str(milestone_raw["title"]) if "title" in milestone_raw else "",
             "dueOn": str(due_on_raw) if due_on_raw is not None else None,
-            "state": str(milestone_raw["state"]) if "state" in milestone_raw else "OPEN",
+            "state": ("CLOSED" if str(milestone_raw.get("state", "OPEN")) == "CLOSED" else "OPEN"),
         }
 
     return {
@@ -1651,6 +1652,11 @@ def issue_to_local_fields(issue: IssueNode) -> IssueLocalFields:
                 break
     ms = issue["milestone"]
     assignees = [a["login"] for a in issue["assignees"]]
+    milestone_info = (
+        MilestoneInfo(title=ms["title"], number=ms["number"], due_on=(ms["dueOn"] or ""), state=ms["state"])
+        if ms
+        else MilestoneInfo()
+    )
     return IssueLocalFields(
         title=issue["title"],
         body=issue["body"],
@@ -1659,9 +1665,7 @@ def issue_to_local_fields(issue: IssueNode) -> IssueLocalFields:
         status=status,
         updated_at=issue["updatedAt"],
         milestone=ms["title"] if ms else "",
-        milestone_number=ms["number"] if ms else None,
-        milestone_due_on=(ms["dueOn"] or "") if ms else "",
-        milestone_state=ms["state"] if ms else "",
+        milestone_info=milestone_info,
         assignees=assignees,
         labels=labels,
     )
