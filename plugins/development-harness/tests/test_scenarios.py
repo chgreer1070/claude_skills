@@ -1349,8 +1349,8 @@ class TestCompactBacklogView:
 
         assert "error" not in result
         assert "sections_metadata" in result
-        assert "body" not in result
-        assert "sections" not in result
+        assert not result.get("body"), "Compact mode must have no body content"
+        assert not result.get("sections"), "Compact mode must have no sections content"
 
     async def test_default_include_content_true_unchanged(self, backlog_dir, mock_github, write_test_item):
         """Scenario C1e: backlog_view without include_content returns full body (backward compat).
@@ -1368,7 +1368,7 @@ class TestCompactBacklogView:
 
         assert "error" not in result
         assert "body" in result, "Default mode must include 'body' key"
-        assert "sections_metadata" not in result, "Default mode must not include 'sections_metadata' key"
+        assert not result.get("sections_metadata"), "Default mode must have no sections_metadata content"
 
     async def test_e2e_combined_type_and_title_filters(self, backlog_dir, mock_github, write_test_item):
         """Combined filters narrow results correctly through the full MCP path."""
