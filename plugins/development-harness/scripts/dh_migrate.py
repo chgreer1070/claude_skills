@@ -33,8 +33,16 @@ import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
+from io import TextIOWrapper
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, cast
+
+# Ensure UTF-8 output on Windows (cp1252 default cannot encode emoji/spinner chars).
+# reconfigure() is available on Python 3.7+ when stdout is a TextIOWrapper.
+if isinstance(sys.stdout, TextIOWrapper):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if isinstance(sys.stderr, TextIOWrapper):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 if TYPE_CHECKING:
     from backlog_core.artifact_provider import GitHubArtifactProvider

@@ -36,9 +36,18 @@ import json
 import logging
 import pathlib
 import re
+import sys
 import xml.etree.ElementTree as ET  # noqa: S405
 from datetime import UTC, datetime
+from io import TextIOWrapper
 from typing import TYPE_CHECKING, Any, cast
+
+# Ensure UTF-8 output on Windows (cp1252 default cannot encode emoji/spinner chars).
+# reconfigure() is available on Python 3.7+ when stdout is a TextIOWrapper.
+if isinstance(sys.stdout, TextIOWrapper):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if isinstance(sys.stderr, TextIOWrapper):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 if TYPE_CHECKING:
     from xml.etree.ElementTree import Element as _Element
