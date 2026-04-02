@@ -144,7 +144,15 @@ def init_paths(project_dir: str | None = None, repo: str | None = None) -> None:
 init = init_paths
 
 
-def __getattr__(name: str) -> object:
+# Module-level type declarations for attributes resolved via __getattr__.
+# These bare annotations do not create bindings — __getattr__ still executes
+# at runtime — but they let type checkers see the correct types.
+BACKLOG_DIR: Path
+DEFAULT_REPO: str
+_REPO_ROOT: Path
+
+
+def __getattr__(name: str) -> Path | str:
     """Module-level ``__getattr__`` for backward-compat attribute access.
 
     Intercepts ``_REPO_ROOT``, ``BACKLOG_DIR``, and ``DEFAULT_REPO`` so that

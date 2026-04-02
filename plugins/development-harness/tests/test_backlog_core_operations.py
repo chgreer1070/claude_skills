@@ -523,6 +523,7 @@ class TestViewItem:
         sections = result.sections
         assert isinstance(sections, dict), "sections must be a dict"
         assert "Decision" in sections, f"Expected 'Decision' in sections, got: {list(sections.keys())}"
+        # groom_item creates entry-block sections (SectionEntryMetadata shape).
         decision = cast("SectionEntryMetadata", sections["Decision"])
         assert decision["num_entries"] == 2
         assert len(decision["entries"]) == 2
