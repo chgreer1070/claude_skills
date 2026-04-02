@@ -36,7 +36,7 @@ def _entry(content: str, *, struck: bool = False) -> Entry:
     return Entry(id="2026-01-01T00:00:00Z", content=content)
 
 
-def _item(**kwargs: object) -> BacklogItem:
+def _item(sections: dict[str, Section | GroomedData] | None = None) -> BacklogItem:
     """Build a minimal BacklogItem.  ``sections`` defaults to empty dict."""
     return BacklogItem(
         title="Test",
@@ -45,7 +45,7 @@ def _item(**kwargs: object) -> BacklogItem:
         item_type="Feature",
         status="open",
         added="2026-01-01",
-        **kwargs,  # type: ignore[arg-type]
+        sections=sections if sections is not None else {},
     )
 
 
