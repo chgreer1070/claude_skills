@@ -233,24 +233,23 @@ In interactive mode: continue to Step 5.
    I have a few questions to refine this before writing the file.
    ```
 
-2. Ask up to 3 targeted questions, consulting `references/wizard-questions.md` for scripted
-   question flows appropriate to the detected project type. Standard questions:
-
-   - **Q1 — Always-use skills**: "Are there any skills you want injected on every feature,
-     regardless of the feature type? (e.g., a code-review skill or a project-conventions skill)"
-   - **Q2 — Missing domain rules**: "Does anything in the draft look wrong or missing for
-     your project?"
-   - **Q3 — Mode preference**: "Should skill injection be automatic (auto), advisory only
-     (suggest), or disabled (off)? Default is auto."
+2. Ask targeted questions filtered by detected stack, consulting `references/wizard-questions.md`
+   for the question bank and skip logic. Typically 4–7 questions apply per project.
 
 3. Apply user responses to the draft YAML.
 
-4. Ask for final confirmation: "Ready to write `.dh/skill_discovery.yaml`? (yes / no / edit)"
+4. Before writing, confirm meta-preferences:
+   - "Any additional `always_use_skills` you want injected on every feature, regardless of type?
+     (e.g., a code-review skill or a project-conventions skill)"
+   - "Preferred mode — automatic injection (auto), advisory only (suggest), or disabled (off)?
+     Default is auto."
 
-5. **If user declines** (responds "no" or "cancel" without requesting edits): emit the literal
+5. Ask for final confirmation: "Ready to write `.dh/skill_discovery.yaml`? (yes / no / edit)"
+
+6. **If user declines** (responds "no" or "cancel" without requesting edits): emit the literal
    string `WIZARD_DECLINED` in the response and return immediately. Do NOT write any file.
 
-6. **If user requests edits**: apply the requested changes and return to sub-step 4
+7. **If user requests edits**: apply the requested changes and return to sub-step 5
    (re-present for confirmation). Maximum 3 edit cycles before writing as-is with a note.
 
 **Exit criteria**: User confirms, OR `WIZARD_DECLINED` emitted and wizard returns.

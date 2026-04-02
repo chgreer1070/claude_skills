@@ -165,7 +165,6 @@ When marketplace is unreachable, use this minimal curated mapping:
 | `pyproject.toml` / Python | `python-engineering:python3-core`, `holistic-linting:lint` |
 | `package.json` / Node | `plugin-creator:claude-skills-overview-2026` |
 | `Vagrantfile` | `vagrant-reference` |
-| `*.tf` / Terraform | `dh:setup-skill-discovery` (infrastructure tier) |
 | SQL files | `sqlite-database-expert`, `sql-optimization` |
 | React / JSX | `react-expert`, `shadcn` |
 

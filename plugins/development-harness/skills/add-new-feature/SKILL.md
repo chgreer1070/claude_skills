@@ -222,8 +222,12 @@ flowchart TD
     C -->|NO| W["Emit warning\ndomain_skills = empty\ncontinue"]
     C -->|YES| D{"skill_discovery\nmode?"}
     D -->|off| E["domain_skills = empty"]
-    D -->|"auto or suggest"| F["Collect always_use_skills\n+ evaluate skill_rules"]
+    D -->|auto| F["Collect always_use_skills\n+ evaluate skill_rules"]
+    D -->|suggest| S["Collect always_use_skills\n+ evaluate skill_rules"]
     F --> G["Apply avoid_skills filter\nDe-duplicate\ndomain_skills populated"]
+    S --> SN["Emit note listing\ncandidate skills"]
+    SN --> SE["domain_skills = empty\n(no injection)"]
+    SE --> G2["Continue to injection\ntemplate check\n(sees empty — skips)"]
     A -->|NO| I["Invoke wizard:\nSkill(skill='dh:setup-skill-discovery', args='--auto')"]
     I --> J{File written?}
     J -->|YES| B
@@ -240,6 +244,12 @@ When file is present, valid YAML, and `skill_discovery` mode is not `off`:
 3. Remove any skills listed in `avoid_skills`
 4. `prefer_skills` entries are tiebreaker advisory — do not add unconditionally
 5. De-duplicate the collected set
+
+**Suggest mode**: When `skill_discovery` mode is `suggest`, Steps 1–5 above still execute
+(so the candidate list is accurate), but the collected skills are emitted as a note to the
+user listing what **would** be injected — they are not actually injected. After emitting the
+note, set `domain_skills` to empty and continue to the injection template check (which sees
+empty and skips injection).
 
 #### `when:` Evaluation Semantics — LLM Reasoning
 
