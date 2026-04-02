@@ -512,7 +512,7 @@ dev = [
     { name = "typer" },
     { name = "uv-sort" },
     { name = "vadersentiment" },
-    { name = "zvec" },
+    { name = "zvec", marker = "sys_platform != 'win32'" },
 ]
 
 [package.metadata]
@@ -571,7 +571,7 @@ dev = [
     { name = "typer", specifier = ">=0.21.0" },
     { name = "uv-sort", specifier = ">=0.7.0" },
     { name = "vadersentiment", specifier = ">=3.3.2" },
-    { name = "zvec", specifier = ">=0.2.0" },
+    { name = "zvec", marker = "sys_platform != 'win32'", specifier = ">=0.2.0" },
 ]
 
 [[package]]
@@ -4296,7 +4296,7 @@ name = "zvec"
 version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2f/ef/8c23c7ff6a459fbd7132ee40cd5b9d4a323257313389b82e5500b671cf9b/zvec-0.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a487195adaccc22f0802a7cbedc662b2c7a58252c0f5df291d085f2bc8aa0b5c", size = 12739184, upload-time = "2026-02-13T02:19:49.582Z" },

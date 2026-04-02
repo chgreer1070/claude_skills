@@ -77,6 +77,10 @@ repos:
     hooks:
       - id: pypfmt
         name: Sort and format pyproject.toml with pypfmt
+        language: system
+        # PYTHONUTF8=1 required: pypfmt calls taplo via subprocess.run(text=True)
+        # which defaults to cp1252 on Windows, causing taplo to fail silently.
+        entry: env PYTHONUTF8=1 uv run -q --with pypfmt pypfmt
         files: ^pyproject\.toml$
 
   # Python formatting and linting
@@ -139,8 +143,8 @@ repos:
 
       - id: check-compat-annotations
         name: Check COMPAT annotation completeness
-        entry: scripts/check_compat_annotations.py
-        language: python
+        entry: uv run -q scripts/check_compat_annotations.py
+        language: system
         types: [python]
 
       - id: ty
