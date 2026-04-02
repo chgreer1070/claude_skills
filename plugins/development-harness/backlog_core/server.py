@@ -465,7 +465,11 @@ def _apply_search_filter(items: list[dict[str, str | bool]], search: str) -> lis
 # ---------------------------------------------------------------------------
 
 # Snippet window: characters before and after the match position.
+# Used as the default when snippet_context is not supplied to _make_snippet.
 _SNIPPET_WINDOW = 60
+
+# Default snippet_context value (pre + post budget combined).
+_DEFAULT_SNIPPET_CONTEXT = 2 * _SNIPPET_WINDOW
 
 
 def _parse_body_sections(body: str) -> list[tuple[str, str]]:
@@ -497,32 +501,114 @@ def _parse_body_sections(body: str) -> list[tuple[str, str]]:
     return sections
 
 
-def _make_snippet(text: str, start: int, end: int) -> str:
-    """Extract a snippet around a match position.
+def _make_snippet(text: str, start: int, end: int, snippet_context: int = _DEFAULT_SNIPPET_CONTEXT) -> str:
+    """Extract a snippet around a match position with sliding-window budget.
+
+    The total character budget is *snippet_context*, split equally between the
+    text before and after the match.  Unused budget on either side is
+    redistributed to the other side so the window is as wide as possible.
 
     Args:
         text: The full text in which the match was found.
         start: Match start index.
         end: Match end (exclusive) index.
+        snippet_context: Total characters to show before and after the match
+            (combined).  Defaults to ``2 * _SNIPPET_WINDOW`` (120) to preserve
+            prior behaviour when callers do not supply the argument.
 
     Returns:
-        Up to 2*_SNIPPET_WINDOW + (end-start) characters centred on the match.
+        Up to *snippet_context* + (end-start) characters centred on the match,
+        with leading/trailing ``...`` markers when content was truncated.
     """
-    snip_start = max(0, start - _SNIPPET_WINDOW)
-    snip_end = min(len(text), end + _SNIPPET_WINDOW)
+    raw, matched, _snip_start, _snip_end = _make_snippet_parts(text, start, end, snippet_context)
+    del matched
+    return raw
+
+
+def _make_snippet_parts(
+    text: str, start: int, end: int, snippet_context: int = _DEFAULT_SNIPPET_CONTEXT
+) -> tuple[str, str, int, int]:
+    """Compute snippet parts for a match, enabling both plain and formatted output.
+
+    Implements the sliding-window budget: pre and post budgets each receive half
+    of *snippet_context*; any unused budget on one side is redistributed to the
+    other so the window stays as wide as possible.
+
+    Args:
+        text: The full text in which the match was found.
+        start: Match start index (inclusive).
+        end: Match end index (exclusive).
+        snippet_context: Total character budget split across pre and post sides.
+
+    Returns:
+        Tuple of (raw_snippet, matched_text, snip_start, snip_end) where
+        raw_snippet is the text[snip_start:snip_end] with leading/trailing
+        ``...`` markers, matched_text is text[start:end], and snip_start/
+        snip_end are the absolute window boundaries in *text*.
+    """
+    pre_budget = snippet_context // 2
+    post_budget = snippet_context // 2
+
+    # Sliding window: redistribute surplus from whichever side is near a boundary.
+    actual_pre = min(pre_budget, start)
+    surplus_pre = pre_budget - actual_pre
+    adjusted_post = post_budget + surplus_pre
+
+    actual_post = min(adjusted_post, len(text) - end)
+    surplus_post = post_budget - min(post_budget, len(text) - end)  # surplus from original split
+    if surplus_post > 0:
+        pre_budget += surplus_post
+        actual_pre = min(pre_budget, start)
+
+    snip_start = start - actual_pre
+    snip_end = end + actual_post
     snippet = text[snip_start:snip_end]
     if snip_start > 0:
         snippet = "..." + snippet
     if snip_end < len(text):
         snippet += "..."
-    return snippet
+    return snippet, text[start:end], snip_start, snip_end
+
+
+def _format_match_text(
+    field: str, match_index: int, text: str, start: int, end: int, snippet_context: int = _DEFAULT_SNIPPET_CONTEXT
+) -> str:
+    """Format a single match entry as a human-readable snippet line.
+
+    The section label ``[segment: field]`` is always shown and is NOT counted
+    against the character budget.  The sliding window applies only to the
+    haystack text excluding the label.
+
+    Format::
+
+        N::[segment: field]:: ...pre-text...MATCHED TERM...post-text...
+
+    where ``...`` prefix/suffix are present only when content was truncated.
+
+    Args:
+        field: Field or section slug (e.g. ``"title"``, ``"body:acceptance-criteria"``).
+        match_index: 1-based index of this match within the item.
+        text: The full haystack text (section content, not including the label).
+        start: Match start index within *text*.
+        end: Match end index (exclusive) within *text*.
+        snippet_context: Total character budget for pre + post context.
+
+    Returns:
+        Formatted match line string.
+    """
+    raw_snippet, matched, ss, se = _make_snippet_parts(text, start, end, snippet_context)
+    del matched, ss, se
+    return f"{match_index}::[segment: {field}]:: {raw_snippet}"
 
 
 _META_FIELDS: tuple[str, ...] = ("title", "section", "topic", "type")
 
 
 def _match_body_sections(
-    item: dict[str, str | bool], term: str, needle_fn: Callable[[str], tuple[int, int] | None]
+    item: dict[str, str | bool],
+    term: str,
+    needle_fn: Callable[[str], tuple[int, int] | None],
+    snippet_context: int = _DEFAULT_SNIPPET_CONTEXT,
 ) -> list[dict[str, str]]:
     """Return match entries for all body sections where needle_fn returns a span.
 
@@ -531,6 +617,7 @@ def _match_body_sections(
         term: The original search term (stored in each match entry).
         needle_fn: Callable that takes a text string and returns a (start, end)
             span tuple on match, or ``None`` when there is no match.
+        snippet_context: Total character budget passed to ``_make_snippet``.
 
     Returns:
         List of match-context dicts for body sections that matched.
@@ -540,17 +627,24 @@ def _match_body_sections(
     for section_slug, section_text in _parse_body_sections(body_str):
         span = needle_fn(section_text)
         if span is not None:
-            matches.append({"field": section_slug, "term": term, "snippet": _make_snippet(section_text, *span)})
+            matches.append({
+                "field": section_slug,
+                "term": term,
+                "snippet": _make_snippet(section_text, *span, snippet_context=snippet_context),
+            })
     return matches
 
 
-def _collect_regex_matches(item: dict[str, str | bool], term: str, pattern_str: str) -> list[dict[str, str]] | None:
+def _collect_regex_matches(
+    item: dict[str, str | bool], term: str, pattern_str: str, snippet_context: int = _DEFAULT_SNIPPET_CONTEXT
+) -> list[dict[str, str]] | None:
     """Collect matches for a regex term.
 
     Args:
         item: Backlog item dict.
         term: The original search term.
         pattern_str: Raw regex pattern extracted from the term.
+        snippet_context: Total character budget passed to ``_make_snippet``.
 
     Returns:
         List of match-context dicts, or ``None`` if the regex is invalid
@@ -565,15 +659,28 @@ def _collect_regex_matches(item: dict[str, str | bool], term: str, pattern_str: 
         field_text = str(item.get(field, "") or "")
         m = pattern.search(field_text)
         if m:
-            matches.append({"field": field, "term": term, "snippet": _make_snippet(field_text, m.start(), m.end())})
+            matches.append({
+                "field": field,
+                "term": term,
+                "snippet": _make_snippet(field_text, m.start(), m.end(), snippet_context=snippet_context),
+            })
     matches.extend(
-        _match_body_sections(item, term, lambda t: (m.start(), m.end()) if (m := pattern.search(t)) else None)
+        _match_body_sections(
+            item,
+            term,
+            lambda t: (m.start(), m.end()) if (m := pattern.search(t)) else None,
+            snippet_context=snippet_context,
+        )
     )
     return matches
 
 
 def _collect_field_matches(
-    item: dict[str, str | bool], term: str, field_name: str, value_needle: str
+    item: dict[str, str | bool],
+    term: str,
+    field_name: str,
+    value_needle: str,
+    snippet_context: int = _DEFAULT_SNIPPET_CONTEXT,
 ) -> list[dict[str, str]]:
     """Collect matches for a field:value term.
 
@@ -582,6 +689,7 @@ def _collect_field_matches(
         term: The original search term.
         field_name: The field to search (e.g. ``"title"``, ``"body"``).
         value_needle: Casefolded substring to find.
+        snippet_context: Total character budget passed to ``_make_snippet``.
 
     Returns:
         List of match-context dicts.
@@ -591,20 +699,30 @@ def _collect_field_matches(
             item,
             term,
             lambda t: (pos, pos + len(value_needle)) if (pos := t.casefold().find(value_needle)) != -1 else None,
+            snippet_context=snippet_context,
         )
     field_text = str(item.get(field_name, "") or "")
     pos = field_text.casefold().find(value_needle)
     if pos != -1:
-        return [{"field": field_name, "term": term, "snippet": _make_snippet(field_text, pos, pos + len(value_needle))}]
+        return [
+            {
+                "field": field_name,
+                "term": term,
+                "snippet": _make_snippet(field_text, pos, pos + len(value_needle), snippet_context=snippet_context),
+            }
+        ]
     return []
 
 
-def _collect_plain_matches(item: dict[str, str | bool], term: str) -> list[dict[str, str]]:
+def _collect_plain_matches(
+    item: dict[str, str | bool], term: str, snippet_context: int = _DEFAULT_SNIPPET_CONTEXT
+) -> list[dict[str, str]]:
     """Collect matches for a plain-text term across all fields.
 
     Args:
         item: Backlog item dict.
         term: The original search term (used as the needle after casefolding).
+        snippet_context: Total character budget passed to ``_make_snippet``.
 
     Returns:
         List of match-context dicts.
@@ -615,16 +733,25 @@ def _collect_plain_matches(item: dict[str, str | bool], term: str) -> list[dict[
         field_text = str(item.get(field, "") or "")
         pos = field_text.casefold().find(needle)
         if pos != -1:
-            matches.append({"field": field, "term": term, "snippet": _make_snippet(field_text, pos, pos + len(needle))})
+            matches.append({
+                "field": field,
+                "term": term,
+                "snippet": _make_snippet(field_text, pos, pos + len(needle), snippet_context=snippet_context),
+            })
     matches.extend(
         _match_body_sections(
-            item, term, lambda t: (pos, pos + len(needle)) if (pos := t.casefold().find(needle)) != -1 else None
+            item,
+            term,
+            lambda t: (pos, pos + len(needle)) if (pos := t.casefold().find(needle)) != -1 else None,
+            snippet_context=snippet_context,
         )
     )
     return matches
 
 
-def _collect_match_context(item: dict[str, str | bool], term: str) -> list[dict[str, str]]:
+def _collect_match_context(
+    item: dict[str, str | bool], term: str, snippet_context: int = _DEFAULT_SNIPPET_CONTEXT
+) -> list[dict[str, str]]:
     """Return match context entries for *term* against *item*.
 
     Each returned dict has ``field``, ``term``, and ``snippet`` keys.
@@ -634,6 +761,7 @@ def _collect_match_context(item: dict[str, str | bool], term: str) -> list[dict[
     Args:
         item: Backlog item dict.
         term: A single search term (no AND/OR/NOT operators).
+        snippet_context: Total character budget passed to the snippet helpers.
 
     Returns:
         List of match-context dicts (empty when the term does not match).
@@ -645,7 +773,7 @@ def _collect_match_context(item: dict[str, str | bool], term: str) -> list[dict[
     # Regex form: /pattern/ or regex:pattern
     if (term.startswith("/") and term.endswith("/") and len(term) > _REGEX_SLASH_MIN_LEN) or term.startswith("regex:"):
         pattern_str = term[1:-1] if term.startswith("/") else term[len("regex:") :]
-        result = _collect_regex_matches(item, term, pattern_str)
+        result = _collect_regex_matches(item, term, pattern_str, snippet_context=snippet_context)
         if result is not None:
             return result
         # Invalid regex — fall through to plain text.
@@ -656,10 +784,10 @@ def _collect_match_context(item: dict[str, str | bool], term: str) -> list[dict[
         field_name = field.strip().lower()
         value_needle = value.strip().casefold()
         if field_name in _SEARCH_FIELDS:
-            return _collect_field_matches(item, term, field_name, value_needle)
+            return _collect_field_matches(item, term, field_name, value_needle, snippet_context=snippet_context)
         # Unknown field prefix — fall through to plain text.
 
-    return _collect_plain_matches(item, term)
+    return _collect_plain_matches(item, term, snippet_context=snippet_context)
 
 
 def _extract_leaf_terms(search: str) -> list[str]:
@@ -676,29 +804,196 @@ def _extract_leaf_terms(search: str) -> list[str]:
     return [t for t in tokens if t not in OPERATORS and t not in {"(", ")"}]
 
 
-def _enrich_with_match_context(items: list[dict[str, str | bool]], search: str | None) -> list[dict[str, object]]:
-    """Add ``matches`` key to each item based on the search query terms.
+def _enrich_with_match_context(
+    items: list[dict[str, str | bool]], search: str | None, snippet_context: int = _DEFAULT_SNIPPET_CONTEXT
+) -> list[dict[str, object]]:
+    """Add ``matches`` and ``match_header`` keys to each item based on the search query terms.
 
     Only items that already passed the search filter are enriched.
+
+    Each match entry contains ``field``, ``term``, ``snippet``, and ``text`` keys.
+    The ``text`` key holds a formatted line::
+
+        N::[segment: field]:: ...pre-text...MATCHED TERM...post-text...
+
+    where N is the 1-based match index within the item.
+
+    The ``match_header`` key on each item holds ``#number - title`` for
+    grouped display: the header appears once, then each ``text`` line follows.
 
     Args:
         items: Items filtered by ``_apply_search_filter``.
         search: The original search query string, or ``None``.
+        snippet_context: Total character budget for pre + post context per match.
 
     Returns:
         New list of dicts (widened to ``dict[str, object]``) with ``matches``
-        added to each item.
+        and ``match_header`` added to each item.
     """
     enriched: list[dict[str, object]] = []
     terms = _extract_leaf_terms(search) if search else []
     for item in items:
         wide: dict[str, object] = dict(item)
-        all_matches: list[dict[str, str]] = []
+        raw_matches: list[dict[str, str]] = []
         for term in terms:
-            all_matches.extend(_collect_match_context(item, term))
-        wide["matches"] = all_matches
+            raw_matches.extend(_collect_match_context(item, term, snippet_context=snippet_context))
+
+        number = str(item.get("issue", item.get("number", ""))).lstrip("#")
+        title = str(item.get("title", ""))
+        wide["match_header"] = f"#{number} - {title}" if number else title
+
+        # Annotate each match with a 1-based index and formatted text line.
+        annotated: list[dict[str, str]] = []
+        for idx, match in enumerate(raw_matches, start=1):
+            entry = dict(match)
+            entry["text"] = f"     {idx}::[segment: {match['field']}]:: {match['snippet']}"
+            annotated.append(entry)
+
+        wide["matches"] = annotated
         enriched.append(wide)
     return enriched
+
+
+# ---------------------------------------------------------------------------
+# Deduplication helper
+# ---------------------------------------------------------------------------
+
+# NOTE: FastMCP v3 provides list_page_size for paginating MCP component lists
+# (tools/resources/prompts) and per-request Depends() caching. Neither applies
+# here — tool result content pagination and token counting are application-level
+# concerns with no FastMCP built-in equivalent.
+
+
+def _dedup_by_issue_number(items: list[dict[str, str | bool]]) -> list[dict[str, str | bool]]:
+    """Deduplicate items by issue number, preserving first-seen order.
+
+    When an item appears more than once in the list (e.g. because the upstream
+    cache contained a duplicate entry), only the first occurrence is kept.
+    Items without a numeric ``issue`` or ``number`` field are preserved as-is
+    and cannot be de-duplicated — they each appear once.
+
+    Args:
+        items: Raw item dicts from operations.list_items.
+
+    Returns:
+        Deduplicated list with the same dict objects (no copy).
+    """
+    seen: set[str] = set()
+    result: list[dict[str, str | bool]] = []
+    for item in items:
+        raw = str(item.get("issue", item.get("number", "")))
+        key = raw.lstrip("#").strip()
+        if key and key.isdigit():
+            if key in seen:
+                continue
+            seen.add(key)
+        result.append(item)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Token-based match pagination helper
+# ---------------------------------------------------------------------------
+
+
+def _compute_match_tokens(item: dict[str, object]) -> int:
+    """Count tokens for the match_context output of a single enriched item.
+
+    Counts tokens across the match_header and all match text lines for the item,
+    using the shared cl100k_base encoder.  This represents the token cost of
+    displaying this item's match output.
+
+    Args:
+        item: An enriched item dict (output of _enrich_with_match_context).
+
+    Returns:
+        Token count for this item's match output.
+    """
+    # Serialize the match output (header + all match text lines) and count tokens.
+    # We use json.dumps on the relevant keys rather than subscript access to stay
+    # type-safe: item is dict[str, object] so individual values are object.
+    return len(_enc.encode(_json.dumps({"h": item.get("match_header"), "m": item.get("matches")})))
+
+
+def _paginate_match_items(
+    enriched: list[dict[str, object]], page: int, tokens_per_page: int, page_token_limit: int
+) -> tuple[list[dict[str, object]], dict[str, object]]:
+    """Split enriched match-context items into token-sized pages.
+
+    Partitions ``enriched`` into pages where each page holds items up to
+    ``tokens_per_page`` tokens.  Only activates pagination when total tokens
+    across all items exceeds ``page_token_limit``.
+
+    Args:
+        enriched: All enriched items (already filtered and deduped).
+        page: 1-based page number requested by the caller.
+        tokens_per_page: Maximum tokens per page.
+        page_token_limit: Minimum total tokens before pagination activates.
+
+    Returns:
+        Tuple of (page_items, match_pages_meta) where match_pages_meta is a
+        dict suitable for inclusion in the tool response.
+    """
+    token_counts = [_compute_match_tokens(item) for item in enriched]
+    total_tokens = sum(token_counts)
+
+    if total_tokens <= page_token_limit:
+        return enriched, {
+            "current_page": 1,
+            "total_pages": 1,
+            "tokens_per_page": tokens_per_page,
+            "total_match_tokens": total_tokens,
+            "paginated": False,
+        }
+
+    # Build page boundaries by accumulating token counts.
+    pages: list[list[dict[str, object]]] = []
+    current_page_items: list[dict[str, object]] = []
+    current_page_tokens = 0
+    for item, cost in zip(enriched, token_counts, strict=True):
+        if current_page_items and current_page_tokens + cost > tokens_per_page:
+            pages.append(current_page_items)
+            current_page_items = [item]
+            current_page_tokens = cost
+        else:
+            current_page_items.append(item)
+            current_page_tokens += cost
+    if current_page_items:
+        pages.append(current_page_items)
+
+    total_pages = max(1, len(pages))
+    safe_page = max(1, min(page, total_pages))
+    page_items = pages[safe_page - 1]
+
+    return page_items, {
+        "current_page": safe_page,
+        "total_pages": total_pages,
+        "tokens_per_page": tokens_per_page,
+        "total_match_tokens": total_tokens,
+        "paginated": True,
+    }
+
+
+def _maybe_add_pagination_notice(match_pages: dict[str, object], out: Output, response: dict[str, object]) -> None:
+    """Add a human-readable truncation message to ``out`` when on page 1 of a paginated result.
+
+    Mutates ``out`` by appending a message, then re-merges ``out.to_dict()`` into
+    ``response`` so the response messages list reflects the addition.
+
+    Args:
+        match_pages: The match_pages metadata dict from _paginate_match_items.
+        out: The Output collector for this request.
+        response: The in-progress response dict to update in-place.
+    """
+    if not (match_pages.get("paginated") and match_pages.get("current_page") == 1):
+        return
+    total_pages = match_pages["total_pages"]
+    tpp = match_pages["tokens_per_page"]
+    out.info(
+        f"Match output truncated: showing page 1 of {total_pages} ({tpp} tokens/page). "
+        f"Use page=2..{total_pages} to see remaining results."
+    )
+    response.update(out.to_dict())
 
 
 # ---------------------------------------------------------------------------
@@ -1028,12 +1323,24 @@ async def backlog_list(
         Field(
             description=(
                 "When True, each returned item includes a 'matches' list showing where search "
-                "terms were found (field, term, snippet). Body matches are attributed to the named "
+                "terms were found (field, term, snippet, text). Body matches are attributed to the named "
                 "section (e.g. 'body:acceptance-criteria'). Only meaningful when search is also set. "
                 "Default False preserves the existing response shape."
             )
         ),
     ] = False,
+    snippet_context: Annotated[
+        int,
+        Field(
+            ge=0,
+            description=(
+                "Total character budget for the pre + post context window around each match. "
+                "Split equally: up to snippet_context//2 chars before and after the matched text. "
+                "Unused budget on one side is redistributed to the other (sliding window). "
+                "Only applies when match_context=True. Default 1024."
+            ),
+        ),
+    ] = 1024,
     item_depth: Annotated[
         int,
         Field(
@@ -1049,6 +1356,38 @@ async def backlog_list(
             ),
         ),
     ] = 0,
+    page: Annotated[
+        int,
+        Field(
+            ge=1,
+            description=(
+                "When match_context=True and total match tokens exceed page_token_limit, "
+                "selects which page of results to return (1-based). "
+                "Ignored when match_context=False — use offset/limit for non-match pagination."
+            ),
+        ),
+    ] = 1,
+    tokens_per_page: Annotated[
+        int,
+        Field(
+            ge=1,
+            description=(
+                "Maximum tokens of match_context output per page. "
+                "Only active when match_context=True and total tokens exceed page_token_limit."
+            ),
+        ),
+    ] = 1000,
+    page_token_limit: Annotated[
+        int,
+        Field(
+            ge=1,
+            description=(
+                "If total match_context output tokens across all matching items exceeds this "
+                "value, pagination is activated and only the items for the requested page are "
+                "returned. When match_context=False this parameter has no effect."
+            ),
+        ),
+    ] = 4000,
 ) -> dict:
     """List all open backlog items.
 
@@ -1069,14 +1408,21 @@ async def backlog_list(
     Use offset and limit to paginate results. When limit=0, auto-pagination keeps the
     response under 4400 tokens (cl100k_base encoding). When has_more=true, call again
     with the offset shown in next_call.
+    When match_context=True, use page/tokens_per_page/page_token_limit to control
+    token-based pagination of match output. When match_pages.paginated=true, use
+    page=2..N to retrieve subsequent pages.
 
     Returns:
         Dict with items list, count, pagination object, and output messages/warnings.
         Each item includes state (open/closed) and status (workflow status from status:* labels).
         pagination contains offset, limit, total, and has_more. When has_more=true,
         next_call provides the suggested follow-up call string.
+        When match_context=True, match_pages contains current_page, total_pages,
+        tokens_per_page, total_match_tokens, and paginated flag.
         When count_only=True, returns only {"count": N}.
         On error, dict contains an error key.
+        Items are deduplicated by issue number — if the cache contained duplicate
+        entries, only the first occurrence of each issue number is returned.
     """
     out = Output()
     try:
@@ -1109,6 +1455,11 @@ async def backlog_list(
     # Apply cross-field search filter when requested.
     if search is not None:
         all_items = _apply_search_filter(all_items, search)
+
+    # Deduplicate by issue number — the cache may contain duplicate entries for
+    # the same issue (observed: #260 appeared twice when multiple match paths
+    # selected the same item).  Keyed on numeric issue number; first occurrence wins.
+    all_items = _dedup_by_issue_number(all_items)
 
     total = len(all_items)
 
@@ -1143,10 +1494,23 @@ async def backlog_list(
     # Primitive 2 and 1: enrich page items when depth or match context is requested.
     # Order matters: match context must read body BEFORE item_depth removes it.
     # Step 1 — add match snippets (reads body from original page_items)
-    # Step 2 — apply depth (may remove body from the already-enriched items)
+    # Step 2 — apply token-based pagination (match_context=True only)
+    # Step 3 — apply depth (may remove body from the already-enriched items)
     # Use a widened list type to accommodate the richer value types added by enrichment.
     enriched_items: list[dict[str, object]] | list[dict[str, str | bool]]
-    enriched_items = _enrich_with_match_context(page_items, search) if match_context else page_items
+    match_pages: dict[str, object] | None = None
+
+    enriched_items: list[dict[str, object]] | list[dict[str, str | bool]]
+    if match_context:
+        enriched_items, match_pages = _paginate_match_items(
+            _enrich_with_match_context(page_items, search, snippet_context=snippet_context),
+            page=page,
+            tokens_per_page=tokens_per_page,
+            page_token_limit=page_token_limit,
+        )
+    else:
+        enriched_items = page_items
+        match_pages = None
 
     if item_depth > 0:
         enriched_items = [_apply_item_depth(dict(it), item_depth) for it in enriched_items]
@@ -1162,6 +1526,9 @@ async def backlog_list(
     }
     if has_more:
         response["next_call"] = f"backlog_list(offset={offset + effective_limit}, limit={effective_limit})"
+    if match_pages is not None:
+        response["match_pages"] = match_pages
+        _maybe_add_pagination_notice(match_pages, out, response)
     return response
 
 

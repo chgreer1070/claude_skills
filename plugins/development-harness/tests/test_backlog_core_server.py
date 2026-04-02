@@ -2752,11 +2752,11 @@ async def test_backlog_list_match_context_multiple_terms_produce_multiple_matche
 
 
 async def test_backlog_list_match_context_match_entry_has_required_keys():
-    """backlog_list match_context=True every match entry contains 'field', 'term', 'snippet'.
+    """backlog_list match_context=True every match entry contains 'field', 'term', 'snippet', 'text'.
 
-    Tests: match entry schema — all three required keys must be present on every entry.
+    Tests: match entry schema — all four required keys must be present on every entry.
     How: Search for a single term with match_context=True. Assert each entry in the
-         matches list has exactly the keys field, term, and snippet.
+         matches list has the keys field, term, snippet, and text.
     Why: Callers depend on a stable schema. Missing keys produce KeyError in consumers.
     """
     items = [{"title": "Auth service", "section": "P1", "topic": "", "type": "Feature", "body": ""}]
@@ -2770,6 +2770,228 @@ async def test_backlog_list_match_context_match_entry_has_required_keys():
         assert "field" in match_entry, f"match entry missing 'field': {match_entry}"
         assert "term" in match_entry, f"match entry missing 'term': {match_entry}"
         assert "snippet" in match_entry, f"match entry missing 'snippet': {match_entry}"
+        assert "text" in match_entry, f"match entry missing 'text': {match_entry}"
+
+
+# ---------------------------------------------------------------------------
+# snippet_context parameter and formatted text output
+# ---------------------------------------------------------------------------
+
+
+def test_snippet_context_parameter_respected():
+    """_make_snippet_parts respects snippet_context to limit window size.
+
+    Tests: context=100 yields at most 50 chars before and after the match.
+    How: Build a 300-char text with a match near the middle. Call _make_snippet_parts
+         with snippet_context=100. Assert pre + post chars total ≤ 100.
+    Why: Callers pass snippet_context to control response token cost.
+    """
+    from backlog_core.server import _make_snippet_parts
+
+    text = "A" * 100 + "MATCH" + "B" * 100
+    start = 100
+    end = 105
+    raw_snippet, matched_text, snip_start, snip_end = _make_snippet_parts(text, start, end, snippet_context=100)
+
+    pre_chars = start - snip_start
+    post_chars = snip_end - end
+    assert pre_chars <= 50, f"pre_chars={pre_chars} exceeds budget of 50"
+    assert post_chars <= 50, f"post_chars={post_chars} exceeds budget of 50"
+    assert matched_text == "MATCH"
+    assert "MATCH" in raw_snippet
+
+
+def test_snippet_context_budget_redistribution_near_start():
+    """Budget surplus from near-start match redistributes to post side.
+
+    Tests: when match is at position 5, pre can only use 5 chars; remaining
+           budget flows to post, giving post more than snippet_context//2.
+    How: Place a match at position 5 in a long text. Use snippet_context=100.
+         Assert post_chars > 50 (received redistributed budget).
+    Why: Sliding-window ensures we fill the window even when one side is at a boundary.
+    """
+    from backlog_core.server import _make_snippet_parts
+
+    text = "START" + "MATCH" + "C" * 200
+    start = 5
+    end = 10
+    _, _, snip_start, snip_end = _make_snippet_parts(text, start, end, snippet_context=100)
+
+    pre_chars = start - snip_start
+    post_chars = snip_end - end
+    assert pre_chars == 5, f"pre_chars={pre_chars}, expected 5 (only 5 chars available)"
+    assert post_chars > 50, f"post_chars={post_chars}, expected > 50 (surplus from pre redistributed)"
+
+
+def test_snippet_context_budget_redistribution_near_end():
+    """Budget surplus from near-end match redistributes to pre side.
+
+    Tests: when match is 5 chars from end, post can only use 5 chars; remaining
+           budget flows to pre, giving pre more than snippet_context//2.
+    How: Place a match 5 chars from end in a long text. Use snippet_context=100.
+         Assert pre_chars > 50 (received redistributed budget).
+    Why: Sliding-window ensures we fill the window even when one side is at a boundary.
+    """
+    from backlog_core.server import _make_snippet_parts
+
+    text = "D" * 200 + "MATCH" + "END12"
+    start = 200
+    end = 205
+    _, _, snip_start, snip_end = _make_snippet_parts(text, start, end, snippet_context=100)
+
+    pre_chars = start - snip_start
+    post_chars = snip_end - end
+    assert post_chars == 5, f"post_chars={post_chars}, expected 5 (only 5 chars available)"
+    assert pre_chars > 50, f"pre_chars={pre_chars}, expected > 50 (surplus from post redistributed)"
+
+
+def test_snippet_ellipsis_present_when_content_truncated():
+    """Ellipsis markers appear when content precedes or follows the window.
+
+    Tests: both leading and trailing '...' present when match is deep inside text.
+    How: 300-char text with match at position 150. snippet_context=100.
+         Assert raw snippet starts and ends with '...'.
+    Why: Consumers use '...' to detect truncation and decide if full body is needed.
+    """
+    from backlog_core.server import _make_snippet_parts
+
+    text = "A" * 150 + "MATCH" + "B" * 150
+    start = 150
+    end = 155
+    raw_snippet, _, snip_start, snip_end = _make_snippet_parts(text, start, end, snippet_context=100)
+
+    assert snip_start > 0, "snip_start must be > 0 so leading '...' is warranted"
+    assert snip_end < len(text), "snip_end must be < len(text) so trailing '...' is warranted"
+    assert raw_snippet.startswith("..."), f"expected leading '...', got: {raw_snippet[:10]!r}"
+    assert raw_snippet.endswith("..."), f"expected trailing '...', got: {raw_snippet[-10:]!r}"
+
+
+def test_snippet_no_ellipsis_at_boundaries():
+    """No ellipsis when match is at the very start or end of text.
+
+    Tests: snippet starting at position 0 has no leading '...'; snippet ending
+           at len(text) has no trailing '...'.
+    How: 20-char text with match at position 0. snippet_context=200.
+    Why: False '...' misleads consumers into thinking content was truncated.
+    """
+    from backlog_core.server import _make_snippet_parts
+
+    text = "MATCHrestoftext12345"
+    start = 0
+    end = 5
+    raw_snippet, _, snip_start, snip_end = _make_snippet_parts(text, start, end, snippet_context=200)
+
+    assert snip_start == 0
+    assert snip_end == len(text)
+    assert not raw_snippet.startswith("..."), f"unexpected leading '...': {raw_snippet!r}"
+    assert not raw_snippet.endswith("..."), f"unexpected trailing '...': {raw_snippet!r}"
+
+
+def test_format_match_text_section_label_not_counted_in_budget():
+    """Section label is excluded from the character budget.
+
+    Tests: _format_match_text produces the label prefix unconditionally and the
+           snippet window is computed on the haystack text only — not the label.
+    How: 300-char text, snippet_context=50. Call _format_match_text. Verify
+         the result contains '[segment: body:acceptance-criteria]' regardless
+         of budget, and the snippet portion is within the expected window.
+    Why: The label is structural metadata; counting it would shrink the useful
+         context around the matched term.
+    """
+    from backlog_core.server import _format_match_text
+
+    text = "E" * 100 + "KEYWORD" + "F" * 100
+    start = 100
+    end = 107
+    field = "body:acceptance-criteria"
+    result = _format_match_text(field, 1, text, start, end, snippet_context=50)
+
+    assert result.startswith("1::[segment: body:acceptance-criteria]:: "), f"unexpected prefix: {result[:60]!r}"
+    # Extract the snippet portion (after the label prefix)
+    prefix = "1::[segment: body:acceptance-criteria]:: "
+    snippet_part = result[len(prefix) :]
+    assert "KEYWORD" in snippet_part, f"matched text missing from snippet: {snippet_part!r}"
+    # Snippet portion must be within budget (~50 chars total context around KEYWORD)
+    assert len(snippet_part) <= 50 + len("KEYWORD") + len("......"), (  # 6 chars for both '...'
+        f"snippet_part too long: {len(snippet_part)} chars"
+    )
+
+
+async def test_backlog_list_snippet_context_parameter_accepted():
+    """backlog_list accepts snippet_context parameter without error.
+
+    Tests: the new snippet_context parameter is wired through to the response.
+    How: Call backlog_list with snippet_context=200 and match_context=True.
+         Assert response contains items with matches and no error key.
+    Why: Parameter must be accepted by the tool signature.
+    """
+    items = [
+        {
+            "number": "523",
+            "title": "Backlog lifecycle process gaps",
+            "section": "P1",
+            "topic": "process",
+            "type": "Feature",
+            "body": "## Acceptance Criteria\nThe backlog quality must improve.\n",
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "backlog", "match_context": True, "snippet_context": 200})
+
+    assert "error" not in response
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "matches" in item
+    assert "match_header" in item
+    assert item["match_header"] == "#523 - Backlog lifecycle process gaps"
+
+
+async def test_backlog_list_match_header_format():
+    """match_header contains '#number - title' at item level.
+
+    Tests: grouped display format — header is separate from per-match text lines.
+    How: Provide an item with number and title. Assert match_header equals
+         '#N - Title' exactly.
+    Why: Grouped format requires header once per item, not repeated in each text line.
+    """
+    items = [{"number": "42", "title": "My feature", "section": "P1", "topic": "", "type": "Feature", "body": ""}]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "feature", "match_context": True})
+
+    item = response["items"][0]
+    assert item["match_header"] == "#42 - My feature"
+
+
+async def test_backlog_list_match_text_format():
+    """Each match 'text' key follows 'N::[segment: field]:: snippet' format.
+
+    Tests: text field format contract — index, segment label, snippet present.
+    How: Provide an item with a body section. Search for a term that matches.
+         Assert text starts with '1::[segment: ' and contains '::'.
+    Why: Consumers parse the text field for display; format must be stable.
+    """
+    items = [
+        {
+            "number": "99",
+            "title": "My item",
+            "section": "P1",
+            "topic": "",
+            "type": "Feature",
+            "body": "## Acceptance Criteria\nneeds quality review\n",
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "quality", "match_context": True})
+
+    item = response["items"][0]
+    assert item["matches"], "expected at least one match"
+    entry = item["matches"][0]
+    text = entry["text"]
+    assert text.startswith("     1::[segment: "), f"text does not start with index+segment: {text!r}"
+    assert "]:: " in text, f"text missing ']:: ' separator: {text!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -3165,3 +3387,308 @@ async def test_backlog_view_sections_always_includes_identity_fields():
     assert "title" in response, "title must always be present in sections-filtered response"
     assert "number" in response, "number must always be present in sections-filtered response"
     assert "priority" in response, "priority must always be present in sections-filtered response"
+
+
+# ---------------------------------------------------------------------------
+# backlog_list — deduplication (Fix 1)
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_list_dedup_same_issue_number_appears_once():
+    """backlog_list returns each issue number at most once when duplicates exist in the raw list.
+
+    Tests: deduplication contract — two entries for the same issue number produce one output item.
+    How: Provide a raw items list with issue #260 present twice (same number, same title).
+         Assert the response contains exactly one item for #260.
+    Why: The upstream cache can emit the same item twice when multiple match paths
+         select it. Callers must receive a deduplicated list.
+    """
+    items = [
+        {"issue": "260", "title": "Fix auth bug", "section": "P1", "type": "Bug", "body": ""},
+        {"issue": "260", "title": "Fix auth bug", "section": "P1", "type": "Bug", "body": ""},
+        {"issue": "261", "title": "Deploy pipeline", "section": "P2", "type": "Feature", "body": ""},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    numbers = [str(it.get("issue", it.get("number", ""))) for it in response["items"]]
+    assert numbers.count("260") == 1, f"Expected exactly one #260, got: {numbers}"
+    assert "261" in numbers
+
+
+async def test_backlog_list_dedup_preserves_first_occurrence():
+    """backlog_list keeps the first occurrence of a duplicated issue, not the second.
+
+    Tests: first-wins dedup — the first dict in the raw list survives; duplicates are dropped.
+    How: Two entries for #99 with different title values. Assert the retained item has
+         the title from the first entry.
+    Why: Deduplication must be deterministic and predictable. First-seen is the only
+         consistent ordering when the cache does not sort.
+    """
+    items = [
+        {"issue": "99", "title": "First occurrence", "section": "P0", "body": ""},
+        {"issue": "99", "title": "Second occurrence — must be dropped", "section": "P0", "body": ""},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    assert len(response["items"]) == 1
+    assert response["items"][0]["title"] == "First occurrence"
+
+
+async def test_backlog_list_dedup_hash_prefix_stripped():
+    """backlog_list deduplicates issue numbers regardless of leading '#' prefix.
+
+    Tests: '#'-stripped key matching — '#42' and '42' are the same issue.
+    How: Provide items with issue='#42' and issue='42' (no hash). Assert only one
+         item appears in the response.
+    Why: The cache may store issue numbers with or without the '#' prefix. Both
+         forms must be recognised as the same key.
+    """
+    items = [
+        {"issue": "#42", "title": "Auth service refactor", "section": "P1", "body": ""},
+        {"issue": "42", "title": "Auth service refactor duplicate", "section": "P1", "body": ""},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    assert len(response["items"]) == 1
+
+
+async def test_backlog_list_dedup_match_context_merged_matches():
+    """backlog_list with match_context=True deduplicates before enrichment — one item with matches.
+
+    Tests: deduplication before match-context enrichment — the surviving item gets
+           all expected match data; the duplicate is gone before enrichment runs.
+    How: Two entries for the same issue that both match the search term. Assert the
+         response contains exactly one item and it has a non-empty matches list.
+    Why: If dedup ran after enrichment, callers would still receive two result entries.
+         The dedup must happen on the filtered item list before enrichment.
+    """
+    items = [
+        {"issue": "500", "title": "Auth token expiry", "section": "P1", "type": "Bug", "body": ""},
+        {"issue": "500", "title": "Auth token expiry", "section": "P1", "type": "Bug", "body": ""},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth", "match_context": True})
+
+    assert len(response["items"]) == 1, (
+        f"Expected 1 item after dedup, got {len(response['items'])}: {[it.get('issue') for it in response['items']]}"
+    )
+    assert "matches" in response["items"][0]
+
+
+# ---------------------------------------------------------------------------
+# backlog_list — token-based pagination (Fix 2)
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_list_match_pages_present_when_match_context_true():
+    """backlog_list with match_context=True always includes match_pages in the response.
+
+    Tests: match_pages key always present — callers can rely on it without checking.
+    How: Call with match_context=True and a search term that produces matches.
+         Assert the response contains a match_pages key with required sub-keys.
+    Why: Callers need match_pages to detect whether pagination activated and what
+         page they are on, even when the result fits on one page.
+    """
+    items = [{"issue": "1", "title": "Auth bug", "section": "P1", "type": "Bug", "body": ""}]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth", "match_context": True})
+
+    assert "match_pages" in response, "match_pages must be present when match_context=True"
+    mp = response["match_pages"]
+    assert "current_page" in mp
+    assert "total_pages" in mp
+    assert "tokens_per_page" in mp
+    assert "total_match_tokens" in mp
+    assert "paginated" in mp
+
+
+async def test_backlog_list_match_pages_absent_when_match_context_false():
+    """backlog_list without match_context does not include match_pages.
+
+    Tests: match_pages only present when match_context=True — no pollution of other callers.
+    How: Call without match_context (default False). Assert match_pages is absent.
+    Why: match_pages is a match_context-specific key. Adding it unconditionally
+         would change the response shape for all existing callers.
+    """
+    items = [{"issue": "1", "title": "Auth bug", "section": "P1", "body": ""}]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "auth"})
+
+    assert "match_pages" not in response
+
+
+async def test_backlog_list_match_pages_not_paginated_when_tokens_below_limit():
+    """backlog_list match_pages.paginated=False when total match tokens ≤ page_token_limit.
+
+    Tests: no pagination when under budget — small result set returns paginated=False.
+    How: Use a tiny page_token_limit (10000) larger than any realistic single-item output.
+         Assert paginated=False and all items returned on page 1.
+    Why: Pagination must not activate on small result sets — callers should not need
+         to make follow-up calls unless the budget is genuinely exceeded.
+    """
+    items = [
+        {"issue": "1", "title": "Alpha", "section": "P1", "type": "Bug", "body": ""},
+        {"issue": "2", "title": "Beta", "section": "P2", "type": "Feature", "body": ""},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call(
+            "backlog_list", {"search": "a", "match_context": True, "page_token_limit": 10000, "tokens_per_page": 5000}
+        )
+
+    mp = response["match_pages"]
+    assert mp["paginated"] is False
+    assert mp["current_page"] == 1
+    assert mp["total_pages"] == 1
+    assert len(response["items"]) == 2
+
+
+async def test_backlog_list_match_pagination_activates_above_token_limit(mocker):
+    """backlog_list activates token pagination when total match tokens exceed page_token_limit.
+
+    Tests: pagination activation threshold — when mocked token counts push total above
+           page_token_limit, paginated=True and only page 1 items are returned.
+    How: Mock tiktoken encoding to return a fixed 200-token cost per item. Set
+         page_token_limit=300 and tokens_per_page=200. With 3 items each costing 200
+         tokens (total=600 > 300), pagination activates. Page 1 fits 1 item (200 tokens).
+    Why: Token count is the activation signal. Mocking the encoder gives deterministic
+         counts so the test does not depend on real text length.
+    """
+    items = [{"issue": str(i), "title": f"Item {i}", "section": "P1", "type": "Bug", "body": ""} for i in range(1, 4)]
+    op_result = {"items": items}
+
+    # Each encode call returns a list of 200 fake token IDs.
+    fake_tokens = list(range(200))
+    mocker.patch("backlog_core.server._enc.encode", return_value=fake_tokens)
+
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call(
+            "backlog_list",
+            {"search": "item", "match_context": True, "page": 1, "tokens_per_page": 200, "page_token_limit": 300},
+        )
+
+    mp = response["match_pages"]
+    assert mp["paginated"] is True, f"Expected paginated=True, got {mp}"
+    assert mp["current_page"] == 1
+    assert mp["total_pages"] >= 2, f"Expected ≥2 pages, got total_pages={mp['total_pages']}"
+    # Page 1 must not contain all 3 items.
+    assert len(response["items"]) < 3, f"Expected <3 items on page 1 when paginated, got {len(response['items'])}"
+
+
+async def test_backlog_list_match_pagination_page2_returns_next_items(mocker):
+    """backlog_list page=2 returns the second page of match results.
+
+    Tests: page parameter routing — page=2 returns items that did not fit on page 1.
+    How: Mock encoder to return 200 tokens per call. 3 items x 200 = 600 > 300 limit.
+         tokens_per_page=200 means 1 item per page. Request page=2.
+    Why: The page parameter is the caller's handle for retrieving subsequent pages.
+         If page=2 returned the same items as page=1, callers would loop forever.
+    """
+    items = [{"issue": str(i), "title": f"Item {i}", "section": "P1", "type": "Bug", "body": ""} for i in range(1, 4)]
+    op_result = {"items": items}
+
+    fake_tokens = list(range(200))
+    mocker.patch("backlog_core.server._enc.encode", return_value=fake_tokens)
+
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response_p1 = await _call(
+            "backlog_list",
+            {"search": "item", "match_context": True, "page": 1, "tokens_per_page": 200, "page_token_limit": 300},
+        )
+        response_p2 = await _call(
+            "backlog_list",
+            {"search": "item", "match_context": True, "page": 2, "tokens_per_page": 200, "page_token_limit": 300},
+        )
+
+    p1_issues = {it.get("issue") for it in response_p1["items"]}
+    p2_issues = {it.get("issue") for it in response_p2["items"]}
+    assert p2_issues != p1_issues, f"page=2 must return different items than page=1. p1={p1_issues}, p2={p2_issues}"
+    assert response_p2["match_pages"]["current_page"] == 2
+
+
+async def test_backlog_list_match_pagination_message_on_page1(mocker):
+    """backlog_list adds a truncation message to messages when paginated and on page 1.
+
+    Tests: truncation message present on page 1 — callers learn pagination is active
+           and how to request more pages.
+    How: Mock encoder so pagination activates (total > page_token_limit). Call with page=1.
+         Assert messages list contains the truncation notice.
+    Why: The truncation message is the primary discovery mechanism for pagination.
+         Without it, callers would not know to request page=2.
+    """
+    items = [{"issue": str(i), "title": f"Item {i}", "section": "P1", "type": "Bug", "body": ""} for i in range(1, 4)]
+    op_result = {"items": items}
+
+    fake_tokens = list(range(200))
+    mocker.patch("backlog_core.server._enc.encode", return_value=fake_tokens)
+
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call(
+            "backlog_list",
+            {"search": "item", "match_context": True, "page": 1, "tokens_per_page": 200, "page_token_limit": 300},
+        )
+
+    messages = response.get("messages", [])
+    assert any("truncated" in m.lower() or "page" in m.lower() for m in messages), (
+        f"Expected truncation notice in messages when paginated on page 1. Got: {messages}"
+    )
+
+
+async def test_backlog_list_match_pagination_no_message_on_page2(mocker):
+    """backlog_list does NOT add the truncation message when page > 1.
+
+    Tests: truncation message only on page 1 — subsequent pages don't repeat the notice.
+    How: Same paginated setup as page1 test but request page=2. Assert messages does
+         not contain a 'truncated' notice.
+    Why: The truncation message is meant to alert callers on first encounter.
+         Repeating it on every page would produce noisy duplicate messages.
+    """
+    items = [{"issue": str(i), "title": f"Item {i}", "section": "P1", "type": "Bug", "body": ""} for i in range(1, 4)]
+    op_result = {"items": items}
+
+    fake_tokens = list(range(200))
+    mocker.patch("backlog_core.server._enc.encode", return_value=fake_tokens)
+
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call(
+            "backlog_list",
+            {"search": "item", "match_context": True, "page": 2, "tokens_per_page": 200, "page_token_limit": 300},
+        )
+
+    messages = response.get("messages", [])
+    truncation_messages = [m for m in messages if "truncated" in m.lower()]
+    assert not truncation_messages, f"Expected no truncation notice on page 2, got: {truncation_messages}"
+
+
+async def test_backlog_list_match_context_false_page_param_uses_offset_limit():
+    """backlog_list with match_context=False ignores page/token params — offset/limit still work.
+
+    Tests: match_context=False contract — token pagination must not activate; offset/limit
+           govern page selection as before.
+    How: Call with match_context=False, page=2, offset=1, limit=1. Assert the response
+         returns the item at position 1 (offset=1), not a token-paginated page.
+         Assert match_pages is absent.
+    Why: Token pagination is a match_context feature only. Existing callers that use
+         offset/limit must not be affected by the new page parameter.
+    """
+    items = [
+        {"issue": "1", "title": "Alpha", "section": "P1", "body": ""},
+        {"issue": "2", "title": "Beta", "section": "P2", "body": ""},
+        {"issue": "3", "title": "Gamma", "section": "P2", "body": ""},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"match_context": False, "page": 2, "offset": 1, "limit": 1})
+
+    assert "match_pages" not in response
+    assert len(response["items"]) == 1
+    assert response["items"][0]["issue"] == "2"
