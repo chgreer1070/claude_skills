@@ -436,18 +436,26 @@ def sync_completion_to_github(task_file_path: Path, task_id: str, parent_issue_n
 
         # Conditional import — only after path guard
         import backlog_core.gh_client as _bc_github  # noqa: PLC0415
-        from backlog_core.models import BacklogError, GitHubUnavailableError  # noqa: PLC0415
-        from github import GithubException  # noqa: PLC0415
+
+        try:
+            from backlog_core.models import BacklogError, GitHubUnavailableError  # noqa: PLC0415
+            from github import GithubException  # noqa: PLC0415
+
+            get_github_exc: tuple[type[BaseException], ...] = (GitHubUnavailableError, GithubException)
+            update_exc: tuple[type[BaseException], ...] = (BacklogError, GithubException, RuntimeError)
+        except ImportError:
+            get_github_exc = (RuntimeError,)
+            update_exc = (RuntimeError,)
 
         try:
             repo = _bc_github.get_github()
-        except (GitHubUnavailableError, GithubException) as e:
+        except get_github_exc as e:
             print(f"[hook] GitHub unavailable — skipping GitHub sync: {e}", file=sys.stderr)
             return
 
         try:
             _bc_github.update_task_status(repo, github_issue, "complete")
-        except (BacklogError, GithubException) as e:
+        except update_exc as e:
             print(f"[hook] GitHub sync update_task_status failed: {e}", file=sys.stderr)
             return
 

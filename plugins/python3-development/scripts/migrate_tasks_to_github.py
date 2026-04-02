@@ -600,7 +600,7 @@ def _migrate_task(
     )
     try:
         return create_task_issue(repo, parent_issue, sam, description=task.title, acceptance_criteria=[], labels=labels)
-    except (BacklogError, KeyError, ValueError) as exc:
+    except (BacklogError, KeyError, ValueError, RuntimeError) as exc:
         err_console.print(f":warning:  Failed to create issue for {task.task_id}: {exc}", style="yellow")
         return None
 
