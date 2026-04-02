@@ -506,6 +506,21 @@ Orchestrator role in Step 5: write YAML frontmatter only, pass file paths to the
 
 **Writing Guidelines:** Always use imperative/infinitive form.
 
+##### The only audience is an AI agent — scan for human-facing drift before finishing
+
+Every sentence in a skill body must be either a command the agent executes or knowledge the agent recalls. Before marking a skill done, scan for these anti-patterns and fix each one:
+
+| Anti-pattern trigger | What it signals | Fix |
+|---|---|---|
+| "Open a new terminal" / "Click X" / "Navigate to Y" | Action only a human can take | Replace with the equivalent agent action: `export PATH=...`, `source ~/.bashrc`. If no direct equivalent is known, research how to achieve the same outcome programmatically — use a subagent if available, otherwise research and test directly. Do not document the human step as a dead end |
+| Troubleshooting table with causes and fixes | Unverified guesses presented as facts | Remove entirely unless each row was derived from an actual observed failure — state the observed evidence, not a theory |
+| "You should..." / "Consider..." / "It is recommended..." | Passive advice to a human reader | Rewrite as an imperative command or delete |
+| Platform-specific steps with no prior environment check | Assumes an environment that may differ | Precede with a detection command (`echo $MSYSTEM`, `uname`, etc.) and branch on its output |
+| Subprocess check that inherits the parent process's PATH | False positive — finds a tool via parent env, not the target shell's env | Use an environment-isolated check (e.g., `[Environment]::GetEnvironmentVariable('PATH','User')` reads the Windows registry directly) |
+| "Install X, then verify" with no observed output shown | Gives steps without confirming they work | Run the steps, capture the actual output, include that output as the expected result |
+
+These patterns appear when skill content is drafted from training data or general knowledge rather than from executing the steps in the actual environment. The fix in every case is the same: run the command, observe the output, write what you observed.
+
 ##### Frontmatter
 
 Write the YAML frontmatter. All fields are optional, but `description` is strongly recommended:
