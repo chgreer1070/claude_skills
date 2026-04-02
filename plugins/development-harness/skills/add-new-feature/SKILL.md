@@ -203,6 +203,96 @@ flowchart TD
     FB --> Delegate
 ```
 
+### Domain Signal Detection — Config-Driven (`.dh/skill_discovery.yaml`)
+
+Before constructing the architect delegation prompt, populate `{domain_skills}` by reading
+the project's skill discovery configuration.
+
+<!-- Source: .dh/skill_discovery.yaml — project-specific skill discovery config.
+     To configure or update: /dh:setup-skill-discovery -->
+
+#### Step 1: Locate the config file
+
+Check whether `.dh/skill_discovery.yaml` exists in the project root.
+
+```mermaid
+flowchart TD
+    A{".dh/skill_discovery.yaml\nexists?"} -->|YES| B[Read and parse YAML]
+    B --> C{Valid YAML?}
+    C -->|NO| W["Emit warning\ndomain_skills = empty\ncontinue"]
+    C -->|YES| D{"skill_discovery\nmode?"}
+    D -->|off| E["domain_skills = empty"]
+    D -->|"auto or suggest"| F["Collect always_use_skills\n+ evaluate skill_rules"]
+    F --> G["Apply avoid_skills filter\nDe-duplicate\ndomain_skills populated"]
+    A -->|NO| I["Invoke wizard:\nSkill(skill='dh:setup-skill-discovery', args='--auto')"]
+    I --> J{File written?}
+    J -->|YES| B
+    J -->|"WIZARD_DECLINED\nin output"| K["suggest mode fallback\ndomain_skills = []\ncontinue with note"]
+```
+
+#### Step 2: Collect `{domain_skills}`
+
+When file is present, valid YAML, and `skill_discovery` mode is not `off`:
+
+1. Add all `always_use_skills` entries unconditionally
+2. For each `skill_rules` entry: evaluate `when:` using **LLM reasoning** against the
+   `feature_request` text — if the condition is satisfied, add all skills in `use:` to the set
+3. Remove any skills listed in `avoid_skills`
+4. `prefer_skills` entries are tiebreaker advisory — do not add unconditionally
+5. De-duplicate the collected set
+
+#### `when:` Evaluation Semantics — LLM Reasoning
+
+Evaluate each `when:` field as a natural-language condition against the semantic content of
+the `feature_request`. The rule fires if the condition is **unambiguously satisfied**. Do not
+fire speculatively when uncertain.
+
+**Example:** `when: "involves Python, pytest, or uv"` + feature about "pytest fixture for
+database" → **fires**
+
+**Example:** same rule + feature about "dark mode toggle button" → **does not fire**
+
+#### Step 3: Inject into architect prompt
+
+If `{domain_skills}` is non-empty, prepend this block at the very top of the architect
+delegation prompt, before the shared preamble and before any artifact reads.
+
+**Ordering constraint when `<prior_artifacts>` is also present:** the domain skill block
+MUST come first — it is a blocking prerequisite that must complete before any artifact
+reads occur. Place domain skills → then prior_artifacts → then the delegation prompt body.
+If `{domain_skills}` is empty, prior_artifacts placement is unchanged.
+
+#### Wizard Invocation Protocol
+
+When `.dh/skill_discovery.yaml` does not exist:
+
+1. Inform the user: `"No .dh/skill_discovery.yaml found. Running skill discovery wizard..."`
+2. Invoke: `Skill(skill="dh:setup-skill-discovery", args="--auto")` (programmatic context)
+3. After wizard returns: re-check for the file (recurse once only)
+4. If file still absent (`WIZARD_DECLINED` in wizard output): apply suggest-mode fallback
+
+**Suggest-mode fallback note:**
+
+> Note: No `.dh/skill_discovery.yaml` configured. Skills that may be relevant:
+> [judgment-based list based on `feature_request` content].
+> To configure permanently: `/dh:setup-skill-discovery`. Continuing without domain skill injection.
+
+Set `{domain_skills}` to empty and continue without blocking.
+
+<domain-skill-injection-template>
+Before starting design work, load these domain skills — they define the schemas, APIs,
+and delivery conventions required for this feature type:
+
+{domain_skills formatted as Skill(skill="...") calls}
+
+These are BLOCKING prerequisites — do not read any artifacts or write any design until
+all Skill() calls above have completed. Training data is not a substitute for live schema
+documentation loaded by these skills.
+</domain-skill-injection-template>
+
+If `{domain_skills}` is empty, do not add any skill-loading block — proceed directly to
+the delegation prompt below without modification.
+
 Delegation prompt template:
 
 ```text
@@ -270,9 +360,28 @@ Read the architecture spec via artifact_read(issue_number={issue}, artifact_type
 Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context").
 Goal: {goal_from_feature_request}
 Create the plan via sam_create with CLEAR+CoVe task definitions.
+
+REQUIRED — skills field propagation:
+The domain skills identified in Phase 3 are:
+{domain_skills}
+
+Every task in the generated plan MUST include a `skills` field populated with ALL of
+these domain skills as a YAML list. Example:
+
+  skills:
+    - plugin-creator:hook-creator
+    - plugin-creator:hooks-io-api
+
+If `{domain_skills}` is empty (no domain signals were detected in Phase 3), omit the
+`skills` field from all tasks — do not add an empty list.
+
+The `skills` field is consumed by `implement-feature` to inject skill-loading instructions
+into each implementation agent's prompt. Omitting it means implementation agents proceed
+without domain schema context.
 ```
 
-After the agent writes the task plan, register it as an artifact:
+After the agent writes the task plan, register it as an artifact and write the plan path
+back to the backlog item:
 
 ```text
 mcp__plugin_dh_backlog__artifact_register(
@@ -281,7 +390,16 @@ mcp__plugin_dh_backlog__artifact_register(
     path="plan/P{NNN}-{slug}.yaml",  # state-relative path; auto-registered by sam_create when issue is set
     agent="swarm-task-planner"
 )
+
+mcp__plugin_dh_backlog__backlog_update(
+    selector="{title}",
+    plan="plan/P{NNN}-{slug}.yaml"
+)
 ```
+
+The `backlog_update(plan=...)` call writes the plan path into the backlog item's `metadata.plan`
+field. This is required so `work-backlog-item` can route directly to `implement-feature` on
+subsequent invocations and so `backlog-lifecycle.md` Layer 3 state transitions are tracked.
 
 ---
 
@@ -346,6 +464,7 @@ Fill these values before constructing each delegation prompt. All values come fr
 | `{feature_name}` | Human-readable feature name from the issue title |
 | `{focus_area}` | One of: `patterns`, `architecture`, `testing`, `conventions` (Phase 2 only) |
 | `{goal_from_feature_request}` | The one-sentence goal extracted from the feature context doc (Phase 4 only) |
+| `{domain_skills}` | Pre-formatted YAML list lines (e.g., `- plugin-creator:hook-creator`) collected by the Phase 3 domain signal scan; empty string if no signals matched; passed verbatim into Phase 4 delegation prompt |
 | `{N}` | SAM plan number returned by `sam_create` after Phase 4 completes |
 
 ---
