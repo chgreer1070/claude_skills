@@ -4,12 +4,12 @@ description: 'Wrap dasel CLI operations as MCP tools. Agents could query, transf
 metadata:
   topic: dasel-structured-data-query-mcp
   source: 'GitHub Issue #262'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#262'
-  last_synced: '2026-03-14T16:00:45Z'
+  last_synced: '2026-03-22T15:10:20Z'
 ---
 
 ## Story

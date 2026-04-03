@@ -4,12 +4,12 @@ description: 'Wrap `file_metrics.py` (count/scan commands with `--json` support)
 metadata:
   topic: the-rewrite-room-document-analysis-mcp
   source: 'GitHub Issue #259'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: P1
   type: Docs
   status: needs-grooming
   issue: '#259'
-  last_synced: '2026-03-14T16:00:47Z'
+  last_synced: '2026-03-22T15:10:23Z'
 ---
 
 ## Story

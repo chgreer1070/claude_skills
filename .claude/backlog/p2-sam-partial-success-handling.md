@@ -3,13 +3,13 @@ name: 'SAM: Partial Success Handling'
 description: Define how to represent and handle partial task success. Task completes some DoD items but not all. How is this state represented in artifacts?
 metadata:
   topic: sam-partial-success-handling
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #110'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#110'
-  last_synced: '2026-03-14T16:01:04Z'
+  last_synced: '2026-03-22T15:10:40Z'
 ---
 
 ## Story

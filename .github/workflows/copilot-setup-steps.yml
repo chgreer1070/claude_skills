@@ -21,20 +21,11 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
       # ---------------------------------------------------------------
       # Python toolchain: uv + Python 3.11 + all project dependencies
       # Matches CI job: typecheck-python, validate-frontmatter, etc.
       # ---------------------------------------------------------------
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Install Python dependencies
         run: uv sync --group dev
@@ -58,16 +49,16 @@ jobs:
       # Enables commit-msg and pre-commit hooks for the coding agent
       # ---------------------------------------------------------------
       - name: Install prek git hooks
-        run: uv run prek install
+        run: uv run -q prek install
 
       # ---------------------------------------------------------------
       # Verify environment is functional
       # ---------------------------------------------------------------
       - name: Verify Python toolchain
         run: |
-          uv run python --version
-          uv run ruff --version
-          uv run basedpyright --version
+          uv run -q python --version
+          uv run -q ruff --version
+          uv run -q basedpyright --version
 
       - name: Verify Node toolchain
         run: |

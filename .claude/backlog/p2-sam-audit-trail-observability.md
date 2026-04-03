@@ -3,13 +3,13 @@ name: 'SAM: Audit Trail / Observability'
 description: Beyond artifacts, define logging/metrics/tracing guidance. How to diagnose pipeline issues? What telemetry to capture?
 metadata:
   topic: sam-audit-trail-observability
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #109'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#109'
-  last_synced: '2026-03-14T16:01:05Z'
+  last_synced: '2026-03-22T15:10:41Z'
 ---
 
 ## Story

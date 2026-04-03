@@ -7,24 +7,32 @@ by an autouse fixture that redirects BACKLOG_DIR to tmp_path.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
+import backlog_core.models as _bc_models
 import backlog_core.operations as ops
-import backlog_core.parsing as parsing
 import pytest
 from backlog_core.models import (
+    BacklogConfig,
     BacklogItem,
+    BacklogItemMetadata,
     DuplicateItemError,
+    GroomedSectionMetadata,
     IssueStatus,
     ItemNotFoundError,
     Output,
     PullRequestRef,
+    SectionEntryMetadata,
     ValidationError,
+    ViewItemResult,
 )
 from backlog_core.operations import add_item, close_item, list_items, resolve_item, view_item
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from pytest_mock import MockerFixture
 
 
@@ -72,6 +80,36 @@ def _write_item(
     return filepath
 
 
+def _write_item_yaml(
+    backlog_dir: Path,
+    *,
+    title: str = "Test Item",
+    priority: str = "P1",
+    topic: str = "test-item",
+    issue: str = "",
+    skip: bool = False,
+) -> Path:
+    """Write a minimal per-item backlog file in P964 YAML format and return its path.
+
+    Uses .yaml extension so parse_backlog() reads it via the YAML path after
+    save_item() converts it during the first groom call.  Required for tests
+    that call groom_item more than once on the same item.
+    """
+    from backlog_core.models import BacklogItem, BacklogItemMetadata
+    from backlog_core.yaml_io import save_item
+
+    slug = topic
+    filename = f"{priority.lower()}-{slug}.yaml"
+    filepath = backlog_dir / filename
+    status = "done" if skip else "open"
+    metadata = BacklogItemMetadata(
+        source="test", added="2026-01-01", priority=priority, status=status, issue=issue, topic=topic
+    )
+    item = BacklogItem(title=title, description="A test item", metadata=metadata, file_path=str(filepath))
+    save_item(item, filepath)
+    return filepath
+
+
 # ---------------------------------------------------------------------------
 # Autouse fixture: redirect BACKLOG_DIR in all consuming modules
 # ---------------------------------------------------------------------------
@@ -79,20 +117,36 @@ def _write_item(
 
 @pytest.fixture(autouse=True)
 def _isolate_backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Redirect BACKLOG_DIR in every module that uses it to tmp_path.
+    """Redirect BACKLOG_DIR to tmp_path for test isolation.
 
     Tests: File-system isolation for all backlog operations.
-    How: Monkeypatches the BACKLOG_DIR name in backlog_core.models, parsing, and operations.
+    How: Sets DH_STATE_HOME so dh_paths resolves under tmp_path, then patches
+         backlog_core.models.BACKLOG_DIR. parsing.py and operations.py access
+         the path via _models.BACKLOG_DIR, so patching models is sufficient.
     Why: Prevents tests from reading/writing the real backlog directory.
+         After T03, parsing.py and operations.py no longer export BACKLOG_DIR
+         at module level — they delegate to backlog_core.models.
     """
-    fake_dir = tmp_path / "backlog"
+    import dh_paths
+
+    monkeypatch.setenv("DH_STATE_HOME", str(tmp_path / "dh_state"))
+
+    fake_project_root = tmp_path / "project"
+    fake_project_root.mkdir(parents=True, exist_ok=True)
+
+    fake_dir = dh_paths.backlog_dir(project_root=fake_project_root)
     fake_dir.mkdir(parents=True, exist_ok=True)
 
-    import backlog_core.models as models
-
-    monkeypatch.setattr(models, "BACKLOG_DIR", fake_dir)
-    monkeypatch.setattr(parsing, "BACKLOG_DIR", fake_dir)
-    monkeypatch.setattr(ops, "BACKLOG_DIR", fake_dir)
+    existing = _bc_models._config
+    monkeypatch.setattr(
+        _bc_models,
+        "_config",
+        BacklogConfig(
+            repo_root=fake_project_root,
+            backlog_dir=fake_dir,
+            default_repo=existing.default_repo if existing is not None else "",
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -104,22 +158,20 @@ class TestAddItemCreatesLocalFile:
     """add_item writes a per-item file with correct frontmatter fields."""
 
     def test_add_item_creates_file_in_backlog_dir(self, mocker: MockerFixture) -> None:
-        """Verify add_item creates exactly one .md file in BACKLOG_DIR.
+        """Verify add_item creates exactly one .yaml file in BACKLOG_DIR.
 
-        Tests: add_item file creation.
-        How: Call add_item with create_issue=False; check one .md file exists.
+        Tests: add_item file creation (T04: new items use .yaml extension).
+        How: Call add_item with GitHub mocked; check one .yaml file exists.
         Why: The primary side-effect of add_item is writing a local cache file.
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
-        result = add_item(
-            title="My New Feature", description="Does something useful", priority="P1", create_issue=False
-        )
+        fake_dir: Path = models.get_backlog_dir()
+        result = add_item(title="My New Feature", description="Does something useful", priority="P1")
 
-        files = list(fake_dir.glob("*.md"))
+        files = list(fake_dir.glob("*.yaml"))
         assert len(files) == 1
         assert result["file_path"] == str(files[0])
 
@@ -132,7 +184,7 @@ class TestAddItemCreatesLocalFile:
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        result = add_item(title="Return Shape Check", description="desc", priority="P2", create_issue=False)
+        result = add_item(title="Return Shape Check", description="desc", priority="P2")
 
         assert result["title"] == "Return Shape Check"
         assert result["priority"] == "P2"
@@ -147,27 +199,27 @@ class TestAddItemCreatesLocalFile:
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        result = add_item(title="Frontmatter Title Test", description="desc", priority="P1", create_issue=False)
+        result = add_item(title="Frontmatter Title Test", description="desc", priority="P1")
 
         filepath = Path(str(result["file_path"]))
         text = filepath.read_text(encoding="utf-8")
         assert "Frontmatter Title Test" in text
 
-    def test_add_item_no_github_calls_when_create_issue_false(self, mocker: MockerFixture) -> None:
-        """Verify no GitHub API calls are made when create_issue=False.
+    def test_add_item_always_calls_github(self, mocker: MockerFixture) -> None:
+        """Verify add_item always attempts GitHub issue creation via try_get_github.
 
-        Tests: add_item create_issue=False code path.
-        How: Patch try_get_github and assert it is never called.
-        Why: Explicit local-only mode must not trigger GitHub side-effects.
+        Tests: add_item always-create-issue invariant.
+        How: Patch try_get_github returning None; assert it was called.
+        Why: GitHub Issues is the source of truth — every item must have an issue.
         """
-        mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
+        mock_try_gh = mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        add_item(title="Local Only Item", description="desc", priority="P2", create_issue=False)
+        add_item(title="Local Only Item", description="desc", priority="P2")
 
-        mock_try_gh.assert_not_called()
+        mock_try_gh.assert_called_once()
 
-    def test_add_item_with_create_issue_true_calls_github(self, mocker: MockerFixture) -> None:
-        """Verify add_item calls try_get_github when create_issue=True.
+    def test_add_item_calls_github_and_returns_issue_num(self, mocker: MockerFixture) -> None:
+        """Verify add_item calls try_get_github and returns issue_num on success.
 
         Tests: add_item GH-first integration path.
         How: Patch try_get_github to return a mock repo, verify it was called.
@@ -177,11 +229,11 @@ class TestAddItemCreatesLocalFile:
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
         mocker.patch("backlog_core.operations.create_issue_for_item", return_value=42)
 
-        result = add_item(title="GH First Item", description="desc", priority="P1", create_issue=True)
+        result = add_item(title="GH First Item", description="desc", priority="P1")
 
         assert result.get("issue_num") == 42
 
-    def test_add_item_with_create_issue_true_returns_issue_num(self, mocker: MockerFixture) -> None:
+    def test_add_item_returns_issue_num_from_github(self, mocker: MockerFixture) -> None:
         """Verify add_item return dict includes issue_num when GitHub issue is created.
 
         Tests: add_item issue_num in return value.
@@ -192,7 +244,7 @@ class TestAddItemCreatesLocalFile:
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
         mocker.patch("backlog_core.operations.create_issue_for_item", return_value=99)
 
-        result = add_item(title="Issue Num Item", description="desc", priority="P1", create_issue=True)
+        result = add_item(title="Issue Num Item", description="desc", priority="P1")
 
         assert result["issue_num"] == 99
 
@@ -209,12 +261,12 @@ class TestAddItemDuplicateDetection:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Implement Error Recovery", priority="P1", topic="implement-error-recovery")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
         with pytest.raises(DuplicateItemError):
-            add_item(title="Implement Error Recovery Logic", description="desc", priority="P1", create_issue=False)
+            add_item(title="Implement Error Recovery Logic", description="desc", priority="P1")
 
     def test_add_item_force_bypasses_duplicate_check(self, mocker: MockerFixture) -> None:
         """Verify add_item with force=True creates item despite existing duplicate.
@@ -225,13 +277,11 @@ class TestAddItemDuplicateDetection:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Implement Error Recovery", priority="P1", topic="implement-error-recovery")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        result = add_item(
-            title="Implement Error Recovery Logic", description="desc", priority="P1", create_issue=False, force=True
-        )
+        result = add_item(title="Implement Error Recovery Logic", description="desc", priority="P1", force=True)
 
         assert result["title"] == "Implement Error Recovery Logic"
 
@@ -244,9 +294,7 @@ class TestAddItemDuplicateDetection:
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        result = add_item(
-            title="Completely Unique Novel Feature", description="desc", priority="P2", create_issue=False
-        )
+        result = add_item(title="Completely Unique Novel Feature", description="desc", priority="P2")
 
         assert "file_path" in result
 
@@ -268,7 +316,7 @@ class TestListItemsEmpty:
         """
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-        result = list_items(with_status=False, from_github=False)
+        result = list_items(from_github=False)
 
         assert result["items"] == []
         assert result["count"] == 0
@@ -291,19 +339,19 @@ class TestListItemsFiltering:
         mocker.patch("backlog_core.operations.parse_backlog", return_value=[active, done])
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-        result = list_items(with_status=False, from_github=False)
+        result = list_items(from_github=False)
 
         items = cast("list[dict[str, str | bool]]", result["items"])
         titles = [it["title"] for it in items]
         assert "Active Item" in titles
         assert "Done Item" not in titles
 
-    def test_list_items_with_status_enriches_from_batch_fetch(self, mocker: MockerFixture) -> None:
-        """Verify list_items with_status=True enriches items from batch_fetch_statuses result.
+    def test_list_items_enriches_status_from_batch_fetch(self, mocker: MockerFixture) -> None:
+        """Verify list_items always enriches items with status from batch_fetch_statuses.
 
         Tests: batch_fetch_statuses integration in list_items.
         How: Mock parse_backlog to return an item with issue="#7"; mock batch_fetch_statuses.
-        Why: with_status must use batch fetch — not N+1 individual calls.  parse_backlog
+        Why: status must use batch fetch — not N+1 individual calls.  parse_backlog
              is mocked to inject a BacklogItem with a specific issue value directly,
              isolating this test from parsing logic.
         """
@@ -314,7 +362,7 @@ class TestListItemsFiltering:
             return_value={7: IssueStatus(status="status:in-progress", milestone="v2")},
         )
 
-        result = list_items(with_status=True, from_github=False)
+        result = list_items(from_github=False, status="status:in-progress")
 
         mock_batch.assert_called_once()
         items = cast("list[dict[str, str | bool]]", result["items"])
@@ -322,25 +370,23 @@ class TestListItemsFiltering:
         assert items[0]["status"] == "status:in-progress"
         assert items[0]["milestone"] == "v2"
 
-    def test_list_items_without_status_skips_batch_fetch(self, mocker: MockerFixture) -> None:
-        """Verify list_items skips batch_fetch_statuses when with_status=False and no status filter.
+    def test_list_items_always_calls_batch_fetch(self, mocker: MockerFixture) -> None:
+        """Verify list_items always calls batch_fetch_statuses to populate status fields.
 
-        Tests: batch_fetch_statuses is not called when neither with_status nor status is set.
-        How: Call list_items with with_status=False and no status filter; assert batch fetch
-             was not called.
-        Why: batch_fetch_statuses is only invoked when results require GitHub status data
-             (with_status=True or status filter provided). Skipping it avoids unnecessary
-             network calls.
+        Tests: batch_fetch_statuses is always called regardless of filter parameters.
+        How: Call list_items with no status filter; assert batch fetch was called.
+        Why: Status fields (status, milestone) are always included in every response —
+             batch_fetch must always run to populate them.
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="No Status Item", priority="P2", topic="no-status-item")
         mock_batch = mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-        list_items(with_status=False, from_github=False)
+        list_items(from_github=False)
 
-        mock_batch.assert_not_called()
+        mock_batch.assert_called_once()
 
     def test_list_items_from_github_calls_refresh(self, mocker: MockerFixture) -> None:
         """Verify list_items with from_github=True triggers a cache refresh.
@@ -355,7 +401,7 @@ class TestListItemsFiltering:
         )
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-        list_items(with_status=False, from_github=True)
+        list_items(from_github=True)
 
         mock_refresh.assert_called_once()
 
@@ -366,24 +412,45 @@ class TestListItemsFiltering:
 
 
 class TestViewItem:
-    """view_item returns ViewItemResult-shaped dict for local items and raises for unknowns."""
+    """view_item returns ViewItemResult for local items and raises for unknowns."""
+
+    def test_view_item_returns_view_item_result_type(self, mocker: MockerFixture) -> None:
+        """Verify view_item returns a ViewItemResult instance, not a raw dict.
+
+        Tests: view_item return type contract.
+        How: Write a local item; call view_item; assert isinstance(result, ViewItemResult).
+        Why: Callers should receive a typed model, not an untyped dict, so attribute
+             access is safe and the type checker can enforce the contract.
+        """
+
+        import backlog_core.models as models
+
+        fake_dir: Path = models.get_backlog_dir()
+        _write_item(fake_dir, title="Type Check Item", priority="P1", topic="type-check-item")
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        result = view_item("Type Check Item")
+
+        assert isinstance(result, ViewItemResult)
+        assert isinstance(result.messages, list)
+        assert isinstance(result.warnings, list)
 
     def test_view_item_known_title_returns_result(self, mocker: MockerFixture) -> None:
-        """Verify view_item returns a dict with title field for a known item.
+        """Verify view_item returns ViewItemResult with title field for a known item.
 
         Tests: view_item happy path with title selector.
         How: Write a local item; call view_item with the title; check result fields.
-        Why: Callers depend on the returned dict to display item details.
+        Why: Callers depend on the returned model to display item details.
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Viewable Item", priority="P1", topic="viewable-item")
         mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
 
         result = view_item("Viewable Item")
 
-        assert result["title"] == "Viewable Item"
+        assert result.title == "Viewable Item"
 
     def test_view_item_unknown_selector_raises_item_not_found_error(self, mocker: MockerFixture) -> None:
         """Verify view_item raises ItemNotFoundError for an unrecognised selector.
@@ -406,15 +473,14 @@ class TestViewItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         body_text = "Line 0\nLine 1\nLine 2\nLine 3\nLine 4"
         _write_item(fake_dir, title="Paginated Item", priority="P2", topic="paginated-item", extra_body=body_text)
         mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
 
         result = view_item("Paginated Item", offset=1, limit=2)
 
-        returned_body: str = str(result.get("body", ""))
-        body_lines = returned_body.splitlines()
+        body_lines = result.body.splitlines()
         # Only 2 lines returned starting from line 1
         assert len(body_lines) <= 2
 
@@ -427,14 +493,14 @@ class TestViewItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         body_text = "\n".join(f"Line {i}" for i in range(5))
         _write_item(fake_dir, title="Full Body Item", priority="P2", topic="full-body-item", extra_body=body_text)
         mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
 
         result = view_item("Full Body Item", offset=0, limit=0)
 
-        assert "body_truncated" not in result
+        assert result.body_truncated is False
 
     def test_view_item_returns_section_entries(self, mocker: MockerFixture) -> None:
         """view_item response includes sections dict with entry metadata.
@@ -449,16 +515,18 @@ class TestViewItem:
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
         out = Output()
-        ops.add_item(title="View Test", priority="P1", description="Test", output=out, create_issue=False)
+        ops.add_item(title="View Test", priority="P1", description="Test", output=out)
         ops.groom_item(selector="View Test", section="Decision", content="Entry 1.", output=out)
         ops.groom_item(selector="View Test", section="Decision", content="Entry 2.", output=out)
         result = view_item(selector="View Test", output=out)
 
-        sections = result.get("sections", {})
+        sections = result.sections
         assert isinstance(sections, dict), "sections must be a dict"
         assert "Decision" in sections, f"Expected 'Decision' in sections, got: {list(sections.keys())}"
-        assert sections["Decision"]["num_entries"] == 2
-        assert len(sections["Decision"]["entries"]) == 2
+        # groom_item creates entry-block sections (SectionEntryMetadata shape).
+        decision = cast("SectionEntryMetadata", sections["Decision"])
+        assert decision["num_entries"] == 2
+        assert len(decision["entries"]) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -500,7 +568,7 @@ class TestCloseItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Closeable Item", priority="P1", topic="closeable-item")
         mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
         mocker.patch("backlog_core.operations.close_github_issue")
@@ -522,7 +590,7 @@ class TestCloseItem:
         import backlog_core.models as models
         from backlog_core.models import BacklogError
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         filepath = _write_item(fake_dir, title="PR Blocked Close", priority="P1", topic="pr-blocked-close")
         item_with_issue = BacklogItem(title="PR Blocked Close", section="P1", issue="#5", file_path=str(filepath))
         mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
@@ -543,7 +611,7 @@ class TestCloseItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         filepath = _write_item(fake_dir, title="Force Close Item", priority="P1", topic="force-close-item")
         item_with_issue = BacklogItem(title="Force Close Item", section="P1", issue="#6", file_path=str(filepath))
         mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
@@ -607,7 +675,7 @@ class TestResolveItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Resolvable Item", priority="P2", topic="resolvable-item")
         mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
         mocker.patch("backlog_core.operations.resolve_github_issue")
@@ -628,7 +696,7 @@ class TestResolveItem:
         import backlog_core.models as models
         from backlog_core.models import BacklogError
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         filepath = _write_item(fake_dir, title="PR Blocked Resolve", priority="P1", topic="pr-blocked-resolve")
         item_with_issue = BacklogItem(title="PR Blocked Resolve", section="P1", issue="#8", file_path=str(filepath))
         mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
@@ -649,7 +717,7 @@ class TestResolveItem:
         """
         import backlog_core.models as models
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         filepath = _write_item(fake_dir, title="Force Resolve Item", priority="P1", topic="force-resolve-item")
         item_with_issue = BacklogItem(title="Force Resolve Item", section="P1", issue="#9", file_path=str(filepath))
         mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
@@ -693,7 +761,7 @@ class TestResolveItem:
     ],
 )
 def test_github_only_falls_back_to_pull(
-    op: object,
+    op: Callable[..., Any],
     op_kwargs: dict,
     gh_mock: str,
     result_key: str,
@@ -712,7 +780,7 @@ def test_github_only_falls_back_to_pull(
     """
     import backlog_core.models as models
 
-    fake_dir: Path = models.BACKLOG_DIR
+    fake_dir: Path = models.get_backlog_dir()
 
     def _write_cache_file(selector: str, repo: str, output: object = None) -> None:
         _write_item(fake_dir, title=title, priority=priority, topic=topic, issue="#999")
@@ -734,7 +802,7 @@ def test_github_only_falls_back_to_pull(
         (resolve_item, {"selector": "#999", "summary": "Should not succeed"}),
     ],
 )
-def test_github_only_raises_when_issue_absent(op: object, kwargs: dict, mocker: MockerFixture) -> None:
+def test_github_only_raises_when_issue_absent(op: Callable[..., Any], kwargs: dict, mocker: MockerFixture) -> None:
     """Verify close_item and resolve_item raise ItemNotFoundError when issue is absent from both local cache and GitHub.
 
     Tests: Double-not-found path after _pull_if_issue_selector fallback yields nothing.
@@ -767,11 +835,11 @@ def test_list_items_section_derived_from_priority(
     """
     import backlog_core.models as models
 
-    fake_dir: Path = models.BACKLOG_DIR
+    fake_dir: Path = models.get_backlog_dir()
     _write_item(fake_dir, title=f"{priority} Item", priority=priority, topic=topic)
     mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-    result = list_items(with_status=False, from_github=False)
+    result = list_items(from_github=False)
 
     items = cast("list[dict[str, str | bool]]", result["items"])
     assert len(items) == 1
@@ -797,7 +865,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Old Title", topic="old-title")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
@@ -812,25 +880,34 @@ class TestUpdateItemTitleAndDescription:
     def test_update_item_title_updates_github_issue_when_linked(self, mocker: MockerFixture) -> None:
         """update_item with title= calls GitHub issue edit when item has an issue.
 
-        Tests: update_item title rename with GitHub sync.
-        How: Write an item with issue='#42'; mock get_issue; call update_item with title=.
+        Tests: update_item title rename with GitHub sync via GraphQL.
+        How: Write an item with issue='#42'; mock _fetch_issue_graphql and
+             _update_issue_graphql; call update_item with title=; verify GraphQL
+             mutation was called with the new title.
         Why: Title rename must propagate to the linked GitHub issue when one exists.
+             After T01 the rename path uses GraphQL, not PyGithub get_issue/edit.
         """
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Linked Item", topic="linked-item", issue="42")
 
-        mock_gh_issue = mocker.Mock()
         mock_repo = mocker.Mock()
-        mock_repo.get_issue.return_value = mock_gh_issue
+        mock_repo.full_name = "owner/repo"
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        fake_node_id = "MDExOlB1bGxSZXF1ZXN0NDE="
+        mock_fetch_issue = mocker.patch(
+            "backlog_core.operations._fetch_issue_graphql",
+            return_value={"id": fake_node_id, "number": 42, "title": "Linked Item"},
+        )
+        mock_update_issue = mocker.patch("backlog_core.operations._update_issue_graphql")
 
         update_item(selector="Linked Item", title="Renamed Item")
 
-        mock_repo.get_issue.assert_called_once_with(42)
-        mock_gh_issue.edit.assert_called_once_with(title="Renamed Item")
+        mock_fetch_issue.assert_called_once_with(mock_repo, "owner", "repo", 42)
+        mock_update_issue.assert_called_once_with(mock_repo, fake_node_id, title="Renamed Item")
 
     def test_update_item_title_no_github_when_no_issue(self, mocker: MockerFixture) -> None:
         """update_item with title= does NOT call GitHub when item has no issue.
@@ -842,7 +919,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="No Issue Item", topic="no-issue-item", issue="")
         mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
 
@@ -864,7 +941,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Desc Item", topic="desc-item")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
@@ -886,7 +963,7 @@ class TestUpdateItemTitleAndDescription:
         import backlog_core.models as models
         from backlog_core.operations import update_item
 
-        fake_dir: Path = models.BACKLOG_DIR
+        fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Desc GitHub Item", topic="desc-gh-item", issue="99")
         mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
 
@@ -1135,10 +1212,12 @@ class TestListItemsFilterType:
         """Items without metadata.type are excluded when type_ filter is active.
 
         Tests: absent-type exclusion.
-        How: One item has no type_; filter by 'Feature'.
+        How: One item has empty item_type in metadata; filter by 'Feature'.
         Why: Items missing metadata.type must not appear in typed-filter results.
         """
-        no_type_item = BacklogItem(title="Untyped work", section="P2", skip=False, type_="")
+        no_type_item = BacklogItem(
+            title="Untyped work", section="P2", skip=False, metadata=BacklogItemMetadata(item_type="")
+        )
         mocker.patch("backlog_core.operations.parse_backlog", return_value=[no_type_item])
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
@@ -1337,10 +1416,12 @@ class TestBuildListEntryTypeTopicFields:
         """Items without metadata.type and metadata.topic have empty string values in response dict.
 
         Tests: empty-field handling in _build_list_entry.
-        How: Create item with no type_ or topic set.
+        How: Create item with empty item_type and topic in metadata.
         Why: Consumers must receive consistent dict shape regardless of metadata presence.
         """
-        item = BacklogItem(title="Plain item", section="P2", skip=False)
+        item = BacklogItem(
+            title="Plain item", section="P2", skip=False, metadata=BacklogItemMetadata(item_type="", topic="")
+        )
         mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
@@ -1350,6 +1431,85 @@ class TestBuildListEntryTypeTopicFields:
         assert len(items) == 1
         assert items[0]["type"] == ""
         assert items[0]["topic"] == ""
+
+
+# ---------------------------------------------------------------------------
+# _build_item_body: full-text body construction
+# ---------------------------------------------------------------------------
+
+
+class TestBuildItemBody:
+    """_build_item_body returns searchable text from description and section entries."""
+
+    def test_build_item_body_includes_description(self, mocker: MockerFixture) -> None:
+        """_build_item_body includes item.description in the returned string.
+
+        Tests: description field included in body.
+        How: Create BacklogItem with description; call list_items and check body field.
+        Why: Body search must find items by description text.
+        """
+        item = BacklogItem(title="Auth feature", section="P1", skip=False, description="Implements oauth2 token flow")
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items()
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert "oauth2 token flow" in str(items[0].get("body", ""))
+
+    def test_build_item_body_includes_section_entries(self, mocker: MockerFixture) -> None:
+        """_build_item_body includes Section entry content in the returned string.
+
+        Tests: Section entry text included in body.
+        How: Create BacklogItem with a Section containing entries; check body field.
+        Why: Acceptance criteria and other section content must be searchable.
+        """
+        from backlog_core.models import Entry, Section
+
+        entries = [
+            Entry(id="20260101T120000", content="Implement sdlc-layers integration"),
+            Entry(id="20260101T120001", content="Write unit tests"),
+        ]
+        item = BacklogItem(
+            title="Pipeline task", section="P1", skip=False, sections={"Acceptance Criteria": Section(entries=entries)}
+        )
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items()
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        body = str(items[0].get("body", ""))
+        assert "sdlc-layers integration" in body
+        assert "unit tests" in body
+
+    def test_build_item_body_excludes_struck_entries(self, mocker: MockerFixture) -> None:
+        """_build_item_body omits struck (retracted) entry content from the body.
+
+        Tests: struck entries excluded from body.
+        How: Create BacklogItem with a struck entry; verify that content is absent from body.
+        Why: Struck entries are retracted and must not influence search results.
+        """
+        from backlog_core.models import Entry, Section
+
+        entries = [
+            Entry(
+                id="20260101T120000", content="sdlc-layers retracted note", struck=True, struck_at="2026-01-01T12:00:00"
+            ),
+            Entry(id="20260101T120001", content="active note"),
+        ]
+        item = BacklogItem(title="Struck test", section="P1", skip=False, sections={"Notes": Section(entries=entries)})
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items()
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        body = str(items[0].get("body", ""))
+        assert "sdlc-layers retracted note" not in body
+        assert "active note" in body
 
 
 # ---------------------------------------------------------------------------
@@ -1366,7 +1526,9 @@ class TestGroomItemEntryBlocks:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.get_backlog_dir()
         filepath = _write_item(backlog_dir, title="Test Entry Groom", priority="P1", topic="test-entry-groom")
 
         out = Output()
@@ -1375,10 +1537,10 @@ class TestGroomItemEntryBlocks:
         )
         assert "error" not in result
 
-        # Read the file directly and check for entry block
-        body = filepath.read_text(encoding="utf-8")
-        assert "<div><sub>" in body
-        assert "First decision made." in body
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        body = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
+        assert "entries:" in body
+        assert "content: First decision made." in body
 
     def test_groom_item_appends_second_entry(self, tmp_path: Path, mocker: MockerFixture) -> None:
         """Grooming twice appends a second entry block, preserving the first."""
@@ -1386,8 +1548,11 @@ class TestGroomItemEntryBlocks:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
-        filepath = _write_item(backlog_dir, title="Multi Entry", priority="P1", topic="multi-entry")
+        import backlog_core.models as _m
+
+        backlog_dir = _m.get_backlog_dir()
+        # Use .yaml file so parse_backlog() finds the item after the first save_item call
+        filepath = _write_item_yaml(backlog_dir, title="Multi Entry", priority="P1", topic="multi-entry")
 
         out = Output()
         ops.groom_item(selector="Multi Entry", section="Decision", content="First.", output=out)
@@ -1396,8 +1561,97 @@ class TestGroomItemEntryBlocks:
         body = filepath.read_text(encoding="utf-8")
         assert "First." in body
         assert "Second." in body
-        # Should have two entry blocks
-        assert body.count("<div><sub>") >= 2
+        # P964: two entries appear as two 'content:' lines in the YAML entries list
+        assert body.count("content:") >= 2
+
+
+# ---------------------------------------------------------------------------
+# groom_item append=True: raw-append mode (no entry-block wrapping)
+# ---------------------------------------------------------------------------
+
+
+class TestGroomItemAppend:
+    """Tests for append=True parameter on groom_item."""
+
+    def test_groom_item_append_true_first_write_creates_section(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """append=True on a missing section creates the section with the new content.
+
+        Tests: groom_item append=True first write creates section.
+        How: Write item with no Concerns section; call groom_item with append=True.
+        Why: append=True must still create the section when it does not exist.
+        """
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        import backlog_core.models as _m
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = _write_item(backlog_dir, title="Append First", priority="P1", topic="append-first")
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Append First", section="Concerns", content="First concern.", output=out, append=True
+        )
+        assert "error" not in result
+
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        body = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
+        assert "First concern." in body
+        # No entry-block wrapping when append=True
+        assert "<div><sub>" not in body
+
+    def test_groom_item_append_true_second_write_appends_content(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """append=True on an existing section appends new content after existing content.
+
+        Tests: groom_item append=True incremental append preserves existing content.
+        How: Call groom_item twice with append=True into the same section.
+        Why: implement-feature needs to add individual concern lines incrementally.
+        """
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        import backlog_core.models as _m
+
+        backlog_dir = _m.get_backlog_dir()
+        # Use .yaml file so parse_backlog() finds the item after the first save_item call
+        filepath = _write_item_yaml(backlog_dir, title="Append Multi", priority="P1", topic="append-multi")
+
+        out = Output()
+        ops.groom_item(selector="Append Multi", section="Concerns", content="Concern A.", output=out, append=True)
+        ops.groom_item(selector="Append Multi", section="Concerns", content="Concern B.", output=out, append=True)
+
+        body = filepath.read_text(encoding="utf-8")
+        assert "Concern A." in body
+        assert "Concern B." in body
+        # Both concerns must be present — A must appear before B
+        assert body.index("Concern A.") < body.index("Concern B.")
+
+    def test_groom_item_append_false_default_uses_entry_blocks(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """append=False (default) continues to wrap content in entry blocks.
+
+        Tests: groom_item append=False default behaviour unchanged.
+        How: Call groom_item without append parameter.
+        Why: Ensures backward compatibility — existing callers must not be affected.
+        """
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        import backlog_core.models as _m
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = _write_item(backlog_dir, title="Append Default", priority="P1", topic="append-default")
+
+        out = Output()
+        ops.groom_item(selector="Append Default", section="Decision", content="Default behaviour.", output=out)
+
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        body = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
+        assert "Default behaviour." in body
+        # Default (append=False) must still produce P964 YAML entry blocks
+        assert "entries:" in body
 
 
 # ---------------------------------------------------------------------------
@@ -1409,23 +1663,26 @@ class TestStrikeEntryOperation:
     """Tests for the strike_entry public API function."""
 
     def test_strike_entry_operation(self, tmp_path: Path, mocker: MockerFixture) -> None:
-        """strike_entry wraps target entry in collapsed details."""
+        """strike_entry marks target entry as struck in the P964 YAML format."""
         import re as re_mod
 
         from backlog_core.models import Output
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
-        filepath = _write_item(backlog_dir, title="Strike Test", priority="P1", topic="strike-test")
+        import backlog_core.models as _m
+
+        backlog_dir = _m.get_backlog_dir()
+        # Use .yaml file so strike_entry's parse_backlog() re-finds the item after groom_item saves it
+        filepath = _write_item_yaml(backlog_dir, title="Strike Test", priority="P1", topic="strike-test")
 
         out = Output()
         ops.groom_item(selector="Strike Test", section="Decision", content="Bad info.", output=out)
 
-        # Get the entry ID by reading the file directly
+        # P964: entry ID is stored as a YAML field — extract via id: '<value>'
         body = filepath.read_text(encoding="utf-8")
-        match = re_mod.search(r"<sub>([^<]+)</sub>", body)
-        assert match is not None
+        match = re_mod.search(r"id: '([^']+)'", body)
+        assert match is not None, f"No entry id found in YAML body: {body!r}"
         entry_id = match.group(1)
 
         result = ops.strike_entry(
@@ -1435,7 +1692,7 @@ class TestStrikeEntryOperation:
         assert result["struck"] is True
 
         body = filepath.read_text(encoding="utf-8")
-        assert "struck:" in body
+        assert "struck: true" in body
         assert "based on training data" in body
 
     def test_strike_entry_not_found_raises(self, tmp_path: Path, mocker: MockerFixture) -> None:
@@ -1444,7 +1701,9 @@ class TestStrikeEntryOperation:
 
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
 
-        backlog_dir = tmp_path / "backlog"
+        import backlog_core.models as _m
+
+        backlog_dir = _m.get_backlog_dir()
         _write_item(backlog_dir, title="No Entry", priority="P1", topic="no-entry")
 
         out = Output()
@@ -1467,9 +1726,10 @@ class TestPullItemsEntryAwareMerge:
         How: Set up local item with one entry, mock GitHub with two entries, call pull_items.
         Why: Validates that generate_diff is wired into the pull merge path.
         """
+        import backlog_core.models as _m
         from backlog_core.models import Output
 
-        backlog_dir = tmp_path / "backlog"
+        backlog_dir = _m.get_backlog_dir()
 
         local_entry = "<div><sub>2026-01-01T00:00:00Z</sub>\n\nLocal content\n</div>"
         _write_item(
@@ -1489,11 +1749,7 @@ class TestPullItemsEntryAwareMerge:
             "backlog_core.operations.parse_backlog",
             return_value=[
                 BacklogItem(
-                    title="Diff Item",
-                    section="P1",
-                    issue="#42",
-                    file_path=str(backlog_dir / "p1-diff-item.md"),
-                    raw_body=f"## Description\n\n{local_entry}",
+                    title="Diff Item", section="P1", issue="#42", file_path=str(backlog_dir / "p1-diff-item.md")
                 )
             ],
         )
@@ -1516,9 +1772,10 @@ class TestPullItemsEntryAwareMerge:
         How: Local has struck entry, remote has active version, merge should keep struck.
         Why: Struck entries represent deliberate user action and must be preserved.
         """
+        import backlog_core.models as _m
         from backlog_core.models import Output
 
-        backlog_dir = tmp_path / "backlog"
+        backlog_dir = _m.get_backlog_dir()
 
         struck_entry = (
             "<div><sub>2026-01-01T00:00:00Z</sub>\n"
@@ -1540,15 +1797,7 @@ class TestPullItemsEntryAwareMerge:
         filepath = backlog_dir / "p1-struck-item.md"
         mocker.patch(
             "backlog_core.operations.parse_backlog",
-            return_value=[
-                BacklogItem(
-                    title="Struck Item",
-                    section="P1",
-                    issue="#43",
-                    file_path=str(filepath),
-                    raw_body=f"## Description\n\n{struck_entry}",
-                )
-            ],
+            return_value=[BacklogItem(title="Struck Item", section="P1", issue="#43", file_path=str(filepath))],
         )
         mocker.patch("backlog_core.operations.sync_create_missing_issues")
         mock_repo = mocker.MagicMock()
@@ -1564,6 +1813,81 @@ class TestPullItemsEntryAwareMerge:
 
 
 # ---------------------------------------------------------------------------
+# pull_items — resilience to per-item fetch failures
+# ---------------------------------------------------------------------------
+
+
+class TestPullItemsResilienceToFetchErrors:
+    """pull_items continues past per-item fetch failures and reports skipped count."""
+
+    def test_pull_continues_past_404_and_reports_skipped(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """pull_items skips 404 items and still processes the rest.
+
+        Tests: pull_items resilience — single 404 does not abort the batch.
+        How: Two items; first fetch returns None (simulating 404), second returns body.
+             Verify pulled=1, skipped=1, total=2, and errors is non-empty.
+        Why: A deleted or transferred issue must not halt a 427-item bulk pull.
+        """
+        import backlog_core.models as _m
+
+        backlog_dir = _m.get_backlog_dir()
+
+        good_body = "## Description\n\nSome content"
+        filepath = backlog_dir / "p1-good-item.md"
+
+        _write_item(backlog_dir, title="Good Item", priority="P1", topic="good-item", issue="#10")
+
+        mocker.patch(
+            "backlog_core.operations.parse_backlog",
+            return_value=[
+                BacklogItem(title="Dead Issue", section="P1", issue="#404"),
+                BacklogItem(title="Good Item", section="P1", issue="#10", file_path=str(filepath)),
+            ],
+        )
+        mocker.patch("backlog_core.operations.sync_create_missing_issues")
+        mock_repo = mocker.MagicMock()
+        mocker.patch("backlog_core.operations.get_github", return_value=mock_repo)
+        # First call returns None (404 simulation), second returns a body
+        mocker.patch("backlog_core.operations.fetch_github_issue_body", side_effect=[None, good_body])
+
+        out = Output()
+        result = ops.pull_items(output=out)
+
+        assert result["total"] == 2
+        assert result["skipped"] == 1
+        assert result["pulled"] == 1
+        assert len(out.errors) == 1
+        assert "404" in out.errors[0] or "skipped" in out.errors[0]
+
+    def test_pull_all_failed_reports_zero_pulled(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """pull_items with all fetches failing reports pulled=0 and all items skipped.
+
+        Tests: All-failure scenario — pulled=0, skipped=total.
+        How: Two items, both fetches return None.
+        Why: Validates correct accounting when entire batch fails.
+        """
+        mocker.patch(
+            "backlog_core.operations.parse_backlog",
+            return_value=[
+                BacklogItem(title="Gone 1", section="P1", issue="#1"),
+                BacklogItem(title="Gone 2", section="P1", issue="#2"),
+            ],
+        )
+        mocker.patch("backlog_core.operations.sync_create_missing_issues")
+        mock_repo = mocker.MagicMock()
+        mocker.patch("backlog_core.operations.get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.fetch_github_issue_body", return_value=None)
+
+        out = Output()
+        result = ops.pull_items(output=out)
+
+        assert result["total"] == 2
+        assert result["skipped"] == 2
+        assert result["pulled"] == 0
+        assert len(out.errors) == 2
+
+
+# ---------------------------------------------------------------------------
 # refresh_local_cache_from_github — closed-issue reconciliation
 # ---------------------------------------------------------------------------
 
@@ -1572,69 +1896,73 @@ class TestRefreshClosedIssueReconciliation:
     """refresh_local_cache_from_github reconciles externally closed GitHub issues."""
 
     def test_refresh_fetches_closed_issues(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        """API call includes state=closed with since parameter for reconciliation.
+        """Bulk GraphQL fetch is called for both open and closed states during refresh.
 
-        Tests: closed-issue fetch is called during refresh.
-        How: Mock repo_obj.get_issues and verify it is called with state="closed".
+        Tests: sync_issues_graphql is invoked with state='CLOSED' during refresh.
+        How: Mock sync_issues_graphql; call refresh; verify it was called with
+             state='CLOSED' at least once.
         Why: Without fetching closed issues, local cache drifts from GitHub state.
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
+             repo.get_issues (REST).
         """
         # Arrange
-        import backlog_core.models as models
-
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
+        # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
 
         mock_repo = mocker.MagicMock()
-        # Open issues pass: return empty list
-        # Closed issues pass: return empty list
-        mock_repo.get_issues.return_value = []
+        mock_repo.full_name = "owner/repo"
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mock_fetch = mocker.patch("backlog_core.operations.sync_issues_graphql", return_value=[])
 
         out = Output()
 
         # Act
         ops.refresh_local_cache_from_github(output=out)
 
-        # Assert — get_issues called at least once with state="closed"
-        calls = mock_repo.get_issues.call_args_list
-        closed_calls = [c for c in calls if c.kwargs.get("state") == "closed" or (c.args and c.args[0] == "closed")]
-        assert len(closed_calls) >= 1, f"Expected at least one get_issues(state='closed') call, got: {calls}"
+        # Assert — sync_issues_graphql called at least once with state="CLOSED"
+        calls = mock_fetch.call_args_list
+        closed_calls = [
+            c for c in calls if c.kwargs.get("state") == "CLOSED" or (len(c.args) >= 4 and c.args[3] == "CLOSED")
+        ]
+        assert len(closed_calls) >= 1, f"Expected at least one sync_issues_graphql(state='CLOSED') call, got: {calls}"
 
     def test_refresh_updates_local_status_for_closed(self, mocker: MockerFixture, tmp_path: Path) -> None:
         """Local file updated to status=closed when GitHub issue is closed.
 
         Tests: reconciliation updates local cache for closed issues.
-        How: Create local item with open status and issue #50; simulate closed issue
-             returned by GitHub; verify local file status changes to closed.
+        How: Create local item with open status and issue #50; mock
+             sync_issues_graphql to return a closed issue node; verify local
+             file status changes to closed.
         Why: Local files must reflect GitHub state to prevent stale displays.
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
+             repo.get_issues (REST). Node dicts use camelCase GraphQL field names.
         """
         # Arrange
         import backlog_core.models as models
 
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
+        # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
+        fake_dir = models.get_backlog_dir()
 
         filepath = _write_item(fake_dir, title="Closable Item", issue="#50", topic="closable-item")
 
         mock_repo = mocker.MagicMock()
-        # Mock closed issue
-        closed_issue = mocker.MagicMock()
-        closed_issue.number = 50
-        closed_issue.pull_request = None
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
 
-        def _get_issues(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
+        closed_node = {
+            "number": 50,
+            "title": "Closable Item",
+            "state": "CLOSED",
+            "closedAt": "2099-01-01T00:00:00+00:00",  # far future — always within cutoff
+            "isPullRequest": False,
+            "id": "node-50",
+        }
+
+        def _fake_fetch(repo_obj, owner, repo_name, state, labels=None):
+            if state == "CLOSED":
+                return [closed_node]
             return []  # no open issues
 
-        mock_repo.get_issues.side_effect = _get_issues
-        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
@@ -1651,33 +1979,40 @@ class TestRefreshClosedIssueReconciliation:
         """Items already in terminal status (done/resolved/closed) are not modified.
 
         Tests: terminal status guard in reconciliation.
-        How: Create item with status=done and matching closed issue; verify no update.
+        How: Create item with status=done and matching closed issue; mock
+             sync_issues_graphql to return the closed issue node; verify no update.
         Why: Re-processing terminal items wastes I/O and may corrupt metadata.
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
+             repo.get_issues (REST).
         """
         # Arrange
         import backlog_core.models as models
 
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
+        # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
+        fake_dir = models.get_backlog_dir()
 
         filepath = _write_item(fake_dir, title="Already Done", issue="#60", topic="already-done", skip=True)
         original_content = filepath.read_text(encoding="utf-8")
 
         mock_repo = mocker.MagicMock()
-        closed_issue = mocker.MagicMock()
-        closed_issue.number = 60
-        closed_issue.pull_request = None
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
 
-        def _get_issues(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
+        closed_node = {
+            "number": 60,
+            "title": "Already Done",
+            "state": "CLOSED",
+            "closedAt": "2099-01-01T00:00:00+00:00",
+            "isPullRequest": False,
+            "id": "node-60",
+        }
+
+        def _fake_fetch(repo_obj, owner, repo_name, state, labels=None):
+            if state == "CLOSED":
+                return [closed_node]
             return []
 
-        mock_repo.get_issues.side_effect = _get_issues
-        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
@@ -1693,37 +2028,49 @@ class TestRefreshClosedIssueReconciliation:
         """Issue appearing in both open and closed sets is treated as open.
 
         Tests: open-takes-precedence rule in reconciliation.
-        How: Return issue #70 in both open and closed passes; verify not reconciled.
-        Why: GitHub API may return recently-reopened issues in both sets.
+        How: Mock sync_issues_graphql to return issue #70 in both OPEN and CLOSED
+             passes; verify reconciled count is 0.
+        Why: GitHub may return recently-reopened issues in both state sets.
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
+             repo.get_issues (REST). open_issue_numbers set prevents reconciliation
+             of issues that appeared in the open pass.
         """
         # Arrange
         import backlog_core.models as models
 
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
+        # Use the BACKLOG_DIR already redirected by the autouse _isolate_backlog_dir fixture.
+        fake_dir = models.get_backlog_dir()
 
         _write_item(fake_dir, title="Ambiguous Item", issue="#70", topic="ambiguous-item")
 
         mock_repo = mocker.MagicMock()
-        open_issue = mocker.MagicMock()
-        open_issue.number = 70
-        open_issue.pull_request = None
-
-        closed_issue = mocker.MagicMock()
-        closed_issue.number = 70
-        closed_issue.pull_request = None
-
-        def _get_issues(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
-            return [open_issue]
-
-        mock_repo.get_issues.side_effect = _get_issues
+        mock_repo.full_name = "owner/repo"
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
-        mocker.patch("backlog_core.operations.pull_single_issue")
+
+        open_node = {
+            "number": 70,
+            "title": "Ambiguous Item",
+            "state": "OPEN",
+            "closedAt": None,
+            "isPullRequest": False,
+            "id": "node-70",
+        }
+        closed_node = {
+            "number": 70,
+            "title": "Ambiguous Item",
+            "state": "CLOSED",
+            "closedAt": "2099-01-01T00:00:00+00:00",
+            "isPullRequest": False,
+            "id": "node-70",
+        }
+
+        def _fake_fetch(repo_obj, owner, repo_name, state, labels=None):
+            if state == "CLOSED":
+                return [closed_node]
+            return [open_node]
+
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_fake_fetch)
+        mocker.patch("backlog_core.operations._write_issue_node_to_cache")
 
         out = Output()
 
@@ -1737,31 +2084,32 @@ class TestRefreshClosedIssueReconciliation:
         """Closed issue with no matching local file causes no error.
 
         Tests: graceful skip when closed issue has no local counterpart.
-        How: Return closed issue #80 with no corresponding local file; verify no crash.
+        How: Mock sync_issues_graphql to return closed issue #80 with no
+             corresponding local file; verify no crash and reconciled=0.
         Why: Not all GitHub issues have local backlog files — must skip silently.
+             After T01 the bulk fetch uses sync_issues_graphql (GraphQL), not
+             repo.get_issues (REST).
         """
-        # Arrange
-        import backlog_core.models as models
-
-        fake_dir = tmp_path / "backlog"
-        fake_dir.mkdir(parents=True, exist_ok=True)
-        mocker.patch.object(models, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(parsing, "BACKLOG_DIR", fake_dir)
-        mocker.patch.object(ops, "BACKLOG_DIR", fake_dir)
-        # No local files written — empty backlog dir
-
+        # Arrange — autouse _isolate_backlog_dir redirects BACKLOG_DIR; no local files written.
         mock_repo = mocker.MagicMock()
-        closed_issue = mocker.MagicMock()
-        closed_issue.number = 80
-        closed_issue.pull_request = None
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
 
-        def _get_issues(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
+        closed_node = {
+            "number": 80,
+            "title": "Orphan Issue",
+            "state": "CLOSED",
+            "closedAt": "2099-01-01T00:00:00+00:00",
+            "isPullRequest": False,
+            "id": "node-80",
+        }
+
+        def _fake_fetch(repo_obj, owner, repo_name, state, labels=None):
+            if state == "CLOSED":
+                return [closed_node]
             return []
 
-        mock_repo.get_issues.side_effect = _get_issues
-        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_fake_fetch)
 
         out = Output()
 
@@ -1770,3 +2118,701 @@ class TestRefreshClosedIssueReconciliation:
 
         # Assert
         assert result["reconciled"] == 0
+
+
+# ---------------------------------------------------------------------------
+# refresh_local_cache_from_github — incremental sync (.last_sync)
+# ---------------------------------------------------------------------------
+
+
+class TestRefreshLocalCacheIncrementalSync:
+    """refresh_local_cache_from_github uses .last_sync for incremental fetches."""
+
+    def test_refresh_local_cache_skips_full_fetch_when_last_sync_exists(
+        self, mocker: MockerFixture, tmp_path: pytest.TempPathFactory
+    ) -> None:
+        """Incremental path passes since= when .last_sync timestamp file exists.
+
+        Tests: refresh_local_cache_from_github incremental sync path.
+        How: Write a .last_sync file via dh_paths.state_root(); patch
+             sync_issues_graphql; verify it is called with since=<timestamp>.
+        Why: Without incremental sync, every refresh fetches all issues regardless
+             of whether anything changed since the last run.
+        """
+        # Arrange
+        import dh_paths
+
+        state_dir = dh_paths.state_root()
+        state_dir.mkdir(parents=True, exist_ok=True)
+        ts = "2026-01-15T12:00:00+00:00"
+        (state_dir / ".last_sync").write_text(ts, encoding="utf-8")
+
+        mock_repo = mocker.MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        fetch_mock = mocker.patch("backlog_core.operations.sync_issues_graphql", return_value=[])
+
+        # Act
+        ops.refresh_local_cache_from_github()
+
+        # Assert — incremental call uses since= and combined states
+        # Production code converts the ISO string from .last_sync to a datetime
+        # before passing it to sync_issues_graphql, so compare as datetime.
+        fetch_mock.assert_called_once()
+        _, kwargs = fetch_mock.call_args
+        assert kwargs.get("since") == datetime.fromisoformat(ts)
+
+    def test_refresh_local_cache_does_full_fetch_when_no_last_sync(self, mocker: MockerFixture) -> None:
+        """Full two-pass fetch is performed when no .last_sync file exists.
+
+        Tests: refresh_local_cache_from_github full-refresh fallback.
+        How: Ensure .last_sync does not exist; verify sync_issues_graphql
+             is called with since=None (full-fetch signature).
+        Why: First run or after cache wipe must fetch all issues.
+        """
+        # Arrange — autouse fixture sets DH_STATE_HOME; .last_sync absent by default
+        import dh_paths
+
+        last_sync_path = dh_paths.state_root() / ".last_sync"
+        assert not last_sync_path.exists(), "Precondition: .last_sync must not exist"
+
+        mock_repo = mocker.MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        calls: list[dict] = []
+
+        def _capture_fetch(
+            repo_obj: object,
+            owner: object,
+            repo_name: object,
+            state: object,
+            labels: object = None,
+            since: object = None,
+            **kw: object,
+        ) -> list[object]:
+            calls.append({"state": state, "since": since})
+            return []
+
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_capture_fetch)
+        mocker.patch("backlog_core.operations._reconcile_closed_issues", return_value=0)
+
+        # Act
+        ops.refresh_local_cache_from_github()
+
+        # Assert — full path issues two separate state calls, both with since=None
+        assert len(calls) >= 1
+        for call in calls:
+            assert call["since"] is None
+
+    def test_refresh_local_cache_full_refresh_ignores_last_sync(self, mocker: MockerFixture) -> None:
+        """full_refresh=True bypasses .last_sync and performs a full two-pass fetch.
+
+        Tests: refresh_local_cache_from_github full_refresh=True flag.
+        How: Write a .last_sync file, call with full_refresh=True, verify
+             sync_issues_graphql is called with since=None.
+        Why: Operators must be able to force a complete resync regardless of
+             the cached timestamp.
+        """
+        # Arrange
+        import dh_paths
+
+        state_dir = dh_paths.state_root()
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / ".last_sync").write_text("2026-01-01T00:00:00+00:00", encoding="utf-8")
+
+        mock_repo = mocker.MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        calls: list[dict] = []
+
+        def _capture_fetch(
+            repo_obj: object,
+            owner: object,
+            repo_name: object,
+            state: object,
+            labels: object = None,
+            since: object = None,
+            **kw: object,
+        ) -> list[object]:
+            calls.append({"state": state, "since": since})
+            return []
+
+        mocker.patch("backlog_core.operations.sync_issues_graphql", side_effect=_capture_fetch)
+        mocker.patch("backlog_core.operations._reconcile_closed_issues", return_value=0)
+
+        # Act
+        ops.refresh_local_cache_from_github(full_refresh=True)
+
+        # Assert — all calls must have since=None (full refresh ignores timestamp)
+        assert len(calls) >= 1
+        for call in calls:
+            assert call["since"] is None
+
+
+# ---------------------------------------------------------------------------
+# _sync_incremental — parse_backlog call-count invariant (O(N+M) fix)
+# ---------------------------------------------------------------------------
+
+
+class TestSyncIncrementalParseBacklogCallCount:
+    """_sync_incremental calls parse_backlog exactly once regardless of closed-issue count.
+
+    Regression guard for the O(N*M) → O(N+M) fix: parse_backlog must be called
+    once before the reconciliation loop, not once per closed issue encountered.
+    """
+
+    def test_parse_backlog_called_once_for_multiple_closed_issues(self, mocker: MockerFixture) -> None:
+        """parse_backlog is called exactly once when reconciling 3+ closed issues.
+
+        Tests: O(N+M) invariant — parse_backlog must not be called per-issue.
+        How: Set up a .last_sync file so the incremental path is taken; write
+             3 local backlog items with issue refs; mock sync_issues_graphql to
+             return all 3 as CLOSED; spy on parse_backlog; call
+             refresh_local_cache_from_github; assert call_count == 1.
+        Why: Before the fix, _reconcile_single_closed_issue called parse_backlog()
+             internally on each invocation, producing O(N*M) filesystem reads.
+             The fix builds the index once in _sync_incremental before the loop.
+             A call_count > 1 means the regression has been reintroduced.
+        """
+        # Arrange — write 3 local items with distinct issue refs
+        import backlog_core.models as models
+        import dh_paths
+
+        fake_dir = models.get_backlog_dir()
+        _write_item(fake_dir, title="Item Alpha", issue="#101", topic="item-alpha", priority="P1")
+        _write_item(fake_dir, title="Item Beta", issue="#102", topic="item-beta", priority="P1")
+        _write_item(fake_dir, title="Item Gamma", issue="#103", topic="item-gamma", priority="P1")
+
+        # Write a .last_sync file so refresh_local_cache_from_github takes
+        # the incremental path (_sync_incremental) rather than _sync_full.
+        state_dir = dh_paths.state_root()
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / ".last_sync").write_text("2026-01-01T00:00:00+00:00", encoding="utf-8")
+
+        mock_repo = mocker.MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        # Return all 3 issues as CLOSED in the single OPEN,CLOSED combined fetch
+        closed_nodes = [
+            {
+                "number": 101,
+                "title": "Item Alpha",
+                "state": "CLOSED",
+                "closedAt": "2099-01-01T00:00:00+00:00",
+                "isPullRequest": False,
+                "id": "node-101",
+            },
+            {
+                "number": 102,
+                "title": "Item Beta",
+                "state": "CLOSED",
+                "closedAt": "2099-01-01T00:00:00+00:00",
+                "isPullRequest": False,
+                "id": "node-102",
+            },
+            {
+                "number": 103,
+                "title": "Item Gamma",
+                "state": "CLOSED",
+                "closedAt": "2099-01-01T00:00:00+00:00",
+                "isPullRequest": False,
+                "id": "node-103",
+            },
+        ]
+        mocker.patch("backlog_core.operations.sync_issues_graphql", return_value=closed_nodes)
+
+        # Spy on parse_backlog — let the real implementation run so reconciliation
+        # actually writes files, but count how many times it is invoked.
+        from backlog_core.parsing import parse_backlog as _real_parse_backlog
+
+        parse_backlog_spy = mocker.patch("backlog_core.operations.parse_backlog", side_effect=_real_parse_backlog)
+
+        out = Output()
+
+        # Act
+        result = ops.refresh_local_cache_from_github(output=out)
+
+        # Assert — parse_backlog called exactly once, not once per closed issue
+        assert parse_backlog_spy.call_count == 1, (
+            f"parse_backlog was called {parse_backlog_spy.call_count} time(s); "
+            f"expected exactly 1. A call count > 1 indicates _reconcile_single_closed_issue "
+            f"is calling parse_backlog() per iteration (O(N*M) regression)."
+        )
+        # Sanity-check: the 3 closed issues were actually reconciled
+        assert result["reconciled"] == 3
+
+
+# ---------------------------------------------------------------------------
+# groom_item mark_groomed parameter
+# ---------------------------------------------------------------------------
+
+
+class TestGroomItemMarkGroomed:
+    """Tests for mark_groomed parameter on groom_item (Tests 3-7 from architecture spec)."""
+
+    def test_groom_item_mark_groomed_updates_local_status(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed=True sets local frontmatter status to 'groomed' when item has no issue.
+
+        Tests: groom_item mark_groomed updates local frontmatter status.
+        How: Write item with no issue; call groom_item with mark_groomed=True.
+        Why: Local status must advance even when there is no GitHub issue to label.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = _m.get_backlog_dir()
+        # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
+        filepath = _write_item_yaml(backlog_dir, title="Mark Groomed Local", priority="P1", topic="mark-groomed-local")
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed Local",
+            section="Description",
+            content="Groomed content.",
+            output=out,
+            mark_groomed=True,
+        )
+
+        assert "error" not in result
+        assert result.get("mark_groomed_applied") is True
+        body = filepath.read_text(encoding="utf-8")
+        assert "status: groomed" in body
+
+    def test_groom_item_mark_groomed_manages_github_labels(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed=True delegates GitHub label update to apply_status_groomed.
+
+        Tests: groom_item mark_groomed calls apply_status_groomed when item has an issue.
+        How: Write item with issue #123; mock apply_status_groomed; call with mark_groomed=True.
+        Why: GitHub label transition must be routed to the dedicated function, not implemented inline.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
+
+        backlog_dir = _m.get_backlog_dir()
+        # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
+        _write_item_yaml(
+            backlog_dir, title="Mark Groomed Github", priority="P1", topic="mark-groomed-github", issue="#123"
+        )
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed Github",
+            section="Description",
+            content="Groomed with issue.",
+            output=out,
+            mark_groomed=True,
+        )
+
+        assert "error" not in result
+        mock_apply.assert_called_once()
+        called_item = mock_apply.call_args.args[0]
+        assert called_item.issue == "#123"
+
+    def test_groom_item_mark_groomed_false_no_status_change(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed=False (default) does not advance status or call apply_status_groomed.
+
+        Tests: groom_item mark_groomed=False preserves existing behavior unchanged.
+        How: Write item with issue; call groom_item with mark_groomed=False.
+        Why: Default False must not silently advance status on every groom call.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = _write_item(
+            backlog_dir, title="Mark Groomed False", priority="P1", topic="mark-groomed-false", issue="#456"
+        )
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed False",
+            section="Description",
+            content="No status change expected.",
+            output=out,
+            mark_groomed=False,
+        )
+
+        assert "error" not in result
+        mock_apply.assert_not_called()
+        assert result.get("mark_groomed_applied") is not True
+        # save_item auto-migrates .md -> .yaml; read from the migrated path.
+        body = filepath.with_suffix(".yaml").read_text(encoding="utf-8")
+        assert "status: groomed" not in body
+
+    def test_groom_item_mark_groomed_with_batch_sections(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed=True fires exactly once after batch sections are written.
+
+        Tests: groom_item mark_groomed integrates correctly with sections batch parameter.
+        How: Write item with issue; call with sections dict and mark_groomed=True.
+        Why: mark_groomed must execute once at the end, not once per section.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
+
+        backlog_dir = _m.get_backlog_dir()
+        # Use .yaml file so parse_backlog() re-finds the item after save_item converts it
+        _write_item_yaml(
+            backlog_dir, title="Mark Groomed Batch", priority="P1", topic="mark-groomed-batch", issue="#789"
+        )
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed Batch",
+            sections={"Effort": "S", "Acceptance Criteria": "All criteria met."},
+            output=out,
+            mark_groomed=True,
+        )
+
+        assert "error" not in result
+        assert result.get("mark_groomed_applied") is True
+        mock_apply.assert_called_once()
+
+    def test_groom_item_mark_groomed_skipped_on_error(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """mark_groomed is not applied when update_item returns an error.
+
+        Tests: groom_item mark_groomed skips status advance if content write fails.
+        How: Mock update_item to return error dict; call with mark_groomed=True.
+        Why: Status must not advance if the grooming write did not succeed.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mocker.patch("backlog_core.operations.update_item", return_value={"error": "some error"})
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_groomed")
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = _write_item(
+            backlog_dir, title="Mark Groomed Error", priority="P1", topic="mark-groomed-error", issue="#999"
+        )
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Mark Groomed Error",
+            section="Description",
+            content="This write will fail.",
+            output=out,
+            mark_groomed=True,
+        )
+
+        assert "error" in result
+        mock_apply.assert_not_called()
+        assert result.get("mark_groomed_applied") is not True
+        body = filepath.read_text(encoding="utf-8")
+        assert "status: groomed" not in body
+
+
+# ---------------------------------------------------------------------------
+# view_item: unknown section keys survive into ViewItemResult.sections
+# ---------------------------------------------------------------------------
+
+
+class TestViewItemUnknownSections:
+    """Unknown section keys (unknown__ prefix) survive through view_item into ViewItemResult.sections.
+
+    These tests prove that `_build_sections_from_yaml_item` preserves freeform
+    `unknown__` prefixed keys — produced by `parse_issue_body` from GitHub issue
+    body headings not in `_HEADING_TO_KEY` — when assembling `ViewItemResult.sections`.
+    """
+
+    def test_unknown_section_key_present_in_view_result_sections(self, mocker: MockerFixture) -> None:
+        """Unknown-prefixed section key survives through view_item into ViewItemResult.sections.
+
+        Tests: _build_sections_from_yaml_item does not filter out unknown__ keys.
+        How: Write a YAML item with an unknown__impact_radius section; call view_item;
+             assert the key is present in result.sections.
+        Why: MCP clients receive result.sections as JSON — unknown section keys must
+             appear in the output or downstream consumers silently lose issue body content.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-unknown-section-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="unknown-section-item"
+        )
+        item = _m.BacklogItem(
+            title="Unknown Section Item",
+            description="Test item with unknown sections",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "unknown__impact_radius": Section(
+                    entries=[
+                        Entry(id="20260101T120000", content="Affects authentication module"),
+                        Entry(id="20260101T120001", content="No downstream impact expected"),
+                    ]
+                )
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Unknown Section Item")
+
+        # Assert
+        assert isinstance(result, ViewItemResult)
+        assert "unknown__impact_radius" in result.sections, (
+            f"Expected 'unknown__impact_radius' in sections, got: {list(result.sections.keys())}"
+        )
+        # Confirm value shape is SectionEntryMetadata (not groomed)
+        section_meta = cast("SectionEntryMetadata", result.sections["unknown__impact_radius"])
+        assert "num_entries" in section_meta
+
+    def test_unknown_section_has_correct_section_entry_metadata_shape(self, mocker: MockerFixture) -> None:
+        """Unknown section value has SectionEntryMetadata shape with num_entries, num_struck, entries.
+
+        Tests: _build_sections_from_yaml_item wraps Section objects in SectionEntryMetadata.
+        How: Write YAML item with unknown__ section; call view_item; assert TypedDict shape.
+        Why: MCP clients read num_entries and entries — wrong shape breaks consumers.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-unknown-shape-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="unknown-shape-item"
+        )
+        item = _m.BacklogItem(
+            title="Unknown Shape Item",
+            description="Test shape of unknown sections",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "unknown__story": Section(entries=[Entry(id="20260101T130000", content="As a developer I want tests")])
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Unknown Shape Item")
+
+        # Assert
+        section_meta = cast("SectionEntryMetadata", result.sections["unknown__story"])
+        assert "num_entries" in section_meta
+        assert "num_struck" in section_meta
+        assert "entries" in section_meta
+        assert isinstance(section_meta["entries"], list)
+
+    def test_unknown_section_entry_content_is_preserved(self, mocker: MockerFixture) -> None:
+        """Entry content inside an unknown section is not lost in ViewItemResult.sections.
+
+        Tests: Entry content round-trips from BacklogItem.sections into ViewItemResult.sections.
+        How: Write YAML item with known entry content in unknown__ section; call view_item;
+             assert entry content matches.
+        Why: Silent content loss would cause MCP clients to display empty section entries.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-unknown-content-item.yaml"
+
+        expected_content = "Must handle rate limits gracefully"
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="unknown-content-item"
+        )
+        item = _m.BacklogItem(
+            title="Unknown Content Item",
+            description="Test content preservation",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "unknown__acceptance_criteria": Section(
+                    entries=[
+                        Entry(id="20260101T140000", content=expected_content),
+                        Entry(id="20260101T140001", content="Must log errors to stderr"),
+                    ]
+                )
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Unknown Content Item")
+
+        # Assert
+        section_meta = cast("SectionEntryMetadata", result.sections["unknown__acceptance_criteria"])
+        section_entries = section_meta["entries"]
+        contents = [e["content"] for e in section_entries]
+        assert expected_content in contents, f"Expected '{expected_content}' in entry contents, got: {contents}"
+        assert len(section_entries) == 2
+
+    def test_unknown_section_num_entries_matches_active_entry_count(self, mocker: MockerFixture) -> None:
+        """num_entries in unknown section metadata equals the count of non-struck entries.
+
+        Tests: active/struck entry counting for unknown__ prefixed keys.
+        How: Write item with 3 entries, 1 struck; assert num_entries=2, num_struck=1.
+        Why: MCP clients display entry counts — must be accurate regardless of key prefix.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-unknown-count-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="unknown-count-item"
+        )
+        item = _m.BacklogItem(
+            title="Unknown Count Item",
+            description="Test entry counting",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "unknown__notes": Section(
+                    entries=[
+                        Entry(id="20260101T150000", content="Active note one"),
+                        Entry(id="20260101T150001", content="Active note two"),
+                        Entry(
+                            id="20260101T150002", content="Struck note", struck=True, struck_at="2026-01-02T00:00:00Z"
+                        ),
+                    ]
+                )
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Unknown Count Item")
+
+        # Assert
+        section_meta = cast("SectionEntryMetadata", result.sections["unknown__notes"])
+        assert section_meta["num_entries"] == 2
+        assert section_meta["num_struck"] == 1
+
+    def test_unknown_section_coexists_with_known_section(self, mocker: MockerFixture) -> None:
+        """Unknown and known sections coexist in ViewItemResult.sections with correct shapes.
+
+        Tests: _build_sections_from_yaml_item preserves both known and unknown__ keys simultaneously.
+        How: Write YAML item with rt_ica (known) and unknown__story sections; call view_item;
+             assert both keys present with correct SectionEntryMetadata shapes.
+        Why: Real GitHub issues have mixed headings — known and unknown must both survive.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-mixed-sections-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="mixed-sections-item"
+        )
+        item = _m.BacklogItem(
+            title="Mixed Sections Item",
+            description="Test mixed known and unknown sections",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "rt_ica": Section(entries=[Entry(id="20260101T160000", content="Risk: breaking change in public API")]),
+                "unknown__story": Section(entries=[Entry(id="20260101T160001", content="As a user I want feature X")]),
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Mixed Sections Item")
+
+        # Assert
+        assert "rt_ica" in result.sections, f"Expected 'rt_ica' in sections, got: {list(result.sections.keys())}"
+        assert "unknown__story" in result.sections, (
+            f"Expected 'unknown__story' in sections, got: {list(result.sections.keys())}"
+        )
+        rt_ica_meta = cast("SectionEntryMetadata", result.sections["rt_ica"])
+        assert rt_ica_meta["num_entries"] == 1
+        assert rt_ica_meta["entries"][0]["content"] == "Risk: breaking change in public API"
+
+        story_meta = cast("SectionEntryMetadata", result.sections["unknown__story"])
+        assert story_meta["num_entries"] == 1
+        assert story_meta["entries"][0]["content"] == "As a user I want feature X"
+
+    def test_unknown_section_coexists_with_groomed_section(self, mocker: MockerFixture) -> None:
+        """Unknown section and groomed section coexist with their respective metadata shapes.
+
+        Tests: SectionEntryMetadata and GroomedSectionMetadata shapes both appear in sections.
+        How: Write YAML item with groomed (GroomedData) and unknown__ (Section) keys; call view_item;
+             assert groomed key has type=groomed and unknown key has num_entries shape.
+        Why: GroomedSectionMetadata and SectionEntryMetadata are discriminated by presence of
+             the "type" key — MCP clients must receive both shapes correctly.
+        """
+        import backlog_core.models as _m
+        from backlog_core.models import Entry, GroomedData, Section
+        from backlog_core.yaml_io import save_item
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        backlog_dir = _m.get_backlog_dir()
+        filepath = backlog_dir / "p1-groomed-unknown-item.yaml"
+
+        metadata = _m.BacklogItemMetadata(
+            source="test", added="2026-01-01", priority="P1", status="open", topic="groomed-unknown-item"
+        )
+        item = _m.BacklogItem(
+            title="Groomed Unknown Item",
+            description="Test groomed alongside unknown",
+            metadata=metadata,
+            file_path=str(filepath),
+            sections={
+                "groomed": GroomedData(date="2026-01-15", subsections={"summary": "Feature is ready for review"}),
+                "unknown__implementation_notes": Section(
+                    entries=[
+                        Entry(id="20260101T170000", content="Use existing retry logic"),
+                        Entry(id="20260101T170001", content="Avoid touching auth module"),
+                    ]
+                ),
+            },
+        )
+        save_item(item, filepath)
+
+        # Act
+        result = view_item("Groomed Unknown Item")
+
+        # Assert: groomed section has GroomedSectionMetadata shape
+        assert "groomed" in result.sections, f"Expected 'groomed' in sections, got: {list(result.sections.keys())}"
+        groomed_meta = cast("GroomedSectionMetadata", result.sections["groomed"])
+        assert groomed_meta.get("type") == "groomed"
+        assert "subsections" in groomed_meta
+        assert groomed_meta["subsections"]["summary"] == "Feature is ready for review"
+
+        # Assert: unknown section has SectionEntryMetadata shape
+        assert "unknown__implementation_notes" in result.sections, (
+            f"Expected 'unknown__implementation_notes' in sections, got: {list(result.sections.keys())}"
+        )
+        unknown_meta = cast("SectionEntryMetadata", result.sections["unknown__implementation_notes"])
+        assert "num_entries" in unknown_meta
+        assert unknown_meta["num_entries"] == 2
+        assert len(unknown_meta["entries"]) == 2

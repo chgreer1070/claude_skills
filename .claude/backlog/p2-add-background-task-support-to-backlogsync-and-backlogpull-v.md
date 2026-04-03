@@ -4,12 +4,12 @@ description: "`backlog_sync` and `backlog_pull` iterate over every open backlog 
 metadata:
   topic: add-background-task-support-to-backlogsync-and-backlogpull-v
   source: 'GitHub Issue #469'
-  added: '2026-03-06'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#469'
-  last_synced: '2026-03-14T16:00:30Z'
+  last_synced: '2026-03-22T15:10:05Z'
 ---
 
 ## Story

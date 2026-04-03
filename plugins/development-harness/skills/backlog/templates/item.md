@@ -24,7 +24,7 @@ metadata:
 <!-- Required for P0. Recommended for P1. Each criterion must be a specific, verifiable condition. -->
 <!-- Examples:
   - Running `uv run backlog.py list --format json` outputs valid JSON
-  - File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter
+  - File `~/.dh/projects/{slug}/backlog/p1-{slug}.md` exists with correct frontmatter
   - `backlog_view(selector="#N")` returns `state: "open"` in the dict
 -->
 - <!-- criterion 1 -->

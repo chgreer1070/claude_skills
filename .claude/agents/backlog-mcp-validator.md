@@ -29,6 +29,15 @@ Tests   : .claude/skills/backlog/tests/
 
 All validation uses native MCP tool calls — Bash, Read, Write, and Edit are disallowed.
 
+## Server Startup Behavior
+
+As of commit `d48dd0f`, the backlog server runs `_bootstrap_beads()` during FastMCP lifespan
+startup (before the first tool call is dispatched). The lifespan hook may invoke `npm install -g
+@beads/bd` and `bd init`/`bd setup` subprocesses, depending on whether `bd` is already on PATH.
+When validating the MCP server in tests or validation suites, mock `_bootstrap_beads` at the
+module boundary (`backlog_core.server._bootstrap_beads`) or patch the sentinel
+(`backlog_core.server._beads_bootstrapped = True`) to prevent subprocess side effects.
+
 ## MCP Tool Reference
 
 All 10 registered tools. Every tool returns a `dict` — success includes data keys + optional `messages`/`warnings` lists; error includes `"error": str`.
@@ -53,7 +62,6 @@ CLI:     uv run .claude/skills/backlog/scripts/backlog.py add --title X --priori
 
 ```text
 Parameters:
-  with_status   bool      optional  Include GitHub issue status  (default: false)
   from_github   bool      optional  Refresh cache from GitHub first  (default: false)
   label         str|null  optional  Filter by GitHub label  (default: null)
   section       str|null  optional  Filter by section name  (default: null)
@@ -67,7 +75,11 @@ Parameters:
                                     Items missing metadata.topic are excluded when active.
                                     (default: null)
 
-Returns: {items: [{title, priority, issue, plan, type, topic}], messages, warnings}
+Returns: {items: [{title, priority, issue, plan, type, topic}],
+          backend: {name, availability, open_count, total_count,
+                    cache_open_count, cache_total_count, last_sync, error},
+          messages, warnings}
+          availability values: "reachable" | "not_checked" | "needs_authentication" | "rate_limited" | "error"
 CLI:     uv run .claude/skills/backlog/scripts/backlog.py list --format json [--with-status]
          [--type Bug] [--topic matching]
 ```

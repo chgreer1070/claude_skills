@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "6.0.78"
+    "version": "6.3.105"
   },
   "plugins": [
     {
@@ -115,6 +115,18 @@
     {
       "name": "scientific-method",
       "source": "./plugins/scientific-method"
+    },
+    {
+      "name": "twelve-factor-app",
+      "source": "./plugins/twelve-factor-app"
+    },
+    {
+      "name": "dot-dash",
+      "source": "./plugins/dot-dash"
+    },
+    {
+      "name": "python-engineering",
+      "source": "./plugins/python-engineering"
     }
   ]
 }

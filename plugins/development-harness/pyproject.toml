@@ -7,7 +7,6 @@ dependencies = [
     "gitpython>=3.1.0",
     "pygithub>=2.8.1",
     "pydantic>=2.12.3",
-    "python-frontmatter>=1.1.0",
     "ruamel.yaml>=0.18.0",
     "tiktoken>=0.12.0",
     "typer>=0.21.2",
@@ -23,6 +22,7 @@ dev = [
     "pytest-asyncio>=0.26.0",
     "pytest-mock>=3.15.1",
     "pytest-cov>=6.0.0",
+    "fastmcp[tasks]>=3.0.2",
 ]
 
 [tool.pytest.ini_options]
@@ -34,16 +34,24 @@ addopts = [
     "--import-mode=importlib",
     "-v",
 ]
-testpaths = ["tests", "tests_sam"]
+testpaths = ["tests", "tests_sam", "tests_backlog"]
+pythonpath = [
+    ".",
+    "./skills/implementation-manager/scripts",
+    "./skills/implementation-manager/tests/test_task_status_hook",
+]
 markers = [
     "slow: marks tests as slow",
     "integration: marks tests as integration tests",
     "cli: marks tests as CLI integration tests",
+    "unit: marks tests as unit tests",
+    "critical: marks tests requiring property-based or mutation testing",
+    "e2e: marks tests as end-to-end tests",
 ]
 
 [tool.coverage.run]
 branch = true
-source = ["backlog_core", "sam_schema"]
+source = ["backlog_core", "sam_schema", "dispatch_schema", "agent_profile"]
 
 [tool.coverage.report]
 show_missing = true
@@ -58,4 +66,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["backlog_core", "sam_schema"]
+packages = ["backlog_core", "sam_schema", "dispatch_schema", "agent_profile"]

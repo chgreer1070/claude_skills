@@ -3,13 +3,13 @@ name: '`/plugin-dev:create-plugin` workflow lacks intra-phase parallelism tracki
 description: The 8-phase create-plugin workflow treats each phase as a serial step, but Phase 5 (Implementation) actually consisted of 6 parallel sub-tasks and Phase 6 (Validation) spawned 3 parallel review agents. The workflow provides no structure for tracking parallel work within a phase — no task dependencies, no completion gates, no way to know which sub-tasks are done after compaction. Batching validation fixes by file rather than by finding would also have been more efficient (SKILL.md was edited 3 separate times when one pass would have sufficed).
 metadata:
   topic: plugin-dev-create-plugin-workflow-lacks-intra-phase-parallel
-  source: agentskill-kaizen plugin build (2026-02-18)
-  added: '2026-02-18'
+  source: 'GitHub Issue #114'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#114'
-  last_synced: '2026-03-14T16:01:01Z'
+  last_synced: '2026-03-22T15:10:37Z'
 ---
 
 ## Story

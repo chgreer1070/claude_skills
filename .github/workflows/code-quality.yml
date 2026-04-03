@@ -24,24 +24,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Lint with Ruff
-        run: uv run prek run ruff --all-files
+        run: uv run -q prek run ruff --all-files
 
       - name: Check formatting with Ruff
-        run: uv run prek run ruff-format --all-files
+        run: uv run -q prek run ruff-format --all-files
 
   # =============================================================================
   # Python: Type checking with basedpyright
@@ -52,21 +44,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Run basedpyright
-        run: uv run --with pep723-loader --with basedpyright pep723-loader basedpyright
+        run: uv run -q --with pep723-loader --with basedpyright pep723-loader basedpyright
 
   # =============================================================================
   # Python: Type checking with ty (Astral)
@@ -78,24 +62,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Install dependencies
         run: uv sync --group dev
 
       - name: Run ty
-        run: uv run ty check .
+        run: uv run -q ty check .
 
   # =============================================================================
   # JavaScript/TypeScript/JSON: Biome linting and formatting (via prek)
@@ -106,21 +82,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Run Biome
-        run: uv run prek run biome-check --all-files
+        run: uv run -q prek run biome-check --all-files
 
   # =============================================================================
   # Markdown: markdownlint (via prek)
@@ -131,21 +99,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Run markdownlint-cli2
-        run: uv run prek run markdownlint-cli2 --all-files
+        run: uv run -q prek run markdownlint-cli2 --all-files
 
   # =============================================================================
   # Shell: shellcheck and shfmt (via prek)
@@ -156,31 +116,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Run shellcheck
-        run: uv run prek run shellcheck --all-files
+        run: uv run -q prek run shellcheck --all-files
 
       - name: Run shfmt
-        run: uv run prek run shell-fmt-go --all-files
-
-  # =============================================================================
-  # Local hooks: frontmatter validation (blocking)
-  # validate_frontmatter.py was consolidated into skilllint
-  # (refactor: consolidate frontmatter validation into shared frontmatter_core module)
-  # Frontmatter is now validated by the validate-plugins job below.
-  # =============================================================================
+        run: uv run -q prek run shell-fmt-go --all-files
 
   # =============================================================================
   # Local hooks: plugin validation (via prek)
@@ -192,21 +137,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Validate plugins
-        run: uv run prek run skilllint --all-files
+        run: uvx skilllint@latest check plugins/ .claude/
 
   # =============================================================================
   # Local hooks: manifest sync (via prek)
@@ -218,21 +155,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Check manifest sync
-        run: uv run prek run auto-sync-manifests --all-files
+        run: uv run -q prek run auto-sync-manifests --all-files
 
   # =============================================================================
   # File hygiene: trailing whitespace, line endings, etc.
@@ -248,22 +177,14 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: ./.github/actions/setup-python
 
       - name: Fetch PR base for diff scope
         if: github.event_name == 'pull_request'
         run: git fetch --depth=1 origin ${{ github.event.pull_request.base.sha }}
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
 
       - name: Run file hygiene hooks
         env:
@@ -273,9 +194,9 @@ jobs:
           GH_EVENT: ${{ github.event_name }}
         run: |
           if [ "$GH_EVENT" = "pull_request" ]; then
-            uv run prek run --from-ref "$PR_BASE" --to-ref "$PR_HEAD"
+            uv run -q prek run --from-ref "$PR_BASE" --to-ref "$PR_HEAD"
           else
-            uv run prek run --all-files
+            uv run -q prek run --all-files
           fi
 
   # =============================================================================
@@ -287,24 +208,16 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
+      - uses: ./.github/actions/setup-python
 
       - name: Install dependencies
         run: uv sync --group dev
 
       - name: Run pytest
-        run: uv run pytest
+        run: uv run -q pytest
 
   # =============================================================================
   # JavaScript/TypeScript: test suite
@@ -340,6 +253,34 @@ jobs:
           fi
 
   # =============================================================================
+  # Python: Cross-backend protocol compliance tests
+  # Matrix runs InMemoryBackend and SQLiteBackend via pytest parametrization.
+  # GitHubBackend tests are skipped (require BACKLOG_CROSS_BACKEND_GITHUB=1
+  # and a live GITHUB_TOKEN — neither is set in this CI job).
+  # =============================================================================
+  test-cross-backend:
+    name: Python / Cross-backend tests (${{ matrix.backend }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [memory, sqlite]
+    env:
+      BACKLOG_BACKEND: ${{ matrix.backend }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run cross-backend tests
+        run: uv run -q pytest plugins/development-harness/tests/test_cross_backend.py -v
+
+  # =============================================================================
   # Summary job that requires all checks to pass
   # =============================================================================
   quality-gate:
@@ -357,6 +298,7 @@ jobs:
       - file-hygiene
       - test-python
       - test-node
+      - test-cross-backend
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed

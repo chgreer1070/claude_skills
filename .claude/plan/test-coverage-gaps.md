@@ -185,6 +185,12 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 **Behavior to cover**: End-to-end execution of the audit workflow — fetching closed issues, SAM-item detection via body regex, `status:verified` skip logic, `needs-verification` label creation and application, comment posting, and PR filtering.
 **Reason not written**: GitHub Actions workflows require a live GitHub API and runner environment. No unit-testable code was produced (the logic lives in an inline `github-script` action). Integration testing requires `gh workflow run` against a real repo, which is outside the scope of a local sub-agent task.
 
+## Gap: quality_gates.py
+
+**Files**: `plugins/development-harness/sam_schema/core/quality_gates.py`
+**Behavior to cover**: `build_quality_gate_plan` — YAML structure, dependency chain, field values, issue omission when None, body cross-references, Plan model roundtrip, edge cases (empty slug, special characters in slug)
+**Reason not written**: Subordinate-agent boundary — unit tests are scoped to T03 (`python-pytest-architect`) and integration tests to T04 in plan P990.
+
 ## Gap: backlog_core/models.py — init() and_resolve_repo_root()
 
 **Files**: `plugins/development-harness/backlog_core/models.py`
@@ -202,3 +208,21 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 **Files**: `plugins/development-harness/backlog_core/models.py`
 **Behavior to cover**: `discover_repo()` priority chain (env var, gh CLI, git remote, error path), `_validate_repo_slug()` rejection, `RepoDiscoveryError` message format, `lru_cache` isolation via `cache_clear()`, `init()` repo override.
 **Reason not written**: T02 (assigned to python-pytest-architect) covers this — subordinate-agent boundary.
+
+## Gap: backlog_core/artifact_provider.py
+
+**Files**: `plugins/development-harness/backlog_core/artifact_provider.py`
+**Behavior to cover**: GitHubArtifactProvider.get_manifest, set_manifest, read_artifact_content; parse_manifest_section with edge cases (empty body, body with manifest, malformed rows); render_manifest_section; replace_manifest_in_body (replace vs append paths); path traversal rejection; roundtrip fidelity
+**Reason not written**: Subordinate-agent boundary — T5 is the dedicated test task for artifact_provider.py and artifact_registry.py. Tests are planned in plugins/development-harness/tests_backlog/test_artifact_provider.py.
+
+## Gap: test_gates.py — test_timeout_stderr_contains_timeout_duration assertion mismatch
+
+**Files**: `plugins/development-harness/tests/test_dispatch_schema/test_gates.py:762`
+**Behavior to cover**: `TestSubprocessTimeoutContract.test_timeout_stderr_contains_timeout_duration` asserts `"300.0s"` in stderr but production code emits `"300s"` (no decimal point). Either the test assertion or the production format string is wrong.
+**Reason not written**: Pre-existing failure confirmed before T03 changes. Not in scope for this task. Needs fix in either `test_gates.py` (update assertion to `"300s"`) or in the gates.py timeout message formatter (add `.0` to the format).
+
+## Gap: artifact_migrate response shape
+
+**Files**: `plugins/development-harness/backlog_core/server.py`
+**Behavior to cover**: `_migrate_discover_candidates` with `issue_filter` set — verify non-matching files are counted in `filtered_count` and absent from the returned candidate list. Also: `_migrate_live_run` and `_migrate_dry_run` response shapes — verify `details` contains only migrated/failed entries, `skipped` equals `filtered_count + no-issue count`, and `verify` field is present.
+**Reason not written**: No existing test suite for `backlog_core/server.py`. Setting up the full provider mock stack is out of scope for this single-function fix task.

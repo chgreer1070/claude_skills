@@ -171,8 +171,9 @@ uv run ruff format --check <file_paths/>
 # Lint check
 uv run ruff check <file_paths/>
 
-# Type check
-uv run mypy <file_paths/> --strict
+# Type check — match hooks/CI; ty when repo runs ty (do not infer mypy from [tool.mypy] alone)
+uv run ty check <file_paths/>
+# uv run mypy <file_paths/> --strict
 ```
 
 Fix any issues that arise.
@@ -222,6 +223,6 @@ If an implementation is blocked:
 
 ## References
 
-- [stinkysnake skill](../stinkysnake/SKILL.md) - Parent workflow
-- [python-cli-architect agent](../../agents/python-cli-architect.md) - Implementation agent
-- [python3-development skill](../python3-development/SKILL.md) - Modern Python patterns
+- `../stinkysnake/SKILL.md` - Parent workflow
+- `../../agents/python-cli-architect.md` - Implementation agent
+- `../python3-development/SKILL.md` - Modern Python patterns

@@ -4,12 +4,12 @@ description: Explore token budgets and cost controls per agent/stage. Track API 
 metadata:
   topic: sam-costtoken-management
   source: 'GitHub Issue #120'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: IDEA
   type: Feature
   status: needs-grooming
   issue: '#120'
-  last_synced: '2026-03-14T16:00:57Z'
+  last_synced: '2026-03-22T15:10:33Z'
 ---
 
 ## Story

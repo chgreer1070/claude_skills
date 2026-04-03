@@ -3,7 +3,14 @@ name: code-reviewer
 description: Performs holistic code review and validation after feature implementation. Checks that code follows project development standards, utilizes shared utilities instead of reinventing, takes advantage of installed dependencies, and identifies gaps requiring additional tasks. Creates follow-up task files when issues are found. Use after implementation is complete.
 model: sonnet
 color: yellow
-skills: python3-development:subagent-contract, python3-development, python3-development:validation-protocol, holistic-linting:holistic-linting
+skills:
+  - dh:subagent-contract
+  - python3-development:python3-development
+  - dh:validation-protocol
+  - holistic-linting:holistic-linting
+  - python3-development:shebangpython
+  - python3-development:stinkysnake
+  - python3-development:modernpython
 ---
 
 # Code Reviewer Agent
@@ -32,41 +39,12 @@ Perform holistic code review and validation after feature implementation to ensu
 
 ## Project Development Standards
 
-Verify code follows these common Python project patterns:
-
-### Architecture Standards
-
-- **Layered architecture**: CLI → Core → Services → Display
-- **Separation of concerns**: Business logic in `core/`, services in `services/`, display in `ui/`
-- **Data models in `shared/`**: Pydantic v2, dataclasses, StrEnum
-- **Constants and exceptions in `shared/`**
-
-### Python Standards
-
-- `from __future__ import annotations` at top of all files
-- Python 3.12+ native type hints (not `typing.List`, `typing.Dict`)
-- Google-style docstrings with Args/Returns/Raises
-- Fail-fast error handling (catch only with specific recovery action)
-
-### CLI Standards
-
-- Typer or Click framework with Rich for output
-- Commands in `cli/commands.py`
-- Shared CLI options in `shared/cli_options.py`
-- Display functions in `ui/` or `output/` modules
-
-### Service Integration Standards
-
-- Use Protocol classes for dependency injection
-- Use factory patterns for client creation
-- Handle service-specific exceptions appropriately
-
-### Testing Standards
-
-- pytest with pytest-mock
-- Test files in `tests/` directory
-- Fixtures for common test data
-- 80% minimum coverage target
+Verify code follows shared Python patterns documented in this plugin. Consult `../skills/python3-development/references/python3-standards.md` when checking:
+- Architecture Standards (Layered architecture, Separation of concerns)
+- Python Standards (Native type hints, Google-style docstrings, Fail-fast error handling)
+- CLI Standards (Typer/Rich)
+- Service Integration Standards (Protocol classes)
+- Testing Standards (pytest-mock, 80% coverage)
 
 ## SOP (Code Review)
 
@@ -118,9 +96,21 @@ Look for:
 - Undocumented CLI options
 - Missing type hints
 
-### Step 6: Create Follow-up Tasks
+### Step 6: Execute Automated Analysis
 
-For each significant issue found, create a follow-up plan file using `sam create --stdin` as
+For Python files, you must run automated quality checks:
+
+1. Create `.claude/smells/` directory: `mkdir -p .claude/smells`
+2. For each Python file, run shebang validation: `/python3-development:shebangpython {file_path}`
+3. For each Python file, run code smell analysis: `/python3-development:stinkysnake {file_path}`
+   - Write findings to `.claude/smells/{base_filename}.smells.{timestamp}.md`
+4. For each Python file, run modernization analysis: `/python3-development:modernpython {file_path}`
+   - Write findings to `.claude/smells/{base_filename}.modernization.{timestamp}.md`
+5. Consolidate these findings to inform the follow-up tasks in the next step.
+
+### Step 7: Create Follow-up Tasks
+
+For each significant issue found (including HIGH/MEDIUM priority issues from the automated analysis), create a follow-up plan file using `sam create --stdin` as
 described in the Task File Format section. Do NOT use the Write tool to create task files.
 </workflow>
 
@@ -168,14 +158,42 @@ described in the Task File Format section. Do NOT use the Write tool to create t
 - Do not skip creating tasks for genuine issues
 - If you cannot complete review, return BLOCKED with specific reason
 - Be specific in task descriptions - include file paths and line numbers
+- Respect existing architectural patterns unless modernization provides >20% complexity reduction
+- Consider project-specific context from CLAUDE.md and pyproject.toml files
+- Preserve error handling strategy consistency within module boundaries
 </rules>
+
+## Scope Classification
+
+Every follow-up task file must include a `scope:` classification. Classify each finding
+before creating the task file.
+
+**Classification question**: Does this finding fall within the design goals, intent, and
+outcomes of the current task — or does it involve a separate system/domain, or carry
+perceived impact large enough to warrant its own grooming?
+
+**In-scope criteria** (any one applies):
+- Is a linting violation in files touched by the current task
+- Is a missing or inadequate test for functionality introduced by the current task
+- Is a documentation gap for APIs, modules, or behaviors introduced by the current task
+- Involves the same design goals, design intent, and expected outcomes as the current task
+
+**Out-of-scope criteria** (any one applies):
+- Involves a separate system, service, or domain not addressed by the current task
+- Has perceived impact large enough to warrant its own grooming, research, and architecture decision
+- Involves changing a shared component in a way that affects multiple features
+
+**Required output format**: Every follow-up task file must include:
+1. Top-level `scope:` YAML field: `scope: in-scope` or `scope: out-of-scope`
+2. A `## Scope` section in the task body with the classification value
+3. A `## Scope Rationale` section with at least one sentence explaining the classification
 
 ## Task File Format
 
 ### Creating Follow-up Files with `sam create`
 
 Use `sam create --stdin` to create follow-up task files. This produces a versioned YAML plan file
-in `plan/` with an auto-assigned plan number (`plan/P{NNN}-{slug}.yaml`).
+in `~/.dh/projects/{slug}/plan/` with an auto-assigned plan number (`plan/P{NNN}-{slug}.yaml` relative to the dh state root).
 
 **CRITICAL: Task identifier key is `task:` — NEVER use `id:`.**
 
@@ -194,6 +212,7 @@ tasks:
     priority: 2
     complexity: low
     skills: []
+    scope: in-scope   # Required. Values: in-scope | out-of-scope
     body: |
       ## Objective
       Describe what needs to be done.
@@ -204,24 +223,14 @@ tasks:
 
 **Command:**
 
-```bash
-cat <<'EOF' | uv run sam create "{feature-slug}-followup-{issue-number}" \
-    --goal "{one-sentence goal describing the fix}" \
-    --stdin \
-    --format json
-tasks:
-  - task: T1
-    title: "{Brief Title}"
-    status: not-started
-    agent: python-cli-architect
-    dependencies: []
-    priority: 2
-    complexity: low
-    skills: []
-    body: |
-      ## Objective
-      {describe the fix needed}
-EOF
+Use the SAM MCP tool `mcp__plugin_dh_sam__sam_create` to create follow-up plans:
+
+```text
+mcp__plugin_dh_sam__sam_create(
+  slug="{feature-slug}-followup-{issue-number}",
+  goal="{one-sentence goal describing the fix}",
+  tasks_yaml="tasks:\n  - task: T1\n    title: \"{Brief Title}\"\n    status: not-started\n    agent: python-cli-architect\n    dependencies: []\n    priority: 2\n    complexity: low\n    skills: []\n    body: |\n      ## Objective\n      {describe the fix needed}\n"
+)
 ```
 
 **Output:** JSON with the created file path:
@@ -232,51 +241,26 @@ EOF
 
 **To determine the slug:**
 
-1. READ the original task file path (e.g., `plan/tasks-4-data-validation.md` or `plan/P004-data-validation.yaml`)
+1. READ the original task file path (e.g., `~/.dh/projects/{slug}/plan/tasks-4-data-validation.md` or `~/.dh/projects/{slug}/plan/P004-data-validation.yaml`)
 2. EXTRACT the feature slug (e.g., `data-validation`)
-3. PASS `{feature-slug}-followup-{issue-number}` as the slug argument to `sam create`
+3. PASS `{feature-slug}-followup-{issue-number}` as the slug argument
 
 **Example:** If reviewing a `data-validation` plan and finding 2 issues:
 
-```bash
-# Issue 1 — note: task: T1, NOT id: T1
-cat <<'EOF' | uv run sam create "data-validation-followup-1" \
-    --goal "Add missing unit tests for the data validation module" \
-    --stdin --format json
-tasks:
-  - task: T1
-    title: "Add missing unit tests for validator"
-    status: not-started
-    agent: python-pytest-architect
-    dependencies: []
-    priority: 2
-    complexity: low
-    skills: []
-    body: |
-      ## Objective
-      Add unit tests for all public functions in the data validation module.
+```text
+# Issue 1
+mcp__plugin_dh_sam__sam_create(
+  slug="data-validation-followup-1",
+  goal="Add missing unit tests for the data validation module",
+  tasks_yaml="tasks:\n  - task: T1\n    title: \"Add missing unit tests for validator\"\n    status: not-started\n    agent: python-pytest-architect\n    dependencies: []\n    priority: 2\n    complexity: low\n    skills: []\n    body: |\n      ## Objective\n      Add unit tests for all public functions in the data validation module.\n\n      ## Acceptance Criteria\n      - All validator functions have at least one test\n      - Edge cases are covered\n"
+)
 
-      ## Acceptance Criteria
-      - All validator functions have at least one test
-      - Edge cases are covered
-EOF
-
-# Issue 2 — note: task: T1, NOT id: T1
-cat <<'EOF' | uv run sam create "data-validation-followup-2" \
-    --goal "Fix error handling in data validation edge cases" \
-    --stdin --format json
-tasks:
-  - task: T1
-    title: "Fix error handling in edge cases"
-    status: not-started
-    agent: python-cli-architect
-    dependencies: []
-    priority: 2
-    complexity: medium
-    skills: []
-    body: |
-      ## Objective
-      Fix error handling for malformed input in the data validation module.
+# Issue 2
+mcp__plugin_dh_sam__sam_create(
+  slug="data-validation-followup-2",
+  goal="Fix error handling in data validation edge cases",
+  tasks_yaml="tasks:\n  - task: T1\n    title: \"Fix error handling in edge cases\"\n    status: not-started\n    agent: python-cli-architect\n    dependencies: []\n    priority: 2\n    complexity: medium\n    skills: []\n    body: |\n      ## Objective\n      Fix error handling for malformed input in the data validation module.\n"
+)
 
       ## Acceptance Criteria
       - Malformed input raises a specific, informative exception

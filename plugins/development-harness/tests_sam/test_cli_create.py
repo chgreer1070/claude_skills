@@ -327,7 +327,8 @@ class TestSamCreateOptionalFields:
         )
         # Assert
         assert result.exit_code == 0
-        read_result = runner.invoke(app, ["read", "P1", "--plan-dir", str(plan_dir)], env={"NO_COLOR": "1"})
+        # --issue 42 produces P42, not P1
+        read_result = runner.invoke(app, ["read", "P42", "--plan-dir", str(plan_dir)], env={"NO_COLOR": "1"})
         assert read_result.exit_code == 0
         plan_data = json.loads(read_result.output)
         assert plan_data.get("issue") == "42"
@@ -417,6 +418,50 @@ class TestSamCreateRoundTrip:
         data = json.loads(read_result.output)
         assert data.get("plan-goal") == "My specific goal"
 
+    def test_create_with_stdin_preserves_task_body_content(self, plan_dir: Path) -> None:
+        """Task ``body`` field round-trips through create -> read without data loss.
+
+        Tests: body field preservation during stdin create.
+        How: Create with a task containing a multiline body, read back P1/T1, verify body.
+        Why: Pydantic drops unknown fields silently -- body was missing from Task model,
+             causing body content to be discarded at validation time (reproduced on P577, P964).
+        """
+        # Arrange
+        tasks_with_body = """\
+tasks:
+  - task: T1
+    title: Body preservation test
+    status: not-started
+    agent: python-cli-architect
+    dependencies: []
+    priority: 3
+    complexity: medium
+    body: |
+      ## Objective
+      This is a test body that should be preserved.
+
+      ## Acceptance Criteria
+      - Body content is not empty after create
+"""
+        # Act -- create
+        create_result = runner.invoke(
+            app,
+            ["create", "body-test", "--goal", "Test body preservation", "--stdin", "--plan-dir", str(plan_dir)],
+            input=tasks_with_body,
+            env={"NO_COLOR": "1"},
+        )
+        assert create_result.exit_code == 0, create_result.output
+
+        # Act -- read back
+        read_result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir)], env={"NO_COLOR": "1"})
+        # Assert
+        assert read_result.exit_code == 0, read_result.output
+        data = json.loads(read_result.output)
+        task = data["task"]
+        assert task.get("body"), "body field is empty -- content was dropped at model validation"
+        assert "## Objective" in task["body"]
+        assert "This is a test body that should be preserved." in task["body"]
+
     def test_create_plan_dir_auto_created_if_missing(self, tmp_path: Path) -> None:
         """Plan directory is auto-created if it does not exist.
 
@@ -434,3 +479,183 @@ class TestSamCreateRoundTrip:
         # Assert
         assert result.exit_code == 0
         assert new_dir.exists()
+
+
+# ---------------------------------------------------------------------------
+# sam create -- --issue as plan number
+# ---------------------------------------------------------------------------
+
+
+class TestSamCreateIssueAsPlanNumber:
+    """Test that --issue N makes the plan number N, not the next sequential number.
+
+    Tests: Issue-number-as-plan-number behaviour.
+    How: Invoke create with --issue, verify path, plan_number, and file on disk.
+    Why: GitHub issue number == plan number makes addressing unambiguous and
+         eliminates the collision class where sequential plan numbering and
+         sequential issue numbering independently produce the same integer.
+    """
+
+    def test_create_with_issue_uses_issue_as_plan_number(self, plan_dir: Path) -> None:
+        """--issue 951 produces a plan file named P951-{slug}.yaml.
+
+        Tests: File naming when --issue is provided.
+        How: Create with --issue 951, check plan_number and path in JSON output.
+        Why: plan_number must equal the issue number so callers can rely on
+             the identity plan-file = P{issue}.
+        """
+        # Arrange -- empty plan_dir
+        # Act
+        result = runner.invoke(
+            app,
+            ["create", "my-feature", "--goal", "Test", "--issue", "951", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        # Assert
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.output)
+        assert data["plan_number"] == 951
+        assert "P951-my-feature.yaml" in data["path"]
+        assert Path(data["path"]).exists()
+
+    def test_create_with_issue_file_exists_at_reported_path(self, plan_dir: Path) -> None:
+        """File created with --issue exists on disk at the path returned in JSON.
+
+        Tests: Disk write side effect for issue-numbered plans.
+        How: Create with --issue, stat the reported path.
+        Why: If the file is not written, all downstream read/claim operations fail.
+        """
+        # Arrange / Act
+        result = runner.invoke(
+            app,
+            ["create", "disk-check", "--goal", "Test", "--issue", "42", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        # Assert
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.output)
+        assert Path(data["path"]).exists()
+
+    def test_create_with_issue_skips_sequential_numbering(self, plan_dir: Path) -> None:
+        """Sequential fallback is bypassed when --issue is provided.
+
+        Tests: --issue overrides sequential assignment.
+        How: Create P1 sequentially, then create with --issue 500; verify P500.
+        Why: Without this, --issue might still return plan_number 2 because
+             sequential scanning found P1 and returned 2.
+        """
+        # Arrange -- create a sequential plan first (will be P1)
+        runner.invoke(app, ["create", "first", "--goal", "First", "--plan-dir", str(plan_dir)], env={"NO_COLOR": "1"})
+        # Act -- create with explicit issue number
+        result = runner.invoke(
+            app,
+            ["create", "jumped", "--goal", "Jumped", "--issue", "500", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        # Assert
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.output)
+        assert data["plan_number"] == 500
+
+    def test_create_without_issue_still_sequential(self, plan_dir: Path) -> None:
+        """Sequential numbering is preserved when --issue is not given.
+
+        Tests: Fallback to sequential numbering when --issue is absent.
+        How: Create two plans without --issue, verify numbers 1 and 2.
+        Why: The sequential path must continue to work after adding --issue support.
+        """
+        # Arrange / Act
+        r1 = runner.invoke(app, ["create", "seq-a", "--goal", "A", "--plan-dir", str(plan_dir)], env={"NO_COLOR": "1"})
+        r2 = runner.invoke(app, ["create", "seq-b", "--goal", "B", "--plan-dir", str(plan_dir)], env={"NO_COLOR": "1"})
+        # Assert
+        assert r1.exit_code == 0
+        assert r2.exit_code == 0
+        assert json.loads(r1.output)["plan_number"] == 1
+        assert json.loads(r2.output)["plan_number"] == 2
+
+
+# ---------------------------------------------------------------------------
+# sam create -- collision guard
+# ---------------------------------------------------------------------------
+
+
+class TestSamCreateCollisionGuard:
+    """Test that creating a plan with a duplicate issue number is rejected.
+
+    Tests: Collision guard behaviour.
+    How: Create a plan, then attempt to create another with the same --issue.
+    Why: Duplicate plan numbers break addressing -- two P951 files cannot coexist.
+    """
+
+    def test_create_collision_on_duplicate_issue_exits_1(self, plan_dir: Path) -> None:
+        """Second create with same --issue exits 1 with error message.
+
+        Tests: Collision detection on duplicate issue number.
+        How: Create P951, attempt to create P951 again, expect exit 1.
+        Why: Silent overwrite would destroy the existing plan file.
+        """
+        # Arrange -- create the first plan with issue 951
+        first = runner.invoke(
+            app,
+            ["create", "original", "--goal", "Original", "--issue", "951", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        assert first.exit_code == 0, first.output
+        # Act -- attempt duplicate
+        second = runner.invoke(
+            app,
+            ["create", "duplicate", "--goal", "Duplicate", "--issue", "951", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        # Assert
+        assert second.exit_code == 1
+        assert "P951" in second.output
+
+    def test_create_collision_error_message_names_existing_file(self, plan_dir: Path) -> None:
+        """Collision error message includes the existing plan path.
+
+        Tests: Error message content for collision.
+        How: Create P10, attempt duplicate, check stderr/output mentions the file.
+        Why: Error must tell the caller what already exists so they can act.
+        """
+        # Arrange
+        runner.invoke(
+            app,
+            ["create", "existing", "--goal", "Existing", "--issue", "10", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        # Act
+        result = runner.invoke(
+            app,
+            ["create", "collision", "--goal", "Collision", "--issue", "10", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        # Assert -- error text should mention the existing plan path
+        assert result.exit_code == 1
+        combined = result.output + (result.stderr if hasattr(result, "stderr") and result.stderr else "")
+        assert "P10" in combined
+
+    def test_create_collision_does_not_overwrite_existing_file(self, plan_dir: Path) -> None:
+        """Rejected duplicate create leaves the original file intact.
+
+        Tests: File preservation on collision.
+        How: Create P7, attempt duplicate, read P7, verify original goal survives.
+        Why: Collision must be a hard stop -- no partial overwrites.
+        """
+        # Arrange
+        runner.invoke(
+            app,
+            ["create", "safe-original", "--goal", "Original goal", "--issue", "7", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        # Act -- collision attempt
+        runner.invoke(
+            app,
+            ["create", "intruder", "--goal", "Intruder goal", "--issue", "7", "--plan-dir", str(plan_dir)],
+            env={"NO_COLOR": "1"},
+        )
+        # Assert -- original plan still readable with original goal
+        read_result = runner.invoke(app, ["read", "P7", "--plan-dir", str(plan_dir)], env={"NO_COLOR": "1"})
+        assert read_result.exit_code == 0
+        plan_data = json.loads(read_result.output)
+        assert plan_data.get("goal") == "Original goal"

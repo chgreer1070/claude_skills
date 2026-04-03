@@ -2,7 +2,7 @@
 
 Tests are organized by the skill/agent workflow that generates each call
 pattern. All tests go through the full operations layer — mocking only at
-the github.py boundary and filesystem (via conftest fixtures).
+the gh_client.py boundary and filesystem (via conftest fixtures).
 
 Uses in-memory FastMCP Client transport (``Client(mcp)``).
 No ``@pytest.mark.asyncio`` decorators — global ``asyncio_mode = "auto"``.
@@ -49,8 +49,8 @@ class TestCreateBacklogItem:
                 "priority": "P1",
                 "description": "A test item",
                 "source": "test",
-                "create_issue": True,
                 "force": True,
+                "gate_token": "problems-not-solutions",
             },
         )
 
@@ -76,15 +76,15 @@ class TestWorkBacklogItem:
     Covers browse/list, view, plan/status/update, close, and resolve.
     """
 
-    # Scenario 2: list with GitHub status enrichment
-    async def test_list_with_status(self, backlog_dir, mock_github, write_test_item):
+    # Scenario 2: list always includes GitHub status fields
+    async def test_list_includes_status_fields(self, backlog_dir, mock_github, write_test_item):
         write_test_item("Status Test Item", issue="#10")
         status_mock = MagicMock()
         status_mock.status = "open"
         status_mock.milestone = "v1.0"
         mock_github["batch_fetch_statuses"].return_value = {10: status_mock}
 
-        result = await _call("backlog_list", {"with_status": True})
+        result = await _call("backlog_list", {})
 
         assert isinstance(result["items"], list)
         assert result["count"] >= 1
@@ -101,7 +101,12 @@ class TestWorkBacklogItem:
     # Scenario 3: list sourced from GitHub (refresh_local_cache_from_github path)
     async def test_list_from_github(self, backlog_dir, mock_github):
         mock_repo = MagicMock()
+        mock_repo.full_name = "owner/repo"
         mock_repo.get_issues.return_value = []
+        mock_repo.requester.graphql_query.return_value = (
+            {},
+            {"data": {"repository": {"issues": {"nodes": [], "pageInfo": {"hasNextPage": False}}}}},
+        )
         mock_github["try_get_github"].return_value = mock_repo
 
         result = await _call("backlog_list", {"from_github": True})
@@ -126,13 +131,13 @@ class TestWorkBacklogItem:
         write_test_item("View Issue Test", issue="#42")
         mock_github["view_enrich_from_github"].return_value = False
 
-        result = await _call("backlog_view", {"selector": "#42"})
+        result = await _call("backlog_view", {"selector": "#42", "summary": False})
 
         assert result["title"] == "View Issue Test"
         assert isinstance(result["priority"], str)
         assert result["issue"] == "#42"
         assert isinstance(result["body"], str)
-        assert isinstance(result["groomed"], bool)
+        assert isinstance(result["groomed"], str)
         assert isinstance(result["labels"], list)
         assert isinstance(result["milestone"], str)
 
@@ -140,7 +145,7 @@ class TestWorkBacklogItem:
     async def test_view_by_title_substring(self, backlog_dir, mock_github, write_test_item):
         write_test_item("My Unique Title Item")
 
-        result = await _call("backlog_view", {"selector": "Unique Title"})
+        result = await _call("backlog_view", {"selector": "Unique Title", "summary": False})
 
         assert result["title"] == "My Unique Title Item"
         assert isinstance(result["file_path"], str)
@@ -203,13 +208,13 @@ class TestWorkBacklogItem:
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)
 
-    async def test_update_create_github_issue(self, backlog_dir, mock_github, write_test_item):
-        """Scenario 10: backlog_update with create_issue=True creates a GitHub issue."""
+    async def test_update_creates_github_issue_when_missing(self, backlog_dir, mock_github, write_test_item):
+        """Scenario 10: backlog_update creates a GitHub issue when the item lacks one."""
         write_test_item("Issue Create Test", priority="P1")
         mock_github["try_get_github"].return_value = MagicMock()
         mock_github["create_issue_for_item"].return_value = 99
 
-        result = await _call("backlog_update", {"selector": "Issue Create Test", "create_issue": True})
+        result = await _call("backlog_update", {"selector": "Issue Create Test"})
 
         assert result["title"] == "Issue Create Test"
         assert result["issue_num"] == 99
@@ -262,7 +267,30 @@ class TestGroomBacklogItem:
     async def test_groom_full_content(self, backlog_dir, mock_github, write_test_item):
         """Scenario 14: backlog_groom with section/content syncs to GitHub and updates the file."""
         filepath = write_test_item("Groom Full Test", issue="#80")
-        mock_github["try_get_github"].return_value = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mock_repo.requester.graphql_query.return_value = (
+            {},
+            {
+                "data": {
+                    "repository": {
+                        "issue": {
+                            "id": "I_groom_test",
+                            "number": 80,
+                            "title": "Groom Full Test",
+                            "state": "OPEN",
+                            "body": "",
+                            "createdAt": "2026-01-01T00:00:00Z",
+                            "updatedAt": "2026-01-01T00:00:00Z",
+                            "labels": {"nodes": []},
+                            "milestone": None,
+                            "assignees": {"nodes": []},
+                        }
+                    }
+                }
+            },
+        )
+        mock_github["try_get_github"].return_value = mock_repo
         mock_github["sync_groomed_to_github_issue"].return_value = True
 
         result = await _call(
@@ -281,7 +309,30 @@ class TestGroomBacklogItem:
     async def test_groom_incremental_section(self, backlog_dir, mock_github, write_test_item):
         """Scenario 15: backlog_groom with section + content updates that section in the file."""
         filepath = write_test_item("Groom Section Test", issue="#81")
-        mock_github["try_get_github"].return_value = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mock_repo.requester.graphql_query.return_value = (
+            {},
+            {
+                "data": {
+                    "repository": {
+                        "issue": {
+                            "id": "I_groom_section_test",
+                            "number": 81,
+                            "title": "Groom Section Test",
+                            "state": "OPEN",
+                            "body": "",
+                            "createdAt": "2026-01-01T00:00:00Z",
+                            "updatedAt": "2026-01-01T00:00:00Z",
+                            "labels": {"nodes": []},
+                            "milestone": None,
+                            "assignees": {"nodes": []},
+                        }
+                    }
+                }
+            },
+        )
+        mock_github["try_get_github"].return_value = mock_repo
 
         result = await _call(
             "backlog_groom",
@@ -319,7 +370,30 @@ class TestGroomBacklogItem:
     async def test_groom_via_update(self, backlog_dir, mock_github, write_test_item):
         """Scenario 17: backlog_update with section/content param sets groomed content."""
         write_test_item("Groom Via Update Test", issue="#82")
-        mock_github["try_get_github"].return_value = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mock_repo.requester.graphql_query.return_value = (
+            {},
+            {
+                "data": {
+                    "repository": {
+                        "issue": {
+                            "id": "I_groom_via_update_test",
+                            "number": 82,
+                            "title": "Groom Via Update Test",
+                            "state": "OPEN",
+                            "body": "",
+                            "createdAt": "2026-01-01T00:00:00Z",
+                            "updatedAt": "2026-01-01T00:00:00Z",
+                            "labels": {"nodes": []},
+                            "milestone": None,
+                            "assignees": {"nodes": []},
+                        }
+                    }
+                }
+            },
+        )
+        mock_github["try_get_github"].return_value = mock_repo
 
         result = await _call(
             "backlog_update",
@@ -354,7 +428,7 @@ class TestGroupItemsToMilestone:
         status_11.milestone = ""
         mock_github["batch_fetch_statuses"].return_value = {10: status_10, 11: status_11}
 
-        result = await _call("backlog_list", {"with_status": True})
+        result = await _call("backlog_list", {})
 
         assert result["count"] >= 3
         for item in result["items"]:
@@ -377,7 +451,7 @@ class TestBacklogItemGroomer:
 
         target = next(i for i in list_result["items"] if "Groomer View" in i["title"])
 
-        view_result = await _call("backlog_view", {"selector": target["title"]})
+        view_result = await _call("backlog_view", {"selector": target["title"], "summary": False})
 
         assert view_result["title"] == "Groomer View Target"
         assert "body" in view_result
@@ -497,7 +571,13 @@ class TestErrorPaths:
 
         result = await _call(
             "backlog_add",
-            {"title": "Duplicate Detection Test", "priority": "P1", "description": "A duplicate", "force": False},
+            {
+                "title": "Duplicate Detection Test",
+                "priority": "P1",
+                "description": "A duplicate",
+                "force": False,
+                "gate_token": "problems-not-solutions",
+            },
         )
 
         assert "error" in result
@@ -513,6 +593,125 @@ class TestErrorPaths:
         assert result["items"] == []
         assert result["count"] == 0
         assert "error" not in result
+
+
+# ---------------------------------------------------------------------------
+# Recursion guard routing tests
+# ---------------------------------------------------------------------------
+
+
+class TestRecursionGuardScenarios:
+    """Tests for recursion guard routing paths.
+
+    These tests verify that backlog_add correctly handles items whose source
+    field carries guard-originated patterns (depth-limit, BLOCKED-FOR-PLANNING,
+    out-of-scope, in-scope default). Each test documents one routing branch.
+    """
+
+    async def test_depth_limit_routes_remaining_to_backlog(self, backlog_dir, mock_github):
+        """Guard 1: depth-limit source pattern creates a backlog item with source preserved."""
+        mock_github["try_get_github"].return_value = None
+
+        result = await _call(
+            "backlog_add",
+            {
+                "title": "fix type errors in auth module",
+                "priority": "P1",
+                "description": "Follow-up identified when recursion depth limit was reached",
+                "source": "Depth limit exceeded on #42 at depth 5",
+                "force": True,
+                "gate_token": "problems-not-solutions",
+            },
+        )
+
+        assert "error" not in result
+        assert result["title"] == "fix type errors in auth module"
+        assert isinstance(result["file_path"], str)
+        # Verify the source was persisted to the file frontmatter
+        file_text = (backlog_dir / result["file_path"].split("/")[-1]).read_text(encoding="utf-8")
+        assert "Depth limit exceeded on #42 at depth 5" in file_text
+
+    async def test_rtca_blocked_stop_does_not_create_duplicate(self, backlog_dir, mock_github):
+        """Guard 2: BLOCKED-FOR-PLANNING source — second add with same title is rejected as duplicate."""
+        mock_github["try_get_github"].return_value = None
+
+        first = await _call(
+            "backlog_add",
+            {
+                "title": "rt-ica blocked follow-up item",
+                "priority": "P2",
+                "description": "Blocked for planning — needs scoping before implementation",
+                "source": "BLOCKED-FOR-PLANNING",
+                "force": True,
+                "gate_token": "problems-not-solutions",
+            },
+        )
+        assert "error" not in first
+        assert isinstance(first["file_path"], str)
+
+        # Second call with same title and force=False — duplicate check must fire
+        second = await _call(
+            "backlog_add",
+            {
+                "title": "rt-ica blocked follow-up item",
+                "priority": "P2",
+                "description": "Blocked for planning — needs scoping before implementation",
+                "source": "BLOCKED-FOR-PLANNING",
+                "force": False,
+                "gate_token": "problems-not-solutions",
+            },
+        )
+
+        assert "error" in second
+        assert "similar" in second["error"].lower() or "duplicate" in second["error"].lower()
+
+    async def test_out_of_scope_routes_to_backlog_at_classification(self, backlog_dir, mock_github):
+        """Out-of-scope quality gate source — item created with out-of-scope pattern preserved."""
+        mock_github["try_get_github"].return_value = None
+
+        result = await _call(
+            "backlog_add",
+            {
+                "title": "out of scope finding title",
+                "priority": "P2",
+                "description": "Separate domain concern identified during quality gate",
+                "source": "Quality gate follow-up from #42 — out-of-scope: separate domain concern",
+                "force": True,
+                "gate_token": "problems-not-solutions",
+            },
+        )
+
+        assert "error" not in result
+        assert result["title"] == "out of scope finding title"
+        assert isinstance(result["file_path"], str)
+        # Verify the out-of-scope source pattern was preserved in file frontmatter
+        file_text = (backlog_dir / result["file_path"].split("/")[-1]).read_text(encoding="utf-8")
+        assert "Quality gate follow-up from #42" in file_text
+        assert "out-of-scope" in file_text
+
+    async def test_in_scope_default_warns_when_scope_absent(self, backlog_dir, mock_github):
+        """In-scope default: item with no explicit scope section proceeds normally as in-scope.
+
+        Guard behavior: WARNING emitted when ## Scope absent; item proceeds as in-scope.
+        """
+        mock_github["try_get_github"].return_value = None
+
+        result = await _call(
+            "backlog_add",
+            {
+                "title": "in-scope default follow-up",
+                "priority": "P1",
+                "description": "Item created when scope section absent — defaults to in-scope",
+                "source": "in-scope default",
+                "force": True,
+                "gate_token": "problems-not-solutions",
+            },
+        )
+
+        # In-scope default: item proceeds and is created without error
+        assert "error" not in result
+        assert result["title"] == "in-scope default follow-up"
+        assert isinstance(result["file_path"], str)
         assert isinstance(result["messages"], list)
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)
@@ -529,7 +728,30 @@ class TestLifecycles:
         Chains 4 MCP tool calls in sequence, verifying intermediate states.
         """
         # Step 1: Create item
-        mock_github["try_get_github"].return_value = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.full_name = "owner/repo"
+        mock_repo.requester.graphql_query.return_value = (
+            {},
+            {
+                "data": {
+                    "repository": {
+                        "issue": {
+                            "id": "I_lifecycle_close",
+                            "number": 70,
+                            "title": "Lifecycle Close Item",
+                            "state": "OPEN",
+                            "body": "",
+                            "createdAt": "2026-01-01T00:00:00Z",
+                            "updatedAt": "2026-01-01T00:00:00Z",
+                            "labels": {"nodes": []},
+                            "milestone": None,
+                            "assignees": {"nodes": []},
+                        }
+                    }
+                }
+            },
+        )
+        mock_github["try_get_github"].return_value = mock_repo
         mock_github["create_issue_for_item"].return_value = 70
 
         create_result = await _call(
@@ -539,8 +761,8 @@ class TestLifecycles:
                 "priority": "P1",
                 "description": "Full lifecycle test",
                 "source": "test",
-                "create_issue": True,
                 "force": True,
+                "gate_token": "problems-not-solutions",
             },
         )
         assert create_result["title"] == "Lifecycle Close Item"
@@ -584,8 +806,8 @@ class TestLifecycles:
                 "priority": "P1",
                 "description": "Will be resolved",
                 "source": "test",
-                "create_issue": True,
                 "force": True,
+                "gate_token": "problems-not-solutions",
             },
         )
         assert create_result["issue_num"] == 71
@@ -617,7 +839,7 @@ class TestLifecycles:
         write_test_item("Stale Discovery Item", issue="#100")
         mock_github["batch_fetch_statuses"].return_value = {}
 
-        result = await _call("backlog_list", {"with_status": True})
+        result = await _call("backlog_list", {})
 
         matching = [i for i in result["items"] if i.get("title") == "Stale Discovery Item"]
         assert matching, "Expected 'Stale Discovery Item' in list results"
@@ -1008,23 +1230,159 @@ class TestEndToEndQueryToResult:
         assert s1_result["items"] == []
         assert "error" not in s1_result
 
-        # Strategy 2: type filter on empty corpus
-        s2_result = await _call("backlog_list", {"type": "Bug"})
-        assert s2_result["count"] == 0
-        assert s2_result["items"] == []
-        assert "error" not in s2_result
 
-        # Strategy 2: topic filter on empty corpus
-        s2b_result = await _call("backlog_list", {"topic": "mcp-server"})
-        assert s2b_result["count"] == 0
-        assert s2b_result["items"] == []
-        assert "error" not in s2b_result
+# ---------------------------------------------------------------------------
+# Group 5: Progressive disclosure — compact backlog_view (Scenario C1)
+# ---------------------------------------------------------------------------
 
-        # Strategy 3: unfiltered on empty corpus
-        s3_result = await _call("backlog_list")
-        assert s3_result["count"] == 0
-        assert s3_result["items"] == []
-        assert "error" not in s3_result
+
+class TestCompactBacklogView:
+    """Scenarios for backlog_view with include_content=False (compact mode).
+
+    Verifies that compact mode returns section inventory without body or entry
+    content, and that offset/limit parameters do not affect the compact response
+    shape.
+    """
+
+    async def test_compact_view_returns_sections_metadata(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1a: backlog_view(include_content=False) returns sections_metadata list.
+
+        Tests: compact mode response shape
+        How: write item with groomed section content via yaml_io (YAML format),
+             call backlog_view with include_content=False, assert sections_metadata
+             is a list of dicts with name/num_entries/num_struck keys.
+        Why: callers that only need a section inventory should not pay the cost
+             of transferring full body content.
+        """
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import load_item, save_item
+
+        filepath = write_test_item("Compact View Test Item")
+        # Add a structured section with entries (YAML format — not raw markdown append)
+        item = load_item(filepath)
+        item.sections["Groomed (2026-03-22)"] = Section(
+            entries=[
+                Entry(id="2026-03-22", content="First entry content."),
+                Entry(id="2026-03-22", content="Second entry content."),
+            ]
+        )
+        save_item(item, filepath)
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call(
+            "backlog_view", {"selector": "Compact View Test Item", "include_content": False, "summary": False}
+        )
+
+        assert "error" not in result
+        assert "sections_metadata" in result, "Compact mode must include sections_metadata"
+        assert isinstance(result["sections_metadata"], list)
+        for section in result["sections_metadata"]:
+            assert "name" in section, f"Section entry missing 'name': {section}"
+            assert "num_entries" in section, f"Section entry missing 'num_entries': {section}"
+            assert "num_struck" in section, f"Section entry missing 'num_struck': {section}"
+            assert isinstance(section["num_entries"], int)
+            assert isinstance(section["num_struck"], int)
+
+    async def test_compact_view_omits_body_and_sections(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1b: backlog_view(include_content=False) omits body and sections keys.
+
+        Tests: compact mode omits full-content fields
+        How: call backlog_view with include_content=False, assert 'body' and
+             'sections' keys are absent from the response.
+        Why: the compact response contract guarantees no body or entry content
+             is transferred — callers rely on key absence to detect compact mode.
+        """
+        write_test_item("No Body View Item")
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call("backlog_view", {"selector": "No Body View Item", "include_content": False})
+
+        assert "error" not in result
+        assert "body" not in result, "Compact mode must not include 'body' key"
+        assert "sections" not in result, "Compact mode must not include 'sections' key"
+
+    async def test_compact_view_preserves_metadata_fields(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1c: backlog_view(include_content=False) returns all metadata fields.
+
+        Tests: compact mode includes all non-content metadata fields
+        How: call backlog_view with include_content=False, assert expected
+             metadata keys are present with correct types.
+        Why: callers using compact mode still need item metadata (title, priority,
+             issue, file_path, etc.) to identify and act on the item.
+        """
+        write_test_item("Metadata Preserved Item", priority="P1", issue="#77")
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call(
+            "backlog_view", {"selector": "Metadata Preserved Item", "include_content": False, "summary": False}
+        )
+
+        assert "error" not in result
+        assert result["title"] == "Metadata Preserved Item"
+        assert isinstance(result["priority"], str)
+        assert isinstance(result["file_path"], str)
+        assert result["file_path"] != ""
+        assert isinstance(result["groomed"], str)
+        assert isinstance(result["labels"], list)
+        assert isinstance(result["messages"], list)
+        assert isinstance(result["warnings"], list)
+
+    async def test_compact_view_with_offset_limit_does_not_error(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1d: backlog_view(include_content=False, offset=5, limit=3) does not error.
+
+        Tests: compact mode with pagination params is harmless (no error path)
+        How: call backlog_view with include_content=False plus offset and limit,
+             assert response has no error key and sections_metadata is present.
+        Why: offset/limit are pagination params for full-content mode; compact
+             mode ignores them (returns all sections) but must not raise an error
+             when they are supplied, preserving backward compatibility for callers
+             that always pass pagination params.
+        """
+        from backlog_core.models import Entry, Section
+        from backlog_core.yaml_io import load_item, save_item
+
+        filepath = write_test_item("Pagination Compact Item")
+        # Add a structured section with entries (YAML format — not raw markdown append)
+        item = load_item(filepath)
+        item.sections["Groomed (2026-03-22)"] = Section(
+            entries=[Entry(id="2026-03-22", content="Entry one."), Entry(id="2026-03-22", content="Entry two.")]
+        )
+        save_item(item, filepath)
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call(
+            "backlog_view",
+            {
+                "selector": "Pagination Compact Item",
+                "include_content": False,
+                "summary": False,
+                "offset": 5,
+                "limit": 3,
+            },
+        )
+
+        assert "error" not in result
+        assert "sections_metadata" in result
+        assert not result.get("body"), "Compact mode must have no body content"
+        assert not result.get("sections"), "Compact mode must have no sections content"
+
+    async def test_default_include_content_true_unchanged(self, backlog_dir, mock_github, write_test_item):
+        """Scenario C1e: backlog_view without include_content returns full body (backward compat).
+
+        Tests: default behavior is unchanged when include_content is omitted
+        How: call backlog_view with no include_content param, assert 'body' is
+             present in the response and 'sections_metadata' is absent.
+        Why: include_content defaults to True — all existing callers that do not
+             pass the parameter must continue to receive the full response.
+        """
+        write_test_item("Default Full View Item")
+        mock_github["view_enrich_from_github"].return_value = False
+
+        result = await _call("backlog_view", {"selector": "Default Full View Item", "summary": False})
+
+        assert "error" not in result
+        assert "body" in result, "Default mode must include 'body' key"
+        assert not result.get("sections_metadata"), "Default mode must have no sections_metadata content"
 
     async def test_e2e_combined_type_and_title_filters(self, backlog_dir, mock_github, write_test_item):
         """Combined filters narrow results correctly through the full MCP path."""
@@ -1081,7 +1439,7 @@ class TestResolveVerifiedGate:
         await _call("backlog_update", {"selector": "#200", "plan": "plan/test-plan.md"})
 
         # View item — should return labels (empty, no verified label)
-        view_result = await _call("backlog_view", {"selector": "#200"})
+        view_result = await _call("backlog_view", {"selector": "#200", "summary": False})
 
         assert view_result["title"] == "Verified Gate Test"
         assert isinstance(view_result["labels"], list)
@@ -1125,7 +1483,7 @@ class TestResolveVerifiedGate:
         mock_github["resolve_github_issue"].return_value = None
 
         # View confirms no plan
-        view_result = await _call("backlog_view", {"selector": "#202"})
+        view_result = await _call("backlog_view", {"selector": "#202", "summary": False})
         assert view_result.get("plan", "") == ""
 
         # Resolve succeeds without verified label — no plan means no gate
@@ -1208,24 +1566,43 @@ class TestResolveVerifiedGate:
         """
         write_test_item("Premature Close Test", issue="#206")
 
-        # Configure mock: no open issues, one closed issue #206
+        # Configure mock: GraphQL returns empty for OPEN, one closed issue for CLOSED.
+        # _fetch_issues_graphql passes variables["states"] = ["OPEN"] or ["CLOSED"] to
+        # graphql_query. The side_effect distinguishes open vs closed by inspecting variables.
         mock_repo = MagicMock()
+        mock_repo.full_name = "owner/repo"
         mock_repo.get_issues.return_value = []
+
+        closed_issue_node = {
+            "id": "I_206",
+            "number": 206,
+            "title": "Premature Close Test",
+            "state": "CLOSED",
+            "body": "",
+            "closedAt": "2026-01-01T00:00:00Z",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-01T00:00:00Z",
+            "isPullRequest": False,
+            "labels": {"nodes": []},
+            "milestone": None,
+            "assignees": {"nodes": []},
+        }
+
+        def _graphql_side_effect(query: str, variables: dict) -> tuple[dict, dict]:
+            states = variables.get("states", [])
+            if "CLOSED" in states:
+                return (
+                    {},
+                    {
+                        "data": {
+                            "repository": {"issues": {"nodes": [closed_issue_node], "pageInfo": {"hasNextPage": False}}}
+                        }
+                    },
+                )
+            return ({}, {"data": {"repository": {"issues": {"nodes": [], "pageInfo": {"hasNextPage": False}}}}})
+
+        mock_repo.requester.graphql_query.side_effect = _graphql_side_effect
         mock_github["try_get_github"].return_value = mock_repo
-
-        # The closed issue mock — issue #206 was closed externally
-        closed_issue = MagicMock()
-        closed_issue.number = 206
-        closed_issue.pull_request = None
-        closed_issue.title = "Premature Close Test"
-
-        # First call (state="open") returns empty, second call (state="closed") returns #206
-        def get_issues_side_effect(**kwargs):
-            if kwargs.get("state") == "closed":
-                return [closed_issue]
-            return []
-
-        mock_repo.get_issues.side_effect = get_issues_side_effect
 
         # Trigger reconciliation via from_github=True
         result = await _call("backlog_list", {"from_github": True})

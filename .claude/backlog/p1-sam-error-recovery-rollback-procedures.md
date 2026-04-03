@@ -3,14 +3,13 @@ name: 'SAM: Error Recovery / Rollback Procedures'
 description: Define explicit procedure when a task fails irrecoverably. How to undo artifact changes? How to restore artifact plane to consistent state after failure?
 metadata:
   topic: sam-error-recovery-rollback-procedures
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #85'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#85'
-  plan: ''
-  last_synced: '2026-03-14T16:01:18Z'
+  last_synced: '2026-03-22T15:10:54Z'
 ---
 
 ## Story

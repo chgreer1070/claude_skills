@@ -47,7 +47,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 
 | Stage | Command | Purpose |
 |-------|---------|---------|
-| Starting complex task | `/plugin-creator:rt-ica` | High Quality Details |
+| Starting complex task | `/dh:rt-ica` | High Quality Details |
 | Delegating to sub-agent | `/delegate` | Enforces delegation framework |
 | Reviewing agent output | `/hallucination-detector:hallucination-audit` | Checks hallucinations, unverified causality |
 | Claiming task complete | `/verify` | Runs "Is It Done?" checklist |
@@ -101,7 +101,7 @@ Three or more Read/Grep/Bash calls on source files without an intervening Edit/W
 
 When triggered: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate to a specialist agent.
 
-**Parallel execution rule**: When 2+ independent questions need answering, launch one subagent per question simultaneously. Use TeamCreate when 3+ independent agents are needed. Do not serialize independent research.
+**Parallel execution rule**: When 2+ independent tasks need doing, use TeamCreate to dispatch parallel agents. Create the team, create tasks for tracking, spawn one agent per independent problem domain as a teammate. Teams are the standard mechanism for parallel work — not a special case. Do not serialize independent work.
 
 ---
 
@@ -111,8 +111,11 @@ When triggered: STOP. Write the file paths and observations gathered so far into
 flowchart TD
     T{Task type?}
     T -->|"Clear requirements, known output:<br>write file, fix known error, add test"| Exec[Execution — act immediately]
+    T -->|"Known bug, CI failure, broken behavior"| Fix[Fix — reproduction first]
     T -->|"Unknown cause, unclear path:<br>debug failure, diagnose perf, flaky test"| Inv[Investigation — hypothesis first]
     Exec --> V[Verify after completion]
+    Fix --> FD[".claude/rules/fix-delegation-discipline.md<br>Reproduce → Fix → Validate against reproduction"]
+    FD --> V
     Inv --> H[Load /scientific-method:scientific-thinking] --> V
 ```
 
@@ -210,6 +213,10 @@ SOURCE: Experimental validation (2026-02-02). Context-gathering: 4/4 correct. Ex
 
 ---
 
+- Scratch Directory Convention: `.claude/rules/scratch-directory.md`
+
+---
+
 - Language Conventions: `.claude/rules/language-conventions.md`
 
 ---
@@ -281,7 +288,9 @@ Skip only for trivial single-step requests (typos, one-off questions, immediate 
 <backlog_operations>
 
 **Primary interface (MCP)**: Use `mcp__plugin_dh_backlog__*` tools for all backlog and GitHub issue CRUD.
-GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache.
+GitHub Issues are the source of truth; `~/.dh/projects/{slug}/backlog/` per-item files are the local cache.
+
+**DH state location**: `~/.dh/projects/{slug}/` where `{slug}` is the absolute project path with directory separators replaced by hyphens (leading hyphen is intentional). Example: `/home/ubuntulinuxqa2/repos/claude_skills` → `-home-ubuntulinuxqa2-repos-claude_skills`. Override with `DH_STATE_HOME` env var.
 
 Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`,
 `backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`.
@@ -289,7 +298,7 @@ Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, 
 All tools return a dict. Check for `error` key on failure. Success responses include `messages`
 and `warnings` lists.
 
-Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
+Do not edit `~/.dh/projects/{slug}/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
 
 Skills `/dh:create-backlog-item` and `/dh:work-backlog-item` invoke these tools. See `/backlog` skill.
 
@@ -301,6 +310,10 @@ Skills `/dh:create-backlog-item` and `/dh:work-backlog-item` invoke these tools.
 ---
 
 - Plugin Development Workflows: `.claude/rules/plugin-development.md`
+
+**Plugin manifest location**: `plugin.json` is always at `<plugin-root>/.claude-plugin/plugin.json` (or `.cursor-plugin/plugin.json` when developing a Cursor plugin, or both).
+
+**Skill and plugin reload lifecycle**: Skills added or changed in the user or project `.claude/skills/` directory are immediately available after a change. Plugin changes to agents, skills, MCP servers, hooks, language servers, and other components require the plugin version to be bumped (this happens automatically after any commit that changes files in a plugin) and then the user must restart their session to reload the plugin from the cache. To verify the cache is current, check that the plugin cache path includes the same version as the plugin.json: `~/.claude/plugins/cache/<marketplace>/<plugin-name>/<version>/`.
 
 **Automatic version bumping**: `plugin.json` and `marketplace.json` are automatically bumped and staged by the pre-commit hook when any plugin file is modified. Do not manually edit version fields — the hook handles this. After a successful commit, the updated versions are already included.
 
@@ -371,6 +384,15 @@ Reference other skills using activation syntax:
 
 ✅ `For comprehensive Astral uv documentation, use the /uv skill.`
 ❌ `See /uv/SKILL.md for uv documentation`
+
+### Subdirectory Namespaces — Skills Do NOT Support This
+
+Skills in subdirectories under `skills/` silently fail to register. Subdirectory namespacing (`plugin:group:skill-name`) was a `commands/` feature only.
+
+- `skills/testing/analyze-test-failures/SKILL.md` → **DEAD — not registered**
+- `skills/analyze-test-failures/SKILL.md` → `/plugin:analyze-test-failures` — correct
+
+All skill directories must sit directly under `skills/` — one level deep only. Do not create grouping subdirectories.
 
 ---
 
@@ -448,6 +470,8 @@ uv run prek run --files <file>
 
 **Reason**: Repository uses `prek` (Rust-based pre-commit replacement) with `.pre-commit-config.yaml` — identical syntax to `pre-commit` but faster.
 
+**ty type errors**: Fix the code to satisfy the type checker — inline `# ty: ignore` suppressions and per-file-ignores relaxation are prohibited. Unresolved imports: add missing dependencies via `uv add --dev` or fix the import path. Type mismatches in tests: use `model_validate()` for raw-input testing instead of passing untyped values to typed constructors.
+
 ---
 
 - Linting Exception Conditions: `.claude/rules/linting-exceptions.md`
@@ -462,7 +486,15 @@ uv run prek run --files <file>
 
 ---
 
+- Markdown AST Parsing: Use `marko` for any task that requires parsing markdown structure (headers, list items, inline code, bold, tables, section extraction). Do NOT write regex parsers for markdown. Reference usage and processing patterns in `../agentskills-linter` (`/home/ubuntulinuxqa2/repos/agentskills-linter`) — `marko` is already a dependency there with established patterns for walking the AST. Add `marko` as a dependency via `uv add marko` if not already present in the target project.
+
+---
+
 - Silent Failure Prevention: `.claude/rules/silent-failure-prevention.md`
+
+---
+
+- Exception Handling (narrow catches, BLE001, the "must not crash" anti-pattern): `.claude/rules/exception-handling.md`
 
 ---
 

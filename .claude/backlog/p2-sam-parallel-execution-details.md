@@ -3,13 +3,13 @@ name: 'SAM: Parallel Execution Details'
 description: Detail safe parallelization within SAM pipeline. When can tasks run in parallel? How to handle merge conflicts? Reference GSD wave execution pattern.
 metadata:
   topic: sam-parallel-execution-details
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #107'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#107'
-  last_synced: '2026-03-14T16:01:07Z'
+  last_synced: '2026-03-22T15:10:42Z'
 ---
 
 ## Story

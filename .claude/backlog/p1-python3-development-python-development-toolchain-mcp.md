@@ -4,12 +4,12 @@ description: 'Wrap the various scripts under python3-development (mkdocs sync, u
 metadata:
   topic: python3-development-python-development-toolchain-mcp
   source: 'GitHub Issue #261'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: P1
   type: Docs
   status: needs-grooming
   issue: '#261'
-  last_synced: '2026-03-14T16:00:46Z'
+  last_synced: '2026-03-22T15:10:21Z'
 ---
 
 ## Story

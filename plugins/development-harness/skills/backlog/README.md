@@ -4,7 +4,7 @@
 
 # Backlog Skill
 
-A unified interface for managing backlog items and GitHub Issues from inside Claude Code sessions. Every item lives in two places at once: a local Markdown file in `.claude/backlog/` that Claude can read instantly, and a GitHub Issue that humans can browse, comment on, and track. The skill keeps them in sync automatically.
+A unified interface for managing backlog items and GitHub Issues from inside Claude Code sessions. Every item lives in two places at once: a local Markdown file in `~/.dh/projects/{slug}/backlog/` that Claude can read instantly, and a GitHub Issue that humans can browse, comment on, and track. The skill keeps them in sync automatically.
 
 ## Why Use This?
 
@@ -21,10 +21,10 @@ With this skill active:
 
 ### The Local Cache
 
-Each item is a Markdown file at `.claude/backlog/{priority}-{slug}.md`. The file uses YAML frontmatter for machine-readable metadata and structured Markdown sections for human-readable content.
+Each item is a Markdown file at `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md`. The file uses YAML frontmatter for machine-readable metadata and structured Markdown sections for human-readable content.
 
 ```text
-.claude/backlog/
+~/.dh/projects/{slug}/backlog/
   p0-reduce-session-start-context-load.md
   p1-add-fuzzy-duplicate-detection.md
   p2-unify-issue-body-template.md
@@ -117,7 +117,7 @@ status:done             status:resolved     status:closed
 `status:verified` is applied by `/complete-implementation` after quality gates pass (not part of
 the lifecycle state machine, but required by `backlog_resolve` for SAM items with a plan).
 
-The backlog tools manage label transitions. Do not set labels with `gh label` directly.
+The backlog tools manage label transitions. Do not set labels with `gh label` directly — use `backlog_update` with the `status` parameter instead.
 
 ## Item Schema
 
@@ -185,7 +185,6 @@ mcp__plugin_dh_backlog__backlog_add(
     description="New items can be created without checking for near-duplicates.",
     source="Session observation",
     type="Bug",                 # Feature, Bug, Refactor, Docs, or Chore
-    create_issue=True,          # default: True
     force=False,                # skip fuzzy duplicate check
 )
 # Returns: {filepath, filename, title, priority, issue_num?, messages, warnings}
@@ -195,7 +194,6 @@ mcp__plugin_dh_backlog__backlog_add(
 
 ```python
 mcp__plugin_dh_backlog__backlog_list(
-    with_status=False,          # include GitHub issue status
     from_github=False,          # refresh local cache from GitHub first
     label="priority:p1",        # filter by GitHub label
     section="P1",               # filter by priority: P0, P1, P2, Ideas
@@ -204,8 +202,42 @@ mcp__plugin_dh_backlog__backlog_list(
     type="Bug",                 # filter by metadata.type — case-insensitive exact match
     topic="matching",           # filter by metadata.topic — case-insensitive substring match
 )
-# Returns: {items: [{title, priority, issue, plan, type, topic}], messages, warnings}
+# Every response item always includes state (open/closed) and status (workflow status)
+# Returns: {items: [{title, priority, issue, plan, type, topic}], backend: {...}, messages, warnings}
 ```
+
+The `backend` dict is always present in the response, regardless of the `from_github` parameter.
+It reports the GitHub API availability status checked on every `backlog_list` call.
+
+```python
+# backend dict shape
+{
+    "name": "GitHub",
+    "availability": "reachable",   # see BackendAvailability values below
+    "open_count": 47,              # live open issue count (0 when not reachable)
+    "total_count": 123,            # live total issue count (0 when not reachable)
+    "cache_open_count": 45,        # open count from local cache (same filters as items)
+    "cache_total_count": 120,      # total count from local cache
+    "last_sync": "2026-03-23T10:30:00Z",  # ISO timestamp of most recent sync (empty string if never synced)
+    "error": "",                   # error message if availability is not "reachable"
+}
+```
+
+`cache_open_count` reflects the same label/section/status/title/type/topic filters used for the
+`items` result — it is derived from the same local list, not a separate count (ADR-5).
+
+#### BackendAvailability Values
+
+| Value | Meaning |
+|-------|---------|
+| `reachable` | GitHub API responded successfully |
+| `not_checked` | Probe has not run yet (default initial state) |
+| `needs_authentication` | `GITHUB_TOKEN` is not set |
+| `rate_limited` | Received 403 from GitHub API |
+| `error` | Other error during the availability probe |
+
+The probe runs on every `backlog_list` call regardless of the `from_github` parameter (ADR-2).
+No automatic sync is performed — the tool reports status only (ADR-3).
 
 `type` and `topic` filters compose with AND logic. Items missing the filtered field are excluded
 when that filter is active. The returned `type` and `topic` fields enable downstream semantic
@@ -304,7 +336,6 @@ mcp__plugin_dh_backlog__backlog_update(
     plan="plan/tasks-7-slug.md",          # attach a plan file
     status="in-progress",                  # set item status
     verified=False,                        # apply status:verified label (SAM items only)
-    create_issue=False,                    # create GitHub issue if missing
     groomed_content="### Priority\n...",   # full groomed section replacement
     section="Priority",                    # incremental section update
     content="P1 — blocks item creation.", # content for named section
@@ -364,18 +395,18 @@ The skill requires `GITHUB_TOKEN` in the environment for all GitHub operations. 
 
 What the integration provides:
 
-- **Issue creation**: `backlog_add` with `create_issue=True` creates a GitHub Issue and stores the `#N` reference in local frontmatter
+- **Issue creation**: `backlog_add` always creates a GitHub Issue and stores the `#N` reference in local frontmatter
 - **Label management**: State transitions update GitHub labels automatically (`status:needs-grooming`, `status:in-progress`, etc.)
 - **Body sync**: Groomed content is synced to the issue body when the item has a linked issue
 - **Milestone assignment**: `group-items-to-milestone` writes milestone number to both the local frontmatter and the GitHub Issue milestone field
 - **PR safety**: `backlog_close` and `backlog_resolve` check for open PRs referencing the issue before closing (bypass with `force=True`)
 - **Pull**: `backlog_pull` merges GitHub issue body content into local files, keeping the longer version of each section
 
-GitHub Issues are the source of truth. The local `.claude/backlog/` files are a read-optimized cache that avoids API saturation during sessions.
+GitHub Issues are the source of truth. The local `~/.dh/projects/{slug}/backlog/` files are a read-optimized cache that avoids API saturation during sessions.
 
 ## Syncing in CI
 
-A GitHub Actions workflow (`backlog-sync.yml`) runs the CLI sync on every push that touches `.claude/backlog/`:
+A GitHub Actions workflow (`backlog-sync.yml`) runs the CLI sync on every push that touches `~/.dh/projects/{slug}/backlog/`:
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py sync -R {OWNER/REPO}
@@ -385,9 +416,9 @@ This is intentional: CI has no MCP client, so the CLI is the correct interface t
 
 ## Do Not
 
-- Edit `.claude/backlog/*.md` files directly — bypasses sync logic
-- Use `gh issue edit` to update issues — bypasses label and status tracking
-- Set GitHub labels with `gh label` directly — the backlog tools own label transitions
+- Edit `~/.dh/projects/{slug}/backlog/*.md` files directly — bypasses sync logic
+- Use `gh issue edit` to update issues — bypasses label and status tracking. Use `backlog_update` MCP tool instead.
+- Set GitHub labels with `gh label` directly — the backlog tools own label transitions. Use `backlog_update` with `status` parameter instead.
 - Call `backlog_close` for completed work — use `backlog_resolve` instead
 
 If the MCP tools or CLI lack a needed operation, invoke `/backlog-tools-administrator` to extend both simultaneously.
@@ -403,7 +434,7 @@ If the MCP tools or CLI lack a needed operation, invoke `/backlog-tools-administ
   backlog_core/
     models.py                  Pydantic models, constants, exceptions
     parsing.py                 File parsing, item search, frontmatter
-    github.py                  GitHub API: issue CRUD, labels, status
+    gh_client.py               GitHub API: issue CRUD, labels, status
     operations.py              High-level CRUD combining all modules
     server.py                  FastMCP 3.x server (10 MCP tools)
   templates/
@@ -431,7 +462,7 @@ Total: 380 tests across the `backlog-core` package.
 - Python 3.11 or newer
 - `GITHUB_TOKEN` environment variable (for GitHub operations)
 - `uv` for running the CLI script
-- Dependencies (managed by `uv` / `pyproject.toml`): `fastmcp>=3.0.2`, `pygithub>=2.8.1`, `pydantic>=2.12.3`, `python-frontmatter>=1.1.0`
+- Dependencies (managed by `uv` / `pyproject.toml`): `fastmcp>=3.0.2`, `pygithub>=2.8.1`, `pydantic>=2.12.3`, `ruamel.yaml>=0.18.0`
 
 ---
 

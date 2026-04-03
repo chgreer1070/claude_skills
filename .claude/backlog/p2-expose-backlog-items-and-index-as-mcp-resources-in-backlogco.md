@@ -1,15 +1,15 @@
 ---
 name: Expose backlog items and index as MCP resources in backlog_core
-description: "backlog_core exposes only tools. MCP resources are the correct primitive for readable, addressable content. Backlog items are a natural fit: each is a file with a stable identifier (issue number or title slug).\n\nMCP clients that support resources can browse, subscribe, and read items without calling tools. This is a lower-friction access pattern for read-only consumers (e.g., a client that wants to render a backlog view).\n\nProposed resources:\n- `backlog://index` — JSON list of all open items (title, priority, issue, plan) — static resource\n- `backlog://item/{selector}` — full content of a single item; selector = issue number or title slug — resource template\n- `backlog://item/{selector}/body` — raw GitHub issue body — resource template\n\nFiles affected: `.claude/skills/backlog/backlog_core/server.py`\n\nSource: FastMCP v3 docs `servers/resources.mdx` — `@mcp.resource(\"uri://pattern\")` and `@mcp.resource(\"uri://{param}\")` for resource templates."
+description: "backlog_core exposes only tools. MCP resources are the correct primitive for readable, addressable content. Backlog items are a natural fit: each is a file with a stable identifier (issue number or title slug).\n\nMCP clients that support resources can browse, subscribe, and read items without calling tools. This is a lower-friction access pattern for read-only consumers (e.g., a client that wants to render a backlog view).\n\nProposed resources:\n- `backlog://index` — JSON list of all open items (title, priority, issue, plan) — static resource\n- `backlog://item/{selector}` — full content of a single item; selector = issue number or title slug — resource template\n- `backlog://item/{selector}/body` — raw GitHub issue body — resource template\n\nFiles affected: `.claude/skills/backlog/backlog_core/server.py`\n\nSource: FastMCP v3 docs `servers/resources.mdx` — `@mcp.resource('uri://pattern')` and `@mcp.resource('uri://{param}')` for resource templates."
 metadata:
   topic: expose-backlog-items-and-index-as-mcp-resources-in-backlogco
   source: 'GitHub Issue #466'
-  added: '2026-03-06'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#466'
-  last_synced: '2026-03-14T16:00:31Z'
+  last_synced: '2026-03-22T15:10:07Z'
 ---
 
 ## Story

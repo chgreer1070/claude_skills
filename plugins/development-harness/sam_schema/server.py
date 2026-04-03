@@ -18,15 +18,21 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from pathlib import Path
 from typing import Annotated, Any
 
+import backlog_core.models as _backlog_models
+import dh_paths
 import tiktoken
+from backlog_core.artifact_provider import GitHubArtifactProvider
+from backlog_core.artifact_registry import ArtifactRegistry as _ArtifactRegistry
+from backlog_core.models import ArtifactEntry, ArtifactStatus, ArtifactType, BacklogError
 from fastmcp import FastMCP
 from pydantic import Field
-from ruamel.yaml import YAML
+from ruamel.yaml import YAML, YAMLError
 
-from sam_schema.core.addressing import resolve_plan_address
+from sam_schema.core.addressing import AddressingError, resolve_plan_address
 from sam_schema.core.models import TaskStatus
 from sam_schema.core.query import (
     claim_task,
@@ -38,6 +44,43 @@ from sam_schema.core.query import (
     update_plan_fields,
     update_status,
 )
+from sam_schema.readers.detect import FormatDetectionError
+
+_log = logging.getLogger(__name__)
+_artifact_registry = _ArtifactRegistry()
+
+_PLAN_READ_ERRORS: tuple[type[Exception], ...] = (
+    FileNotFoundError,
+    AddressingError,
+    FormatDetectionError,
+    KeyError,
+    ValueError,
+    TypeError,
+)
+
+_PLAN_DIR_SENTINEL = "plan"
+
+
+def _resolve_plan_dir(plan_dir: str) -> Path:
+    """Resolve the plan directory, using dh_paths when the caller passes the default sentinel.
+
+    The MCP API exposes ``plan_dir`` with a default of ``"plan"`` (the legacy
+    repo-relative path).  When a caller omits the parameter (or passes the
+    sentinel value ``"plan"``), we route through :func:`dh_paths.plan_dir` so
+    the resolved path follows the three-tier DH state layout.  Explicit
+    non-sentinel values are resolved as-is, preserving backward compatibility
+    for callers that supply a concrete path.
+
+    Args:
+        plan_dir: The raw ``plan_dir`` string from the MCP tool parameter.
+
+    Returns:
+        Absolute :class:`~pathlib.Path` to the plan directory.
+    """
+    if plan_dir == _PLAN_DIR_SENTINEL:
+        return dh_paths.plan_dir()
+    return Path(plan_dir)
+
 
 # Token budget for auto-pagination: 4400 tokens (cl100k_base encoding).
 _TOKEN_BUDGET: int = 4_400
@@ -90,14 +133,14 @@ def sam_read(
         with an ``error`` key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         if task is not None:
             result = get_task_assignment(plan_path, task)
             return result.model_dump(mode="json", by_alias=True, exclude_none=True)
         # Plan-only read: return Plan metadata without TaskAssignment wrapper.
         read_result = load_plan(plan_path)
         return read_result.plan.model_dump(mode="json", by_alias=True, exclude_none=True)
-    except Exception as exc:  # noqa: BLE001
+    except _PLAN_READ_ERRORS as exc:
         return {"error": str(exc)}
 
 
@@ -122,10 +165,10 @@ def sam_state(
     """
     try:
         new_status = TaskStatus(status)
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         result = update_status(plan_path, task, new_status)
         return result.model_dump(mode="json")
-    except Exception as exc:  # noqa: BLE001
+    except (FileNotFoundError, AddressingError, FormatDetectionError, KeyError, ValueError) as exc:
         return {"error": str(exc)}
 
 
@@ -133,22 +176,52 @@ def sam_state(
 def sam_ready(
     plan: Annotated[str, Field(description="Plan address")],
     plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
+    full: Annotated[bool, Field(description="Return full Task model dump instead of routing manifest")] = False,
 ) -> dict:
     """List tasks ready for dispatch.
+
+    By default returns a compact 7-field routing manifest per task so the
+    orchestrator can decide which agent to dispatch next without receiving the
+    full task body (25+ fields).  Pass ``full=True`` to get the complete model
+    dump (preserves backward compatibility for callers that need all fields).
 
     Args:
         plan: Plan address component.
         plan_dir: Path to the directory containing plan files.
+        full: When True, return full Task model dump instead of routing manifest.
 
     Returns:
-        Dict with ``ready_tasks`` list of task field dicts and ``count``, or
-        a dict with an ``error`` key on failure.
+        Dict with ``ready_tasks`` list, ``count``, ``feature``, ``source_path``,
+        and ``issue`` envelope fields, or a dict with an ``error`` key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
+        read_result = load_plan(plan_path)
+        loaded_plan = read_result.plan
         tasks = get_ready_tasks(plan_path)
-        return {"ready_tasks": [t.model_dump(mode="json") for t in tasks], "count": len(tasks)}
-    except Exception as exc:  # noqa: BLE001
+        if full:
+            ready_tasks: list[dict[str, Any]] = [t.model_dump(mode="json") for t in tasks]
+        else:
+            ready_tasks = [
+                {
+                    "id": t.id,
+                    "task": t.title,
+                    "agent": t.agent,
+                    "skills": t.skills or [],
+                    "dependencies": t.dependencies or [],
+                    "status": str(t.status),
+                    "priority": int(t.priority),
+                }
+                for t in tasks
+            ]
+        return {
+            "ready_tasks": ready_tasks,
+            "count": len(tasks),
+            "feature": loaded_plan.feature,
+            "source_path": str(loaded_plan.source_path or plan_path),
+            "issue": loaded_plan.issue,
+        }
+    except _PLAN_READ_ERRORS as exc:
         return {"error": str(exc)}
 
 
@@ -170,10 +243,10 @@ def sam_status(
         key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         result = get_plan_status(plan_path)
         return result.model_dump(mode="json")
-    except Exception as exc:  # noqa: BLE001
+    except (FileNotFoundError, AddressingError, FormatDetectionError, ValueError) as exc:
         return {"error": str(exc)}
 
 
@@ -288,7 +361,7 @@ def sam_list(
         - ``warnings``: list of non-fatal warning strings.
         - ``errors``: list of error strings (e.g. unreadable files).
     """
-    p_dir = Path(plan_dir)
+    p_dir = _resolve_plan_dir(plan_dir)
     warnings: list[str] = []
     errors: list[str] = []
     messages: list[str] = []
@@ -322,12 +395,64 @@ def sam_list(
             }
             if search is None or _plan_matches_search(plan_dict, search):
                 all_items.append(summary)
-        except Exception as exc:  # noqa: BLE001
+        except (FileNotFoundError, FormatDetectionError, ValueError, TypeError) as exc:
             warnings.append(f"Skipped {candidate.name}: {exc}")
 
     return _paginate_results(
         all_items, offset=offset, limit=limit, messages=messages, warnings=warnings, errors=errors, tool_name="sam_list"
     )
+
+
+def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None:
+    """Register the newly created plan file as a task-plan artifact.
+
+    Best-effort: logs a warning on any failure but never raises.  Called after
+    ``sam_create`` writes the plan file when the plan has an associated GitHub
+    issue number.
+
+    Args:
+        issue_number: GitHub issue number to register the artifact against.
+        plan_path: Absolute or repo-relative path to the created plan file.
+    """
+    try:
+        repo = _backlog_models.DEFAULT_REPO
+        if not repo:
+            _log.warning("sam_create: skipping artifact registration — DEFAULT_REPO not set")
+            return
+        provider = GitHubArtifactProvider(
+            repo=repo,
+            root_worktree=_backlog_models._REPO_ROOT,  # noqa: SLF001
+        )
+        entry = ArtifactEntry(
+            artifact_type=ArtifactType.TASK_PLAN, path=str(plan_path), status=ArtifactStatus.CURRENT, agent="sam_create"
+        )
+        manifest = provider.get_manifest(issue_number)
+        updated_manifest = _artifact_registry.register(manifest, entry)
+        provider.set_manifest(issue_number, updated_manifest)
+        _log.info("sam_create: registered task-plan artifact %s for issue #%d", plan_path, issue_number)
+
+        try:
+            content = plan_path.read_text(encoding="utf-8")
+            provider.store_artifact_content(
+                issue_number, artifact_type=ArtifactType.TASK_PLAN.value, path=str(plan_path), content=content
+            )
+            _log.info("sam_create: uploaded task-plan content to GitHub issue #%d", issue_number)
+        except (BacklogError, OSError) as upload_exc:
+            _log.warning(
+                "sam_create: artifact content upload failed for issue #%d (path=%s): %s",
+                issue_number,
+                plan_path,
+                upload_exc,
+                exc_info=True,
+            )
+    except (BacklogError, ValueError, OSError) as exc:
+        _log.warning(
+            "sam_create: artifact registration failed for issue #%d (path=%s): %s",
+            issue_number,
+            plan_path,
+            exc,
+            exc_info=True,
+        )
 
 
 @mcp.tool
@@ -368,7 +493,9 @@ def sam_create(
         if not isinstance(parsed, dict) or "tasks" not in parsed:
             return {"error": "tasks_yaml must be a YAML string with a top-level 'tasks' key"}
         task_list: list[dict[str, Any]] = parsed["tasks"]
-        plan = create_plan(slug=slug, goal=goal, tasks=task_list, plan_dir=Path(plan_dir), context=context, issue=issue)
+        plan = create_plan(
+            slug=slug, goal=goal, tasks=task_list, plan_dir=_resolve_plan_dir(plan_dir), context=context, issue=issue
+        )
         # Derive plan_number from source_path stem (e.g. "P003-auth-system" -> 3).
         plan_number: int | None = None
         if plan.source_path is not None:
@@ -376,9 +503,15 @@ def sam_create(
             if stem.startswith("P") and "-" in stem:
                 with contextlib.suppress(ValueError):
                     plan_number = int(stem.split("-", 1)[0][1:])
-        return {"path": str(plan.source_path), "plan_number": plan_number, "task_count": len(plan.tasks)}
-    except Exception as exc:  # noqa: BLE001
+        result = {"path": str(plan.source_path), "plan_number": plan_number, "task_count": len(plan.tasks)}
+    except (YAMLError, ValueError, OSError) as exc:
         return {"error": str(exc)}
+    else:
+        # Auto-register the new plan file as a task-plan artifact when the plan
+        # is linked to a GitHub issue.  Best-effort: failure does not block creation.
+        if issue is not None and plan.source_path is not None:
+            _try_register_task_plan_artifact(issue, plan.source_path)
+        return result
 
 
 @mcp.tool
@@ -426,9 +559,9 @@ def sam_update(
             plan_part = address
             task_id = None
 
-        plan_path = resolve_plan_address(plan_part, Path(plan_dir))
+        plan_path = resolve_plan_address(plan_part, _resolve_plan_dir(plan_dir))
 
-        set_fields: dict[str, str] | None = None
+        set_fields: dict[str, str | int | list[str]] | None = None
         if set_fields_json is not None:
             raw_fields: Any = json.loads(set_fields_json)
             if not isinstance(raw_fields, dict):
@@ -443,7 +576,7 @@ def sam_update(
             append_section_name=append_section,
             section_content=section_content,
         )
-    except Exception as exc:  # noqa: BLE001
+    except (FileNotFoundError, AddressingError, KeyError, ValueError, OSError) as exc:
         return {"error": str(exc)}
     else:
         return {"updated": True, "address": address}
@@ -471,11 +604,11 @@ def sam_claim(
         ``{"claimed": false, "error": str}`` if the task cannot be claimed.
     """
     try:
-        plan_path = resolve_plan_address(plan, Path(plan_dir))
+        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
         updated_task = claim_task(plan_path, task)
     except (ValueError, KeyError) as exc:
         return {"claimed": False, "error": str(exc)}
-    except Exception as exc:  # noqa: BLE001
+    except (FileNotFoundError, AddressingError, FormatDetectionError, OSError) as exc:
         return {"error": str(exc)}
     else:
         return {"claimed": True, "task_id": updated_task.id, "started": updated_task.started}

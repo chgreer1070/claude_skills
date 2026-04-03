@@ -19,11 +19,11 @@ task issue creation. It is idempotent: tasks that already have a
 
 Usage:
     # Dry-run (no API calls, no writes)
-    uv run migrate_tasks_to_github.py --task-file plan/tasks-001-my-feature.md \\
+    uv run migrate_tasks_to_github.py --task-file ~/.dh/projects/{slug}/plan/tasks-001-my-feature.md \\
         --parent-issue 480 --dry-run
 
     # Live migration
-    uv run migrate_tasks_to_github.py --task-file plan/tasks-001-my-feature/ \\
+    uv run migrate_tasks_to_github.py --task-file ~/.dh/projects/{slug}/plan/tasks-001-my-feature/ \\
         --parent-issue 480 --label sam-task
 """
 
@@ -34,17 +34,25 @@ import re
 import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from io import TextIOWrapper
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
+# Ensure UTF-8 output on Windows (cp1252 default cannot encode emoji/spinner chars).
+# reconfigure() is available on Python 3.7+ when stdout is a TextIOWrapper.
+if isinstance(sys.stdout, TextIOWrapper):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if isinstance(sys.stderr, TextIOWrapper):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import typer
 from rich.console import Console
-from ruamel.yaml import YAML
-
-from task_format import resolve_task_id
+from ruamel.yaml import YAML, YAMLError
+from sam_schema.task_format import resolve_task_id
 
 if TYPE_CHECKING:
-    from github.Issue import Issue
+    # IssueNode is a TypedDict from backlog_core.gh_client; only imported for type checking
+    from backlog_core.gh_client import IssueNode
     from github.Repository import Repository
 
 # ---------------------------------------------------------------------------
@@ -56,10 +64,6 @@ if TYPE_CHECKING:
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parents[2]
 _BACKLOG_CORE = _PROJECT_ROOT / ".claude" / "skills" / "backlog" / "backlog_core"
-
-_TASK_FORMAT_DIR = _SCRIPT_DIR.parent / "skills" / "implementation-manager" / "scripts"
-if _TASK_FORMAT_DIR.exists():
-    sys.path.insert(0, str(_TASK_FORMAT_DIR))
 
 if _BACKLOG_CORE.exists():
     sys.path.insert(0, str(_BACKLOG_CORE.parent))
@@ -77,7 +81,7 @@ SamTask = None
 
 if _BACKLOG_CORE.exists():
     try:
-        from backlog_core.github import create_task_issue, get_github
+        from backlog_core.gh_client import create_task_issue, get_github
         from backlog_core.models import SamTask
     except ImportError:
         pass
@@ -152,7 +156,7 @@ def _parse_frontmatter(content: str) -> dict[str, Any]:
     try:
         parsed = _YAML_SAFE.load(parts[1])
         return parsed if isinstance(parsed, dict) else {}
-    except Exception:  # noqa: BLE001
+    except YAMLError:
         return {}
 
 
@@ -563,7 +567,9 @@ def _connect_github() -> Repository | None:
         raise typer.Exit(code=1) from exc
 
 
-def _migrate_task(task: TaskRecord, slug: str, repo: Repository, parent_issue: int, labels: list[str]) -> Issue | None:
+def _migrate_task(
+    task: TaskRecord, slug: str, repo: Repository, parent_issue: int, labels: list[str]
+) -> IssueNode | None:
     """Create a GitHub sub-issue for a single task.
 
     Args:
@@ -576,8 +582,13 @@ def _migrate_task(task: TaskRecord, slug: str, repo: Repository, parent_issue: i
     Returns:
         Created Issue object, or None on failure.
     """
+    from backlog_core.models import BacklogError  # noqa: PLC0415
+
+    assert SamTask is not None  # noqa: S101 — guarded by _connect_github caller
+    assert create_task_issue is not None  # noqa: S101 — guarded by _connect_github caller
+
     task_type = infer_task_type(task.title)
-    sam = SamTask(  # type: ignore[misc]
+    sam = SamTask(
         task_id=task.task_id,
         feature=slug,
         task_type=task_type,
@@ -588,10 +599,8 @@ def _migrate_task(task: TaskRecord, slug: str, repo: Repository, parent_issue: i
         dependencies=task.dependencies,
     )
     try:
-        return create_task_issue(  # type: ignore[misc]
-            repo, parent_issue, sam, description=task.title, acceptance_criteria=[], labels=labels
-        )
-    except Exception as exc:  # noqa: BLE001
+        return create_task_issue(repo, parent_issue, sam, description=task.title, acceptance_criteria=[], labels=labels)
+    except (BacklogError, KeyError, ValueError, RuntimeError) as exc:
         err_console.print(f":warning:  Failed to create issue for {task.task_id}: {exc}", style="yellow")
         return None
 
@@ -665,13 +674,13 @@ def migrate(
             continue
 
         try:
-            _write_github_issue_field(task, issue.number)
-            console.print(f":white_check_mark: Created #{issue.number} for {task.task_id}: {task.title}")
+            _write_github_issue_field(task, issue["number"])
+            console.print(f":white_check_mark: Created #{issue['number']} for {task.task_id}: {task.title}")
             n_created += 1
-            created_pairs.append((task, issue.number))
-        except Exception as exc:  # noqa: BLE001
+            created_pairs.append((task, issue["number"]))
+        except (OSError, KeyError, ValueError) as exc:
             err_console.print(
-                f":warning:  Created #{issue.number} but could not write github_issue field: {exc}", style="yellow"
+                f":warning:  Created #{issue['number']} but could not write github_issue field: {exc}", style="yellow"
             )
             n_failed += 1
 

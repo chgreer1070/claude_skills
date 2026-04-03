@@ -41,7 +41,7 @@ Key Design Principles:
 
 ### 1.1 Directory Tree
 
-<eg>
+```text
 python3-development/
 ├── metadata.json                           # Level 1: Skill metadata (1 KB)
 ├── SKILL.md                                # Level 2: Main orchestrator (15 KB)
@@ -135,7 +135,7 @@ python3-development/
     ├── gap-tracking.yml                    # Gap resolution tracking (2 KB)
     └── discovery/                          # Source discovery reports (13 files)
         └── [13 discovery reports]          # ~30 KB each
-</eg>
+```
 
 ### 1.2 Token Budget Analysis
 
@@ -2015,7 +2015,7 @@ def find_dependent_documents(target_doc: Path, skill_root: Path) -> list[Path]:
 - [ ] Document TDD RED-GREEN-REFACTOR cycle
 - [ ] Document 9-step linting resolution from linting-root-cause-resolver
 - [ ] Document spec-analyst → python-cli-design-spec → swarm-task-planner chain
-- [ ] Document python-cli-architect → python-code-reviewer workflow
+- [ ] Document python-cli-architect → code-reviewer workflow
 - [ ] Document universal Research-Analyze-Implement-Verify workflow
 
 **Validation**:

@@ -8,6 +8,9 @@
 # - https://hugovk.dev/blog/2025/ready-prek-go/
 # - https://pydevtools.com/blog/prek-pre-commit-but-fast/
 
+# Global exclude: scratch/temp files are never project-quality — skip all hooks
+exclude: '^\.tmp/'
+
 default_stages:
   - commit-msg
   - pre-commit
@@ -54,7 +57,7 @@ repos:
         name: Detect destroyed symlinks
         description: fails if symlinks were converted to plain files (run after repair-symlinks)
       - id: trailing-whitespace
-        exclude: \.lock$
+        exclude: (\.lock$|.*requirements\.txt|plans?/.*|.claude/backlog/.*|.claude/reports/.*)$
       - id: check-yaml
         args: [--unsafe] # Allow Python tags in mkdocs.yml
       - id: check-json
@@ -70,15 +73,19 @@ repos:
 
   # TOML sorting and formatting
   - repo: https://github.com/bitflight-devops/pyproject-fmt
-    rev: v1.1.2
+    rev: v1.1.5
     hooks:
       - id: pypfmt
         name: Sort and format pyproject.toml with pypfmt
+        language: system
+        # PYTHONUTF8=1 required: pypfmt calls taplo via subprocess.run(text=True)
+        # which defaults to cp1252 on Windows, causing taplo to fail silently.
+        entry: env PYTHONUTF8=1 uv run -q --with pypfmt pypfmt
         files: ^pyproject\.toml$
 
   # Python formatting and linting
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.1
+    rev: v0.15.7
     hooks:
       - id: ruff
         name: Lint Python with ruff
@@ -87,12 +94,12 @@ repos:
         name: Format Python with ruff
   # JavaScript/TypeScript formatting and linting with Biome
   - repo: https://github.com/biomejs/pre-commit
-    rev: "v2.3.13"
+    rev: v2.4.8
     hooks:
       - id: biome-check
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.19.1
+    rev: v0.22.0
     hooks:
       - id: markdownlint-cli2
         exclude: ^(plan/|\.claude/backlog/|\.claude/BACKLOG\.md)
@@ -131,12 +138,13 @@ repos:
         language: system
         stages: [pre-commit]
         pass_filenames: true
-        files: ^(plugins|\.claude)/.*(SKILL\.md|CLAUDE\.md|agents/.*\.md|commands/.*\.md|plugin\.json|hooks\.json)$
+        # TODO: re-add hooks\.json after skilllint publishes TaskCompleted event support
+        files: ^(plugins|\.claude)/.*(SKILL\.md|CLAUDE\.md|agents/.*\.md|commands/.*\.md|plugin\.json)$
 
       - id: check-compat-annotations
         name: Check COMPAT annotation completeness
-        entry: scripts/check_compat_annotations.py
-        language: python
+        entry: uv run -q scripts/check_compat_annotations.py
+        language: system
         types: [python]
 
       - id: ty

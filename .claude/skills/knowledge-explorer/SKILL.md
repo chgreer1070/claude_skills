@@ -28,7 +28,7 @@ uv run research/knowledge-explorer.py list [--layer 0|1|2]
 ```
 
 **Options:**
-- `--layer` / `-l`: Filter by SDLC layer (0=process, 1=language, 2=stack). See [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
+- `--layer` / `-l`: Filter by SDLC layer (0=process, 1=language, 2=stack). See [plugins/development-harness/docs/sdlc-layers/](../../../plugins/development-harness/docs/sdlc-layers/).
 
 Observed output (2026-02-22, truncated):
 

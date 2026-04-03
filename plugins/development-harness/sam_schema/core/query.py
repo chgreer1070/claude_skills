@@ -62,6 +62,34 @@ def _next_plan_number(plan_dir: Path) -> int:
     return highest + 1
 
 
+def _find_collision(plan_dir: Path, plan_number: int) -> Path | None:
+    """Return the path of an existing plan file with ``plan_number``, or ``None``.
+
+    Checks both the canonical ``P{N}-*.yaml`` naming scheme and the legacy
+    ``tasks-{N}-*.md`` pattern so that issue-number collisions are caught
+    regardless of which format a plan was created with.
+
+    Args:
+        plan_dir: Directory to search. Returns ``None`` if the directory is absent.
+        plan_number: Plan number to check for collisions.
+
+    Returns:
+        Path of the first colliding file found, or ``None`` if none exists.
+    """
+    if not plan_dir.exists():
+        return None
+
+    for entry in plan_dir.iterdir():
+        name = entry.name
+        m = _P_NUMERIC_RE.match(name)
+        if m and int(m.group(1)) == plan_number:
+            return entry
+        m2 = _LEGACY_TASKS_RE.match(name)
+        if m2 and int(m2.group(1)) == plan_number:
+            return entry
+    return None
+
+
 def create_plan(
     slug: str,
     goal: str,
@@ -70,11 +98,13 @@ def create_plan(
     context: str | None = None,
     issue: int | None = None,
 ) -> Plan:
-    """Create a new plan, assign the next plan number, validate tasks, and write to disk.
+    """Create a new plan, assign a plan number, validate tasks, and write to disk.
 
-    The output file is named ``{plan_dir}/P{NNN}-{slug}.yaml`` where ``NNN`` is
-    the next available three-digit-padded plan number.  If the serialized YAML
-    exceeds the single-file threshold it is written as a directory instead.
+    The output file is named ``{plan_dir}/P{NNN}-{slug}.yaml``.  When
+    ``issue`` is provided, ``NNN`` is the issue number itself so that the
+    plan file and the GitHub issue share an unambiguous identifier.  When
+    ``issue`` is omitted, ``NNN`` is the next sequential number derived by
+    scanning ``plan_dir``.
 
     Each dict in ``tasks`` is validated against the ``Task`` Pydantic model
     before the plan is written; invalid task dicts raise ``ValueError`` with the
@@ -88,16 +118,29 @@ def create_plan(
                ``dependencies``, ``priority``, ``complexity``).
         plan_dir: Directory in which to create the plan file.
         context: Optional plan-level context string (markdown prose).
-        issue: Optional GitHub issue number to associate with the plan.
+        issue: Optional GitHub issue number.  When provided, the issue number
+               is used directly as the plan number.  Raises ``ValueError`` if a
+               plan with that number already exists.
 
     Returns:
         The created ``Plan`` model (with ``source_path`` set to the written path).
 
     Raises:
-        ValueError: If any task dict is invalid per the ``Task`` model.
+        ValueError: If any task dict is invalid per the ``Task`` model, or if
+                    a plan with the given issue number already exists.
         OSError: If the plan file cannot be written.
     """
-    plan_number = _next_plan_number(plan_dir)
+    if issue is not None:
+        plan_number = issue
+        existing = _find_collision(plan_dir, plan_number)
+        if existing is not None:
+            msg = (
+                f"Plan P{plan_number} already exists: {existing}. "
+                f"Use a different issue number or rename the existing plan."
+            )
+            raise ValueError(msg)
+    else:
+        plan_number = _next_plan_number(plan_dir)
     file_name = f"P{plan_number:03d}-{slug}.yaml"
     output_path = plan_dir / file_name
 
@@ -127,7 +170,7 @@ def update_plan_fields(
     plan_path: Path,
     task_id: str | None = None,
     *,
-    set_fields: dict[str, str] | None = None,
+    set_fields: dict[str, str | int | list[str]] | None = None,
     context: str | None = None,
     append_section_name: str | None = None,
     section_content: str | None = None,
@@ -183,7 +226,7 @@ def update_plan_fields(
 
     if set_fields and task_id is not None:
         # Task-level field updates
-        update_fields(file_path, task_id, set_fields)  # type: ignore[arg-type]
+        update_fields(file_path, task_id, set_fields)
 
     if append_section_name is not None and task_id is not None and section_content:
         append_section(file_path, task_id, append_section_name, section_content)

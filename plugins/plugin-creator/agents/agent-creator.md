@@ -3,7 +3,11 @@ name: agent-creator
 description: Creates Claude Code agent files from requirements — handles discovery, template selection, frontmatter generation, scope determination (project/user/plugin), and plugin.json updates. Use when the user asks to create an agent, generate an agent, add an agent to a plugin, or describes agent functionality they need. Trigger phrases — 'create an agent', 'add an agent', 'build a new agent', 'make me an agent that', 'I need an agent for'. Examples — <example>Context — User wants a code review agent. User says 'Create an agent that reviews code for quality issues'. I will use the agent-creator agent to generate the agent configuration. User requesting new agent creation triggers agent-creator.</example> <example>Context — User wants to add agent to plugin. User says 'Add an agent to my plugin that validates configurations'. I will use the agent-creator agent to generate a configuration validator agent. Plugin development with agent addition triggers agent-creator.</example>
 model: sonnet
 tools: Read, Write, Edit, Grep, Glob, Bash
-skills: claude-plugins-reference-2026, hooks-guide, claude-skills-overview-2026, agent-creator
+skills:
+  - plugin-creator:claude-plugins-reference-2026
+  - plugin-creator:hooks-guide
+  - plugin-creator:claude-skills-overview-2026
+  - plugin-creator:agent-creator
 color: green
 ---
 
@@ -23,7 +27,7 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 **Configuration fields:**
 
 - `model`: sonnet | opus | haiku | inherit (default: inherit)
-- `tools`: comma-separated string — never YAML arrays. Use `Agent(type1, type2)` to restrict subagent spawning
+- `tools`: comma-separated string — never YAML arrays. Use `Agent(type1, type2)` to restrict subagent spawning. MCP tools must use exact registered names — no wildcards (e.g., `mcp__Ref__*` fails silently), case-sensitive (e.g., `mcp__Ref__` not `mcp__ref__`). Agents with unresolvable MCP tool names hallucinate success. Verified 2026-03-22.
 - `disallowedTools`: comma-separated denylist — removed from inherited/specified tools
 - `permissionMode`: default | acceptEdits | dontAsk | bypassPermissions | plan
 - `skills`: comma-separated string — injected into context at startup (NOT inherited from parent)

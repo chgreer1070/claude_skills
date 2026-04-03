@@ -3,13 +3,13 @@ name: Evaluate scikit-learn dependency weight for agentskill-kaizen cluster_sess
 description: The `cluster_sessions` tool in `plugins/agentskill-kaizen/mcp/server.py` uses `scikit-learn` (`KMeans`, `CountVectorizer`) for session clustering. scikit-learn pulls in ~40MB of transitive dependencies (numpy, scipy, joblib, threadpoolctl). The typical use case is clustering dozens of sessions, not thousands. The Phase 1-2 research produced no durable artifact evaluating library choices — `scikit-learn` was assumed from the backlog without validation. Investigate whether a lighter alternative (e.g., `pyclustering`, stdlib-based implementation, or just `numpy` directly) would suffice for this scale, and whether the KMeans-on-bag-of-words approach is even appropriate for tool-call sequence similarity.
 metadata:
   topic: evaluate-scikit-learn-dependency-weight-for-agentskill-kaize
-  source: agentskill-kaizen MCP server review (2026-02-18)
-  added: '2026-02-18'
+  source: 'GitHub Issue #118'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#118'
-  last_synced: '2026-03-14T16:00:58Z'
+  last_synced: '2026-03-22T15:10:34Z'
 ---
 
 ## Story

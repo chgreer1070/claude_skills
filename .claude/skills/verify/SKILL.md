@@ -133,12 +133,51 @@ EVIDENCE:
 
 ---
 
-## 6. Honesty Check
+## 6. Agent Delegation Verification
+
+When work was delegated to a sub-agent, the agent's success report is NOT evidence.
+
+- [ ] **VCS diff reviewed:** `git diff` shows the expected changes?
+- [ ] **Changes verified:** Read the modified files — content matches intent?
+- [ ] **Tests run independently:** Ran the verification command yourself, not trusting the agent's claim?
+
+```text
+EVIDENCE:
+- Agent report: [what agent claimed]
+- VCS diff: [files changed, scope matches expectation]
+- Independent verification: [command run, output observed]
+```
+
+If no agents were used, mark N/A and proceed.
+
+---
+
+## 7. Honesty Check
 
 - [ ] Did I verify the _full scope_?
 - [ ] Am I distinguishing between "should work" and "verified to work"?
 - [ ] **Destination check:** Did I read the target state after writing? (Tool output claiming success is not evidence — the state of the destination is.)
 - [ ] Can I answer YES to: "I have VALIDATED this output in its intended context"?
+
+### Rationalization Prevention
+
+If any of these thoughts occur, STOP and run the verification command:
+
+| Rationalization | Response |
+|----------------|----------|
+| "Should work now" | Run the verification command |
+| "I'm confident" | Confidence is not evidence |
+| "Just this once" | No exceptions |
+| "Linter passed so build passes" | Linter does not check compilation |
+| "Agent said success" | Verify independently (Section 6) |
+| "I'm tired" | Exhaustion is not an excuse |
+| "Partial check is enough" | Partial check proves nothing about the whole |
+| "Different words so rule doesn't apply" | Spirit over letter |
+
+**Red flags in your own output** — if you catch yourself writing any of these, the gate has not been passed:
+- "should", "seems to", "looks correct"
+- Expressions of satisfaction before verification ("Done!", "Perfect!")
+- About to commit/push/PR without fresh command output in this message
 
 ---
 
@@ -156,6 +195,7 @@ EVIDENCE:
 | "Config valid"  | Validation command output                                |
 | "Root cause fixed" | Evidence chain from grooming + fix addresses root cause claim |
 | "Guardrail added"  | New gate/check exists and triggers in exposing scenario       |
+| "Agent completed"  | VCS diff reviewed + independent verification command run     |
 
 ---
 
@@ -168,6 +208,7 @@ Works Check: [PASS/FAIL] - Evidence: ___
 Fixed Check: [PASS/FAIL/N/A] - Evidence: ___
 Proportional Check: [PASS/FAIL/N/A] - Evidence: ___
 Quality Gates: [PASS/FAIL] - Evidence: ___
+Agent Delegation: [PASS/FAIL/N/A] - Evidence: ___
 Honesty Check: [PASS/FAIL]
 
 VERDICT: [COMPLETE / NOT COMPLETE - reason]

@@ -36,7 +36,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated
 
 import typer
-from github import Auth, Github, GithubException
+from github import Auth, Github, GithubException, GithubObject
 
 if TYPE_CHECKING:
     from github.Issue import Issue
@@ -762,6 +762,101 @@ def issue_list(
         milestone_title = issue.milestone.title if issue.milestone else "—"
         label_names = ", ".join(lbl.name for lbl in issue.labels)
         typer.echo(f"  #{issue.number:4d}  {issue.title[:55]:<55}  [{label_names}]  {milestone_title}")
+
+
+@issue_app.command("set-milestone")
+def issue_set_milestone(
+    issue: Annotated[int, typer.Option("--issue", "-i", help="Issue number")],
+    milestone: Annotated[int, typer.Option("--milestone", "-m", help="Milestone number")],
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+) -> None:
+    """Assign an issue to a milestone by number."""
+    gh = get_github()
+    repository = get_repo(gh, repo)
+
+    try:
+        issue_obj = repository.get_issue(issue)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Issue #{issue} not found: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    try:
+        milestone_obj = repository.get_milestone(milestone)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Milestone #{milestone} not found: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    try:
+        issue_obj.edit(milestone=milestone_obj)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Failed to assign milestone: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f'Issue #{issue} assigned to milestone #{milestone} "{milestone_obj.title}"')
+
+
+@issue_app.command("remove-milestone")
+def issue_remove_milestone(
+    issue: Annotated[int, typer.Option("--issue", "-i", help="Issue number")],
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+) -> None:
+    """Remove milestone assignment from an issue."""
+    gh = get_github()
+    repository = get_repo(gh, repo)
+
+    try:
+        issue_obj = repository.get_issue(issue)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Issue #{issue} not found: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if issue_obj.milestone is None:
+        typer.echo(f"WARNING: Issue #{issue} has no milestone — nothing to remove")
+        raise typer.Exit(0)
+
+    try:
+        issue_obj.edit(milestone=GithubObject.NotSet)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Failed to remove milestone: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f"Issue #{issue} milestone removed")
+
+
+@issue_app.command("close")
+def issue_close(
+    number: Annotated[int, typer.Option("--number", "-n", help="Issue number")],
+    comment: Annotated[str, typer.Option("--comment", "-c", help="Comment to add before closing")] = "",
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+) -> None:
+    """Close an issue with an optional comment."""
+    gh = get_github()
+    repository = get_repo(gh, repo)
+
+    try:
+        issue_obj = repository.get_issue(number)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Issue #{number} not found: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if issue_obj.state == "closed":
+        typer.echo(f"WARNING: Issue #{number} is already closed — nothing to do")
+        raise typer.Exit(0)
+
+    if comment:
+        try:
+            issue_obj.create_comment(comment)
+        except GithubException as exc:
+            typer.echo(f"ERROR: Failed to create comment: {exc}", err=True)
+            raise typer.Exit(1) from exc
+
+    try:
+        issue_obj.edit(state="closed")
+    except GithubException as exc:
+        typer.echo(f"ERROR: Failed to close issue: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f"Issue #{number} closed")
 
 
 @app.command()

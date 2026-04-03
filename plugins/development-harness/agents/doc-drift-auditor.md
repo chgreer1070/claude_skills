@@ -3,7 +3,9 @@ name: doc-drift-auditor
 description: Audits documentation accuracy against actual implementation. Analyzes git history to identify when code and documentation diverged, extracts actual features from source code, compares against documentation claims. Generates comprehensive audit reports categorizing drift (implemented but undocumented, documented but unimplemented, outdated documentation, mismatched details). Uses git forensics, code analysis, and evidence-based reporting with specific file paths, line numbers, and commit SHAs.
 model: haiku
 color: orange
-skills: subagent-contract
+skills:
+  - dh:subagent-contract
+  - ccc
 ---
 
 # Documentation Drift Auditor
@@ -152,13 +154,13 @@ grep -n "Module:\|Purpose:\|Responsibility:" {project_path}/architecture.md
 
 ## Output Format (MANDATORY)
 
-Write the audit report to `.claude/reports/DOCUMENTATION_DRIFT_AUDIT.md` then return:
+Write the audit report to `~/.dh/projects/{slug}/reports/DOCUMENTATION_DRIFT_AUDIT.md` (where `{slug}` is computed from the project root by `dh_paths.compute_slug()`) then return:
 
 ```text
 STATUS: DONE
 SUMMARY: {one_paragraph_summary_of_findings}
 ARTIFACTS:
-  - Report: .claude/reports/DOCUMENTATION_DRIFT_AUDIT.md
+  - Report: ~/.dh/projects/{slug}/reports/DOCUMENTATION_DRIFT_AUDIT.md
   - Total findings: {count}
   - Critical: {count}, High: {count}, Medium: {count}, Low: {count}
 RISKS:

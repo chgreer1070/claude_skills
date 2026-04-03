@@ -57,8 +57,6 @@ def live_items(tmp_path_factory, monkeypatch_class):
     bd = tmp_path_factory.mktemp("live_backlog") / ".claude" / "backlog"
     bd.mkdir(parents=True)
     monkeypatch_class.setattr("backlog_core.models.BACKLOG_DIR", bd)
-    monkeypatch_class.setattr("backlog_core.operations.BACKLOG_DIR", bd)
-    monkeypatch_class.setattr("backlog_core.parsing.BACKLOG_DIR", bd)
 
     test_id = str(uuid.uuid4())[:8]
     ctx: dict = {
@@ -144,7 +142,7 @@ class TestLiveLifecycle:
 
     async def test_l2_list_includes_created_item(self, live_items):
         """L2: backlog_list returns the item created in L1."""
-        result = await _call("backlog_list", {"with_status": True})
+        result = await _call("backlog_list", {})
 
         assert isinstance(result["items"], list)
         assert result["count"] >= 1
@@ -154,7 +152,7 @@ class TestLiveLifecycle:
     async def test_l3_view_by_issue_number(self, live_items):
         """L3: backlog_view by issue number returns full item data."""
         issue_num = live_items["item_issue_num"]
-        result = await _call("backlog_view", {"selector": f"#{issue_num}"})
+        result = await _call("backlog_view", {"selector": f"#{issue_num}", "summary": False})
 
         # backlog_view may return a GitHub-normalised title (e.g. "feat: ..." prefix)
         # so verify the original title text is present in the returned title.

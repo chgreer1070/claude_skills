@@ -21,18 +21,19 @@ import socket
 import threading
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
-import holoviews as hv  # ty: ignore[unresolved-import]
-import hvplot.pandas  # noqa: F401  # ty: ignore[unresolved-import]
+import holoviews as hv
+import hvplot.pandas  # noqa: F401
 import pandas as pd
-import panel as pn  # ty: ignore[unresolved-import]
-import tornado.web  # ty: ignore[unresolved-import]
+import panel as pn
+import tornado.web
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from panel.io.server import StoppableThread  # ty: ignore[unresolved-import]
+    from panel.io.server import StoppableThread
+
 
 logger = logging.getLogger(__name__)
 
@@ -388,7 +389,7 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
     Returns:
         A Panel FastListTemplate ready to be served.
     """
-    hv.extension("bokeh")
+    cast("Callable[..., Any]", hv.extension)("bokeh")
     pn.extension("tabulator")
 
     # Track file modification time for change detection
@@ -515,6 +516,7 @@ class HealthHandler(tornado.web.RequestHandler):
     than stale copies captured at thread-start time.
     """
 
+    _body: bytes
     _get_port: Callable[[], int | None]
     _get_start_time: Callable[[], float | None]
     _get_csv_path: Callable[[], Path | None]
@@ -648,15 +650,18 @@ def start_dashboard(csv_path: Path | None = None) -> threading.Thread | None:
             # StoppableThread inherits daemon status from its creator thread
             # (this daemon thread), so it is also a daemon thread — the
             # process will not be kept alive by it.
-            panel_thread: StoppableThread = pn.serve(
-                {"/": _app_factory},
-                address="localhost",
-                port=port,
-                show=False,
-                start=True,
-                threaded=True,
-                verbose=False,
-                extra_patterns=[("/health", HealthHandler, health_state_kwargs)],
+            panel_thread = cast(
+                "StoppableThread",
+                pn.serve(
+                    {"/": _app_factory},
+                    address="localhost",
+                    port=port,
+                    show=False,
+                    start=True,
+                    threaded=True,
+                    verbose=False,
+                    extra_patterns=[("/health", HealthHandler, health_state_kwargs)],
+                ),
             )
             panel_thread.join()
         except OSError as exc:

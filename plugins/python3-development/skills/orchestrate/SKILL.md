@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: 'Orchestrate a Python development task using specialized agents. Invoke as /orchestrate <task description> or /orchestrate alone to use conversation context. Triggers on: build a Python CLI, add a feature, write tests, refactor Python code, debug Python, code review, any multi-agent Python workflow.'
+description: Use when orchestrating a Python development task via specialized agents. Activates on "build a Python CLI", "add a feature", "write tests", "refactor Python code", "debug Python", "code review", or any multi-agent Python workflow. Invoke as /orchestrate with a task description or alone to use conversation context.
 argument-hint: '[task description]'
 ---
 
@@ -12,7 +12,7 @@ If `orchestrate` is empty, derive the task from the conversation so far. If no t
 
 ## Step 1 — Read the orchestration guide (MANDATORY)
 
-Read [Python Development Orchestration Guide](../python3-development/references/python-development-orchestration.md).
+Read `../python3-development/references/python-development-orchestration.md`.
 
 Do not proceed to Step 2 until this file has been read. It contains agent selection criteria, workflow patterns, quality gates, and multi-agent chaining patterns you will need to fill in Step 2.
 
@@ -40,12 +40,12 @@ If you cannot fill in workflow pattern and agent chain from the guide read in St
 
 ```mermaid
 flowchart TD
-    P1["Phase 1 — Plan<br>Skill: /python3-development:add-new-feature<br>Args: task description<br>Produces: plan/tasks-{N}-{slug}.md"]
+    P1["Phase 1 — Plan<br>Skill: /dh:add-new-feature<br>Args: task description<br>Produces: ~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml"]
     P1 --> P1Q{"add-new-feature result?"}
     P1Q -->|"BLOCKED — plan-validator gate failed"| P1Blocked["Surface blocker to user<br>Await clarification<br>STOP"]
     P1Q -->|"PASS — task file produced"| P2
-    P2["Phase 2 — Execute<br>Skill: /python3-development:implement-feature<br>Args: path to task file<br>Loop: sam ready → start-task → SubagentStop hook marks COMPLETE<br>Repeat until no tasks remain"]
-    P2 --> P3["Phase 3 — Quality gates<br>Auto-invoked by implement-feature<br>Skill: /python3-development:complete-implementation<br>Runs: code review → feature verification → integration check<br>→ doc drift → doc update → context refinement → commit"]
+    P2["Phase 2 — Execute<br>Skill: /dh:implement-feature<br>Args: path to task file<br>Loop: sam ready → start-task → SubagentStop hook marks COMPLETE<br>Repeat until no tasks remain"]
+    P2 --> P3["Phase 3 — Quality gates<br>Auto-invoked by implement-feature<br>Skill: /dh:complete-implementation<br>Runs: code review → feature verification → integration check<br>→ doc drift → doc update → context refinement → commit"]
     P3 --> Done(["DONE — changes committed"])
 ```
 
@@ -55,7 +55,7 @@ Agent routing — delegate rather than implement:
 
 - Python code → subagent_type="python3-development:python-cli-architect"
 - Tests → subagent_type="python3-development:python-pytest-architect"
-- Code review → subagent_type="python3-development:python-code-reviewer"
+- Code review → subagent_type="python3-development:code-reviewer"
 - Architecture design → subagent_type="python3-development:python-cli-design-spec"
 - Task breakdown → subagent_type="dh:swarm-task-planner"
 - Requirements → subagent_type="spec-analyst"

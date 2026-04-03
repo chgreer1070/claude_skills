@@ -1,15 +1,15 @@
 ---
 name: Add instructions= and version= to backlog_core FastMCP server constructor
-description: "The server is instantiated as `FastMCP(\"backlog\")` with no `instructions=` or `version=` parameters. MCP clients use the `instructions` field to understand what a server does before calling any tools. Without it, clients have no server-level guidance — they must infer purpose from tool docstrings alone.\n\nFiles affected: `.claude/skills/backlog/backlog_core/server.py`\n\nAdd `instructions=` describing the server's role (backlog management, GitHub Issues sync, per-item file management) and `version=` aligned with the package version.\n\nSource: FastMCP v3 docs `servers/server.mdx` — `instructions` describes the server's purpose to clients; `version` provides version string for tooling."
+description: "The server is instantiated as `FastMCP('backlog')` with no `instructions=` or `version=` parameters. MCP clients use the `instructions` field to understand what a server does before calling any tools. Without it, clients have no server-level guidance — they must infer purpose from tool docstrings alone.\n\nFiles affected: `.claude/skills/backlog/backlog_core/server.py`\n\nAdd `instructions=` describing the server's role (backlog management, GitHub Issues sync, per-item file management) and `version=` aligned with the package version.\n\nSource: FastMCP v3 docs `servers/server.mdx` — `instructions` describes the server's purpose to clients; `version` provides version string for tooling."
 metadata:
   topic: add-instructions-and-version-to-backlogcore-fastmcp-server-c
   source: 'GitHub Issue #464'
-  added: '2026-03-06'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: in-progress
   issue: '#464'
-  last_synced: '2026-03-14T16:00:32Z'
+  last_synced: '2026-03-22T15:10:08Z'
 ---
 
 ## Story

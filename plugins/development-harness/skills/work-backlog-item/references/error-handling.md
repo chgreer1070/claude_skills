@@ -3,7 +3,7 @@
 - `#N` / URL / bare number not found: report and list available items — call the `mcp__plugin_dh_backlog__backlog_list` tool
 - `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
 - `close #N` / `resolve #N` — issue not found: report and stop
-- Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
+- Item not found: list available items from `~/.dh/projects/{slug}/backlog/` per-item files with their priority sections
 - Multiple matches: present numbered list, ask user to choose
 - Grooming fails: proceed without grooming context, note the gap in the feature request
 - RT-ICA returns BLOCKED: present missing inputs, wait for user, do not invoke `add-new-feature`

@@ -4,12 +4,12 @@ description: 'Wrap `validate_glfm.py` and `sync_gitlab_docs.py` as MCP tools. Ag
 metadata:
   topic: gitlab-skill-gitlab-ci-glfm-validation-mcp
   source: 'GitHub Issue #255'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: P1
   type: Docs
   status: needs-grooming
   issue: '#255'
-  last_synced: '2026-03-14T16:00:50Z'
+  last_synced: '2026-03-22T15:10:26Z'
 ---
 
 ## Story

@@ -380,3 +380,236 @@ def test_parse_address_zero_padded_p_strips_to_digits() -> None:
 
     assert plan_ref == "001"
     assert task_ref == "01"
+
+
+# ---------------------------------------------------------------------------
+# Fix A: Collision warning when canonical P-file shadows a legacy tasks-* file
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_plan_address_collision_warning_emits_to_stderr_when_legacy_shadow_exists(
+    plan_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Arrange — both P698-research-curator.yaml (canonical) and tasks-698-gates.md (legacy) exist
+    (plan_dir / "P698-research-curator.yaml").touch()
+    (plan_dir / "tasks-698-gates.md").touch()
+
+    # Act — resolves to canonical; warning should be emitted
+    result = resolve_plan_address("698", plan_dir)
+
+    # Assert — canonical wins
+    assert result.name == "P698-research-curator.yaml"
+    # Assert — warning goes to stderr
+    captured = capsys.readouterr()
+    assert "WARNING" in captured.err
+    assert "tasks-698-gates.md" in captured.err
+    assert "sam migrate" in captured.err
+
+
+def test_resolve_plan_address_no_warning_when_no_legacy_shadow_exists(
+    plan_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Arrange — only canonical file, no legacy shadow
+    (plan_dir / "P001-clean-feature.yaml").touch()
+
+    # Act
+    result = resolve_plan_address("1", plan_dir)
+
+    # Assert — resolves correctly, no warning
+    assert result.name == "P001-clean-feature.yaml"
+    captured = capsys.readouterr()
+    assert captured.err == ""
+
+
+def test_resolve_plan_address_warning_names_all_legacy_shadows(
+    plan_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Arrange — two legacy files with the same number as the canonical file
+    (plan_dir / "P010-main.yaml").touch()
+    (plan_dir / "tasks-10-alpha.md").touch()
+    (plan_dir / "tasks-10-beta.md").touch()
+
+    # Act
+    resolve_plan_address("10", plan_dir)
+
+    # Assert — both legacy names appear in the warning
+    captured = capsys.readouterr()
+    assert "tasks-10-alpha.md" in captured.err
+    assert "tasks-10-beta.md" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# Fix B: parse_address rejects file-path-like addresses (contain extensions)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_address_rejects_md_extension_raises_value_error() -> None:
+    # Arrange — user passed a file path instead of an address
+    with pytest.raises(ValueError, match="file path"):
+        parse_address("plan/tasks-698-gates-subprocess-timeout.md")
+
+
+def test_parse_address_rejects_yaml_extension_raises_value_error() -> None:
+    with pytest.raises(ValueError, match="file path"):
+        parse_address("P698-research-curator-code-analysis.yaml")
+
+
+def test_parse_address_rejects_yml_extension_raises_value_error() -> None:
+    with pytest.raises(ValueError, match="file path"):
+        parse_address("plan/something.yml")
+
+
+def test_parse_address_extension_error_message_suggests_correct_form() -> None:
+    # Assert — error message tells the user what to use instead
+    with pytest.raises(ValueError, match=r"P698|plan address"):
+        parse_address("plan/tasks-698-gates.md")
+
+
+def test_parse_address_valid_address_without_extension_still_works() -> None:
+    # Regression: a slug that contains "md" as a substring (not as extension) must not be rejected
+    plan_ref, task_ref = parse_address("P698")
+    assert plan_ref == "698"
+    assert task_ref is None
+
+
+# ---------------------------------------------------------------------------
+# QG prefix — parse_address
+# ---------------------------------------------------------------------------
+
+
+def test_parse_address_qg003_returns_qg003_and_none() -> None:
+    # Arrange / Act — acceptance criterion: parse_address("QG003") returns correct prefix and number
+    plan_ref, task_ref = parse_address("QG003")
+
+    # Assert — multi-char prefix is preserved so resolve_plan_address can detect it
+    assert plan_ref == "QG003"
+    assert task_ref is None
+
+
+def test_parse_address_qg003_t1_returns_qg003_and_1() -> None:
+    # Arrange / Act — acceptance criterion: parse_address("QG003/T1") returns plan+task components
+    plan_ref, task_ref = parse_address("QG003/T1")
+
+    # Assert
+    assert plan_ref == "QG003"
+    assert task_ref == "1"
+
+
+def test_parse_address_qg_lowercase_is_normalised() -> None:
+    # Arrange / Act — lowercase "qg" prefix should be handled by _KNOWN_PREFIX_RE (IGNORECASE)
+    plan_ref, task_ref = parse_address("qg003/T2")
+
+    # Assert — plan_ref retains the original casing from input (not forced to upper)
+    assert plan_ref == "qg003"
+    assert task_ref == "2"
+
+
+def test_parse_address_qg_with_t_lowercase_strips_t() -> None:
+    # Arrange / Act
+    plan_ref, task_ref = parse_address("QG001/t5")
+
+    # Assert
+    assert plan_ref == "QG001"
+    assert task_ref == "5"
+
+
+# ---------------------------------------------------------------------------
+# QG prefix — resolve_plan_address (filesystem resolution)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def plan_dir_with_qg_files(plan_dir: Path) -> Path:
+    """Populate plan/ with a QG{NNN}-{slug}.yaml file alongside P-prefix files.
+
+    Layout::
+
+        plan/
+          P001-baseline.yaml
+          QG003-qg-enforce-gates.yaml
+    """
+    (plan_dir / "P001-baseline.yaml").touch()
+    (plan_dir / "QG003-qg-enforce-gates.yaml").touch()
+    return plan_dir
+
+
+def test_resolve_plan_address_qg003_matches_qg003_file(plan_dir_with_qg_files: Path) -> None:
+    # Arrange — QG003-qg-enforce-gates.yaml exists
+    # Act
+    result = resolve_plan_address("QG003", plan_dir_with_qg_files)
+
+    # Assert
+    assert result.name == "QG003-qg-enforce-gates.yaml"
+
+
+def test_resolve_plan_address_qg003_via_parse_address_round_trip(plan_dir_with_qg_files: Path) -> None:
+    # Arrange — simulate the call chain: parse_address → resolve_plan_address
+    plan_ref, _ = parse_address("QG003")
+
+    # Act
+    result = resolve_plan_address(plan_ref, plan_dir_with_qg_files)
+
+    # Assert
+    assert result.name == "QG003-qg-enforce-gates.yaml"
+
+
+def test_resolve_plan_address_qg_directory_form(plan_dir: Path) -> None:
+    # Arrange — QG plan stored as a directory (split format)
+    (plan_dir / "QG001-qg-gates").mkdir()
+
+    # Act
+    result = resolve_plan_address("QG001", plan_dir)
+
+    # Assert
+    assert result.name == "QG001-qg-gates"
+    assert result.is_dir()
+
+
+def test_resolve_plan_address_qg_no_match_raises_addressing_error(plan_dir: Path) -> None:
+    # Arrange — no QG099-* file exists
+    (plan_dir / "P001-something.yaml").touch()
+
+    # Act / Assert — QG plans have no legacy fallback, so AddressingError is raised immediately
+    with pytest.raises(AddressingError):
+        resolve_plan_address("QG099", plan_dir)
+
+
+def test_resolve_plan_address_p001_unchanged_when_qg_file_also_present(plan_dir_with_qg_files: Path) -> None:
+    # Arrange — both P001-baseline.yaml and QG003-qg-enforce-gates.yaml exist
+    # Act — P001 should still resolve to the P-prefix file (no regression)
+    result = resolve_plan_address("1", plan_dir_with_qg_files)
+
+    # Assert
+    assert result.name == "P001-baseline.yaml"
+
+
+def test_resolve_plan_address_qg_collision_raises_addressing_error(plan_dir: Path) -> None:
+    # Arrange — two QG files share numeric prefix QG003
+    (plan_dir / "QG003-alpha.yaml").touch()
+    (plan_dir / "QG003-beta.yaml").touch()
+
+    # Act / Assert
+    with pytest.raises(AddressingError) as exc_info:
+        resolve_plan_address("QG003", plan_dir)
+
+    # Assert — error message includes both matching paths
+    error_msg = str(exc_info.value)
+    assert "QG003-alpha.yaml" in error_msg
+    assert "QG003-beta.yaml" in error_msg
+
+
+def test_resolve_plan_address_qg_rejects_dotdot_traversal(plan_dir: Path) -> None:
+    # Security: path traversal still rejected even with QG-like prefix
+    with pytest.raises(ValueError, match="traversal"):
+        resolve_plan_address("QG../etc/passwd", plan_dir)
+
+
+def test_resolve_plan_address_qg_zero_padded_input_matches_file(plan_dir: Path) -> None:
+    # Arrange — QG003-test.yaml; input "QG003" (already zero-padded)
+    (plan_dir / "QG003-test.yaml").touch()
+
+    # Act
+    result = resolve_plan_address("QG003", plan_dir)
+
+    # Assert
+    assert result.name == "QG003-test.yaml"

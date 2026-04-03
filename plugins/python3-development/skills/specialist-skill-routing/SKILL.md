@@ -1,9 +1,57 @@
 ---
 name: specialist-skill-routing
-description: Context-aware skill router for Python development agents. Scan task description against trigger list and activate matching specialist skills before starting work. Covers FastMCP/MCP, ty type checker, uv, Hatchling, TOML editing, pre-commit/prek, async Python, PyPI packaging, complex linting, and technical debt modernization.
+description: Use as the routing layer for Python development tasks — matches task descriptions against trigger lists and activates specialist skills before starting work. Covers Typer, Rich, Textual, FastMCP/MCP, ty type checker, uv, Hatchling, TOML editing, pre-commit/prek, async Python, PyPI packaging, complex linting, and technical debt modernization.
 ---
 
 Scan your task description against the triggers below. For every match, call `Skill(skill="...")` **before** writing any architecture, plan, or code. Multiple matches → load all matching skills.
+
+## CLI Framework — Typer
+
+**Triggers**: `typer.Typer()`, `typer.run()`, `@app.command`, `@app.callback`, `typer.Option`, `typer.Argument`, `Annotated[int, typer.Option()]`, Typer subcommands, `app.add_typer()`, `CliRunner`, `typer.echo`, `typer.style`, `typer.secho`, `typer.Exit`, `typer.Abort`, `typer.confirm`, `typer.launch`, autocompletion
+
+```text
+Skill(skill="python3-development:typer")
+```
+
+Covers: app creation with `typer.Typer()` and `typer.run()`, CLI arguments and options (Annotated form), parameter types (enums, paths, dates, UUIDs, custom), subcommand composition with `add_typer()`, testing with `typer.testing.CliRunner`, output/colors/progress bars, callbacks, context, autocompletion, packaging.
+
+---
+
+## Terminal UI — Rich
+
+**Triggers**: `rich.console.Console`, `rich.table.Table`, `rich.progress.track`, `rich.progress.Progress`, `rich.panel.Panel`, `rich.tree.Tree`, `rich.live.Live`, `rich.syntax.Syntax`, `rich.markdown.Markdown`, `rich.logging.RichHandler`, `rich.traceback.install`, `rich.print`, Rich markup tags, `rich.columns.Columns`, `rich.layout.Layout`, `rich.json.JSON`, `rich.pretty.pprint`, `__rich_console__`, `__rich__`, `__rich_repr__`
+
+```text
+Skill(skill="python3-development:rich")
+```
+
+Covers: Console class and markup syntax, style strings and color formats, renderables (Panel, Table, Tree, Columns, Layout), Progress and Live displays, Text class, Syntax/Markdown/Pretty/JSON rendering, RichHandler for stdlib logging, Traceback installation, `__rich_console__` and `__rich_repr__` protocols, RegexHighlighter.
+
+---
+
+## TUI Framework — Textual
+
+**Triggers**: `textual.app.App`, `textual.widget.Widget`, `textual.screen.Screen`, `ComposeResult`, `compose()`, `mount()`, `query()`, `query_one()`, `textual.reactive.reactive`, `textual.css`, `@on`, `@work`, `run_worker`, `run_test`, Textual CSS, Textual events, Textual workers, `pytest-textual-snapshot`
+
+```text
+Skill(skill="python3-development:textual")
+```
+
+Covers: App lifecycle (run/exit/suspend), screen stack (push/pop/switch/modes), custom and builtin widgets, Line API, layout types (vertical/horizontal/grid), CSS selectors and pseudo-classes, events and message bubbling, custom messages, actions and key bindings, reactive attributes (watch/validate/compute/data binding), testing with Pilot API, snapshot testing, Workers and `@work` decorator.
+
+---
+
+## Typer + Rich Best Practices
+
+**Triggers**: non-TTY output handling, table width measurement, Rich output in CI/piped environments, testing Rich-formatted CLI output, `Console(force_terminal=True)`, `Console(width=N)`, `Console(file=StringIO())`, `console.capture()`, `export_text()`
+
+```text
+Skill(skill="python3-development:typer-and-rich")
+```
+
+Covers: non-TTY Console behavior (width defaults, color stripping, environment variables), Measurement protocol for renderable width, Progress/Live without TTY, testing Rich output in pytest (capture, export, snapshot), CliRunner with Rich, common assertion mistakes.
+
+---
 
 ## MCP / FastMCP
 
@@ -32,7 +80,7 @@ Skill(skill="python3-development:ty")
 
 Covers: CLI flags, configuration schema, rule levels (`error`/`warn`/`ignore`), suppression comments (`ty: ignore`, `type: ignore`), virtual environment discovery, Python version targeting, installation, VS Code/Neovim/Zed/PyCharm integration, troubleshooting.
 
-Does NOT cover: mypy or pyright configuration, writing type annotations in Python source.
+Does NOT cover: deep mypy or pyright configuration (follow the project’s `pyproject.toml` when the repo already uses those tools — do not force ty). For annotation patterns shared across checkers, see python3-development references (e.g. type-safety-mypy). Does not replace a dedicated typing tutorial for writing annotations from scratch.
 
 ---
 
@@ -143,3 +191,84 @@ Skill(skill="python3-development:stinkysnake")
 ```
 
 Multi-phase workflow: static analysis → type analysis → modernization planning → plan review → test-driven implementation. Load before planning a refactor, not mid-implementation.
+
+**Triggers**: applying modern Python 3.11+ patterns, learning about PEPs (585, 604, 695), finding modern alternatives for old code
+
+```text
+Skill(skill="python3-development:modernpython")
+```
+
+---
+
+## Script Execution & Shebangs
+
+**Triggers**: validating script shebangs, PEP 723 inline metadata, creating standalone executable Python scripts
+
+```text
+Skill(skill="python3-development:shebangpython")
+```
+
+---
+
+## Development Workflows
+
+**Triggers**: creating a structured feature development task, setting up feature tracking
+
+```text
+Skill(skill="python3-development:create-feature-task")
+```
+
+**Triggers**: creating a new Claude Code skill from a template
+
+```text
+Skill(skill="python3-development:use-command-template")
+```
+
+---
+
+## Implementation & Refactoring Loop
+
+**Triggers**: implementing functions following a modernization plan, running tests iteratively until passing, executing the implementation phase of a refactor
+
+```text
+Skill(skill="python3-development:snakepolish")
+```
+
+---
+
+## Code Review & Quality Audits
+
+**Triggers**: reviewing Python code for quality issues, auditing code before merge, checking pattern compliance, verifying architecture standards
+
+```text
+Skill(skill="python3-development:python3-review")
+```
+
+Note: If you are an orchestrator reviewing a completed feature, use the `code-reviewer` agent instead.
+
+---
+
+## Testing & Coverage
+
+**Triggers**: auditing test quality, reviewing test coverage, checking for missing edge cases
+
+```text
+Skill(skill="python3-development:comprehensive-test-review")
+```
+
+**Triggers**: investigating failing tests, debugging test failures, analyzing pytest output
+
+```text
+Skill(skill="python3-development:analyze-test-failures")
+```
+
+---
+
+## Agent Routing (For Orchestrators)
+
+If you are an orchestrator agent, delegate to these specialized agents based on the task phase:
+
+- **Architecture/Planning**: `Agent(subagent_type="python3-development:python-cli-design-spec")`
+- **Writing Tests**: `Agent(subagent_type="python3-development:python-pytest-architect")`
+- **Implementation**: `Agent(subagent_type="python3-development:python-cli-architect")`
+- **Post-Implementation Review**: `Agent(subagent_type="python3-development:code-reviewer")`

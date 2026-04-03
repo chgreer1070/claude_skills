@@ -29,7 +29,7 @@ Task YAML frontmatter supports an optional `conditions` field containing a list 
 
 ### Measurable signal
 
-Run: `uv run sam ready P{N}` on a plan where a task has `conditions: ["file.some/path.md exists true"]` -- output includes or excludes the task based on whether the file exists. The `conditions` field is documented in `.claude/docs/TASK_FILE_FORMAT.md`.
+Run: `uv run sam ready P{N}` on a plan where a task has `conditions: ["file.some/path.md exists true"]` -- output includes or excludes the task based on whether the file exists. The `conditions` field is documented in `plugins/development-harness/docs/TASK_FILE_FORMAT.md`.
 
 ---
 

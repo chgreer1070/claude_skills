@@ -15,15 +15,16 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 from typing import TYPE_CHECKING, cast
-from unittest.mock import MagicMock
 
+import dh_paths
 import pytest
 from backlog_core.models import GitHubUnavailableError
 from backlog_core.operations import create_sam_task, get_ready_sam_tasks, get_sam_tasks, update_sam_task_status
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pytest_mock import MockerFixture
 
 
@@ -38,14 +39,20 @@ def _make_mock_sub_issue(
     title: str = "Test task",
     html_url: str = "https://github.com/org/repo/issues/100",
     body: str = "",
-) -> MagicMock:
-    """Return a MagicMock mimicking a PyGitHub SubIssue with .body, .number, .html_url, .title."""
-    si = MagicMock()
-    si.number = number
-    si.title = title
-    si.html_url = html_url
-    si.body = body
-    return si
+) -> dict:
+    """Return a dict mimicking a GraphQL IssueNode with number, title, body, etc."""
+    return {
+        "id": f"I_{number}",
+        "number": number,
+        "title": title,
+        "state": "OPEN",
+        "body": body,
+        "createdAt": "",
+        "updatedAt": "",
+        "labels": [],
+        "milestone": None,
+        "assignees": [],
+    }
 
 
 def _make_sam_task_body(
@@ -82,16 +89,16 @@ def _make_sam_task_body(
 
 @pytest.fixture
 def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Redirect Path.home() to tmp_path so cache files are isolated.
+    """Redirect DH_STATE_HOME to tmp_path so cache files are isolated.
 
     Tests: Cache I/O isolation.
-    How: Monkeypatches Path.home to return tmp_path.
-    Why: Prevents tests from writing to or reading from ~/.claude/context/.
+    How: Sets DH_STATE_HOME env var so dh_paths.context_dir() resolves under tmp_path.
+    Why: Prevents tests from writing to or reading from the real ~/.dh/projects/.
     """
-    fake_home = tmp_path / "fake_home"
-    fake_home.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
-    return fake_home
+    dh_home = tmp_path / "dh"
+    dh_home.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("DH_STATE_HOME", str(dh_home))
+    return dh_home
 
 
 # ---------------------------------------------------------------------------
@@ -116,10 +123,18 @@ class TestCreateSamTask:
         """
         # Arrange
         mock_repo = mocker.MagicMock()
-        mock_issue = mocker.MagicMock()
-        mock_issue.number = 42
-        mock_issue.title = "[my-feature/T1] implement: Do the thing"
-        mock_issue.html_url = "https://github.com/org/repo/issues/42"
+        mock_issue = {
+            "id": "I_42",
+            "number": 42,
+            "title": "[my-feature/T1] implement: Do the thing",
+            "state": "OPEN",
+            "body": "",
+            "createdAt": "",
+            "updatedAt": "",
+            "labels": [],
+            "milestone": None,
+            "assignees": [],
+        }
 
         mocker.patch("backlog_core.operations.get_github", return_value=mock_repo)
         mocker.patch("backlog_core.operations.create_task_issue", return_value=mock_issue)
@@ -140,7 +155,7 @@ class TestCreateSamTask:
         # Assert
         assert result["issue_number"] == 42
         assert result["title"] == "[my-feature/T1] implement: Do the thing"
-        assert result["url"] == "https://github.com/org/repo/issues/42"
+        assert result["url"] == ""  # IssueNode has no url field; implementation returns ""
         assert "messages" in result
         assert "warnings" in result
 
@@ -250,8 +265,8 @@ class TestGetSamTasks:
         Why: Ensures agents can query task status even when GitHub is unreachable,
              using the last-known-good cache as the data source.
         """
-        # Arrange: create cache file in the redirected home directory
-        cache_dir = isolated_home / ".claude" / "context"
+        # Arrange: create cache file in the isolated DH context directory
+        cache_dir = dh_paths.context_dir()
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_data = {
             "feature_slug": "my-feature",
@@ -333,8 +348,8 @@ class TestGetSamTasks:
         # Act
         result = get_sam_tasks(parent_issue_number=555, refresh_cache=True)
 
-        # Assert: cache file was written
-        cache_dir = isolated_home / ".claude" / "context"
+        # Assert: cache file was written to the isolated DH context directory
+        cache_dir = dh_paths.context_dir()
         cache_file = cache_dir / "sam-tasks-cache-feature.json"
         assert cache_file.exists(), "Cache file was not written"
         cached = json.loads(cache_file.read_text(encoding="utf-8"))

@@ -26,7 +26,7 @@ With this plugin installed, Claude will:
 - **Use proven libraries**: Typer+Rich for CLIs, pytest-mock for testing, httpx for HTTP, pydantic for validation
 - **Follow consistent structure**: `packages/` directory layout, hatchling build system, proper type hints
 - **Investigate test failures**: Balanced approach that considers both test issues and real bugs
-- **Apply quality workflows**: Integrated linting (ruff), formatting, type checking (mypy), and testing (pytest)
+- **Apply quality workflows**: Integrated linting (ruff), formatting, type checking (ty by default; mypy when the project already uses it), and testing (pytest)
 - **Reference 50+ modern libraries**: Built-in guidance for asyncio, FastAPI, SQLAlchemy, and more
 
 ## Commands
@@ -49,10 +49,10 @@ Run these commands directly to trigger specific workflows:
 |---------|---------|---------|
 | `/python3-development:python3-add-feature` | Guided feature addition with TDD | `/python3-development:python3-add-feature Add CSV export` |
 | `/python3-development:create-feature-task` | Structure feature development with tracking | `/python3-development:create-feature-task OAuth2 login` |
-| `/python3-development:add-new-feature` | SAM-style feature workflow (discovery → analysis → tasks) | `/python3-development:add-new-feature user authentication` |
-| `/python3-development:implement-feature` | Execute SAM task plan by delegating ready tasks | `/python3-development:implement-feature plan/tasks-auth.md` |
-| `/python3-development:start-task` | Start or complete specific task in SAM task file | `/python3-development:start-task plan/tasks-auth.md --task 1.1` |
-| `/python3-development:complete-implementation` | Holistic completion (review, verify, integrate, document) | `/python3-development:complete-implementation plan/tasks-auth.md` |
+| `/dh:add-new-feature` | SAM-style feature workflow (discovery → analysis → tasks) | `/dh:add-new-feature user authentication` |
+| `/dh:implement-feature` | Execute SAM task plan by delegating ready tasks | `/dh:implement-feature auth` (feature slug) |
+| `/dh:start-task` | Start or complete specific task in SAM task file | `/dh:start-task auth --task 1.1` (feature slug) |
+| `/dh:complete-implementation` | Holistic completion (review, verify, integrate, document) | `/dh:complete-implementation auth` (feature slug) |
 
 ### Testing
 
@@ -74,8 +74,6 @@ Run these commands directly to trigger specific workflows:
 | Command | Purpose | Example |
 |---------|---------|---------|
 | `/python3-development:python3-bug` | Debug functional issues with logs and specs | `/python3-development:python3-bug "feature X not working"` |
-| `/python3-development:clear-cove-task-design` | Write and lint agent task files (CLEAR + CoVe) | `/python3-development:clear-cove-task-design [draft-task]` |
-| `/python3-development:generate-task` | Generate single worker task prompt | `/python3-development:generate-task "Implement login endpoint"` |
 | `/python3-development:use-command-template` | Create new skills from templates | `/python3-development:use-command-template "API client wrapper"` |
 
 ## Claude Improvements
@@ -111,13 +109,13 @@ Once installed, Claude automatically applies these improvements when working wit
 
 **Code Quality**:
 - Runs ruff for linting and formatting
-- Applies mypy for type checking
+- Uses **ty** for type checking by default; keeps **mypy** when the project already configures it (no forced migration)
 - Eliminates `Any` types progressively
 - Follows DRY and SRP principles
 
 ### Specialized Skills
 
-The plugin includes 25 skills that guide Claude's behavior:
+The plugin includes 34 skills that guide Claude's behavior:
 
 | Skill | What It Does |
 |-------|--------------|
@@ -130,30 +128,32 @@ The plugin includes 25 skills that guide Claude's behavior:
 | `pre-commit` | Configure git hooks using pre-commit or prek |
 | `pypi-readme-creator` | Generate PyPI-compliant README files |
 | `toml-python` | Work with TOML using tomlkit (preserves formatting) |
-| `validation-protocol` | Scientific validation protocol for verifying fixes |
-| `implementation-manager` | Query and manage feature task status |
-| `planner-rt-ica` | Planning-phase input completeness analysis |
+| `stdlib-scripting` | Stdlib-only scripting for restricted environments |
+| `ty` | Astral ty type checker guidance |
+
+| `comprehensive-test-review` | Audit test quality and coverage |
+| `analyze-test-failures` | Investigate failing tests systematically |
+| `test-failure-mindset` | Set balanced test investigation approach |
 
 And more specialized skills for code review, packaging, bug fixing, and feature development.
 
+> Task management and planning skills (`implementation-manager`, `planner-rt-ica`, `clear-cove-task-design`, `generate-task`, `validation-protocol`) were moved to the `development-harness` plugin. Use `/dh:` prefix for those skills.
+
 ### Specialized Agents
 
-The plugin provides 8 Python-specific agents:
+The plugin provides 6 Python-specific agents:
 
 | Agent | Specialization |
 |-------|----------------|
 | `python-cli-architect` | Build CLIs with Typer and Rich |
 | `python-cli-design-spec` | Produce architecture specs for Python CLIs |
 | `python-pytest-architect` | Create and modernize test suites |
-| `python-code-reviewer` | Review Python code for quality and idioms |
-| `code-reviewer` | General code review with Python awareness |
-| `t0-baseline-capture` | Capture baseline metrics before implementation |
-| `tn-verification-gate` | Verify acceptance criteria post-implementation |
+| `code-reviewer` | General code review with Python awareness, quality, and idioms |
 | `semantic-code-search` | Semantic search over Python codebases |
 
 ### Shared Workflow Agents (development-harness)
 
-10 language-agnostic agents were moved to the `development-harness` plugin during the
+12 language-agnostic agents were moved to the `development-harness` plugin during the
 deduplication refactor. Invoke them with the `@dh:` prefix:
 
 | Agent | Specialization |
@@ -168,6 +168,8 @@ deduplication refactor. Invoke them with the `@dh:` prefix:
 | `@dh:doc-drift-auditor` | Audit documentation accuracy against code |
 | `@dh:swarm-task-planner` | Decompose features into structured task plans |
 | `@dh:ecosystem-researcher` | Research domain ecosystems and technology landscapes |
+| `@dh:t0-baseline-capture` | Capture baseline metrics before implementation |
+| `@dh:tn-verification-gate` | Verify acceptance criteria post-implementation |
 
 ## Installation
 
