@@ -309,6 +309,98 @@ for ISSUE in "${WAVE_ISSUES[@]}"; do
 done
 ```
 
+## Monitoring spawned sessions
+
+After spawning one or more sessions, the orchestrator SHOULD spawn a background Haiku subagent to watch for interactive states that require a response — permission approvals, Y/n prompts, and `AskUserQuestion` events. Without a monitor, these states block the child session silently until the orchestrator happens to `read` the pane.
+
+The monitor is `plugins/development-harness/skills/kage-bunshin/scripts/monitor.py`. It polls all sessions registered under the given `--session-id`, exits as soon as it finds an intervention or all sessions finish, and emits a single JSON object to stdout.
+
+### Spawning the monitor agent
+
+Spawn it with `model: "haiku"` and `run_in_background: true` via the Agent tool:
+
+```text
+Task — model: haiku, run_in_background: true
+
+Prompt:
+  Run: uv run plugins/development-harness/skills/kage-bunshin/scripts/monitor.py \
+         --session-id <SID> --interval 5
+
+  Wait for the script to exit and read its JSON output.
+
+  If status == "intervention_needed": return the session name, type, and content.
+  If status == "all_complete" or "timeout": return that status and the active_sessions list (if present).
+  If status == "error": return the error message.
+```
+
+Replace `<SID>` with the same UUID passed to `spawn.py`.
+
+### Monitoring lifecycle
+
+```mermaid
+flowchart TD
+    Spawn(["Orchestrator spawns sessions"]) --> StartMon["Spawn monitor agent\nmodel=haiku, run_in_background=true"]
+    StartMon --> Poll["monitor.py polls tmux panes\nevery --interval seconds"]
+    Poll --> Q{Detected?}
+    Q -->|"intervention_needed"| Intervene["Orchestrator receives\nsession, type, content\nReads pane, responds via send"]
+    Q -->|"all_complete"| Done(["All sessions finished — no action needed"])
+    Q -->|"timeout"| Check["Orchestrator checks active_sessions\nand decides next step"]
+    Intervene --> Respawn["Orchestrator re-spawns monitor\nto continue watching remaining sessions"]
+    Respawn --> Poll
+```
+
+The monitor exits immediately on first detection — it does not continue watching after reporting. Re-spawn it after handling an intervention to resume coverage.
+
+### CLI flags
+
+- `--session-id ID` (required) — resolves `registry-<ID>.json`; must match the `--session-id` used with `spawn.py`
+- `--state-dir PATH` — base state directory; defaults to `~/.dh/projects/<git-slug>/`; override via `DH_STATE_HOME` env var
+- `--interval SECONDS` — seconds between polls; default 5
+- `--timeout SECONDS` — maximum seconds before emitting `timeout`; default 300
+
+### JSON output statuses
+
+- `{"status": "intervention_needed", "session": "<tmux-session-name>", "type": "<type>", "content": "<last 10 pane lines>"}` — a session needs a response; `type` is one of `permission_approval`, `yes_no_prompt`, or `question`
+- `{"status": "all_complete"}` — all registered sessions have exited
+- `{"status": "timeout", "active_sessions": ["<name>", ...]}` — timeout elapsed; sessions listed are still running
+- `{"status": "error", "message": "<description>"}` — fatal error (registry missing, git not available); exit code 1
+
+## Team Health Check
+
+Inspect a running Claude Code agent team's live state — last JSONL tool calls per member and current tmux pane snapshot. Use this after spawning a team via `TeamCreate` to see what teammates are doing without waiting for message delivery.
+
+**Script**: `plugins/development-harness/skills/kage-bunshin/scripts/monitor.py health`
+
+```bash
+# Most recently modified team
+uv run plugins/development-harness/skills/kage-bunshin/scripts/monitor.py health
+
+# Specific team by name
+uv run plugins/development-harness/skills/kage-bunshin/scripts/monitor.py health {team-name}
+```
+
+### Team name discovery
+
+Team names come from `~/.claude/teams/` — each subdirectory is a team. The script defaults to the most recently modified team (by `config.json` mtime). Pass an explicit name to target a specific team.
+
+### Output per member
+
+For each team member the script prints:
+
+- **name** and **agentType** from the team config
+- **Last 5 JSONL tool calls**: timestamp, tool name, and first 60 characters of input — drawn from the member's session file
+- **tmux pane snapshot**: full visible content of the member's assigned tmux pane
+
+### Session file lookup
+
+JSONL session files are searched under `~/.claude/projects/{project-slug}/` (derived from the current git repository root). For each member, the script reads the first 3 KB of each candidate `.jsonl` file and picks the one where the member's `name` OR `agentId` (`{name}@{team-name}`) appears earliest. The team-lead session is resolved directly from `leadSessionId` in the team config.
+
+### When to use
+
+Call `monitor.py health` after spawning a team to verify agents are progressing. Unlike the poll-based monitor, this subcommand exits immediately after printing — it is a snapshot tool, not a watcher.
+
+For other skills that want to reference this capability: load the `/dh:kage-bunshin` skill and invoke `monitor.py health {team-name}`.
+
 ## Reference
 
 See [./references/stream-json-protocol.md](./references/stream-json-protocol.md) for the stream-json output event type catalog and raw experiment data from earlier protocol exploration.

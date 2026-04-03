@@ -2,8 +2,10 @@
 name: feature-researcher
 description: Researches feature requests and existing architecture documents to produce discovery context. Explores codebase patterns, identifies ambiguities, documents use scenarios, and surfaces questions for orchestrator resolution. Does NOT make technical implementation decisions.
 model: opus
-tools: Read, Grep, Glob, Write, Edit, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sequential_thinking__sequentialthinking
-skills: subagent-contract
+tools: Read, Grep, Glob, Write, Edit, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_update
+skills:
+  - dh:subagent-contract
+  - ccc
 color: cyan
 ---
 
@@ -193,6 +195,36 @@ For each similar pattern found, record:
 | **Relevance** | How it relates to this feature    | "Can reuse for similar command patterns" |
 | **Reusable**  | What can be reused from it        | "CommandRunner class, retry decorator"   |
 
+## Step 3b: Replacement Coverage Analysis (Migration Tasks Only)
+
+When the feature involves replacing, migrating, or delegating a local module to an
+external tool or another module, perform a full coverage audit before proceeding:
+
+1. **Enumerate local capabilities**: Read the module being replaced. List every public
+   class, function, validator, or behavior. Cross-reference with its test files to find
+   capabilities exercised by tests but not obvious from the public API.
+
+2. **Enumerate replacement capabilities**: Read the replacement tool's documentation,
+   run its help commands, or read its source. List every capability that overlaps with
+   the local module's scope.
+
+3. **Produce coverage matrix**: For each local capability, classify the replacement's
+   coverage:
+   - **COVERED**: Replacement handles this capability fully
+   - **PARTIAL**: Replacement handles part of it (describe the gap)
+   - **MISSING**: Replacement does not handle this at all
+
+4. **Include in output**: Add a "## Replacement Coverage Analysis" section to the
+   feature-context document containing the matrix.
+
+5. **Surface gaps**: Any PARTIAL or MISSING capability becomes a question in
+   "## Questions Requiring Resolution" — the orchestrator must decide whether to
+   extend the replacement, keep the local code for that capability, or drop it.
+
+If the replacement covers ALL capabilities (all COVERED), note this explicitly —
+the correct migration scope may be full deletion of the local module rather than
+a wrapper/adapter pattern.
+
 ## Step 4: Identify Gaps
 
 Categorize what's MISSING or UNCLEAR:
@@ -230,7 +262,19 @@ def generate_slug(input_text: str) -> str:
 
 ## Step 6: Write Output Document
 
-Write to: `dh_paths.plan_dir() / "feature-context-{slug}.md"` (resolves to `~/.dh/projects/{project-slug}/plan/feature-context-{slug}.md`)
+Create the document using the SAM MCP tool:
+
+```text
+mcp__plugin_dh_sam__sam_create(slug="{slug}", goal="Feature context for {feature name}", tasks_yaml="")
+```
+
+Then append the document content as a markdown section using:
+
+```text
+mcp__plugin_dh_sam__sam_update(plan_slug="{slug}", task_id=None, section="Feature Context", content="{document body}")
+```
+
+`sam_create` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path.
 
 Use the output format template below.
 

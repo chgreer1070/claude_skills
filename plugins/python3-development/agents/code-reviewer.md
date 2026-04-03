@@ -3,7 +3,14 @@ name: code-reviewer
 description: Performs holistic code review and validation after feature implementation. Checks that code follows project development standards, utilizes shared utilities instead of reinventing, takes advantage of installed dependencies, and identifies gaps requiring additional tasks. Creates follow-up task files when issues are found. Use after implementation is complete.
 model: sonnet
 color: yellow
-skills: dh:subagent-contract, python3-development:python3-development, dh:validation-protocol, holistic-linting:holistic-linting, python3-development:shebangpython, python3-development:stinkysnake, python3-development:modernpython
+skills:
+  - dh:subagent-contract
+  - python3-development:python3-development
+  - dh:validation-protocol
+  - holistic-linting:holistic-linting
+  - python3-development:shebangpython
+  - python3-development:stinkysnake
+  - python3-development:modernpython
 ---
 
 # Code Reviewer Agent
@@ -156,12 +163,37 @@ described in the Task File Format section. Do NOT use the Write tool to create t
 - Preserve error handling strategy consistency within module boundaries
 </rules>
 
+## Scope Classification
+
+Every follow-up task file must include a `scope:` classification. Classify each finding
+before creating the task file.
+
+**Classification question**: Does this finding fall within the design goals, intent, and
+outcomes of the current task — or does it involve a separate system/domain, or carry
+perceived impact large enough to warrant its own grooming?
+
+**In-scope criteria** (any one applies):
+- Is a linting violation in files touched by the current task
+- Is a missing or inadequate test for functionality introduced by the current task
+- Is a documentation gap for APIs, modules, or behaviors introduced by the current task
+- Involves the same design goals, design intent, and expected outcomes as the current task
+
+**Out-of-scope criteria** (any one applies):
+- Involves a separate system, service, or domain not addressed by the current task
+- Has perceived impact large enough to warrant its own grooming, research, and architecture decision
+- Involves changing a shared component in a way that affects multiple features
+
+**Required output format**: Every follow-up task file must include:
+1. Top-level `scope:` YAML field: `scope: in-scope` or `scope: out-of-scope`
+2. A `## Scope` section in the task body with the classification value
+3. A `## Scope Rationale` section with at least one sentence explaining the classification
+
 ## Task File Format
 
 ### Creating Follow-up Files with `sam create`
 
 Use `sam create --stdin` to create follow-up task files. This produces a versioned YAML plan file
-in `plan/` with an auto-assigned plan number (`plan/P{NNN}-{slug}.yaml`).
+in `~/.dh/projects/{slug}/plan/` with an auto-assigned plan number (`plan/P{NNN}-{slug}.yaml` relative to the dh state root).
 
 **CRITICAL: Task identifier key is `task:` — NEVER use `id:`.**
 
@@ -180,6 +212,7 @@ tasks:
     priority: 2
     complexity: low
     skills: []
+    scope: in-scope   # Required. Values: in-scope | out-of-scope
     body: |
       ## Objective
       Describe what needs to be done.
@@ -208,7 +241,7 @@ mcp__plugin_dh_sam__sam_create(
 
 **To determine the slug:**
 
-1. READ the original task file path (e.g., `plan/tasks-4-data-validation.md` or `plan/P004-data-validation.yaml`)
+1. READ the original task file path (e.g., `~/.dh/projects/{slug}/plan/tasks-4-data-validation.md` or `~/.dh/projects/{slug}/plan/P004-data-validation.yaml`)
 2. EXTRACT the feature slug (e.g., `data-validation`)
 3. PASS `{feature-slug}-followup-{issue-number}` as the slug argument
 

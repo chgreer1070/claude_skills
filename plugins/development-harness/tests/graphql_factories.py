@@ -1,7 +1,7 @@
 """GraphQL response fixture factories for backlog_core tests.
 
 These factories produce dict shapes that match the TypedDict response models
-defined in backlog_core/github.py (IssueNode, MilestoneFullNode, etc.).
+defined in backlog_core/gh_client.py (IssueNode, MilestoneFullNode, etc.).
 
 All factories accept **overrides so individual tests can customise specific
 fields without spelling out the full structure every time.
@@ -16,13 +16,16 @@ Usage in tests::
 All factories return plain dicts — no TypedDict annotation at runtime so tests
 can import them without triggering circular imports.
 
-Reused by: T02 (github.py tests), T04 (operations.py tests),
+Reused by: T02 (gh_client.py tests), T04 (operations.py tests),
            T07 (server.py tests), T08 (artifact_provider.py tests).
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from backlog_core.gh_client import IssueNode
 
 # ---------------------------------------------------------------------------
 # Node factories
@@ -42,18 +45,22 @@ def make_label_node(name: str = "status:open", node_id: str = "LBL_abc123") -> d
     return {"name": name, "id": node_id}
 
 
-def make_milestone_node(node_id: str = "MS_001", number: int = 1, title: str = "v1.0") -> dict[str, Any]:
+def make_milestone_node(
+    node_id: str = "MS_001", number: int = 1, title: str = "v1.0", due_on: str | None = None, state: str = "OPEN"
+) -> dict[str, Any]:
     """Return a MilestoneNode-shaped dict (minimal reference embedded in issues).
 
     Args:
         node_id: GraphQL node ID.
         number: Milestone number.
         title: Milestone title.
+        due_on: ISO 8601 due date string, or None if not set.
+        state: Milestone state, ``"OPEN"`` or ``"CLOSED"``.
 
     Returns:
         Dict matching MilestoneNode TypedDict shape.
     """
-    return {"id": node_id, "number": number, "title": title}
+    return {"id": node_id, "number": number, "title": title, "dueOn": due_on, "state": state}
 
 
 def make_issue_node(**overrides: Any) -> dict[str, Any]:
@@ -100,7 +107,7 @@ def make_issue_node(**overrides: Any) -> dict[str, Any]:
     return base
 
 
-def make_parsed_issue_node(**overrides: Any) -> dict[str, Any]:
+def make_parsed_issue_node(**overrides: Any) -> IssueNode:
     """Return an already-parsed IssueNode-shaped dict with flat label/assignee lists.
 
     Use this factory when calling functions that operate on a parsed
@@ -130,7 +137,7 @@ def make_parsed_issue_node(**overrides: Any) -> dict[str, Any]:
         "assignees": [],
     }
     base.update(overrides)
-    return base
+    return cast("IssueNode", base)
 
 
 def make_milestone_full_node(**overrides: Any) -> dict[str, Any]:
@@ -364,19 +371,37 @@ def make_add_sub_issue_response(
 
 
 def make_issue_comment_node(
-    comment_id: str = "IC_001", body: str = "comment body", url: str = "https://github.com/test/issues/1#issuecomment-1"
+    comment_id: str = "IC_001",
+    body: str = "comment body",
+    url: str = "https://github.com/test/issues/1#issuecomment-1",
+    author: str = "test-user",
+    created_at: str = "2026-01-01T00:00:00Z",
+    updated_at: str = "2026-01-02T00:00:00Z",
 ) -> dict[str, Any]:
     """Return an IssueCommentNode-shaped dict for comment listing responses.
+
+    The ``author`` field is nested under ``{"login": ...}`` to match the raw
+    GraphQL shape that ``_parse_comment_node`` expects.
 
     Args:
         comment_id: GraphQL node ID for the comment.
         body: Comment body text.
         url: HTML URL for the comment.
+        author: Login of the comment author.
+        created_at: ISO 8601 creation timestamp.
+        updated_at: ISO 8601 last-update timestamp.
 
     Returns:
-        Dict matching IssueCommentNode TypedDict shape.
+        Dict matching raw GraphQL IssueCommentNode shape (before parsing).
     """
-    return {"id": comment_id, "body": body, "url": url}
+    return {
+        "id": comment_id,
+        "body": body,
+        "url": url,
+        "author": {"login": author},
+        "createdAt": created_at,
+        "updatedAt": updated_at,
+    }
 
 
 def make_issue_comments_response(
@@ -396,6 +421,39 @@ def make_issue_comments_response(
         comments = []
     page_info: dict[str, Any] = {"hasNextPage": has_next, "endCursor": end_cursor}
     return {"repository": {"issue": {"comments": {"nodes": comments, "pageInfo": page_info}}}}
+
+
+def make_comment_by_id_response(
+    comment_id: str = "IC_001",
+    body: str = "comment body",
+    url: str = "https://github.com/test/issues/1#issuecomment-1",
+    author: str = "test-user",
+    created_at: str = "2026-01-01T00:00:00Z",
+    updated_at: str = "2026-01-02T00:00:00Z",
+) -> dict[str, Any]:
+    """Return a GetComment (node query) response envelope.
+
+    Args:
+        comment_id: GraphQL node ID for the comment.
+        body: Comment body text.
+        url: HTML URL for the comment.
+        author: Login of the comment author.
+        created_at: ISO 8601 creation timestamp.
+        updated_at: ISO 8601 last-update timestamp.
+
+    Returns:
+        Full ``data`` dict as returned by _graphql_request for _COMMENT_BY_ID_QUERY.
+    """
+    return {
+        "node": {
+            "id": comment_id,
+            "body": body,
+            "url": url,
+            "author": {"login": author},
+            "createdAt": created_at,
+            "updatedAt": updated_at,
+        }
+    }
 
 
 def make_update_comment_response(comment_id: str = "IC_001", body: str = "updated body") -> dict[str, Any]:

@@ -7,7 +7,6 @@ dependencies = [
     "gitpython>=3.1.0",
     "pygithub>=2.8.1",
     "pydantic>=2.12.3",
-    "python-frontmatter>=1.1.0",
     "ruamel.yaml>=0.18.0",
     "tiktoken>=0.12.0",
     "typer>=0.21.2",
@@ -34,8 +33,15 @@ addopts = [
     "--tb=short",
     "--import-mode=importlib",
     "-v",
+    "-m",
+    "not e2e",
 ]
 testpaths = ["tests", "tests_sam", "tests_backlog"]
+pythonpath = [
+    ".",
+    "./skills/implementation-manager/scripts",
+    "./skills/implementation-manager/tests/test_task_status_hook",
+]
 markers = [
     "slow: marks tests as slow",
     "integration: marks tests as integration tests",
@@ -43,6 +49,7 @@ markers = [
     "unit: marks tests as unit tests",
     "critical: marks tests requiring property-based or mutation testing",
     "e2e: marks tests as end-to-end tests",
+    "cross_backend: marks tests that run only in the test-cross-backend CI matrix job",
 ]
 
 [tool.coverage.run]

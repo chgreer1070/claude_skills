@@ -15,7 +15,12 @@ _SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
+from typing import TYPE_CHECKING
+
 import spawn as _spawn
+
+if TYPE_CHECKING:
+    import argparse
 
 # ---------------------------------------------------------------------------
 # _slugify
@@ -318,7 +323,7 @@ def test_build_parser_status_requires_name():
 
 
 def test_build_spawn_shell_cmd_returns_interactive_argv_without_p_flag():
-    argv = _spawn._build_spawn_shell_cmd("mysess", "sonnet", None)
+    argv = _spawn._build_spawn_shell_cmd("mysess", "sonnet", None, "sess-001", "tmux-mysess")
     assert argv[0] == "claude"
     assert "-p" not in argv
     assert "--output-format" not in argv
@@ -331,13 +336,13 @@ def test_build_spawn_shell_cmd_returns_interactive_argv_without_p_flag():
 
 
 def test_build_spawn_shell_cmd_includes_max_budget_when_set():
-    argv = _spawn._build_spawn_shell_cmd("sess", "haiku", 5.0)
+    argv = _spawn._build_spawn_shell_cmd("sess", "haiku", 5.0, "sess-002", "tmux-sess")
     assert "--max-budget-usd" in argv
     assert "5.0" in argv
 
 
 def test_build_spawn_shell_cmd_omits_max_budget_when_none():
-    argv = _spawn._build_spawn_shell_cmd("sess", "haiku", None)
+    argv = _spawn._build_spawn_shell_cmd("sess", "haiku", None, "sess-003", "tmux-sess")
     assert "--max-budget-usd" not in argv
 
 
@@ -457,7 +462,7 @@ def test_cmd_spawn_includes_worktree_flag_in_argv(tmp_path, capsys):
 
     captured_argv: list[list[str]] = []
 
-    def fake_run(cmd, **kwargs):
+    def fake_run(cmd: list[str] | str, **kwargs: object) -> object:
         if isinstance(cmd, list) and "new-session" in cmd:
             captured_argv.append(list(cmd))
         return fake_run_result
@@ -1177,7 +1182,7 @@ def test_main_resolves_session_id_to_default_for_non_list_subcommands(tmp_path):
     """When --session-id and KB_SESSION_ID are absent, main() sets 'default' for spawn etc."""
     dispatched: list[str] = []
 
-    def fake_func(args: object) -> None:
+    def fake_func(args: argparse.Namespace) -> None:
         dispatched.append(args.session_id)  # type: ignore[attr-defined]
 
     with patch.dict(os.environ, {}, clear=False), patch.object(_spawn, "_build_parser") as mock_bp:
@@ -1199,7 +1204,7 @@ def test_main_resolves_session_id_from_env_var():
     """KB_SESSION_ID env var is used when --session-id is not supplied."""
     dispatched: list[str] = []
 
-    def fake_func(args: object) -> None:
+    def fake_func(args: argparse.Namespace) -> None:
         dispatched.append(args.session_id)  # type: ignore[attr-defined]
 
     with (
@@ -1223,7 +1228,7 @@ def test_main_explicit_session_id_overrides_env_var():
     """Explicit --session-id takes priority over KB_SESSION_ID."""
     dispatched: list[str] = []
 
-    def fake_func(args: object) -> None:
+    def fake_func(args: argparse.Namespace) -> None:
         dispatched.append(args.session_id)  # type: ignore[attr-defined]
 
     with (
@@ -1248,7 +1253,7 @@ def test_main_list_subcommand_leaves_session_id_none_when_not_supplied():
     """For 'list', main() leaves session_id as None so all registries are shown."""
     dispatched: list[str | None] = []
 
-    def fake_func(args: object) -> None:
+    def fake_func(args: argparse.Namespace) -> None:
         dispatched.append(args.session_id)  # type: ignore[attr-defined]
 
     with patch.dict(os.environ, {}, clear=False), patch.object(_spawn, "_build_parser") as mock_bp:

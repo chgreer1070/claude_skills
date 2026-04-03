@@ -27,11 +27,15 @@ def get_available_features() -> dict[str, Any]:
     """
     try:
         plan_path = _dh_paths.plan_dir()
-    except Exception as e:  # noqa: BLE001  # git not available etc.
+    except (FileNotFoundError, subprocess.CalledProcessError, RuntimeError) as e:
         return {"features": [], "count": 0, "message": f"Could not resolve plan dir: {e}"}
 
     if not plan_path.exists():
-        return {"features": [], "count": 0, "message": f"Not in a project with task files (no plan/ directory at {plan_path})"}
+        return {
+            "features": [],
+            "count": 0,
+            "message": f"Not in a project with task files (no plan/ directory at {plan_path})",
+        }
 
     try:
         # Run implementation_manager.py list-features
@@ -62,7 +66,7 @@ def get_active_task() -> str:
     """
     try:
         ctx_dir = _dh_paths.context_dir()
-    except Exception as e:  # noqa: BLE001  # git not available etc.
+    except (FileNotFoundError, subprocess.CalledProcessError, RuntimeError) as e:
         return f"No active task (could not resolve context dir: {e})"
 
     if not ctx_dir.exists():

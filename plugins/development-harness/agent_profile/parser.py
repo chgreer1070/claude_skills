@@ -17,16 +17,65 @@ read_skill_content   -- Read SKILL.md content + all references/*.md files.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-# Re-use the shared frontmatter utilities that wrap python-frontmatter with
-# ruamel.yaml (per repo convention: never import pyyaml directly).
-from backlog_core.frontmatter_utils import load_frontmatter
+from ruamel.yaml import YAML, YAMLError
 
 from agent_profile.models import AgentMetadata
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _load_md_frontmatter(text: str) -> tuple[dict[str, Any], str]:
+    """Parse YAML frontmatter and body from a markdown string.
+
+    Args:
+        text: Markdown string with optional ``---``-delimited YAML frontmatter.
+
+    Returns:
+        Tuple of (metadata_dict, body_string). Returns ({}, text) when no
+        valid frontmatter block is found.
+    """
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].rstrip("\r\n") != "---":
+        return {}, text
+
+    closing_index = None
+    for index, line in enumerate(lines[1:], start=1):
+        if line.rstrip("\r\n") == "---":
+            closing_index = index
+            break
+
+    if closing_index is None:
+        return {}, text
+
+    y = YAML(typ="rt")
+    y.width = 2147483647
+    frontmatter_text = "".join(lines[1:closing_index])
+    body = "".join(lines[closing_index + 1 :]).strip()
+
+    try:
+        raw = y.load(frontmatter_text) or {}
+    except YAMLError:
+        return {}, text
+
+    try:
+        return dict(raw), body
+    except (TypeError, ValueError):
+        return {}, text
+
+
+def _load_frontmatter_from_path(path: Path) -> tuple[dict[str, Any], str]:
+    """Load frontmatter from a file path.
+
+    Args:
+        path: Path to a markdown file with YAML frontmatter.
+
+    Returns:
+        Tuple of (metadata_dict, body_string).
+    """
+    return _load_md_frontmatter(path.read_text(encoding="utf-8"))
 
 
 def _normalize_skills(raw: object) -> list[str]:
@@ -69,12 +118,10 @@ def parse_agent_file(path: Path) -> tuple[AgentMetadata, str]:
     if not path.exists():
         raise FileNotFoundError(f"Agent file not found: {path}")
 
-    post = load_frontmatter(path)
+    meta, body = _load_frontmatter_from_path(path)
 
-    # python-frontmatter returns an empty metadata dict when no frontmatter
-    # is present; there is no reliable sentinel other than checking for the
-    # required fields.
-    meta = post.metadata
+    # An empty metadata dict means no frontmatter was found or it was empty.
+    # Check for required fields to confirm a valid agent definition.
     if not meta or ("name" not in meta and "description" not in meta):
         raise ValueError(f"No valid YAML frontmatter found in agent file: {path}")
 
@@ -86,7 +133,6 @@ def parse_agent_file(path: Path) -> tuple[AgentMetadata, str]:
         model=str(raw_model) if (raw_model := meta.get("model")) else None,
         color=str(raw_color) if (raw_color := meta.get("color")) else None,
     )
-    body: str = post.content or ""
     return agent_metadata, body
 
 
@@ -110,8 +156,7 @@ def parse_skill_frontmatter(path: Path) -> list[str]:
     if not path.exists():
         raise FileNotFoundError(f"SKILL.md not found: {path}")
 
-    post = load_frontmatter(path)
-    meta = post.metadata
+    meta, _ = _load_frontmatter_from_path(path)
     if not meta:
         return []
 

@@ -1,4 +1,7 @@
 raw/
+
+# Scratch space for agent output and temporary reports (not committed)
+.tmp/
 .cache*/
 .*_cache/
 .DS_Store
@@ -33,8 +36,8 @@ sessions/.archived/
 # GitLab skill sync lock files
 */.sync-gitlab-docs.lock
 
-# uv lock file (dependency management)
-uv.lock
+# Claude Code scheduled tasks lock
+.claude/scheduled_tasks.lock
 
 # Local settings with machine-specific paths
 .claude/settings.local.json
@@ -62,6 +65,7 @@ package-lock.json
 # DEPRECATED: these in-repo directories are replaced by the three-tier DH state architecture.
 # Ignored here so old-layout files do not appear as untracked during/after migration.
 # New canonical locations: ~/.dh/projects/{slug}/backlog/, ~/.dh/projects/{slug}/plan/, etc.
+.dh/projects/
 .claude/backlog/
 .claude/reports/
 plan/
