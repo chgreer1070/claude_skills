@@ -2,6 +2,7 @@
 name: holistic-linting
 description: Comprehensive linting and formatting verification workflows. Provides automatic format-lint-resolve pipelines for orchestrators and sub-agents. Use when running linters, fixing ruff/mypy/bandit errors, ensuring code quality before completion, or resolving linting issues systematically.
 ---
+
 # Holistic Linting Skill
 
 This skill embeds comprehensive linting and formatting verification into Claude Code's workflow, preventing the common pattern where code is claimed "production ready" without actually running quality checks.
@@ -171,8 +172,8 @@ npx markdownlint-cli2 --fix path/to/file.md
 **For Orchestrators**: Delegate immediately to linting-root-cause-resolver WITHOUT running linters yourself. See the [holistic-linting-orchestrator skill](../holistic-linting-orchestrator/SKILL.md) for complete delegation workflows.
 
 ```claude
-Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in file1.py")
-Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in file2.py")
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in file1.py")
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in file2.py")
 ```
 
 Do NOT run `ruff check` or `mypy` before delegating. The agent gathers its own linting data.
@@ -342,7 +343,7 @@ Orchestrator:
 1. [Implements authentication middleware in auth.py]
 2. [Implementation complete, now applying holistic-linting skill]
 3. [Delegates to linting agent WITHOUT running linters]
-4. Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in auth.py")
+4. Agent(subagent_type="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in auth.py")
 5. [Agent formats with ruff format, runs ruff check + mypy]
 6. [Agent finds 3 ruff errors, 2 mypy type issues]
 7. [Agent resolves all 5 issues at root cause]
@@ -416,6 +417,8 @@ When uncertain whether an issue is blocking: treat it as blocking and fix it.
 
 **Problem**: "Linter not found (command not available)"
 **Solution**: Check that linters are installed. Use `uv run <tool>` for Python tools to ensure virtual environment activation.
+
+**`error[unresolved-import]: Cannot resolve imported module 'X'`** — Add the directory containing module `X` to `[tool.ty.environment] extra-paths` in `pyproject.toml`; run `uv run ty check <path>` to verify; if errors persist, confirm `pyproject.toml` is the config ty is reading (a `ty.toml` in the project root takes precedence and `pyproject.toml` will be ignored).
 
 **Problem**: "False positive linting error"
 **Solution**: Investigate using the rule's documentation. If the rule fires on code that is genuinely correct, document what you tried and why each approach failed, then return UNRESOLVED. The user decides whether to reconfigure the rule — agents do not modify linter configuration autonomously.

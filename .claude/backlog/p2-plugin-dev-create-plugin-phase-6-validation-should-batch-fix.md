@@ -3,14 +3,13 @@ name: '`/plugin-dev:create-plugin` Phase 6 validation should batch fixes by file
 description: Phase 6 collected findings from 3 parallel review agents, then applied fixes one finding at a time. This resulted in SKILL.md being edited 3 separate times (description rewrite, SQL removal, MCP server name fix) when a single pass through the file would have applied all fixes together. The workflow should group all findings by file, then make one editing pass per file. Reduces Edit tool calls and context consumed by repeated reads.
 metadata:
   topic: plugin-dev-create-plugin-phase-6-validation-should-batch-fix
-  source: agentskill-kaizen plugin build Phase 6 (2026-02-18)
-  added: '2026-02-18'
+  source: 'GitHub Issue #116'
+  added: '2026-03-22'
   priority: P2
   type: Feature
   status: needs-grooming
   issue: '#116'
-  groomed: '2026-02-26'
-  last_synced: '2026-03-14T16:00:59Z'
+  last_synced: '2026-03-22T15:10:35Z'
 ---
 
 ## Story

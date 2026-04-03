@@ -18,7 +18,7 @@ Orchestrate parallel research-curator agents to bulk-refresh research entries in
 - `--all` — Refresh every entry regardless of staleness
 - `--stale` (default) — Refresh entries past their review date
 - `--category <name>` — Refresh all entries in one category (e.g., `--category agent-frameworks`)
-- `--layer <0|1|2>` — Refresh entries with matching SDLC layer metadata (0=process, 1=language, 2=stack). See [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
+- `--layer <0|1|2>` — Refresh entries with matching SDLC layer metadata (0=process, 1=language, 2=stack). See [plugins/development-harness/docs/sdlc-layers/](../../../plugins/development-harness/docs/sdlc-layers/).
 - `--dry-run` — Report what would be refreshed; do not spawn agents
 
 ## Workflow

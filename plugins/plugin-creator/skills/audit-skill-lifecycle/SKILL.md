@@ -5,6 +5,7 @@ argument-hint: <plugin-path>
 model: sonnet
 user-invocable: true
 ---
+
 # Audit Skill Lifecycle
 
 Deep semantic validation of how skills interconnect, what they load, what they produce, and whether the resulting call graph forms a coherent, non-contradictory workflow.
@@ -43,7 +44,7 @@ Extract all `Skill(skill:)`, `Skill(skill=)`, `Agent(command:)`, and `@agent` re
 
 ### Step 2: Analysis — Run Audit Dimensions
 
-Execute 7 audit dimensions as defined in [Skill Lifecycle Audit Specifications](./references/skill-lifecycle-audit.md). Each dimension analyzes a different aspect of semantic coherence:
+Execute 7 audit dimensions as defined in `references/skill-lifecycle-audit.md`. Each dimension analyzes a different aspect of semantic coherence:
 
 | Dimension | Checks | Output Type |
 |-----------|--------|-------------|
@@ -244,7 +245,7 @@ Prioritized actionable fixes:
 
 ## Additional Resources
 
-- [Skill Lifecycle Audit Specifications](./references/skill-lifecycle-audit.md) — detailed audit dimension definitions, detection strategies, tier implementation guidance, and examples of each finding type
+- `references/skill-lifecycle-audit.md` — detailed audit dimension definitions, detection strategies, tier implementation guidance, and examples of each finding type
 
 ## What This Audit Does NOT Do
 

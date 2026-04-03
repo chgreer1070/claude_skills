@@ -2,7 +2,8 @@
 name: interop
 description: Use this skill when routing a Superpowers plan file through the /work-backlog-item pipeline — creates a SAM task file and writes back-references into the original plan
 ---
-# /development-harness:interop — Superpowers Plan Interop Adapter
+
+# /dh:interop — Superpowers Plan Interop Adapter
 
 Routes a Superpowers plan file through the `/work-backlog-item` pipeline to produce a SAM task
 file, then writes back-references into the original plan. Does not re-implement any pipeline
@@ -10,9 +11,9 @@ logic — delegates entirely to `/work-backlog-item`.
 
 The plan file path is provided as `$ARGUMENTS`.
 
-Invocation: `/development-harness:interop <path-to-plan-file>`
+Invocation: `/dh:interop <path-to-plan-file>`
 
-SOURCE: [plan/architect-dh-phase2-interop-adapter.md](../../../../plan/architect-dh-phase2-interop-adapter.md)
+SOURCE: plan/architect-dh-phase2-interop-adapter.md (historical plan artifact, archived to `~/.dh/projects/{project-slug}/plan/`)
 
 ---
 
@@ -21,8 +22,8 @@ SOURCE: [plan/architect-dh-phase2-interop-adapter.md](../../../../plan/architect
 If `$ARGUMENTS` is empty, abort immediately:
 
 ```text
-ERROR: /development-harness:interop requires a path to a Superpowers plan file.
-Usage: /development-harness:interop docs/superpowers/plans/YYYY-MM-DD-slug.md
+ERROR: `/dh:interop` requires a path to a Superpowers plan file.
+Usage: `/dh:interop docs/superpowers/plans/YYYY-MM-DD-slug.md`
 ```
 
 Use the Read tool to open the file at the path given in `$ARGUMENTS`. If the file does not
@@ -88,7 +89,7 @@ Abort conditions (make no changes before aborting):
 flowchart TD
     Q{Backlog item #N<br>found in Step 2?}
     Q -->|Yes| UseExisting[Use existing item #N<br>Proceed to Step 4]
-    Q -->|No| Create["Call mcp__backlog__backlog_add<br>title = Title extracted in Step 2<br>description = Goal extracted in Step 2<br>plan = $ARGUMENTS"]
+    Q -->|No| Create["Call mcp__plugin_dh_backlog__backlog_add<br>title = Title extracted in Step 2<br>description = Goal extracted in Step 2<br>plan = $ARGUMENTS"]
     Create --> CheckError{Response has<br>error key?}
     CheckError -->|Yes| AbortCreate["ABORT<br>ERROR: Failed to create backlog item<br>Print exact error from response"]
     CheckError -->|No| CaptureN[Capture new issue number N from response]
@@ -121,7 +122,7 @@ plan file path as a note in the prompt (e.g., "Plan file for context: {plan-file
 `work-backlog-item` skill does not accept a second positional argument, so the path is passed
 as contextual prose in the delegation prompt, not as an arg.
 
-This step runs: groom → RT-ICA → SAM planning and produces `plan/tasks-N-slug.md`.
+This step runs: groom → RT-ICA → SAM planning and produces `~/.dh/projects/{project-slug}/plan/tasks-N-slug.md` (resolved via `dh_paths.plan_dir()`).
 
 Wait for `/work-backlog-item` to complete. The task file path it produces is required for Steps
 5 and 6.
@@ -130,17 +131,20 @@ Wait for `/work-backlog-item` to complete. The task file path it produces is req
 
 ## Step 5 — Capture the task file path
 
-After `/work-backlog-item` completes, identify the task file it produced using Glob:
+After `/work-backlog-item` completes, identify the task file it produced. Plan files are stored under `~/.dh/projects/{slug}/plan/` (resolved via `dh_paths.plan_dir()`). Use Glob with the resolved path:
 
-```text
-Glob(pattern="plan/tasks-N-*.md")
+```python
+from dh_paths import plan_dir
+plan_root = plan_dir()
+# Find the specific plan file:
+Glob(pattern=str(plan_root / "tasks-N-*.md"))
 ```
 
 Where `N` is the backlog item number from Step 3. If the item number is unknown or the glob
 returns no results, broaden to:
 
-```text
-Glob(pattern="plan/tasks-*.md")
+```python
+Glob(pattern=str(plan_dir() / "tasks-*.md"))
 ```
 
 Compare results against any task file paths mentioned in the `/work-backlog-item` output. Select
@@ -169,14 +173,13 @@ flowchart TD
     Insert --> Done
 ```
 
-The exact text to write (substituting the real task filename):
+The exact text to write (substituting the real task filename and full state path):
 
 ```markdown
-**SAM tasks:** [plan/tasks-N-slug.md](../../../plan/tasks-N-slug.md)
+**SAM tasks:** ~/.dh/projects/{project-slug}/plan/tasks-N-slug.md
 ```
 
-The relative path uses three `../` levels because Superpowers plans live at
-`docs/superpowers/plans/` — three directory levels below the repo root where `plan/` lives.
+Plan files live outside the repository under `~/.dh/projects/{project-slug}/plan/` (resolved via `dh_paths.plan_dir()`). Use the absolute path — relative paths from `docs/superpowers/plans/` cannot reach state files outside the repo.
 
 Use the Edit tool to make this change. Do not rewrite the file.
 
@@ -193,8 +196,8 @@ flowchart TD
     ForEach([For each Chunk N captured]) --> HasTask{Does chunk number N<br>have a corresponding SAM task T{N}?}
     HasTask -->|No — chunk count exceeds task count| Skip[Skip this chunk — no annotation]
     HasTask -->|Yes| CheckExisting{Does the line immediately<br>following this heading already<br>contain a SAM annotation comment?}
-    CheckExisting -->|Yes — re-run scenario| ReplaceAnnotation["Replace existing annotation in-place<br><!-- SAM: T{N} in plan/tasks-N-slug.md -->"]
-    CheckExisting -->|No| InsertAnnotation["Insert on the line immediately<br>after the ## Chunk N: heading<br><!-- SAM: T{N} in plan/tasks-N-slug.md -->"]
+    CheckExisting -->|Yes — re-run scenario| ReplaceAnnotation["Replace existing annotation in-place<br><!-- SAM: T{N} in ~/.dh/projects/{project-slug}/plan/tasks-N-slug.md -->"]
+    CheckExisting -->|No| InsertAnnotation["Insert on the line immediately<br>after the ## Chunk N: heading<br><!-- SAM: T{N} in ~/.dh/projects/{project-slug}/plan/tasks-N-slug.md -->"]
     ReplaceAnnotation --> Next([Next chunk])
     InsertAnnotation --> Next
     Skip --> Next
@@ -203,7 +206,7 @@ flowchart TD
 Annotation format — substitute the real chunk number and task filename:
 
 ```markdown
-<!-- SAM: T3 in plan/tasks-N-slug.md -->
+<!-- SAM: T3 in ~/.dh/projects/{project-slug}/plan/tasks-N-slug.md -->
 ```
 
 The task number `T{N}` matches the chunk number `N` by position. Chunk 1 → T1, chunk 2 → T2.
@@ -216,7 +219,7 @@ Use the Edit tool for each annotation. Do not rewrite the file.
 
 ## Idempotency rules
 
-Running `/development-harness:interop` on the same plan file a second time must produce identical output to the
+Running `/dh:interop` on the same plan file a second time must produce identical output to the
 first run — no duplicates, no data loss.
 
 - `**SAM tasks:**` line: if it already exists, replace in-place. Never insert a second line.
@@ -235,7 +238,7 @@ Stop immediately and make no further changes when:
 - The file at `$ARGUMENTS` cannot be read
 - Title (`#` heading) is absent from the plan file
 - Goal (`**Goal:**` field) is absent from the plan file
-- `mcp__backlog__backlog_add` returns an error response
+- `mcp__plugin_dh_backlog__backlog_add` returns an error response
 - `/work-backlog-item` completes without producing a task file
 
 All abort messages are prefixed with `ERROR:` and printed to the user before stopping.
@@ -245,6 +248,6 @@ All abort messages are prefixed with `ERROR:` and printed to the user before sto
 ## Example invocations
 
 ```text
-/development-harness:interop docs/superpowers/plans/2026-03-11-oauth-token-refresh.md
-/development-harness:interop docs/superpowers/plans/2026-02-28-manifest-discovery.md
+/dh:interop docs/superpowers/plans/2026-03-11-oauth-token-refresh.md
+/dh:interop docs/superpowers/plans/2026-02-28-manifest-discovery.md
 ```

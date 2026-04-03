@@ -4,14 +4,12 @@ description: "The workflow logic currently scattered across /backlog, /create-ba
 metadata:
   topic: add-mcp-prompts-and-guided-elicitation-tools-to-backlogcore-
   source: 'GitHub Issue #473'
-  added: '2026-03-06'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: in-progress
   issue: '#473'
-  last_synced: '2026-03-14T16:00:27Z'
-  groomed: '2026-03-06'
-  plan: plan/tasks-1-mcp-prompts-elicitation.md
+  last_synced: '2026-03-22T15:10:02Z'
 ---
 
 ## Story

@@ -1,15 +1,15 @@
 ---
 name: 'Mission interview: summarizer'
-description: "Interview the user with 5 mission statement questions to draft and refine `plugins/summarizer/mission.json`.\n\nRun: `/plugin-creator:mission-statement plugins/summarizer --interview`\n\n**Q1 — Non-Negotiable:** \"What is the one thing this plugin must never sacrifice, even to ship faster?\"\n**Q2 — Bad Twin:** \"What would a superficially similar but wrong version of this plugin do? What makes it wrong?\"\n**Q3 — Trade-offs:** \"When forced to choose between breadth vs depth / correctness vs speed / explicit vs implicit — which does this plugin choose, and why?\"\n**Q4 — Removal Trigger:** \"What would make you remove this plugin from the marketplace entirely?\"\n**Q5 — Anti-Pattern Example:** \"Give me a specific example of a fix or improvement this plugin should refuse to make, even if asked.\"\n\nAfter interview: update `mission.json` with answers, set `interview_backlog_item` to this issue number, validate with 3 known past decisions."
+description: "Interview the user with 5 mission statement questions to draft and refine `plugins/summarizer/mission.json`.\n\nRun: `/plugin-creator:mission-statement plugins/summarizer --interview`\n\n**Q1 — Non-Negotiable:** 'What is the one thing this plugin must never sacrifice, even to ship faster?'\n**Q2 — Bad Twin:** 'What would a superficially similar but wrong version of this plugin do? What makes it wrong?'\n**Q3 — Trade-offs:** 'When forced to choose between breadth vs depth / correctness vs speed / explicit vs implicit — which does this plugin choose, and why?'\n**Q4 — Removal Trigger:** 'What would make you remove this plugin from the marketplace entirely?'\n**Q5 — Anti-Pattern Example:** 'Give me a specific example of a fix or improvement this plugin should refuse to make, even if asked.'\n\nAfter interview: update `mission.json` with answers, set `interview_backlog_item` to this issue number, validate with 3 known past decisions."
 metadata:
   topic: mission-interview-summarizer
-  source: Mission statement development process
-  added: '2026-03-07'
+  source: 'GitHub Issue #541'
+  added: '2026-03-22'
   priority: P2
   type: Chore
   status: needs-grooming
   issue: '#541'
-  last_synced: '2026-03-14T15:59:59Z'
+  last_synced: '2026-03-22T15:09:34Z'
 ---
 
 ## Story

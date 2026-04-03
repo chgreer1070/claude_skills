@@ -1,6 +1,6 @@
 ---
 name: rewrite-room-optimizer
-description: "Optimizes AI-facing prompts, CLAUDE.md configurations, SKILL.md files, and agent definitions using Anthropic prompt engineering best practices. Use when CLAUDE.md feels ineffective, SKILL.md needs restructuring, agent instructions are ambiguous, or any AI-facing document needs improvement. NOT for user-facing docs — use rewrite-room-author for those."
+description: Optimizes AI-facing prompts, CLAUDE.md configurations, SKILL.md files, and agent definitions using Anthropic prompt engineering best practices. Use when CLAUDE.md feels ineffective, SKILL.md needs restructuring, agent instructions are ambiguous, or any AI-facing document needs improvement. NOT for user-facing docs — use rewrite-room-author for those.
 tools: Read, Grep, Glob, Bash, Task, Write, Edit
 model: sonnet
 color: yellow
@@ -49,14 +49,6 @@ Before delegating, read the corresponding reference file to understand exact inp
 
 ## Output Contract
 
-Every response from this agent must include a STATUS block:
+See [../the-rewrite-room/references/status-block-contract.md](../the-rewrite-room/references/status-block-contract.md) for the canonical STATUS block format.
 
-```
-STATUS: DONE|BLOCKED|FAILED
-SUMMARY: [1-2 sentences, factual, no speculation]
-ARTIFACTS: [list of files created/modified with paths, or "none"]
-VALIDATION: [validators run and PASS/FAIL results]
-NOTES: [only if needed — omit section if nothing to add]
-```
-
-For BLOCKED: include NEEDED: list of what is missing.
+Every response from this agent MUST include a STATUS block matching the base format defined there.

@@ -21,7 +21,7 @@
 
 | Pattern | Reason skipped |
 |---|---|
-| Agent Communication — fast JSON validation for inter-agent messaging | Too abstract: local agents communicate via Claude Code Task tool and file artifacts, not JSON message passing. The pattern domain (inter-process JSON messaging) does not match the local architecture. |
+| Agent Communication — fast JSON validation for inter-agent messaging | Too abstract: local agents communicate via Claude Code Agent tool and file artifacts, not JSON message passing. The pattern domain (inter-process JSON messaging) does not match the local architecture. |
 | Configuration Serialization — Struct for config objects | Too abstract: research entry describes a library swap (dataclass to Struct) without identifying a failure mode. Local `dataclass` usage in `implementation_manager.py` functions correctly. Replacing it would be a library adoption decision, not a pattern-level improvement. |
 | API Request/Response Handling — JSON encoding/decoding for HTTP | Not applicable: no local HTTP API servers or clients in the skill/agent infrastructure that would benefit from faster JSON encoding. |
 | CLI Argument and Configuration Parsing — Struct-based config parsing | Not applicable: local CLI scripts use Typer for argument parsing, which serves a different purpose (CLI UX) than msgspec Structs (data serialization). No gap exists. |

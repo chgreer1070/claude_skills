@@ -1,17 +1,18 @@
 ---
 name: backlog-item-groomer
 description: Produce groomed content for a backlog item — discovers related skills, agents, prior work, and dependency graph; performs RT-ICA assessment; outputs groomed item template for writing into .claude/backlog/{priority}-{slug}.md. Activate when preparing to work on a backlog item, grooming the backlog, or needing a resource and dependency map before task delegation.
-tools: Glob, Grep, Read, mcp__backlog__backlog_list, mcp__backlog__backlog_view, mcp__backlog__backlog_add, mcp__backlog__backlog_update, mcp__backlog__backlog_groom, mcp__backlog__backlog_close, mcp__backlog__backlog_resolve, mcp__backlog__backlog_sync, mcp__backlog__backlog_normalize, mcp__backlog__backlog_pull
+tools: Glob, Grep, Read, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull
 model: sonnet
-skills: plugin-creator:rt-ica
+skills:
+  - dh:rt-ica
 mcpServers:
   backlog:
     command: uv
     args:
-      - run
-      - python
-      - -m
-      - backlog_core.server
+    - run
+    - python
+    - -m
+    - backlog_core.server
     cwd: .claude/skills/backlog
 ---
 
@@ -85,7 +86,7 @@ Stop after 5 relevant matches per key term.
 
 ### Step 4 — Identify Dependencies
 
-Call the `backlog_list` MCP tool (via `mcp__backlog__backlog_list`) to get all backlog items. Identify:
+Call the `backlog_list` MCP tool (via `mcp__plugin_dh_backlog__backlog_list`) to get all backlog items. Identify:
 
 - Items this one depends on (must be done first)
 - Items that depend on this one (will be unblocked)

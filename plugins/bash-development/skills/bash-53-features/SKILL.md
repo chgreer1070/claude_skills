@@ -2,6 +2,7 @@
 name: bash-53-features
 description: Bash 5.3 release features and improvements with practical examples. Use when working with Bash 5.3 features, new command substitution, GLOBSORT, loadable builtins, or when user asks about Bash 5.3 changes, new features, or version-specific capabilities.
 ---
+
 # Bash 5.3 Features and Improvements
 
 Released in July 2025, Bash 5.3 introduces significant enhancements including revolutionary command substitution syntax, new variables, loadable builtins, and improved C standard conformance.

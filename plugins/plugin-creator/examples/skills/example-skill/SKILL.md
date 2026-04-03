@@ -14,6 +14,7 @@ hooks:
       command: echo 'File was read'
       timeout: 5
 ---
+
 # Example Skill
 
 This skill demonstrates all available frontmatter fields for Claude Code skills.

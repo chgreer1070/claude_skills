@@ -5,6 +5,7 @@ argument-hint: <plugin-path>
 model: sonnet
 user-invocable: true
 ---
+
 # Audit Agent Lifecycle
 
 ## Purpose
@@ -48,7 +49,7 @@ Scan plugin structure to identify:
 - All agent files in `agents/` directory
 - Agent frontmatter configuration (tools, skills, model, disallowedTools, permissionMode)
 - Skill references in agent prompts (Skill(), /skill-name patterns)
-- Agent delegation patterns (Agent(agent=), @agent-name references)
+- Agent delegation patterns (Agent(subagent_type=), @agent-name references)
 - Tool usage keywords in prompt body
 
 Build dependency graph:
@@ -58,7 +59,7 @@ Build dependency graph:
 
 ### Step 2: Analysis — Run Audit Dimensions
 
-Execute 8 semantic audits across 3 depth tiers. See [Agent Lifecycle Audit Specifications](./references/agent-lifecycle-audit.md) for detailed dimension definitions.
+Execute 8 semantic audits across 3 depth tiers. See `references/agent-lifecycle-audit.md` for detailed dimension definitions.
 
 | Dimension | Tier | Detection Strategy | Output |
 |-----------|------|-------------------|--------|
@@ -411,5 +412,5 @@ Agent `test-runner` has instruction "Run pytest tests" but tools field is `["Rea
 
 ## Additional Resources
 
-- [Agent Lifecycle Audit Specifications](./references/agent-lifecycle-audit.md) — detailed audit dimension definitions, detection strategies, and severity criteria
-- [Skill Lifecycle Audit](../audit-skill-lifecycle/SKILL.md) — complementary audit for workflow coherence
+- `references/agent-lifecycle-audit.md` — detailed audit dimension definitions, detection strategies, and severity criteria
+- `../audit-skill-lifecycle/SKILL.md` — complementary audit for workflow coherence

@@ -1,9 +1,13 @@
 ---
 name: agent-creator
-description: "Creates Claude Code agent files from requirements — handles discovery, template selection, frontmatter generation, scope determination (project/user/plugin), and plugin.json updates. Use when the user asks to create an agent, generate an agent, add an agent to a plugin, or describes agent functionality they need. Trigger phrases — 'create an agent', 'add an agent', 'build a new agent', 'make me an agent that', 'I need an agent for'. Examples — <example>Context — User wants a code review agent. User says 'Create an agent that reviews code for quality issues'. I will use the agent-creator agent to generate the agent configuration. User requesting new agent creation triggers agent-creator.</example> <example>Context — User wants to add agent to plugin. User says 'Add an agent to my plugin that validates configurations'. I will use the agent-creator agent to generate a configuration validator agent. Plugin development with agent addition triggers agent-creator.</example>"
+description: Creates Claude Code agent files from requirements — handles discovery, template selection, frontmatter generation, scope determination (project/user/plugin), and plugin.json updates. Use when the user asks to create an agent, generate an agent, add an agent to a plugin, or describes agent functionality they need. Trigger phrases — 'create an agent', 'add an agent', 'build a new agent', 'make me an agent that', 'I need an agent for'. Examples — <example>Context — User wants a code review agent. User says 'Create an agent that reviews code for quality issues'. I will use the agent-creator agent to generate the agent configuration. User requesting new agent creation triggers agent-creator.</example> <example>Context — User wants to add agent to plugin. User says 'Add an agent to my plugin that validates configurations'. I will use the agent-creator agent to generate a configuration validator agent. Plugin development with agent addition triggers agent-creator.</example>
 model: sonnet
 tools: Read, Write, Edit, Grep, Glob, Bash
-skills: claude-plugins-reference-2026, hooks-guide, claude-skills-overview-2026, agent-creator
+skills:
+  - plugin-creator:claude-plugins-reference-2026
+  - plugin-creator:hooks-guide
+  - plugin-creator:claude-skills-overview-2026
+  - plugin-creator:agent-creator
 color: green
 ---
 
@@ -23,7 +27,7 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 **Configuration fields:**
 
 - `model`: sonnet | opus | haiku | inherit (default: inherit)
-- `tools`: comma-separated string — never YAML arrays. Use `Agent(type1, type2)` to restrict subagent spawning
+- `tools`: comma-separated string — never YAML arrays. Use `Agent(type1, type2)` to restrict subagent spawning. MCP tools must use exact registered names — no wildcards (e.g., `mcp__Ref__*` fails silently), case-sensitive (e.g., `mcp__Ref__` not `mcp__ref__`). Agents with unresolvable MCP tool names hallucinate success. Verified 2026-03-22.
 - `disallowedTools`: comma-separated denylist — removed from inherited/specified tools
 - `permissionMode`: default | acceptEdits | dontAsk | bypassPermissions | plan
 - `skills`: comma-separated string — injected into context at startup (NOT inherited from parent)
@@ -35,7 +39,7 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 - `hooks`: YAML object — lifecycle hooks scoped to this agent
 - `color`: blue/cyan (analysis), green (creation), yellow (validation), red (security), magenta (transformation)
 
-**Note**: In v2.1.63, the Task tool was renamed to Agent. Old `Task(...)` references still work as aliases.
+**Note**: Use `Agent(type1, type2)` in the `tools` field to restrict which subagent types can be spawned.
 
 </constraints>
 
@@ -137,17 +141,21 @@ flowchart TD
     Q1 -->|Distributable plugin| Plugin["{plugin}/agents/{name}.md<br>+ update plugin.json"]
     Project --> Validate[Run validator]
     User --> Validate
-    Plugin --> UpdateJSON["Read plugin.json<br>Add agent to agents array<br>Write updated plugin.json<br>(agents only — skills are auto-discovered)"]
+    Plugin --> UpdateJSON["Read plugin.json<br>Read existing agents array — carry forward ALL entries<br>Add new agent path<br>Write updated plugin.json"]
     UpdateJSON --> Validate
     Validate --> Done([Report location and result])
 ```
 
 **Plugin.json update pattern** — add agent to `agents` array (required for all agents):
 
+> **AUTO-DISCOVERY WARNING — ALL OR NOTHING**
+> The `agents` array overrides auto-discovery entirely when present. Any agent path NOT listed becomes invisible to Claude Code. Always read the existing `agents` array first and preserve every entry. Never write a single-entry array unless this is genuinely the only agent in the plugin.
+
 ```json
 {
   "agents": [
-    "./agents/existing-agent.md",
+    "./agents/existing-agent-1.md",
+    "./agents/existing-agent-2.md",
     "./agents/{new-agent-name}.md"
   ]
 }

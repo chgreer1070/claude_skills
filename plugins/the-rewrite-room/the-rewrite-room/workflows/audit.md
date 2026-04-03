@@ -26,7 +26,7 @@ Before spawning, read the target agent's file to understand its exact required i
 
 - drift-audit: Read `plugins/development-harness/agents/doc-drift-auditor.md`
 - documentation-sync: Read `plugins/development-harness/agents/service-docs-maintainer.md`
-- freshness: Read `/home/ubuntulinuxqa2/.claude/agents/doc-freshness-guardian.md`
+- freshness: Read `~/.claude/agents/doc-freshness-guardian.md` (doc-freshness-guardian is a personal agent, not bundled with this plugin)
 
 ## Step 3 — Spawn Agent
 
@@ -75,7 +75,7 @@ flowchart TD
     Return([Agent returns]) --> Q{Agent type?}
     Q -->|drift-audit STATUS: DONE| Report[Report findings to user]
     Report --> Chain{Markdown files modified?}
-    Chain -->|Yes| Validate[Chain to validate workflow\nLoad: plugins/the-rewrite-room/the-rewrite-room/workflows/validate.md]
+    Chain -->|Yes| Validate[Run normalize_frontmatter.py on modified files\nuv run plugins/plugin-creator/scripts/normalize_frontmatter.py &lt;file&gt;]
     Chain -->|No| Done([Done])
     Q -->|drift-audit STATUS: BLOCKED| ShowNeeded[Show NEEDED list to user]
     ShowNeeded --> Ask[Ask user to provide missing inputs]
@@ -88,12 +88,12 @@ flowchart TD
 
 ## Output Contract
 
+Base format — see [../references/status-block-contract.md](../references/status-block-contract.md).
+
+Audit workflow VALIDATION subfields:
+
 ```text
-STATUS: DONE|BLOCKED|FAILED
-SUMMARY: [1-2 sentences — what was audited/synced, key findings count]
-ARTIFACTS: [files created/modified with relative paths, or "none"]
 VALIDATION:
-  - citation-check: PASS|FAIL (drift-audit only — all findings have file:line evidence)
-  - link-check: PASS|FAIL (if markdown files modified)
-NOTES: [only if needed]
+  - citation-check: PASS|FAIL  (drift-audit only — all findings have file:line evidence)
+  - link-check: PASS|FAIL      (if markdown files modified)
 ```

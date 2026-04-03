@@ -1,6 +1,6 @@
 ---
 paths:
-  - ".github/workflows/**/*.yml"
+- .github/workflows/**/*.yml
 ---
 
 # GitHub Actions CI Workflow Modification Protocol

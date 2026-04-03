@@ -17,10 +17,6 @@
         "$CONTEXT7_API_KEY"
       ]
     },
-    "backlog": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "backlog_core.server"]
-    },
     "octocode": {
       "command": "npx",
       "args": ["-y", "octocode-mcp@latest"]

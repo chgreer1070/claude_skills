@@ -3,14 +3,13 @@ name: 'RTFP: Read The Fucking Prompt — Claude Code plugin for session reaction
 description: Plugin that scans Claude Code session transcripts to find the strongest user reactions to instruction-following failures, reconstructs the assistant output that triggered them, and turns the best exchange into a shareable terminal-style PNG artifact.
 metadata:
   topic: rtfp-read-the-fucking-prompt-claude-code-plugin-for-session-
-  source: User request
-  added: '2026-03-09'
+  source: 'GitHub Issue #555'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: open
   issue: '#555'
-  last_synced: '2026-03-14T15:59:52Z'
-  groomed: '2026-03-09'
+  last_synced: '2026-03-22T15:09:27Z'
 ---
 
 ## Story

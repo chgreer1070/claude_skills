@@ -3,6 +3,7 @@ name: hooks-patterns
 description: Hook recipes and working examples — plugin hooks, frontmatter hooks in skills/agents/commands, prompt-based LLM hooks, and complete code examples in Python and Node.js. Use when building hook scripts, integrating hooks into plugins, implementing prompt-based hooks, or looking for hook configuration patterns.
 user-invocable: true
 ---
+
 # Claude Code Hooks — Patterns & Examples (January 2026)
 
 Working examples and recipes for building hooks. For hook system fundamentals, activate `Skill(skill: "plugin-creator:hooks-core-reference")`. For JSON I/O schemas, activate `Skill(skill: "plugin-creator:hooks-io-api")`.
@@ -86,7 +87,7 @@ Or define inline:
 
 Hooks can be defined in frontmatter. These are scoped to the component's lifecycle. For complete skill documentation, see `Skill(skill: "plugin-creator:claude-skills-overview-2026")`.
 
-**Supported events**: `PreToolUse`, `PostToolUse`, `Stop`
+**Supported events**: All hook events are supported in skill and agent frontmatter. The most common for subagents are `PreToolUse`, `PostToolUse`, and `Stop` (which is automatically converted to `SubagentStop` in agent context).
 
 ### Skill Example
 

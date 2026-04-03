@@ -21,7 +21,7 @@ Pixel Agents is a VS Code extension that renders each open Claude Code terminal 
 | No visual feedback on what multiple concurrent Claude Code agents are doing | Characters animate in real time based on tool usage extracted from JSONL transcripts |
 | Difficult to notice when an agent is blocked waiting for user permission or input | Speech bubble indicators appear on the character when the agent is waiting |
 | No ambient awareness of agent activity when focused elsewhere in VS Code | Persistent webview panel shows all agents simultaneously, with sound notifications on turn completion |
-| Sub-agent spawning from Task tool is invisible to the user | Sub-agents spawn as separate linked characters in the office, showing parent-child relationships |
+| Sub-agent spawning from Agent tool is invisible to the user | Sub-agents spawn as separate linked characters in the office, showing parent-child relationships |
 | Multi-root workspaces make it unclear which folder a new agent terminal will operate in | Workspace folder picker prompts the user when "+ Agent" is clicked in a multi-root workspace |
 
 ---
@@ -45,7 +45,7 @@ Pixel Agents is a VS Code extension that renders each open Claude Code terminal 
 
 - One animated pixel-art character per Claude Code terminal instance
 - Characters use a state machine: idle → walk → type/read, driven by tool invocations in transcripts
-- Sub-agents spawned via the Task tool appear as linked child characters in the office
+- Sub-agents spawned via the Agent tool appear as linked child characters in the office
 - 6 diverse character skins based on the JIK-A-4 Metro City free top-down character pack
 
 ### Activity Tracking
@@ -143,7 +143,7 @@ Usage workflow:
 
 - Directly targets Claude Code users as its primary audience — the extension is purpose-built for visualizing Claude Code agent activity
 - Demonstrates a pattern for observing Claude Code state without any API or plugin hook: pure JSONL transcript parsing is sufficient to infer what the agent is doing at each moment
-- Shows that sub-agent hierarchies (Task tool spawns) are externally observable and can be visualized
+- Shows that sub-agent hierarchies (Agent tool spawns) are externally observable and can be visualized
 
 ### Patterns Worth Adopting
 

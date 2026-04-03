@@ -3,6 +3,7 @@ name: the-rewrite-room
 description: Use when auditing docs vs code drift, syncing docs after changes, optimizing CLAUDE.md or SKILL.md for AI consumption, validating GLFM and Markdown, or summarizing files/URLs/images — routes each task to the correct specialist agent via /rwr:audit, /rwr:optimize, or /rwr:author
 allowed-tools: Read, Grep, Glob, Bash, Task, Write, Edit
 ---
+
 # The Rewrite Room
 
 Routes documentation, authoring, and optimization tasks to the correct specialist agents. Does not rewrite source agents or skills — orchestrates them. Governs authoring, docs, prompts, and summaries — not product code.
@@ -80,6 +81,15 @@ flowchart TD
 - [ ] Command row in Command Reference table — Entry Agent column contains the agent name (not the skill name)
 - [ ] Branch in Workflow Index mermaid points to the agent node (not the skill directory)
 
+> **⚠️ plugin.json auto-discovery — if registering this agent in plugin.json**
+>
+> Agents in the default `agents/` directory are auto-discovered. Do NOT add them to plugin.json.
+>
+> If the agent is in a non-default location and must be declared:
+> - Read the existing `agents` array in plugin.json first
+> - Carry forward every existing entry — adding one without listing all others makes the rest invisible
+> - It is all or nothing
+
 **Skill vs agent — the distinction that prevents the missing-agent failure:**
 
 - The **skill** (`skills/<name>/SKILL.md`) contains the workflow: numbered steps, conditional logic, specialist agent delegation
@@ -95,7 +105,7 @@ This plugin routes to these specialist agents and scripts (not copied — refere
 
 - `plugins/development-harness/agents/doc-drift-auditor.md` — evidence-based drift audit with file:line citations
 - `plugins/development-harness/agents/service-docs-maintainer.md` — post-implementation doc sync via git diff
-- `/home/ubuntulinuxqa2/.claude/agents/doc-freshness-guardian.md` — freshness headers and staleness alerts
+- `~/.claude/agents/doc-freshness-guardian.md` — freshness headers and staleness alerts (personal agent, not bundled with this plugin)
 
 **Optimize agents:**
 
@@ -120,7 +130,7 @@ This plugin routes to these specialist agents and scripts (not copied — refere
 **Validation scripts:**
 
 - `plugins/gitlab-skill/skills/gitlab-skill/scripts/validate_glfm.py` — GitLab Flavored Markdown validation via GitLab API
-- `plugins/plugin-creator/scripts/validate_frontmatter.py` — YAML frontmatter schema validation
+- `plugins/plugin-creator/scripts/normalize_frontmatter.py` — YAML frontmatter schema validation
 
 **Reference files consulted by workflows:**
 

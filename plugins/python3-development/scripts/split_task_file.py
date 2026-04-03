@@ -36,14 +36,19 @@ import re
 # Import from implementation_manager in same repository
 import sys
 from dataclasses import dataclass
+from io import TextIOWrapper
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
+# Ensure UTF-8 output on Windows (cp1252 default cannot encode emoji/spinner chars).
+# reconfigure() is available on Python 3.7+ when stdout is a TextIOWrapper.
+if isinstance(sys.stdout, TextIOWrapper):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if isinstance(sys.stderr, TextIOWrapper):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import typer
 from rich.console import Console
-
-_SCRIPTS_DIR = Path(__file__).parent.parent / "skills" / "implementation-manager" / "scripts"
-sys.path.insert(0, str(_SCRIPTS_DIR))
 
 # sam_schema is the canonical task/plan schema package.
 # Installed as a workspace dependency in the project venv.
@@ -54,8 +59,10 @@ if _SPLIT_SAM_PACKAGES_DIR not in sys.path:
     sys.path.insert(0, _SPLIT_SAM_PACKAGES_DIR)
 
 from sam_schema.core.query import load_plan as sam_load_plan
+from sam_schema.task_format import has_yaml_frontmatter
 
-from task_format import has_yaml_frontmatter
+if TYPE_CHECKING:
+    from sam_schema.core.models import Task as SamTask
 
 if TYPE_CHECKING:
     from sam_schema.core.models import Task as SamTask

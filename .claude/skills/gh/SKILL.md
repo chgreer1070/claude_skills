@@ -1,7 +1,8 @@
 ---
 name: gh
-description: "Install and configure the GitHub CLI (gh) for AI agent environments where gh may not be pre-installed and git remotes use local proxies instead of github.com. Provides auto-install script with SHA256 verification and GITHUB_TOKEN auth with anonymous fallback. Use when gh command not found, shutil.which(\"gh\") returns None, need GitHub API access (issues, PRs, releases, workflow runs), or repository operations fail with \"failed to determine base repo\" error. Documents required -R flag for all gh commands in proxy environments. Includes project management: GitHub Projects V2 (gh project), milestones (REST API), issue stories (lifecycle and templates), and label taxonomy management."
+description: 'Install and configure the GitHub CLI (gh) for AI agent environments where gh may not be pre-installed and git remotes use local proxies instead of github.com. Provides auto-install script with SHA256 verification and GITHUB_TOKEN auth with anonymous fallback. Use when gh command not found, shutil.which("gh") returns None, need GitHub API access (issues, PRs, releases, workflow runs), or repository operations fail with "failed to determine base repo" error. Documents required -R flag for all gh commands in proxy environments. Includes project management: GitHub Projects V2 (gh project), milestones (REST API), issue stories (lifecycle and templates), and label taxonomy management.'
 ---
+
 # GitHub CLI (gh) — Setup and Usage
 
 ## Purpose

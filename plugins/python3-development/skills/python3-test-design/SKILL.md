@@ -1,10 +1,8 @@
 ---
 name: python3-test-design
-description: This skill should be used when the user asks to "design a test strategy", "plan test coverage", "create test architecture", "review test structure", or mentions test planning patterns like TDD, BDD, or property-based testing. Provides guidance for pytest test suite architecture and design decisions.
-version: 1.0.0
-last_updated: '2026-01-25'
-python_compatibility: 3.11+
+description: Use when designing pytest test suite architecture, planning test coverage strategy, or reviewing test structure for Python 3.11+ projects. Activates on "design a test strategy", "plan test coverage", "create test architecture", or when TDD/BDD/property-based testing patterns are mentioned. Guides fixture design, parametrization, async testing, and mutation testing coverage decisions.
 ---
+
 # Python Test Design Skill
 
 Guidance for designing pytest test suites with modern Python 3.11+ patterns.
@@ -22,6 +20,8 @@ Use this skill for test **design** decisions:
 For test **implementation**, use the `python-pytest-architect` agent instead.
 
 ## Test Design Principles
+
+Consult `../python3-development/references/python3-standards.md` when aligning test strategy with shared plugin testing norms. The strategies below supplement that document; they do not replace it.
 
 ### Test Pyramid
 

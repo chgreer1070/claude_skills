@@ -695,11 +695,11 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 **Priority**: P2
 **Type**: Feature
 **Description**: Smoke test for backlog.py workflow
-**Plan**: .claude/docs/TASK_FILE_FORMAT.md
+**Plan**: plugins/development-harness/docs/TASK_FILE_FORMAT.md
 
 **Completed**: 2026-02-23
 **Status**: DONE — verified by checklist + acceptance criteria
-**Plan**: .claude/docs/TASK_FILE_FORMAT.md
+**Plan**: plugins/development-harness/docs/TASK_FILE_FORMAT.md
 
 ### TEST: Resolve verification
 

@@ -3,6 +3,7 @@ name: permissions
 description: Configure Claude Code permissions — tool approval rules, permission modes, managed policies, and sandboxing. Use when setting up permission rules, configuring allow/deny/ask policies, debugging permission prompts, deploying managed settings for organizations, or controlling Bash/Read/Edit/WebFetch/MCP/Agent tool access.
 user-invocable: true
 ---
+
 # Claude Code Permissions Reference
 
 Claude Code uses a tiered permission system to balance capability and safety. Permissions control which tools Claude can use and what resources they can access.
@@ -210,6 +211,6 @@ Use `/permissions` during a session to view and manage all permission rules and 
 
 ### Detailed Reference
 
-For comprehensive rule examples, Bash pattern edge cases, and hook-based permission extension, see [permissions-reference.md](./references/permissions-reference.md).
+For comprehensive rule examples, Bash pattern edge cases, and hook-based permission extension, see `references/permissions-reference.md`.
 
 SOURCE: [Claude Code Permissions Documentation](https://code.claude.com/docs/en/permissions.md) (accessed 2026-02-17)

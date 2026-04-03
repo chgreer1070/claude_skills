@@ -196,7 +196,7 @@ flowchart TD
 
 **Agent Characteristics:**
 
-- Delegated via `Task(agent="name", prompt="...")`
+- Delegated via `Agent(subagent_type="name", prompt="...")`
 - Lives in `.claude/agents/` directory
 - YAML frontmatter with model, tools, allowed_tools
 - Runs in isolated context window
@@ -248,11 +248,11 @@ flowchart TD
 
 | Aspect            | Skill              | Command          | Agent             | Hook             |
 | ----------------- | ------------------ | ---------------- | ----------------- | ---------------- |
-| **Invocation**    | Load via Skill()   | User types /name | Task() delegation | System event     |
+| **Invocation**    | Load via Skill()   | User types /name | Agent() delegation | System event     |
 | **Context**       | Orchestrator's     | Orchestrator's   | Separate window   | Shell/Node       |
 | **Autonomy**      | Guidance only      | Execute action   | Fully autonomous  | Automated        |
 | **File Location** | skills/\*/SKILL.md | commands/\*.md   | agents/\*.md      | settings.json    |
-| **User Visible**  | @mention           | /help listing    | Task output       | Silent           |
+| **User Visible**  | @mention           | /help listing    | Agent output       | Silent           |
 | **Arguments**     | N/A                | $ARGUMENTS       | prompt parameter  | Environment vars |
 | **Return Value**  | Knowledge loaded   | Action complete  | DONE/BLOCKED      | Exit code        |
 

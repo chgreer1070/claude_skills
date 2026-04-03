@@ -5,6 +5,7 @@ argument-hint: <file-or-directory-path>
 user-invocable: true
 disable-model-invocation: true
 ---
+
 # Optimize AI-Facing Files
 
 Orchestrate multi-phase optimization of AI-facing documentation with measurement, delegation, verification, and comprehensive reporting.

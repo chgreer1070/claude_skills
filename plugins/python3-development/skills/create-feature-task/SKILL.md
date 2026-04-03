@@ -1,17 +1,17 @@
 ---
 name: create-feature-task
-description: This skill should be used when the user asks to "create a feature task", "set up development tracking", "plan a feature implementation", or needs to structure a new feature development with proper tracking and phases.
-argument-hint: "<feature_name_and_description>"
+description: Use when creating a new feature task with structured tracking, phases, and documentation. Activates on "create a feature task", "set up development tracking", or "plan a feature implementation" requests. Produces a comprehensive feature development task with acceptance criteria, phase breakdown, and tracking artifacts ready for SAM pipeline execution.
+argument-hint: <feature_name_and_description>
 user-invocable: true
-version: 1.0.0
-last_updated: '2026-01-25'
-python_compatibility: 3.11+
 ---
+
 # Create Feature Development Task
 
 Set up a comprehensive feature development task with proper tracking, phases, and documentation.
 
 ## Execution Steps
+
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
 
 ### 1. Parse Feature Requirements
 

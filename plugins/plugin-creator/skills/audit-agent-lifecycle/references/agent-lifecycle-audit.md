@@ -52,7 +52,7 @@ For each skill reference in an agent prompt:
 
 ### 3. Inter-Agent Contract Alignment
 
-When agents delegate to other agents (via `Agent(agent=)`):
+When agents delegate to other agents (via `Agent(subagent_type=)`):
 
 - Does the delegating agent's prompt describe inputs that match what the target agent expects?
 - Does the delegating agent expect outputs in a format the target agent produces?

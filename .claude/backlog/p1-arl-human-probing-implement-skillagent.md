@@ -4,12 +4,12 @@ description: 'Design exists in `arl-human-probing-design.md`; implementation is 
 metadata:
   topic: arl-human-probing-implement-skillagent
   source: 'GitHub Issue #194'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#194'
-  last_synced: '2026-03-14T16:00:52Z'
+  last_synced: '2026-03-22T15:10:27Z'
 ---
 
 ## Story

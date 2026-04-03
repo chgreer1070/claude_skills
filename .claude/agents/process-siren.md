@@ -1,1 +1,0 @@
-../../plugins/process-siren/agents/process-siren.md

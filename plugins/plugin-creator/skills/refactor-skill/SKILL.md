@@ -5,6 +5,7 @@ argument-hint: path to skill directory (or plugin) to refactor
 model: opus
 user-invocable: true
 ---
+
 Refactoring LLM resources and prompts is the intentional restructuring of prompt content, tool definitions, and supporting context (e.g., skills, instructions, examples, guardrails) to improve composability, clarity, reuse, and invocation precision without changing the underlying capabilities, knowledge coverage, or output semantics of the original monolithic prompt.
 
 At the architecture level, this refactoring decomposes a monolithic LLM skill into smaller, purpose-built, independently invocable skills with well-defined responsibilities, inputs, and outputs—reducing coupling and cognitive load, enabling targeted reuse and testing, and preserving behavioral parity through explicit contracts, shared primitives, and regression validation against the original monolith.
@@ -58,7 +59,7 @@ When the only issue is token count (SK006) and the skill covers a single user in
 
 1. Identify sections with detailed reference content — large tables, comprehensive examples, multi-step procedures that are consulted rather than executed sequentially.
 2. Move each such section to `./references/<topic>.md`.
-3. Replace the section in SKILL.md with a brief summary and a markdown link: `[Topic Details](./references/topic.md)`.
+3. Replace the section in SKILL.md with a brief summary and a markdown link: ``references/topic.md``.
 4. Re-run the validator to confirm token count is now below the warning threshold.
 5. Report the token reduction achieved and STOP — do not proceed to skill splitting.
 

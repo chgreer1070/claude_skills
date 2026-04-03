@@ -2,9 +2,10 @@
 name: doc-drift-auditor
 description: Audits documentation accuracy against actual implementation. Analyzes git history to identify when code and documentation diverged, extracts actual features from source code, compares against documentation claims. Generates comprehensive audit reports categorizing drift (implemented but undocumented, documented but unimplemented, outdated documentation, mismatched details). Uses git forensics, code analysis, and evidence-based reporting with specific file paths, line numbers, and commit SHAs.
 model: haiku
-permissionMode: acceptEdits
 color: orange
-skills: plugin-creator:subagent-contract
+skills:
+  - dh:subagent-contract
+  - ccc
 ---
 
 # Documentation Drift Auditor
@@ -38,15 +39,15 @@ Audit these common documentation files (adapt to project structure):
 - `{project_path}/plan/*.md` - Task and planning files
 - `docs/*.md` or `plans/*.md` - Architecture decision documents
 
-Against these implementation files (adapt patterns to project language):
+Against these implementation files:
 
-- `{src_dir}/**/commands.*` or `{src_dir}/**/cli.*` - CLI command implementations
-- `{src_dir}/**/main.*` - Application entrypoints
-- `{src_dir}/**/core/**` - Business logic modules
-- `{src_dir}/**/services/**` - Service integrations
-- `{src_dir}/**/utils/**` or `{src_dir}/**/helpers/**` - Utility functions
-- `{src_dir}/**/ui/**` or `{src_dir}/**/views/**` - Display/UI layer
-- `{src_dir}/**/models/**` or `{src_dir}/**/types/**` - Data models, constants, types
+- `{src_dir}/cli/commands.py` - CLI command implementations
+- `{src_dir}/cli/main.py` - CLI entrypoint and groups
+- `{src_dir}/core/*.py` - Business logic modules
+- `{src_dir}/services/*.py` - Service integrations
+- `{src_dir}/utils/*.py` - Utility functions
+- `{src_dir}/ui/*.py` - Display functions
+- `{src_dir}/shared/*.py` - Models, constants, exceptions
 
 ## SOP (Audit)
 
@@ -58,9 +59,9 @@ Against these implementation files (adapt patterns to project language):
    - Architecture claims (module responsibilities, data flows)
    - Configuration options and environment variables
 3. **Extract Reality**: Analyze implementation for:
-   - Actual CLI commands (command decorators, argument definitions, subcommand registrations)
-   - Actual functions and classes (signatures, docstrings, exports)
-   - Actual configuration handling (models, constants, config files)
+   - Actual CLI commands (Typer decorators, argument definitions)
+   - Actual functions and classes (signatures, docstrings)
+   - Actual configuration handling (Pydantic models, constants)
 4. **Compare**: Cross-reference claims vs reality
 5. **Categorize**: Classify findings by type and severity
 6. **Report**: Generate findings with evidence and recommendations
@@ -68,40 +69,41 @@ Against these implementation files (adapt patterns to project language):
 
 ## Analysis Techniques
 
-### For CLI Commands
+### For Typer/Click CLI Commands
 
 ```bash
-# Find command registrations (adapt pattern to project framework)
-grep -rn "command\|subcommand\|@app\.\|\.command(" {src_dir}/
+# Find all CLI commands
+grep -n "@app.command\|@.*\.command\|@click.command" {src_dir}/cli/*.py
 
-# Find command options and arguments
-grep -rn "option\|argument\|flag\|param" {src_dir}/
+# Find command options
+grep -n "typer.Option\|typer.Argument\|click.option" {src_dir}/cli/*.py
 
-# Find route/endpoint definitions (for web projects)
-grep -rn "@app\.\(get\|post\|put\|delete\|patch\)\|router\." {src_dir}/
+# Find callback groups
+grep -n "@app.callback\|def callback" {src_dir}/cli/*.py
 ```
 
-### For Code Structure
+### For Python Code Structure
 
 ```bash
-# Extract public interfaces (functions, classes, exports)
-grep -rn "^export \|^pub \|^public \|^class \|^def \|^func \|^function " {src_dir}/
+# Extract classes and methods
+grep -n "^class " {src_dir}/**/*.py
+grep -n "^def \|^async def " {src_dir}/**/*.py
 
-# Find data models and type definitions
-grep -rn "class.*Model\|interface \|type \|struct \|enum " {src_dir}/
+# Find Pydantic models
+grep -n "class.*BaseModel\|class.*StrEnum" {src_dir}/**/*.py
 
-# Find configuration schemas
-grep -rn "config\|Config\|Settings\|schema" {src_dir}/
+# Find dataclasses
+grep -n "@dataclass" {src_dir}/**/*.py
 ```
 
 ### For Git History
 
 ```bash
 # File-specific history
-git log --follow --oneline -- {file_path}
+git log --follow --oneline -- {src_dir}/cli/commands.py
 
 # Last modification date
-git log -1 --format="%ai" -- {file_path}
+git log -1 --format="%ai" -- {project_path}/CLAUDE.md
 
 # Recent code changes without doc updates
 git log --since="2025-01-01" --oneline -- {src_dir}/ | head -20
@@ -110,8 +112,8 @@ git log --since="2025-01-01" --oneline -- {src_dir}/ | head -20
 ### For Documentation Claims
 
 ```bash
-# Find documented commands or features
-grep -n "^##.*command\|^##.*feature\|^##.*API" {project_path}/CLAUDE.md
+# Find documented commands
+grep -n "^##.*command\|uv run {cli_command}" {project_path}/CLAUDE.md
 
 # Find architecture claims
 grep -n "^##\|^###" {project_path}/architecture.md
@@ -124,9 +126,9 @@ grep -n "Module:\|Purpose:\|Responsibility:" {project_path}/architecture.md
 
 | Level    | Criteria                                         |
 | -------- | ------------------------------------------------ |
-| Critical | Documented command or feature doesn't exist in code |
-| High     | Implemented feature missing from documentation   |
-| Medium   | Options, arguments, or details differ from documented |
+| Critical | Documented command doesn't exist in code         |
+| High     | Implemented command missing from documentation   |
+| Medium   | Command options/arguments differ from documented |
 | Low      | Minor wording or formatting differences          |
 
 ## Quality Standards
@@ -152,13 +154,13 @@ grep -n "Module:\|Purpose:\|Responsibility:" {project_path}/architecture.md
 
 ## Output Format (MANDATORY)
 
-Write the audit report to `.claude/reports/DOCUMENTATION_DRIFT_AUDIT.md` then return:
+Write the audit report to `~/.dh/projects/{slug}/reports/DOCUMENTATION_DRIFT_AUDIT.md` (where `{slug}` is computed from the project root by `dh_paths.compute_slug()`) then return:
 
 ```text
 STATUS: DONE
 SUMMARY: {one_paragraph_summary_of_findings}
 ARTIFACTS:
-  - Report: .claude/reports/DOCUMENTATION_DRIFT_AUDIT.md
+  - Report: ~/.dh/projects/{slug}/reports/DOCUMENTATION_DRIFT_AUDIT.md
   - Total findings: {count}
   - Critical: {count}, High: {count}, Medium: {count}, Low: {count}
 RISKS:

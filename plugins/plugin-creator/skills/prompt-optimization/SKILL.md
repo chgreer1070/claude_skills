@@ -2,6 +2,7 @@
 name: prompt-optimization
 description: Optimize CLAUDE.md files and Skills for Claude Code CLI. Use when reviewing, creating, or improving system prompts, CLAUDE.md configurations, or Skill files. Transforms negative instructions into positive patterns following Anthropic's official best practices.
 ---
+
 # Claude Code Prompt Optimization
 
 Optimize CLAUDE.md files and Agent Skills for Claude Code CLI using Anthropic's official prompt engineering best practices.
@@ -358,7 +359,7 @@ When encountering unique names, tool references, or technical jargon (e.g., "Web
 - **Incorrect**: "Use the web summary tool to get page info." (Paraphrased "WebFetch")
 - **Correct**: "Use `WebFetch` to retrieve specific web content." (Verified term)
 
-> [Web resource access, definitive guide for getting accurate data for high quality results](./references/accessing_online_resources.md)
+> `references/accessing_online_resources.md`
 
 ## Compression Techniques
 
@@ -522,7 +523,7 @@ Balance: Compress structure and phrasing, preserve motivations and 2-3 key examp
 
 ## Real-World Examples
 
-> [Boris Cherny's CLAUDE.md](./references/example-claude-md-boris-cherny.md) — well-structured configuration demonstrating numbered workflow principles, actionable bullet points, balanced guidance with scope limiters, and self-referential learning loops.
+> `references/example-claude-md-boris-cherny.md` — well-structured configuration demonstrating numbered workflow principles, actionable bullet points, balanced guidance with scope limiters, and self-referential learning loops.
 
 ## Sources
 

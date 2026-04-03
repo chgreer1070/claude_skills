@@ -7,6 +7,7 @@ model: haiku
 context: fork
 user-invocable: true
 ---
+
 Analyze these staged changes and generate commit message, then commit the changes:
 !`uv run prek run >/dev/null 2>&1 || git add -u`
 !`git --no-pager status || true`

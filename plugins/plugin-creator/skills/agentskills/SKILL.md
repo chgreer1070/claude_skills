@@ -3,13 +3,14 @@ name: agentskills
 description: Agent Skills Open Standard reference (agentskills.io). Use when creating portable skills for Claude Code, Cursor, Gemini CLI, OpenAI Codex, VS Code, Roo Code, and 20+ compatible agents. Covers frontmatter schema, naming rules, directory structure, progressive disclosure, validation, and authoring. Load before creating cross-agent skills.
 user-invocable: true
 ---
+
 # Agent Skills Open Standard
 
 The Agent Skills format is an open standard for extending AI agent capabilities with specialized knowledge and workflows. Originally developed by Anthropic, adopted by 25+ agent products.
 
 **Source:** <https://agentskills.io>
 
-**When to use this skill:** Before creating any skill that should be portable across multiple agent products. For Claude Code-specific features (hooks, context fork, model selection, invocation control), see [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) instead.
+**When to use this skill:** Before creating any skill that should be portable across multiple agent products. For Claude Code-specific features (hooks, context fork, model selection, invocation control), see `../claude-skills-overview-2026/SKILL.md` instead.
 
 ---
 
@@ -158,7 +159,7 @@ Static resources used in output (templates, images, data files). Not loaded into
 
 ## Authoring Best Practices
 
-For the complete Anthropic authoring guide, see [references/best-practices.md](./references/best-practices.md).
+For the complete Anthropic authoring guide, see `references/best-practices.md`.
 
 Key principles:
 
@@ -233,15 +234,15 @@ The open standard defines a **portable subset**. Claude Code extends it with add
 
 **For portable skills:** Use only the open standard fields. Other agents will ignore unknown fields, but keeping frontmatter clean improves compatibility.
 
-**For Claude Code skills:** See [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) for the full extended schema.
+**For Claude Code skills:** See `../claude-skills-overview-2026/SKILL.md` for the full extended schema.
 
 ---
 
 ## Detailed References
 
-- **Full specification details**: See [references/specification.md](./references/specification.md)
-- **Authoring best practices**: See [references/best-practices.md](./references/best-practices.md)
-- **Agent integration guide**: See [references/integration.md](./references/integration.md)
+- **Full specification details**: See `references/specification.md`
+- **Authoring best practices**: See `references/best-practices.md`
+- **Agent integration guide**: See `references/integration.md`
 
 ## External Links
 

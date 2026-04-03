@@ -1,6 +1,6 @@
 ---
 name: research-utilization-assessor
-description: "Assess whether an existing skill, agent, or workflow in this repo could directly call, depend on, or integrate the tool described in a research entry as an external service, API, or SDK dependency. Produces a utilization proposal file. Spawned concurrently with research-insight-extractor by the research-curator orchestrator."
+description: Assess whether an existing skill, agent, or workflow in this repo could directly call, depend on, or integrate the tool described in a research entry as an external service, API, or SDK dependency. Produces a utilization proposal file. Spawned concurrently with research-insight-extractor by the research-curator orchestrator.
 model: haiku
 ---
 

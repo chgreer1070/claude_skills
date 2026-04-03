@@ -3,13 +3,16 @@ name: claude-skills-overview-2026
 description: Reference guide for Claude Code skills system (March 2026). Use when creating, modifying, or understanding skills, SKILL.md format, frontmatter fields, hooks, context fork, or skill best practices.
 user-invocable: true
 ---
+
 # Claude Code Skills System - Complete Reference (March 2026)
 
 Skills extend what Claude can do. Create a `SKILL.md` file with instructions, and Claude adds it to its toolkit. Claude uses skills when relevant, or you can invoke one directly with `/skill-name`.
 
+> To create or improve skills using a guided workflow, load the `/plugin-creator:skill-creator` skill.
+
 **Skills and slash commands are now unified** - they are the same system. A file at `.claude/commands/review.md` and a skill at `.claude/skills/review/SKILL.md` both create `/review` and work identically. If a skill and a command share the same name, the skill takes precedence. Skills are the recommended approach as they support additional features like supporting files and advanced frontmatter options.
 
-> **Portable skills?** This reference covers **Claude Code-specific** features (hooks, context fork, model selection, invocation control). If you need to create skills that work across Claude Code, Cursor, Gemini CLI, OpenAI Codex, VS Code, and 20+ other agents, see the [Agent Skills Open Standard](../agentskills/SKILL.md) skill instead — it covers the portable subset of the format defined at [agentskills.io](https://agentskills.io).
+> **Portable skills?** This reference covers **Claude Code-specific** features (hooks, context fork, model selection, invocation control). If you need to create skills that work across Claude Code, Cursor, Gemini CLI, OpenAI Codex, VS Code, and 20+ other agents, see the `../agentskills/SKILL.md` skill instead — it covers the portable subset of the format defined at [agentskills.io](https://agentskills.io).
 
 ---
 
@@ -23,11 +26,11 @@ Bundled skills ship with Claude Code and are available in every session. Unlike 
 
 - **`/debug [description]`**: Troubleshoots your current Claude Code session by reading the session debug log. Optionally describe the issue to focus the analysis.
 
-- **`/loop [interval] <prompt>`**: Schedules a recurring prompt at an interval. See [Scheduled Tasks Reference](./resources/scheduled-tasks.md).
+- **`/loop [interval] <prompt>`**: Schedules a recurring prompt at an interval. See `resources/scheduled-tasks.md`.
 
-Claude Code also includes a bundled developer platform skill that activates automatically when your code imports the Anthropic SDK.
+- **`/claude-api`**: Loads Claude API reference material for your project's language (Python, TypeScript, Java, Go, Ruby, C#, PHP, or cURL) and Agent SDK reference. Covers tool use, streaming, batches, structured outputs, and common pitfalls. Also activates automatically when your code imports `anthropic`, `@anthropic-ai/sdk`, or `claude_agent_sdk`.
 
-**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Bundled skills")
+**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Bundled skills", accessed 2026-03-17)
 
 ---
 
@@ -67,7 +70,7 @@ hooks:
 Your instructions here...
 ```
 
-**Validation**: Use `claude plugin validate` to validate plugin structure. For skills bundled in plugins, see [./claude-plugins-reference-2026/SKILL.md](../claude-plugins-reference-2026/SKILL.md) for plugin.json schema requirements.
+**Validation**: Use `claude plugin validate` to validate plugin structure. For skills bundled in plugins, see `../claude-plugins-reference-2026/SKILL.md` for plugin.json schema requirements.
 
 ---
 
@@ -75,7 +78,7 @@ Your instructions here...
 
 All fields are optional. Only `description` is recommended so Claude knows when to use the skill.
 
-The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools` are part of the [Agent Skills Open Standard](../agentskills/SKILL.md) and are portable across all compatible agents. The remaining fields below are Claude Code extensions.
+The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools` are part of the `../agentskills/SKILL.md` and are portable across all compatible agents. The remaining fields below are Claude Code extensions.
 
 | Field                      | Required    | Type    | Max Length | Description                                                                                                                                           |
 | -------------------------- | ----------- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -83,7 +86,7 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 | `description`              | Recommended | string  | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
 | `argument-hint`            | No          | string  | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
 | `allowed-tools`            | No          | string  | —          | Tools Claude can use without asking permission when this skill is active (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`              |
-| `model`                    | No          | string  | —          | Model to use when this skill is active. Example: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`, `opus`, `sonnet`, `haiku`                    |
+| `model`                    | No          | string  | —          | Model to use when this skill is active. Use aliases `opus`, `sonnet`, `haiku` (preferred) or full model IDs like `claude-opus-4-6`, `claude-sonnet-4-6`. |
 | `context`                  | No          | string  | —          | Set to `fork` to run in a forked subagent context. See [Context Fork Behavior](#context-fork-behavior) for tool restrictions.                         |
 | `agent`                    | No          | string  | —          | Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent. Default: `general-purpose`    |
 | `user-invocable`           | No          | boolean | —          | Set to `false` to hide from the `/` menu. Use for background knowledge users shouldn't invoke directly. Default: `true`.                              |
@@ -106,6 +109,14 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 ## Skill Tokenomics
 
 Skills use progressive disclosure - only frontmatter loads initially (~100 tokens), full content loads on activation.
+
+The context window is a public good shared with everything else Claude needs to know. Only add context Claude does not already have. Before writing each section, challenge it:
+
+- Does Claude really need this information to complete the task?
+- Can I assume Claude already knows this from training?
+- Does this paragraph justify its token cost?
+
+SOURCE: Anthropic skill-authoring best practices (docs.anthropic.com, accessed 2026-03-23)
 
 ### Budget Constraints
 
@@ -166,6 +177,7 @@ Skills support string substitution for dynamic values in the skill content:
 | `$ARGUMENTS[N]`        | Access a specific argument by 0-based index, such as `$ARGUMENTS[0]` for the first argument.                                                 |
 | `$N`                   | Shorthand for `$ARGUMENTS[N]`, such as `$0` for the first argument or `$1` for the second.                                                   |
 | `${CLAUDE_SESSION_ID}` | The current session ID. Useful for logging, creating session-specific files, or correlating skill output with sessions.                      |
+| `${CLAUDE_SKILL_DIR}`  | Absolute path to the directory containing the current SKILL.md file. For plugin skills, this is the skill's subdirectory within the plugin, not the plugin root. Use in bash injection commands to reference scripts or files bundled with the skill, regardless of the current working directory. |
 
 **Example with positional arguments:**
 
@@ -220,7 +232,7 @@ Supporting files can also live at the skill root (e.g., `reference.md`, `forms.m
 1. **Managed/Enterprise** - System-level (see [managed settings](/en/permissions#managed-settings))
 2. **Personal** - `~/.claude/skills/`
 3. **Project** - `.claude/skills/`
-4. **Plugin** - Bundled with plugins (see [./claude-plugins-reference-2026/SKILL.md](../claude-plugins-reference-2026/SKILL.md))
+4. **Plugin** - Bundled with plugins (see `../claude-plugins-reference-2026/SKILL.md`)
 
 When skills share the same name across levels, higher-priority locations win: enterprise > personal > project. Plugin skills use a `plugin-name:skill-name` namespace, so they cannot conflict with other levels.
 
@@ -329,7 +341,7 @@ Agent teams coordinate multiple independent Claude Code instances with inter-age
 
 Use agent teams when 3+ workers need to share findings, challenge each other, and coordinate independently. Use subagents when workers report back without needing cross-communication.
 
-For complete agent teams reference including architecture, display modes, lifecycle management, use case patterns, and quality gate hooks (`TeammateIdle`, `TaskCompleted`), see [Agent Teams Reference](./resources/agent-teams.md). For implementation-level API details (TeammateTool operations, message formats, spawn backends), activate the `/orchestrating-swarms` skill.
+For complete agent teams reference including architecture, display modes, lifecycle management, use case patterns, and quality gate hooks (`TeammateIdle`, `TaskCompleted`), see `resources/agent-teams.md`. For implementation-level API details (TeammateTool operations, message formats, spawn backends), activate the `/orchestrating-swarms` skill.
 
 **Source**: [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams.md) (accessed 2026-02-06)
 
@@ -522,7 +534,7 @@ Only runs when user types `/deploy-production`.
 
 ## Installation
 
-**Via Plugins**: Skills can be bundled in plugins. See [./claude-plugins-reference-2026/SKILL.md](../claude-plugins-reference-2026/SKILL.md) for plugin creation and distribution.
+**Via Plugins**: Skills can be bundled in plugins. See `../claude-plugins-reference-2026/SKILL.md` for plugin creation and distribution.
 
 **Marketplace**:
 
@@ -564,18 +576,19 @@ Only runs when user types `/deploy-production`.
 
 ## Related Skills
 
-- **[Agent Skills Open Standard](../agentskills/SKILL.md)** — The portable specification (agentskills.io). Use when creating skills for cross-agent compatibility. Covers the subset of frontmatter fields (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`) recognized by all 25+ compatible agents.
-- **[Claude Plugins Reference](../claude-plugins-reference-2026/SKILL.md)** — Plugin creation, distribution, and plugin.json schema.
-- **[Claude Hooks Reference](../hooks-guide/SKILL.md)** — Complete hook events, matchers, and configuration. Cross-platform coverage with Node.js CJS and Python guides.
-- **[Claude Code Skills Official](./resources/claude-code-skills-official.md)** — Authoritative specification from code.claude.com: frontmatter fields, discovery rules, invocation control, budget limits, and bundled skills.
-- **[Scheduled Tasks Reference](./resources/scheduled-tasks.md)** — CronCreate, CronList, CronDelete, /loop syntax, cron expressions, plugin integration patterns.
-- **[Output Styles Reference](./resources/output-styles.md)** — Custom output styles, plugin.json outputStyles field, comparison with CLAUDE.md and skills.
-- **[Agent Teams Reference](./resources/agent-teams.md)** — TeammateIdle/TaskCompleted hooks, team architecture, display modes, lifecycle.
+- **`../agentskills/SKILL.md`** — The portable specification (agentskills.io). Use when creating skills for cross-agent compatibility. Covers the subset of frontmatter fields (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`) recognized by all 25+ compatible agents.
+- **`../claude-plugins-reference-2026/SKILL.md`** — Plugin creation, distribution, and plugin.json schema.
+- **`../hooks-guide/SKILL.md`** — Complete hook events, matchers, and configuration. Cross-platform coverage with Node.js CJS and Python guides.
+- **`resources/claude-code-skills-official.md`** — Authoritative specification from code.claude.com: frontmatter fields, discovery rules, invocation control, budget limits, and bundled skills.
+- **`resources/scheduled-tasks.md`** — CronCreate, CronList, CronDelete, /loop syntax, cron expressions, plugin integration patterns.
+- **`resources/headless-agent-sdk.md`** — Running Claude Code programmatically via `claude -p`. Covers the critical constraint that skills are unavailable in `-p` mode, all CLI flags, output formats (json/stream-json/schema), automation patterns, and design checklist for plugin authors.
+- **`resources/output-styles.md`** — Custom output styles, plugin.json outputStyles field, comparison with CLAUDE.md and skills.
+- **`resources/agent-teams.md`** — TeammateIdle/TaskCompleted hooks, team architecture, display modes, lifecycle.
 
 ## Sources
 
-- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-03-01) — full reference at [Claude Code Skills Official](./resources/claude-code-skills-official.md)
-- **Standards**: [Agent Skills Open Standard](https://agentskills.io) — see also the [agentskills skill](../agentskills/SKILL.md) for the full portable specification reference
+- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-03-01) — full reference at `resources/claude-code-skills-official.md`
+- **Standards**: [Agent Skills Open Standard](https://agentskills.io) — see also the `../agentskills/SKILL.md` for the full portable specification reference
 - **Examples**: [anthropics/skills](https://github.com/anthropics/skills)
 - **Blog**: [Anthropic Engineering Blog - Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
 - **Experimental**: Context fork tool restrictions verified 2026-01-22

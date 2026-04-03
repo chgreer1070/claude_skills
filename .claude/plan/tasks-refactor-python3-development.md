@@ -545,7 +545,7 @@
 
 **Verification Steps**:
 
-1. Delegate to plugin-assessor: `Task(agent="plugin-assessor", prompt="Assess ./plugins/python3-development for marketplace readiness")`
+1. Delegate to plugin-assessor: `Agent(subagent_type="plugin-assessor", prompt="Assess ./plugins/python3-development for marketplace readiness")`
 2. Verify score improved from 62/100 baseline
 3. Verify no critical issues remain in assessment report
 
@@ -585,7 +585,7 @@
 
 **Verification Steps**:
 
-1. Delegate to plugin-docs-writer: `Task(agent="plugin-docs-writer", prompt="Generate complete documentation for ./plugins/python3-development")`
+1. Delegate to plugin-docs-writer: `Agent(subagent_type="plugin-docs-writer", prompt="Generate complete documentation for ./plugins/python3-development")`
 2. Verify README.md lists all 5 skills with descriptions
 3. Verify command examples match frontmatter argument-hint fields
 

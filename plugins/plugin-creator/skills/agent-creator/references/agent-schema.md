@@ -175,7 +175,7 @@ tools: Bash(git:*), Bash(npm:install)
 
 **Available Tools**: Read, Write, Edit, Bash, Grep, Glob, NotebookEdit, AskUserQuestion, WebSearch, Agent, ToolSearch, Skill
 
-**Note**: In v2.1.63, the Task tool was renamed to Agent. Old `Task(...)` references still work as aliases. MCP tools from installed servers are also available and follow pattern `mcp__server-name__tool-name`.
+**Note**: MCP tools from installed servers are also available and follow pattern `mcp__server-name__tool-name`. Each MCP tool must be listed by its exact registered name with correct casing — wildcards (e.g., `mcp__Ref__*`) do not resolve and silently fail. Case is sensitive (e.g., `mcp__Ref__` not `mcp__ref__`). Agents with unresolvable tool names receive no MCP tools and hallucinate success. Verified via controlled experiment 2026-03-22.
 
 **Pattern Matching Examples**:
 
@@ -345,10 +345,10 @@ mcpServers:
     cwd: .claude/skills/backlog
 ```
 
-When the agent lists MCP tools in its `tools` field, use the pattern `mcp__server-name__tool-name`:
+When the agent lists MCP tools in its `tools` field, use the pattern `mcp__server-name__tool-name`. Use exact registered names — wildcards (`mcp__server__*`) do not resolve. Case is sensitive (`mcp__Ref__` not `mcp__ref__`). Silent failure: agents with wrong names receive no MCP tools and hallucinate success (verified 2026-03-22).
 
 ```yaml
-tools: Read, Grep, mcp__backlog__backlog_list, mcp__backlog__backlog_view
+tools: Read, Grep, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_view
 ```
 
 ### memory
@@ -516,6 +516,7 @@ Before saving an agent, verify:
 
    - [ ] All tools are valid tool names
    - [ ] Pattern syntax correct for Bash restrictions
+   - [ ] MCP tool names use exact registered names — no wildcards, correct casing
 
 5. **skills** (if specified)
 

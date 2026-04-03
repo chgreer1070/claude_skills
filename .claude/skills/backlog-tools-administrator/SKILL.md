@@ -1,7 +1,7 @@
 ---
 name: backlog-tools-administrator
-description: "Administer the backlog tooling ecosystem when a capability gap is discovered. Invoke when backlog.py, backlog skills, or backlog agents lack a needed operation and a workaround was used or is about to be used. Classifies gaps as script (delegates to @python-cli-architect), process (loads improve-processes), or documentation (delegates to @contextual-ai-documentation-optimizer). Domain: backlog.py, create/work/groom-backlog-item skills, backlog-item-groomer agent, hooks, templates, references, rules, and tests."
-argument-hint: "<gap-description>"
+description: 'Administer the backlog tooling ecosystem when a capability gap is discovered. Invoke when backlog.py, backlog skills, or backlog agents lack a needed operation and a workaround was used or is about to be used. Classifies gaps as script (delegates to @python-cli-architect), process (loads improve-processes), or documentation (delegates to @contextual-ai-documentation-optimizer). Domain: backlog.py, create/work/groom-backlog-item skills, backlog-item-groomer agent, hooks, templates, references, rules, and tests.'
+argument-hint: <gap-description>
 ---
 
 <gap_description>$ARGUMENTS</gap_description>
@@ -136,7 +136,7 @@ Verify the gap is closed:
    uv run pytest .claude/skills/backlog/tests/
    ```
 
-   For MCP tool additions: call the new `mcp__backlog__<tool_name>` tool with valid parameters and confirm the returned dict contains expected result keys (not an `error` key).
+   For MCP tool additions: call the new `mcp__plugin_dh_backlog__<tool_name>` tool with valid parameters and confirm the returned dict contains expected result keys (not an `error` key).
 
 2. **Process changes**: confirm the new rule/workflow handles the original gap scenario without ambiguity.
 

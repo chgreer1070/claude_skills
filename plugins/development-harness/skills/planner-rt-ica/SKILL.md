@@ -5,6 +5,7 @@ argument-hint: '[optional-scope-or-task-id]'
 user-invocable: false
 disable-model-invocation: false
 ---
+
 # Planner RT-ICA (Planning-Phase Input Completeness Analysis)
 
 ## Role
@@ -18,6 +19,30 @@ dependency-first plan to be produced.
 This skill runs as a **pre-pass** before task decomposition and task writing.
 
 ---
+
+## Complexity Model
+
+Task complexity is the ratio of project-specific knowledge required to context window available — not implementation difficulty.
+
+Training data covers craft knowledge (language patterns, tooling, frameworks). That is free. What consumes context budget is project-specific knowledge: schemas, pin-outs, conventions, power constraints, existing interfaces, user preferences. This knowledge must be loaded before an agent can act.
+
+The planner should use this when sizing tasks:
+
+```mermaid
+flowchart TD
+    Conditions["Conditions from RT-ICA"] --> Estimate["For each task: estimate how much<br>project-specific context the executor<br>must load to satisfy its conditions"]
+    Estimate --> Shared{Do multiple tasks<br>need the same<br>knowledge loaded?}
+    Shared -->|Yes| Combine["Combine into one task —<br>knowledge loaded once,<br>both steps execute in<br>remaining window space"]
+    Shared -->|No| Size{Knowledge payload<br>vs context window?}
+    Size -->|"Fits with room to work"| Single["Single task"]
+    Size -->|"Leaves little room"| Split["Decompose along<br>knowledge boundaries —<br>each subtask needs a<br>smaller knowledge subset"]
+    Combine --> Annotate
+    Single --> Annotate
+    Split --> Annotate
+    Annotate["Annotate each task with<br>its knowledge requirements<br>so the executor knows<br>what to load"]
+```
+
+**Step boundaries follow knowledge boundaries, not implementation boundaries.** Two steps sharing the same knowledge payload should be one task. A step requiring a distinct, large knowledge set deserves its own agent and context window.
 
 ## Core Principles
 
@@ -40,6 +65,12 @@ This skill runs as a **pre-pass** before task decomposition and task writing.
 4. **Execution safety**
    - Any task with missing critical inputs must be marked such that worker agents
      will BLOCK rather than assume.
+
+5. **Well-lit trail, not locked gates**
+   - Guidance that illuminates the best path is more durable than enforcement that
+     locks a specific route. Every "MUST" carries maintenance cost — when constraints
+     become stale, they block good work rather than enabling it. Prefer clear guidance
+     over rigid enforcement where the outcome is equivalent.
 
 ---
 
@@ -119,10 +150,16 @@ When this skill reports missing inputs:
   - wire them as dependencies,
   - allow unaffected tasks to proceed in parallel.
 
-- The planner MUST NOT:
-  - invent placeholder values,
-  - silently downgrade requirements,
-  - remove tasks to avoid uncertainty.
+- When the planner catches itself generating an unsourced value or constraint:
+  - Redirect it — add the gap as a MISSING condition with the generated value as a suggested default
+  - Do not present unsourced content as verified fact
+  - Do not silently downgrade requirements or remove tasks to avoid uncertainty
+  - **Reflection checkpoint:** Before classifying each input as PRESENT / PARTIAL / MISSING,
+    use the sequential-thinking MCP to reflect: "Can I source this from
+    the provided material, or am I filling the gap from training patterns?" This makes the
+    redirection structural — a tool call that cannot be skipped.
+
+- **Data Deletion Fidelity is not a gap — it is a hard block.** When the planning scope describes a task that deletes source data AND the acceptance criteria lack a content completeness check against real production data: do NOT classify this as `APPROVED-WITH-GAPS`; do NOT emit unblock tasks and proceed; emit `BLOCKED-FOR-PLANNING` with the reason: "Task deletes source data without a real-data fidelity gate. Add: (1) content completeness assertion against real production records, (2) explicit deletion gate requiring zero-data-loss confirmation before deletion is permitted." This rule takes precedence over the general APPROVED-WITH-GAPS path. Data loss is not a gap that can be resolved later — it is irreversible.
 
 ---
 

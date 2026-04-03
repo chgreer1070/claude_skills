@@ -1,7 +1,8 @@
 ---
 name: pypi-readme-creator
-description: When creating a README for a Python package. When preparing a package for PyPI publication. When README renders incorrectly on PyPI. When choosing between README.md and README.rst. When running twine check and seeing rendering errors. When configuring readme field in pyproject.toml.
+description: Use when creating a README for a Python package, preparing for PyPI publication, fixing README rendering errors found by twine check, choosing between README.md and README.rst, or configuring the readme field in pyproject.toml. Generates professional, PyPI-compliant README files.
 ---
+
 # PyPI README Creator
 
 Generate professional, PyPI-compliant README files in Markdown or reStructuredText that render correctly on PyPI, GitHub, GitLab, and BitBucket.
@@ -644,9 +645,9 @@ with open('README.md', 'w', newline='\n') as f:
 
 See reference files for complete examples:
 
-- [./references/markdown-template.md](./references/markdown-template.md) - Modern Markdown README template
-- [./references/rst-template.rst](./references/rst-template.rst) - reStructuredText README template
-- [./references/sphinx-readme-example.md](./references/sphinx-readme-example.md) - Using sphinx-readme extension
+- `references/markdown-template.md` - Modern Markdown README template
+- `references/rst-template.rst` - reStructuredText README template
+- `references/sphinx-readme-example.md` - Using sphinx-readme extension
 
 ## Related Skills and Tools
 
@@ -665,6 +666,8 @@ See reference files for complete examples:
 - `pandoc` - Convert between Markdown and RST
 
 ## Quality Standards
+
+Consult `../python3-development/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
 
 Before finalizing a README:
 

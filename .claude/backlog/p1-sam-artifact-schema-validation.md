@@ -3,14 +3,13 @@ name: 'SAM: Artifact Schema Validation'
 description: Define formal validation rules or JSON schemas for artifact formats. Currently only templates provided. Enable automated validation at stage boundaries.
 metadata:
   topic: sam-artifact-schema-validation
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #88'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#88'
-  plan: ''
-  last_synced: '2026-03-14T16:01:16Z'
+  last_synced: '2026-03-22T15:10:52Z'
 ---
 
 ## Story

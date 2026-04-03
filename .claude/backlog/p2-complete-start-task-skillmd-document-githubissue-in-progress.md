@@ -3,14 +3,13 @@ name: 'Complete start-task SKILL.md: document github_issue in-progress sync step
 description: 'T5 SKILL.md update is incomplete: start-task does not document writing github_issue update to in-progress status when a task starts.'
 metadata:
   topic: complete-start-task-skillmd-document-githubissue-in-progress
-  source: Code review of migrate-sam-task-github-subissues
-  added: '2026-03-06'
+  source: 'GitHub Issue #500'
+  added: '2026-03-22'
   priority: P2
   type: Docs
   status: needs-grooming
   issue: '#500'
-  last_synced: '2026-03-14T16:00:25Z'
-  plan: plan/tasks-33-migrate-sam-task-github-subissues-followup-4.md
+  last_synced: '2026-03-22T15:10:01Z'
 ---
 
 ## Story

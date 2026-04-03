@@ -3,6 +3,7 @@ name: hooks-io-api
 description: Hook JSON input/output API reference — what data hooks receive via stdin and what JSON they can return to control Claude Code behavior. Use when writing hook scripts, checking exit code behavior, building JSON output for PreToolUse permissions, or understanding event-specific input schemas.
 user-invocable: true
 ---
+
 # Claude Code Hooks — I/O API Reference (January 2026)
 
 JSON schemas for hook stdin input and stdout output per event. For hook system fundamentals, activate `Skill(skill: "plugin-creator:hooks-core-reference")`. For working examples, activate `Skill(skill: "plugin-creator:hooks-patterns")`.

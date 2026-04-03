@@ -1,1 +1,0 @@
-../../plugins/python3-development/agents/python-cli-architect.md

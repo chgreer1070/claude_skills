@@ -1,7 +1,8 @@
 ---
 name: clang-format
-description: "Configure clang-format code formatting. Use when: user mentions clang-format or .clang-format, analyzing code style/patterns, creating/modifying formatting config, troubleshooting formatting, brace styles/indentation/spacing/alignment/pointer alignment, or codifying conventions."
+description: 'Configure clang-format code formatting. Use when: user mentions clang-format or .clang-format, analyzing code style/patterns, creating/modifying formatting config, troubleshooting formatting, brace styles/indentation/spacing/alignment/pointer alignment, or codifying conventions.'
 ---
+
 # clang-format Configuration
 
 Configure the clang-format code formatting tool using ready-to-use templates, integration scripts, and comprehensive reference documentation.

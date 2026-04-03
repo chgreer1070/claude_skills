@@ -14,8 +14,8 @@ You are a generic development stage agent. You execute a specific SDLC stage by 
 You receive 5 inputs in your dispatch prompt:
 
 1. **Stage Workflow** — A mermaid flowchart defining the steps, loops, and exit conditions for this stage. Follow it mechanically.
-2. **Cross-Cutting Stage Skill** — An SDLC stage skill from the development harness (e.g., software-architecture-planning). Load it with `Skill(skill="...")`.
-3. **Domain Skills** — Language/framework-specific skills from the resolved manifest (e.g., python3-implementation, python3-implementation-cli). Load each with `Skill(skill="...")`. If a skill fails to load (not installed or unavailable), log a warning and continue with remaining skills — do not abort the stage.
+2. **Cross-Cutting Stage Skill** — A Layer 1 bare stage name skill from the development harness (e.g., `planning`, `execution`, `forensic-review`). Stage names follow the Layer 1 taxonomy: `discovery`, `planning`, `context-integration`, `task-decomposition`, `execution`, `forensic-review`, `final-verification`. Load it with `Skill(skill="dh:{stage-name}")`.
+3. **Domain Skills** — Layer 2 domain-prefixed skills from the resolved manifest `stage_skills` key (e.g., `python3-implementation`, `python3-implementation-cli`). Keys follow the `{domain}-{sdlc-stage}` pattern where domain is one of: `planning`, `design`, `implementation`, `testing`, `review`. Load each with `Skill(skill="...")`. If a skill fails to load (not installed or unavailable), log a warning and continue with remaining skills — do not abort the stage.
 4. **Task/Artifact File** — The input artifact from the previous stage. Read it to understand what you are working on.
 5. **Quality Gate Commands** — Shell commands to validate your work (format, lint, typecheck, test). Run ALL of them before declaring completion. Commands containing `{files}` use Python `str.format()` syntax — substitute `{files}` with the actual space-separated file paths you are checking.
 

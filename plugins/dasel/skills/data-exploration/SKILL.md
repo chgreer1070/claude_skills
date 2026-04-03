@@ -2,6 +2,7 @@
 name: data-exploration
 description: Use when exploring unknown structured data files with dasel v3 — discover schema, list keys, find nested values, sample arrays, identify data types across JSON, YAML, TOML, XML, CSV, HCL, INI formats
 ---
+
 # Data Exploration with Dasel v3
 
 <when_to_use>

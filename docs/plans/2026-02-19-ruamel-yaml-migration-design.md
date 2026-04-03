@@ -135,7 +135,7 @@ Delete inline Python blocks in `.github/workflows/code-quality.yml` (lines ~430-
 
 **Project convention docs** (update pyyaml -> ruamel.yaml):
 
-- `.claude/docs/TASK_FILE_FORMAT.md`
+- `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 - `plugins/plugin-creator/references/ARCHITECTURE.md`
 - `plugins/plugin-creator/references/USAGE.md`
 - `plugins/plugin-creator/skills/add-doc-updater/references/doc-updater-template.md`

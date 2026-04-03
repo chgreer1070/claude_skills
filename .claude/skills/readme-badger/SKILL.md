@@ -2,6 +2,7 @@
 name: readme-badger
 description: Design and select shields.io badges for README files. Use when writing or updating READMEs, choosing badge layouts, selecting badge styles, or adding project health indicators. Covers shields.io URL patterns, Simple Icons logos, layout conventions from popular repos, and badge selection by project type.
 ---
+
 # readme-badger
 
 Badge design and selection knowledge base for AI documentation agents. This skill provides

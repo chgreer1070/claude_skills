@@ -3,6 +3,7 @@ name: memory-and-rules
 description: Configure and manage Claude Code persistent memory (CLAUDE.md, auto memory, rules) across sessions. Use when setting up project memory, organizing .claude/rules/, managing auto memory files, creating CLAUDE.md with imports, debugging memory loading, or advising on memory hierarchy and best practices.
 user-invocable: true
 ---
+
 # Claude Code Memory and Rules Reference
 
 Claude Code has two kinds of persistent memory:
@@ -250,6 +251,6 @@ ln -s ~/company-standards/security.md .claude/rules/security.md
 
 ### Detailed Reference
 
-For comprehensive details on all memory types, import behavior, glob patterns, and configuration options, see [memory-reference.md](./references/memory-reference.md).
+For comprehensive details on all memory types, import behavior, glob patterns, and configuration options, see `references/memory-reference.md`.
 
 SOURCE: [Claude Code Memory Documentation](https://code.claude.com/docs/en/memory.md) (accessed 2026-02-17)

@@ -25,10 +25,11 @@ API references: [milestones.md](../gh/references/milestones.md) | [projects-v2.m
 
 ### Step 1: Resolve Milestone
 
-```bash
-gh api repos/Jamie-BitFlight/claude_skills/milestones/{number} \
-  --jq '[.number, .title, .state, .open_issues, .closed_issues] | @tsv'
-```
+Call `mcp__plugin_dh_backlog__backlog_list_milestones(state="open")`.
+
+From the returned list, find the entry where `number == <milestone_number/>`.
+
+If not found in the open list, call `mcp__plugin_dh_backlog__backlog_list_milestones(state="all")` and filter again.
 
 If milestone is closed, report and stop.
 
@@ -36,13 +37,9 @@ If `open_issues == 0`, warn: "No open issues. Add items first with `/group-items
 
 ### Step 2: List Issues
 
-```bash
-gh issue list -R Jamie-BitFlight/claude_skills \
-  --milestone "{title}" \
-  --state open \
-  --json number,title,labels \
-  --jq '.[] | [.number, .title, (.labels | map(.name) | join(","))] | @tsv'
-```
+Call `mcp__plugin_dh_backlog__backlog_list_issues(milestone="{title}", state="open")`.
+
+The response contains a list of issues with `number`, `title`, `state`, and `labels` fields.
 
 ### Step 3: Confirm
 
@@ -59,22 +56,13 @@ Proceed?
 
 Use `AskUserQuestion` with Yes / No options. Stop without changes if No.
 
-### Step 4: Ensure Label Exists
-
-```bash
-gh label create "status:in-progress" \
-  --color "#0075ca" \
-  --description "Work is actively in progress" \
-  -R Jamie-BitFlight/claude_skills 2>/dev/null || true
-```
-
-### Step 5: Bulk Label Transition
+### Step 4: Bulk Label Transition
 
 Use the Python automation script (preferred — avoids per-issue bash loops):
 
 ```bash
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
-  --number {number} --repo Jamie-BitFlight/claude_skills
+  --number {number}
 ```
 
 Or, to preview changes without applying them:
@@ -88,22 +76,18 @@ The script removes `status:needs-grooming` and adds `status:in-progress` to each
 open issue, creates the label if missing, reports per-issue results, and exits
 non-zero if any issue fails.
 
-**Fallback** — if the script is unavailable, edit issues individually:
+### Step 5: Update Project V2
+
+Run:
 
 ```bash
-gh issue edit {number} \
-  -R Jamie-BitFlight/claude_skills \
-  --add-label "status:in-progress" \
-  --remove-label "status:needs-grooming"
+uv run .claude/skills/gh/scripts/github_project_setup.py project update-status \
+  --milestone {number} --status "In Progress"
 ```
 
-Log successes and failures; continue on per-issue failures.
+See [projects-v2.md](../gh/references/projects-v2.md) for details.
 
-### Step 6: Update Project V2
-
-If a GitHub Project exists (`gh project list --owner Jamie-BitFlight`), set Status = `In Progress` for each issue's project item via GraphQL — see [projects-v2.md](../gh/references/projects-v2.md).
-
-### Step 7: Report
+### Step 6: Report
 
 ```text
 Milestone #{N} "{title}" started.
@@ -113,9 +97,6 @@ Milestone #{N} "{title}" started.
 
 Work on individual items:
   /work-backlog-item {title}
-
-Track progress:
-  gh issue list -R Jamie-BitFlight/claude_skills --milestone "{title}" --state open
 ```
 
 ## Error Handling
@@ -124,4 +105,3 @@ Track progress:
 - Milestone already closed: report closed date and stop.
 - Label edit fails for specific issue: log and continue; report failures at end.
 - User declines confirmation: stop without changes.
-- `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first.

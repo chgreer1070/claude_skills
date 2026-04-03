@@ -2,6 +2,7 @@
 name: litellm
 description: When calling LLM APIs from Python code. When connecting to llamafile or local LLM servers. When switching between OpenAI/Anthropic/local providers. When implementing retry/fallback logic for LLM calls. When code imports litellm or uses completion() patterns.
 ---
+
 # LiteLLM
 
 Unified Python interface for calling 100+ LLM APIs using consistent OpenAI format. Provides standardized exception handling, retry/fallback logic, and cost tracking across multiple providers.

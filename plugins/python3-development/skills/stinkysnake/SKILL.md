@@ -25,7 +25,7 @@ Systematic Python code quality improvement through static analysis, type refinem
 │  Phase 1: STATIC ANALYSIS                                                   │
 │  ├── Run formatters (ruff format)                                           │
 │  ├── Run linters (ruff check --fix)                                         │
-│  ├── Run type checkers (mypy, pyright)                                      │
+│  ├── Run type checkers (ty default; mypy/pyright if project configures)    │
 │  └── Auto-fix all resolvable issues                                         │
 │           │                                                                 │
 │           ▼                                                                 │
@@ -124,12 +124,18 @@ uv run ruff check --fix --unsafe-fixes $ARGUMENTS
 
 ### Step 1.3: Run Type Checkers
 
+Inspect `.pre-commit-config.yaml` (then CI) first, then `pyproject.toml`. **Default for new work:** **ty**. **If hooks or CI invoke mypy:** run **mypy** and do not rip it out. **Do not** switch to mypy only because `[tool.mypy]` exists — many repos keep that section while **ty** is the real gate.
+
 ```bash
-# Run mypy
+# Default (ty) — when hooks run ty, [tool.ty] is active, or no mypy invocation in hooks/CI
+uv run ty check $ARGUMENTS
+
+# Project that actually runs mypy in hooks/CI — respect mypy.ini / [tool.mypy]
 uv run mypy $ARGUMENTS
 
-# Run pyright if configured
+# Project standardizes on pyright / basedpyright
 uv run pyright $ARGUMENTS
+# uv run basedpyright $ARGUMENTS
 ```
 
 ### Step 1.4: Document Remaining Issues
@@ -195,8 +201,10 @@ Search for explicit and implicit `Any` usage:
 # Find explicit Any imports and usage
 uv run rg "from typing import.*Any|: Any|-> Any" $ARGUMENTS
 
-# Run mypy with strict mode to find implicit Any
-uv run mypy --strict $ARGUMENTS 2>&1 | grep -E "has type.*Any|Implicit.*Any"
+# Implicit Any / strict diagnostics — use the same checker the project uses
+uv run ty check $ARGUMENTS 2>&1 | grep -iE "Any|implicit" || true
+# If project uses mypy instead:
+# uv run mypy --strict $ARGUMENTS 2>&1 | grep -E "has type.*Any|Implicit.*Any"
 ```
 
 **Create inventory**:
@@ -260,15 +268,15 @@ Select the appropriate type construct for each `Any` replacement:
 - **TypedDict** — dicts with known keys and specific value types
 - **Dataclass/Pydantic** — structured data with optional validation
 
-See [Type Pattern Examples](./references/type-patterns.md) for before/after code samples and library modernization reference table.
+See `references/type-patterns.md` for before/after code samples and library modernization reference table.
 
 ### Step 3.3: Plan Library Modernization
 
-See the library modernization reference table in [Type Pattern Examples](./references/type-patterns.md#library-modernization-reference).
+See the library modernization reference table in `references/type-patterns.md#library-modernization-reference`.
 
 ### Step 3.4: Create Modernization Plan Document
 
-Create plan at `.claude/plans/stinkysnake-plan.md` using the template in [Plan Templates](./references/plan-templates.md#modernization-plan-template-phase-3-output).
+Resolve the plan directory at runtime: `uv run python -c 'from dh_paths import plan_dir; print(plan_dir())'` (typically `~/.dh/projects/{slug}/plan/`). Create the plan at `{plan_dir}/stinkysnake-plan.md` using the template in `references/plan-templates.md#modernization-plan-template-phase-3-output`.
 
 ---
 
@@ -278,11 +286,11 @@ Delegate to a review agent with context fork to critique the plan.
 
 ### Step 4.1: Launch Plan Review Agent
 
-Delegate to `python-code-reviewer` using the prompt in [Agent Prompts](./references/agent-prompts.md#phase-4-plan-review).
+Delegate to `code-reviewer` using the prompt in `references/agent-prompts.md#phase-4-plan-review`.
 
 ### Step 4.2: Review Report Structure
 
-The reviewer produces a report following the template in [Plan Templates](./references/plan-templates.md#plan-review-report-template-phase-4-output).
+The reviewer produces a report following the template in `references/plan-templates.md#plan-review-report-template-phase-4-output`.
 
 ---
 
@@ -315,7 +323,7 @@ For each suggestion:
 
 ### Step 5.4: Update Plan Document
 
-Update `.claude/plans/stinkysnake-plan.md` using the revised plan format in [Plan Templates](./references/plan-templates.md#revised-plan-template-phase-5-output).
+Update `{plan_dir}/stinkysnake-plan.md` (resolve `plan_dir` as in Step 3.4) using the revised plan format in `references/plan-templates.md#revised-plan-template-phase-5-output`.
 
 ---
 
@@ -335,7 +343,7 @@ uv run rg "^\s+\"\"\"" $ARGUMENTS
 
 ### Step 6.2: Map Code to Docs
 
-Create documentation update plan using the template in [Plan Templates](./references/plan-templates.md#documentation-update-plan-template-phase-6-output).
+Create documentation update plan using the template in `references/plan-templates.md#documentation-update-plan-template-phase-6-output`.
 
 ---
 
@@ -399,7 +407,7 @@ Delegate to python-pytest-architect to write failing tests against the interface
 
 ### Step 8.1: Launch Test Writing Agent
 
-Delegate to `python-pytest-architect` using the prompt in [Agent Prompts](./references/agent-prompts.md#phase-8-test-writing-agent).
+Delegate to `python-pytest-architect` using the prompt in `references/agent-prompts.md#phase-8-test-writing-agent`.
 
 ### Step 8.2: Verify Tests Fail
 
@@ -435,7 +443,8 @@ This skill:
 ```bash
 # Final verification
 uv run pytest tests/ -v
-uv run mypy $ARGUMENTS --strict
+uv run ty check $ARGUMENTS
+# If project uses mypy: uv run mypy $ARGUMENTS
 uv run ruff check $ARGUMENTS
 ```
 
@@ -449,9 +458,9 @@ The complete workflow produces:
 | ----------------------- | ----------------------------------------- | ------------------- |
 | Static Analysis Results | `.claude/reports/static-analysis-{ts}.md` | Auto-fix summary    |
 | Type Inventory          | `.claude/reports/type-inventory-{ts}.md`  | Any types found     |
-| Modernization Plan      | `.claude/plans/stinkysnake-plan.md`       | Implementation plan |
+| Modernization Plan      | `{plan_dir}/stinkysnake-plan.md`          | Implementation plan |
 | Plan Review             | `.claude/reports/plan-review-{ts}.md`     | Review feedback     |
-| Revised Plan            | `.claude/plans/stinkysnake-plan.md`       | Updated plan        |
+| Revised Plan            | `{plan_dir}/stinkysnake-plan.md`          | Updated plan        |
 | Doc Update Plan         | `.claude/reports/doc-updates-{ts}.md`     | Docs to change      |
 | Test Files              | `tests/test_*.py`                         | Failing tests       |
 | Implementation          | `src/`                                    | Passing code        |
@@ -472,9 +481,9 @@ Skill(skill: "python3-development:python3-development")  # Core patterns
 ### Agent Delegations
 
 ```text
-Agent(agent="holistic-linting:linting-root-cause-resolver", ...)  # Phase 1 linting
-Agent(agent="python3-development:python-code-reviewer", ...)     # Phase 4 review
-Agent(agent="python3-development:python-pytest-architect", ...)  # Phase 8 tests
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", ...)  # Phase 1 linting
+Agent(subagent_type="python3-development:code-reviewer", ...)     # Phase 4 review
+Agent(subagent_type="python3-development:python-pytest-architect", ...)  # Phase 8 tests
 ```
 
 ### Related Skills
@@ -511,7 +520,7 @@ A quality improvement workflow is NOT a candidate for agent teams when:
 
 ### Reference
 
-See [Agent Teams Documentation](./../../../plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md) for complete criteria, architecture, and usage patterns.
+See `../../../plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md` for complete criteria, architecture, and usage patterns.
 
 SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
 
@@ -519,9 +528,9 @@ SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
 
 ### Skill Reference Files
 
-- [Type Pattern Examples](./references/type-patterns.md) — before/after code samples for Protocol, Generic, TypeGuard, TypeAlias, TypedDict, Dataclass/Pydantic, and library modernization table
-- [Plan Templates](./references/plan-templates.md) — document formats for modernization plan, review report, revised plan, and documentation update plan
-- [Agent Prompts](./references/agent-prompts.md) — pre-built delegation prompts for Phase 4 review agent and Phase 8 test writing agent
+- `../python3-development/references/python3-standards.md` — Shared development standards, knowledge graph, and process graph
+- `references/plan-templates.md` — document formats for modernization plan, review report, revised plan, and documentation update plan
+- `references/agent-prompts.md` — pre-built delegation prompts for Phase 4 review agent and Phase 8 test writing agent
 
 ### External Documentation
 
@@ -529,7 +538,8 @@ SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
 - [PEP 544 - Protocols](https://peps.python.org/pep-0544/)
 - [PEP 589 - TypedDict](https://peps.python.org/pep-0589/)
 - [PEP 647 - TypeGuard](https://peps.python.org/pep-0647/)
-- [mypy Cheat Sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
+- [ty documentation](https://docs.astral.sh/ty/) (default type checker)
+- [mypy Cheat Sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html) (when project uses mypy)
 
 ### Companion Plugins
 

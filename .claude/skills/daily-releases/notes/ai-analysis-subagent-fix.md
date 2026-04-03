@@ -41,7 +41,7 @@ The SKILL.md is consumed by the orchestrating Claude Code session (the AI sessio
 2. Execute the Primary Analysis Prompt inline — i.e., the orchestrator IS the LLM performing the analysis.
 3. Write the resulting JSON to `analysis.json`.
 
-There is no subprocess call, no SDK invocation, no `Task()` delegation — the orchestrator consumes the raw git data directly and burns its context window doing the categorization work.
+There is no subprocess call, no SDK invocation, no `Agent()` delegation — the orchestrator consumes the raw git data directly and burns its context window doing the categorization work.
 
 ### Input Files Read by Step 2b
 
@@ -81,9 +81,9 @@ The correct pattern: delegate each analysis to a fresh subagent that receives th
 
 ## Proposed Fix
 
-### Pattern: Replace Step 2b with a Task Delegation
+### Pattern: Replace Step 2b with an Agent Delegation
 
-The fix replaces the inline "Read data, apply prompt, write JSON" instruction in SKILL.md with an instruction to invoke a `Task` subagent.
+The fix replaces the inline "Read data, apply prompt, write JSON" instruction in SKILL.md with an instruction to invoke an `Agent` subagent.
 
 The subagent receives:
 - The file paths (not the file contents)
@@ -99,7 +99,7 @@ The subagent reads the files, applies the Primary Analysis Prompt, and writes th
 
 Delegate the analysis to a subagent. Do NOT read the git data files yourself.
 
-Invoke Task with:
+Invoke Agent with:
   subagent_type: "general-purpose"
   model: "claude-haiku-4-5"
   prompt: |
@@ -137,20 +137,20 @@ before proceeding to Step 2c.
 
 ### Precedent
 
-This mirrors the KB descriptions fix referenced in the backlog entry that prompted this investigation: replace inline orchestrator LLM work with `Task(subagent_type="general-purpose", model="haiku")` delegation where the subagent receives file paths and writes output files.
+This mirrors the KB descriptions fix referenced in the backlog entry that prompted this investigation: replace inline orchestrator LLM work with `Agent(subagent_type="general-purpose", model="haiku")` delegation where the subagent receives file paths and writes output files.
 
 ---
 
 ## Blockers and Open Questions
 
-### 1. Does the SKILL.md `Task()` syntax support model selection?
+### 1. Does the SKILL.md `Agent()` syntax support model selection?
 
-The SKILL.md currently instructs the orchestrator to use prose commands ("Read...", "Apply the prompt..."). The fix requires the orchestrator to emit a `Task()` tool call with `model="claude-haiku-4-5"`. This depends on whether the Claude Code session running this skill supports the `Task` tool directly.
+The SKILL.md currently instructs the orchestrator to use prose commands ("Read...", "Apply the prompt..."). The fix requires the orchestrator to emit an `Agent()` tool call with `model="claude-haiku-4-5"`. This depends on whether the Claude Code session running this skill supports the `Agent` tool directly.
 
-- If the skill runs in a session with `Task` available: the fix works as described.
-- If the skill runs in a context where `Task` is unavailable (e.g., a non-agentic slash command context): the fix requires a different mechanism — possibly a standalone Python script that invokes the Anthropic SDK with Haiku and writes `analysis.json`.
+- If the skill runs in a session with `Agent` available: the fix works as described.
+- If the skill runs in a context where `Agent` is unavailable (e.g., a non-agentic slash command context): the fix requires a different mechanism — possibly a standalone Python script that invokes the Anthropic SDK with Haiku and writes `analysis.json`.
 
-**Resolution needed:** Confirm whether `/daily-releases` skill activations run in a context where `Task()` tool is available to the orchestrator.
+**Resolution needed:** Confirm whether `/daily-releases` skill activations run in a context where `Agent()` tool is available to the orchestrator.
 
 ### 2. Draft release duplication (noted in backlog)
 

@@ -1,4 +1,8 @@
 {
+  "env": {
+    "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "permissions": {
     "allow": [
       "Bash(gh issue list:*)",
@@ -10,10 +14,14 @@
       "mcp__exa__*",
       "mcp__context7__*",
       "mcp__sequential-thinking__*",
-      "mcp__backlog__*",
+      "mcp__plugin_dh_backlog__*",
+      "mcp__plugin_dh_sam__*",
       "mcp__plugin_context-mode_context-mode__*",
       "Bash(bc:*)",
-      "Bash(diffstat:*)"
+      "Bash(diffstat:*)",
+      "Bash(npm:*)",
+      "Bash(bd:*)",
+      "Bash(uv run fastmcp :*)"
     ],
     "deny": []
   },

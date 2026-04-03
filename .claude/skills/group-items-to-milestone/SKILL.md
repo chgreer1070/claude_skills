@@ -1,9 +1,10 @@
 ---
 name: group-items-to-milestone
-description: "Use when assigning backlog items to a GitHub milestone. Args: {milestone-number} [P0|P1|P2|title-filter]. Uses backlog list to load items, shows items with GitHub Issue status, lets user select which to assign. Creates missing GitHub Issues for selected P0/P1 items, assigns all to the milestone, updates Project V2 Status to Backlog. Use after create-milestone to populate a sprint or release."
+description: 'Use when assigning backlog items to a GitHub milestone. Args: {milestone-number} [P0|P1|P2|title-filter]. Uses backlog list to load items, shows items with GitHub Issue status, lets user select which to assign. Creates missing GitHub Issues for selected P0/P1 items, assigns all to the milestone, updates Project V2 Status to Backlog. Use after create-milestone to populate a sprint or release.'
 argument-hint: '{milestone-number} [P0|P1|P2|title-filter]'
 user-invocable: true
 ---
+
 # Group Items to Milestone
 
 Assign backlog items to a GitHub milestone. Bridges .claude/backlog/ per-item files → GitHub Issues → milestone assignment.
@@ -25,20 +26,17 @@ API references: [milestones.md](../gh/references/milestones.md) | [issue-stories
 
 ### Step 1: Resolve Milestone
 
-```bash
-gh api repos/Jamie-BitFlight/claude_skills/milestones/{number} \
-  --jq '[.number, .title, .state] | @tsv'
-```
+Call `backlog_list_milestones(state="open")` and filter the returned list for the entry where `number == {number}`. If not found, call `backlog_list_milestones(state="all")` and filter again. Extract `title`, `state`, `open_issues`, `closed_issues` from the matching entry.
 
 If milestone not found or closed, report and stop.
 
 ### Step 2: Load Backlog Items
 
-Call the `mcp__backlog__backlog_list` tool. Parse the returned dict — each entry in `items` has `title`, `priority`, `issue`, `plan`, `status`, `milestone`, `file_path`, `groomed`. Filter items by section (P0, P1, P2, Ideas). Apply any title filter.
+Call the `mcp__plugin_dh_backlog__backlog_list` tool. Parse the returned dict — each entry in `items` has `title`, `priority`, `issue`, `plan`, `status`, `milestone`, `file_path`, `groomed`. Filter items by section (P0, P1, P2, Ideas). Apply any title filter.
 
 For each item determine status:
 
-- **Has issue** — `**Issue**: #N` field present → verify state via `gh issue view N --json state`
+- **Has issue** — `**Issue**: #N` field present → verify state via `backlog_list_issues(state="open")` — check if issue number appears in the returned list
 - **No issue** — P0/P1 item without issue → flagged for creation offer
 - **Already in milestone** — issue already assigned to this milestone → shown pre-checked
 
@@ -69,7 +67,6 @@ Build story-format body (Story / Description / Acceptance Criteria / Context). C
 
 ```bash
 uv run .claude/skills/gh/scripts/github_project_setup.py issue create \
-  --repo Jamie-BitFlight/claude_skills \
   --title "{type}: {title}" \
   --body "{story body}" \
   --priority-label "priority:{p0|p1|p2|idea}" \
@@ -86,13 +83,20 @@ Skip issue creation for P2/Ideas items — assign by milestone number only if th
 For selected items that already have issues but are not yet in this milestone:
 
 ```bash
-gh api repos/Jamie-BitFlight/claude_skills/issues/{issue_number} \
-  -X PATCH -F milestone={milestone_number}
+uv run .claude/skills/gh/scripts/github_project_setup.py issue set-milestone \
+  --issue {issue_number} \
+  --milestone {milestone_number}
 ```
 
 ### Step 6: Update Project V2 Status
 
-If a GitHub Project exists (`gh project list --owner Jamie-BitFlight`), set Status = `Backlog` for each newly assigned item via GraphQL — see [projects-v2.md](../gh/references/projects-v2.md).
+Set Status = `Backlog` for each newly assigned item:
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py project update-status \
+  --issue {issue_number} \
+  --status Backlog
+```
 
 ### Step 7: Report
 
@@ -111,8 +115,7 @@ Next step: /start-milestone {number}
 
 ## Error Handling
 
-- Milestone not found: list open milestones and stop.
+- Milestone not found: call `backlog_list_milestones(state="open")` and list available milestones, then stop.
 - Issue creation fails: log error per item, continue with remaining.
-- `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first.
 - No items match filter: report and show available sections.
-- Label not found: create it on the fly with `gh label create` then retry.
+- Label not found: `github_project_setup.py issue create` handles label creation automatically via `_ensure_label()`.

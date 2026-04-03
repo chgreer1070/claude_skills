@@ -318,7 +318,7 @@ Edit:        {"file_path": "...", "old_string": "...", "new_string": "..."}
 Write:       {"file_path": "...", "content": "..."}
 Grep:        {"pattern": "...", "path": "...", "output_mode": "content|files_with_matches"}
 Glob:        {"pattern": "...", "path": "..."}
-Task:        {"description": "...", "subagent_type": "...", "prompt": "...",
+Agent:       {"description": "...", "subagent_type": "...", "prompt": "...",
                "run_in_background": true, "team_name": "...", "name": "...", "model": "..."}
 TaskUpdate:  {"taskId": "...", "status": "...", "owner": "..."}
 SendMessage: {"type": "message", "recipient": "...", "content": "...", "summary": "..."}
@@ -326,7 +326,7 @@ Skill:       {"skill": "...", "args": "..."}
 AskUserQuestion: {"questions": [...]}
 ```
 
-**Task tool result (for subagents):**
+**Agent tool result (for subagents):**
 
 ```json
 {
@@ -343,7 +343,7 @@ The `agentId` in the result links to `{session-dir}/subagents/agent-{agentId}.js
 
 ```
 Main session JSONL (orchestrator):
-  └─ Task tool_use (id: toolu_01X)
+  └─ Agent tool_use (id: toolu_01X)
        └─ tool_result → "agentId: abc1234"
             └─ Subagent at: {session-uuid}/subagents/agent-abc1234.jsonl
                  └─ Records with:
@@ -353,11 +353,11 @@ Main session JSONL (orchestrator):
                       - First record is user message = subagent's task prompt
 ```
 
-Subagent final output is returned via the parent session's tool_result when the Task completes (synchronous) or when `TaskOutput` is polled (asynchronous, `run_in_background: true`).
+Subagent final output is returned via the parent session's tool_result when the Agent completes (synchronous) or when `TaskOutput` is polled (asynchronous, `run_in_background: true`).
 
 **Async agent flow:**
 
-1. Orchestrator calls `Task` with `run_in_background: true`
+1. Orchestrator calls `Agent` with `run_in_background: true`
 2. Tool result: "Async agent launched successfully. agentId: abc. output_file: /tmp/..."
 3. Orchestrator calls `TaskOutput` to poll
 4. Eventually `TaskOutput` returns the full subagent output text
@@ -541,9 +541,9 @@ Write:        211
 
 ### 2.5 Subagent Delegation Patterns
 
-**Signal:** `Task` tool_use blocks with `subagent_type`, `prompt`, `run_in_background`.
+**Signal:** `Agent` tool_use blocks with `subagent_type`, `prompt`, `run_in_background`.
 
-**Data field path:** `assistant.message.content[].input` where `name == "Task"`
+**Data field path:** `assistant.message.content[].input` where `name == "Agent"`
 
 **Full input schema:**
 
@@ -587,25 +587,25 @@ Write:        211
 
 ### 2.6 Context Waste Detection
 
-**Signal:** Orchestrator reads a file then immediately delegates a Task where the same file path appears in the Task's prompt.
+**Signal:** Orchestrator reads a file then immediately delegates an Agent where the same file path appears in the Agent's prompt.
 
 **Data field paths:**
 
 - `Read` input: `assistant.message.content[].input.file_path` where `name == "Read"`
-- `Task` prompt: `assistant.message.content[].input.prompt` where `name == "Task"`
+- `Agent` prompt: `assistant.message.content[].input.prompt` where `name == "Agent"`
 
 **Detection algorithm:**
 
 ```python
 # Within a session, track (tool_name, file_path) tuples in order
-# Flag: Read(X) followed within 5 turns by Task(prompt contains X)
+# Flag: Read(X) followed within 5 turns by Agent(prompt contains X)
 ```
 
 **Corpus result:** 16 instances of context waste in 88 substantive sessions (18% of sessions).
 
 The most common wasted file: `.claude/CLAUDE.md` — orchestrator reads the project instructions then includes the path in a subagent prompt that will read it again.
 
-**Extraction difficulty:** Moderate — requires cross-referencing Read inputs with Task prompts in a sliding window per session.
+**Extraction difficulty:** Moderate — requires cross-referencing Read inputs with Agent prompts in a sliding window per session.
 
 ---
 
@@ -621,8 +621,8 @@ These analyses require only regex/string matching on the JSONL corpus:
 | Error rate per session       | Count `is_error: true` tool results ÷ total tool calls | Per-session score |
 | User interrupt rate          | Count interrupt messages ÷ total user turns            | Frustration proxy |
 | Billing error sessions       | Scan for `error: "billing_error"`                      | Blocked sessions  |
-| Subagent type distribution   | Count `Task.input.subagent_type`                       | Agent usage map   |
-| Context waste occurrences    | Read→Task overlap within 5 turns                       | Waste instances   |
+| Subagent type distribution   | Count `Agent.input.subagent_type`                      | Agent usage map   |
+| Context waste occurrences    | Read→Agent overlap within 5 turns                      | Waste instances   |
 | Session length distribution  | Line count of JSONL files                              | Complexity proxy  |
 | Token usage per session      | Sum `usage.input_tokens + output_tokens`               | Cost analysis     |
 | Cache efficiency             | `cache_read_input_tokens ÷ total_input_tokens`         | Cache hit rate    |
@@ -742,7 +742,7 @@ Phase 4: Report (template-driven)
 
 1. **`agent-*.jsonl` in main dir vs `subagents/` dir** — The 106 top-level `agent-*.jsonl` files appear to be orphaned agent transcripts (agents that completed but whose parent session wasn't written to a subdir). Their `sessionId` field links them to a parent session, but the parent may be in a different project directory. Needs verification.
 
-2. **`tool-results/*.txt` files** — These contain the full output of async Task agents. The naming convention is `{tool_use_id}.txt`. When an async Task completes, is the output also appended to the parent's JSONL as a `user` tool_result? Investigation needed.
+2. **`tool-results/*.txt` files** — These contain the full output of async Agent agents. The naming convention is `{tool_use_id}.txt`. When an async Agent completes, is the output also appended to the parent's JSONL as a `user` tool_result? Investigation needed.
 
 3. **`queue-operation` content** — The `content` field is sometimes a JSON string, sometimes a plain string. The enqueue/dequeue pair seems to be the conversation summary generation queue. No analysis value confirmed beyond filtering.
 

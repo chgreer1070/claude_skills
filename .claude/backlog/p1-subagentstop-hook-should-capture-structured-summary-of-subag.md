@@ -3,13 +3,13 @@ name: SubagentStop hook should capture structured summary of subagent work
 description: "## Current state\n\n`task_status_hook.py` handles `SubagentStop` by marking the task COMPLETE, adding a `completed` timestamp, deleting the context file, and syncing completion to GitHub. It does NOT capture any summary of what the subagent accomplished — no record of files changed, tests written, errors encountered, or decisions made. The parent orchestrator (`implement-feature`) receives only the raw sub-agent output in its context window (which is lost on compaction) and has no structured artifact to reference when making routing decisions for subsequent tasks."
 metadata:
   topic: subagentstop-hook-should-capture-structured-summary-of-subag
-  source: 'Research entry: ./research/agent-frameworks/everything-claude-code.md — pattern: Session Summaries in Hook SubagentStop Phase'
-  added: '2026-03-10'
+  source: 'GitHub Issue #576'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#576'
-  last_synced: '2026-03-14T15:59:49Z'
+  last_synced: '2026-03-22T15:09:24Z'
 ---
 
 ## Story

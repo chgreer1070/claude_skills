@@ -1,6 +1,6 @@
 ---
 paths:
-  - "**/*.py"
+- '**/*.py'
 ---
 
 # YAML and TOML Libraries

@@ -4,12 +4,12 @@ description: Explore creating materials for new team members learning the method
 metadata:
   topic: sam-trainingonboarding-materials
   source: 'GitHub Issue #124'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: IDEA
   type: Feature
   status: needs-grooming
   issue: '#124'
-  last_synced: '2026-03-14T16:00:53Z'
+  last_synced: '2026-03-22T15:10:29Z'
 ---
 
 ## Story

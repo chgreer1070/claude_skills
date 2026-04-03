@@ -1,6 +1,6 @@
 {
   "name": "frustration-analyzer",
-  "version": "0.2.17",
+  "version": "0.2.25",
   "description": "Read The Fucking Prompt \u2014 finds the strongest user reaction to an AI instruction-following failure in a chosen session, reconstructs the triggering assistant output, and renders a shareable terminal-style PNG.",
   "author": {
     "name": "Jamie-BitFlight"
@@ -16,11 +16,6 @@
   "license": "MIT",
   "skills": [
     "./skills/rtfp"
-  ],
-  "agents": [
-    "./agents/frustration-analyst.md",
-    "./agents/batch-detector.md",
-    "./agents/context-reconstructor.md"
   ],
   "mcpServers": "./.mcp.json"
 }

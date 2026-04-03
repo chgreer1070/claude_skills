@@ -1,6 +1,6 @@
 ---
 name: complete-milestone
-description: "Close a completed GitHub milestone. Args: {milestone-number}. Audits open and closed issues, offers to carry forward open items to a new or existing milestone, closes the GitHub milestone, updates Project V2 Status to Done for closed issues, and generates a completion summary. Use when a sprint or release is finished and needs to be officially closed."
+description: 'Close a completed GitHub milestone. Args: {milestone-number}. Audits open and closed issues, offers to carry forward open items to a new or existing milestone, closes the GitHub milestone, updates Project V2 Status to Done for closed issues, and generates a completion summary. Use when a sprint or release is finished and needs to be officially closed.'
 argument-hint: '{milestone-number}'
 user-invocable: true
 ---
@@ -10,8 +10,6 @@ user-invocable: true
 # Complete Milestone
 
 Verify completion state, handle stragglers, close the milestone, and generate a summary.
-
-API references: [milestones.md](../gh/references/milestones.md) | [projects-v2.md](../gh/references/projects-v2.md)
 
 ## Arguments
 
@@ -25,23 +23,15 @@ API references: [milestones.md](../gh/references/milestones.md) | [projects-v2.m
 
 ### Step 1: Resolve and Audit
 
-```bash
-gh api repos/Jamie-BitFlight/claude_skills/milestones/{number} \
-  --jq '[.number, .title, .state, .open_issues, .closed_issues, .due_on] | @tsv'
-```
+Call `backlog_list_milestones(state="open")` and filter the returned list for the entry where `number == <milestone_number/>`. If not found in open milestones, call `backlog_list_milestones(state="all")` and filter again. Extract: `title`, `state`, `open_issues`, `closed_issues`, `due_on`.
 
 If milestone already closed, report closed date and stop.
 
 Fetch all issues:
 
-```bash
-gh issue list -R Jamie-BitFlight/claude_skills \
-  --milestone "{title}" --state open \
-  --json number,title,labels
-
-gh issue list -R Jamie-BitFlight/claude_skills \
-  --milestone "{title}" --state closed \
-  --json number,title,labels,closedAt
+```text
+backlog_list_issues(milestone="{title}", state="open")
+backlog_list_issues(milestone="{title}", state="closed")
 ```
 
 ### Step 2: Show State
@@ -79,39 +69,34 @@ D) Close them as incomplete
 
 Prompt for new milestone title and optional due date. Create via:
 
-```bash
-gh api repos/Jamie-BitFlight/claude_skills/milestones \
-  -X POST -f title="{new title}" -f state="open"
+```text
+backlog_create_milestone(title="{new title}", due_on="{YYYY-MM-DD or empty}", description="")
 ```
 
-Reassign open issues:
+Reassign open issues one at a time:
 
 ```bash
-gh api repos/Jamie-BitFlight/claude_skills/issues/{N} \
-  -X PATCH -F milestone={new_number}
+uv run .claude/skills/gh/scripts/github_project_setup.py issue set-milestone --issue N --milestone {new_number}
 ```
 
 **Option B — existing milestone:**
 
-```bash
-gh api repos/Jamie-BitFlight/claude_skills/milestones \
-  --jq '.[] | select(.state=="open") | [.number, .title] | @tsv'
-```
+Call `backlog_list_milestones(state="open")` to list open milestones. User picks one; reassign open issues:
 
-User picks one; reassign open issues to it.
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py issue set-milestone --issue N --milestone {chosen_number}
+```
 
 **Option C — unassign:**
 
 ```bash
-gh api repos/Jamie-BitFlight/claude_skills/issues/{N} \
-  -X PATCH -F milestone=null
+uv run .claude/skills/gh/scripts/github_project_setup.py issue remove-milestone --issue N
 ```
 
 **Option D — close:**
 
 ```bash
-gh issue close {N} -R Jamie-BitFlight/claude_skills \
-  --comment "Closed incomplete as part of milestone #{M} completion."
+uv run .claude/skills/gh/scripts/github_project_setup.py issue close --number N --comment "Closed incomplete as part of milestone #{M} completion."
 ```
 
 ### Step 4: Close Milestone
@@ -120,7 +105,7 @@ Use the Python automation script (preferred — handles label transitions and mi
 
 ```bash
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone close \
-  --number {number} --repo Jamie-BitFlight/claude_skills
+  --number {number}
 ```
 
 Or, to preview changes without applying them:
@@ -132,16 +117,14 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone close \
 
 The script transitions all remaining open issues to `status:done`, closes the milestone, and prints a completion summary. It exits non-zero if any issue label update fails.
 
-**Fallback** — if the script is unavailable, close the milestone directly:
-
-```bash
-gh api repos/Jamie-BitFlight/claude_skills/milestones/{number} \
-  -X PATCH -f state="closed"
-```
-
 ### Step 5: Update Project V2
 
-For all closed issues, set Project V2 Status = `Done` via GraphQL — see [projects-v2.md](../gh/references/projects-v2.md).
+For all closed issues, update Project V2 Status to `Done`:
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py project update-status \
+  --issue N --status Done
+```
 
 ### Step 6: Completion Report
 
@@ -161,8 +144,7 @@ Next steps:
 
 ## Error Handling
 
-- Milestone not found: list open milestones and stop.
+- Milestone not found: call `backlog_list_milestones(state="open")` to list open milestones and stop.
 - Milestone already closed: report and stop.
 - Issue reassignment fails: log per-item error, continue with remaining.
 - No open milestones for Option B: fall back to Option A automatically.
-- `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first.

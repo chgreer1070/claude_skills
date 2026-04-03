@@ -2,6 +2,7 @@
 name: holistic-linting-orchestrator
 description: Orchestrator delegation workflows for linting. Guides orchestrators on when and how to delegate to linting-root-cause-resolver and post-linting-architecture-reviewer agents. Use when orchestrating linting tasks, delegating quality checks, or reading linting resolution reports.
 ---
+
 # Holistic Linting: Orchestrator Delegation
 
 This skill provides orchestrator-specific workflows for delegating linting and resolution tasks to specialized agents.
@@ -61,9 +62,9 @@ Agent(
 Launch concurrent agents (one per file) WITHOUT pre-gathering linting data:
 
 ```text
-Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
-Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/api.py")
-Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in tests/test_auth.py")
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/api.py")
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in tests/test_auth.py")
 ```
 
 **Reason for concurrency**: Independent file resolutions proceed in parallel, reducing total time.
@@ -190,10 +191,10 @@ flowchart TD
 ```text
 # Wrong:
 Bash("ruff check src/auth.py")
-Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Fix these errors: [pasted errors]")
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", prompt="Fix these errors: [pasted errors]")
 
 # Correct:
-Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
 ```
 
 **Skipping the UNRESOLVED check** — allows incomplete resolutions to reach the architecture reviewer:

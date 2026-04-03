@@ -54,7 +54,7 @@ split_task_file.py --force tasks.md
 
 ### 3. Documentation Updates
 
-**File**: `.claude/docs/TASK_FILE_FORMAT.md`
+**File**: `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
 
 **Added Sections**:
 - File Organization Options (single file vs directory)
@@ -221,7 +221,7 @@ The parser maintains full backward compatibility:
    - Executable with proper shebang
    - All linting passes
 
-3. `.claude/docs/TASK_FILE_FORMAT.md`
+3. `plugins/development-harness/docs/TASK_FILE_FORMAT.md`
    - Added directory organization section
    - Updated migration guide
    - Added examples and usage patterns

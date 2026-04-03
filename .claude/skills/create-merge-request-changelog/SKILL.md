@@ -3,6 +3,7 @@ name: create-merge-request-changelog
 description: Analyze git branches and generate comprehensive merge request descriptions with structured domain-based change categorization (bug fixes, enhancements, technical debt, documentation, testing). Use when preparing MR/PR descriptions, documenting branch changes, or analyzing git diffs for release notes. Works with any git repository without requiring JIRA or issue tracker integration.
 argument-hint: '[base-branch] [head-branch]'
 ---
+
 # Create Merge Request Changelog
 
 Generate comprehensive, business-focused merge request descriptions by analyzing git changes. This skill adapts the structured analysis approach from JIRA release notes to work purely with git data.

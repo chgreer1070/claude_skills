@@ -2,15 +2,15 @@
 name: backlog-mcp-validator
 description: Validate the backlog FastMCP server against the CLI. Calls MCP tools natively via the agent-scoped backlog server and compares results against equivalent CLI output. Use when completing backlog MCP server tasks, verifying tool parity, debugging MCP server behaviour, or confirming that a new tool or change is working correctly. Invoke with a tool name to test one tool, or no args to run the full MCP validation suite.
 model: sonnet
-tools: TodoWrite, Skill, mcp__backlog__backlog_list, mcp__backlog__backlog_view, mcp__backlog__backlog_add, mcp__backlog__backlog_update, mcp__backlog__backlog_groom, mcp__backlog__backlog_close, mcp__backlog__backlog_resolve, mcp__backlog__backlog_sync, mcp__backlog__backlog_normalize, mcp__backlog__backlog_pull
+tools: TodoWrite, Skill, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull
 mcpServers:
   backlog:
     command: uv
     args:
-      - run
-      - python
-      - -m
-      - backlog_core.server
+    - run
+    - python
+    - -m
+    - backlog_core.server
     cwd: .claude/skills/backlog
 ---
 
@@ -28,6 +28,15 @@ Tests   : .claude/skills/backlog/tests/
 ```
 
 All validation uses native MCP tool calls — Bash, Read, Write, and Edit are disallowed.
+
+## Server Startup Behavior
+
+As of commit `d48dd0f`, the backlog server runs `_bootstrap_beads()` during FastMCP lifespan
+startup (before the first tool call is dispatched). The lifespan hook may invoke `npm install -g
+@beads/bd` and `bd init`/`bd setup` subprocesses, depending on whether `bd` is already on PATH.
+When validating the MCP server in tests or validation suites, mock `_bootstrap_beads` at the
+module boundary (`backlog_core.server._bootstrap_beads`) or patch the sentinel
+(`backlog_core.server._beads_bootstrapped = True`) to prevent subprocess side effects.
 
 ## MCP Tool Reference
 
@@ -53,7 +62,6 @@ CLI:     uv run .claude/skills/backlog/scripts/backlog.py add --title X --priori
 
 ```text
 Parameters:
-  with_status   bool      optional  Include GitHub issue status  (default: false)
   from_github   bool      optional  Refresh cache from GitHub first  (default: false)
   label         str|null  optional  Filter by GitHub label  (default: null)
   section       str|null  optional  Filter by section name  (default: null)
@@ -67,7 +75,11 @@ Parameters:
                                     Items missing metadata.topic are excluded when active.
                                     (default: null)
 
-Returns: {items: [{title, priority, issue, plan, type, topic}], messages, warnings}
+Returns: {items: [{title, priority, issue, plan, type, topic}],
+          backend: {name, availability, open_count, total_count,
+                    cache_open_count, cache_total_count, last_sync, error},
+          messages, warnings}
+          availability values: "reachable" | "not_checked" | "needs_authentication" | "rate_limited" | "error"
 CLI:     uv run .claude/skills/backlog/scripts/backlog.py list --format json [--with-status]
          [--type Bug] [--topic matching]
 ```
@@ -186,16 +198,16 @@ CLI:     uv run .claude/skills/backlog/scripts/backlog.py pull [--dry-run] [--fo
 The `backlog` server is configured in this agent's `mcpServers` frontmatter. It starts automatically when you are invoked. You have direct access to all 10 tools as native MCP tools. Use them directly:
 
 ```text
-mcp__backlog__backlog_add(title="test", priority="P2", description="test", create_issue=false)
-mcp__backlog__backlog_list()
-mcp__backlog__backlog_view(selector="test")
-mcp__backlog__backlog_sync(dry_run=true)
-mcp__backlog__backlog_close(selector="test", plan="test", checklist_pass=true)
-mcp__backlog__backlog_resolve(selector="test", reason="test")
-mcp__backlog__backlog_update(selector="test", status="in-progress")
-mcp__backlog__backlog_groom(selector="test", section="Test", content="test content")
-mcp__backlog__backlog_normalize(dry_run=true)
-mcp__backlog__backlog_pull(dry_run=true)
+mcp__plugin_dh_backlog__backlog_add(title="test", priority="P2", description="test", create_issue=false)
+mcp__plugin_dh_backlog__backlog_list()
+mcp__plugin_dh_backlog__backlog_view(selector="test")
+mcp__plugin_dh_backlog__backlog_sync(dry_run=true)
+mcp__plugin_dh_backlog__backlog_close(selector="test", plan="test", checklist_pass=true)
+mcp__plugin_dh_backlog__backlog_resolve(selector="test", reason="test")
+mcp__plugin_dh_backlog__backlog_update(selector="test", status="in-progress")
+mcp__plugin_dh_backlog__backlog_groom(selector="test", section="Test", content="test content")
+mcp__plugin_dh_backlog__backlog_normalize(dry_run=true)
+mcp__plugin_dh_backlog__backlog_pull(dry_run=true)
 ```
 
 Prefer native MCP calls for all validation — this tests the full STDIO transport path that production callers will use.

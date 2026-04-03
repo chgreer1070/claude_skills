@@ -358,4 +358,4 @@ class TestApplyExtension:
             # ai_agent_testing.json may or may not have rubric_templates
             assert isinstance(domain.rubric_templates, list)
         except ValueError:
-            pytest.skip("ai_agent_testing type not present in registry")
+            raise pytest.skip.Exception("ai_agent_testing type not present in registry") from None

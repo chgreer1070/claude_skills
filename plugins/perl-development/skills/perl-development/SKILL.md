@@ -2,6 +2,7 @@
 name: perl-development
 description: This skill should be used when the user asks to "write a Perl script", "create Perl code", "modern Perl best practices", "Perl 5.30+", "use strict warnings autodie", or mentions Perl pragmas, subroutines, error handling, or scripting patterns. Provides comprehensive Perl 5.30+ development guidance.
 ---
+
 # Modern Perl 5.30+ Development
 
 Procedural guidance for writing secure, maintainable Perl scripts following modern best practices.

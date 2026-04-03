@@ -135,7 +135,7 @@ get-shit-done/
 
 ### Agent Structure
 
-11 agents, all in `agents/` at repo root. Each is a `.md` file with YAML frontmatter + body. No auto-loading via a `skills` field — they are referenced by commands and spawned via the `Task` tool.
+11 agents, all in `agents/` at repo root. Each is a `.md` file with YAML frontmatter + body. No auto-loading via a `skills` field — they are referenced by commands and spawned via the `Agent` tool.
 
 Agent roster with scope:
 
@@ -181,7 +181,7 @@ Two patterns exist:
 **Pattern 1: Thin orchestrator command** (most commands)
 
 The command file is a thin wrapper. It:
-1. Declares `allowed-tools` that include `Task`
+1. Declares `allowed-tools` that include `Agent`
 2. Has an `<execution_context>` block that loads a workflow file via `@~/.claude/get-shit-done/workflows/<name>.md`
 3. Has a minimal `<process>` block that says "follow the workflow"
 4. Passes `$ARGUMENTS` and live project files (`@.planning/ROADMAP.md`, `@.planning/STATE.md`) as context
@@ -194,7 +194,7 @@ name: gsd:execute-phase
 description: Execute all plans in a phase with wave-based parallelization
 argument-hint: "<phase-number> [--gaps-only]"
 allowed-tools:
-  - Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite, AskUserQuestion
+  - Read, Write, Edit, Glob, Grep, Bash, Agent, TodoWrite, AskUserQuestion
 ---
 <objective>...</objective>
 <execution_context>
@@ -222,7 +222,7 @@ description: Create detailed phase plan (PLAN.md) with verification loop
 argument-hint: "[phase] [--auto] [--research] [--skip-research] [--gaps] [--skip-verify]"
 agent: gsd-planner
 allowed-tools:
-  - Read, Write, Bash, Glob, Grep, Task, WebFetch, mcp__context7__*
+  - Read, Write, Bash, Glob, Grep, Agent, WebFetch, mcp__context7__*
 ---
 <execution_context>
 @~/.claude/get-shit-done/workflows/plan-phase.md
@@ -242,7 +242,7 @@ Trace for `/gsd:execute-phase 3`:
 4. **Workflow logic** (in `workflows/execute-phase.md`) tells the orchestrator to: discover plans, analyze dependency waves, then spawn subagents per plan using the Agent tool.
 5. **For each plan**, orchestrator constructs a prompt using `@~/.claude/get-shit-done/workflows/execute-plan.md` as context and spawns:
    ```
-   Task(subagent_type="gsd-executor", prompt=<constructed prompt>)
+   Agent(subagent_type="gsd-executor", prompt=<constructed prompt>)
    ```
 6. **`gsd-executor` agent** receives the prompt with the PLAN.md content and `execute-plan.md` workflow loaded. Executes tasks, commits, creates SUMMARY.md, updates STATE.md, returns structured completion message.
 7. **Orchestrator** receives the structured return from each agent, handles checkpoints if any, updates routing.
@@ -253,7 +253,7 @@ Trace for `/gsd:debug "login fails"`:
 2. **Claude loads** `commands/gsd/debug.md` — lightweight command.
 3. **Orchestrator** (Claude running the command) gathers symptoms via `AskUserQuestion`, then spawns:
    ```
-   Task(subagent_type="gsd-debugger", model=resolved_model, prompt=filled_prompt)
+   Agent(subagent_type="gsd-debugger", model=resolved_model, prompt=filled_prompt)
    ```
 4. **`gsd-debugger` agent** receives symptoms in `<symptoms>` tags and `symptoms_prefilled: true` mode flag. Runs scientific investigation loop. Returns one of: ROOT CAUSE FOUND, CHECKPOINT REACHED, INVESTIGATION INCONCLUSIVE.
 5. **Orchestrator** handles each return type: presents to user, spawns continuation agent if checkpoint, offers options if complete.
@@ -438,7 +438,7 @@ The command file `commands/rust-developer.md` has:
 ---
 description: Comprehensive Rust development assistance...
 argument-hint: Task description
-allowed-tools: ["Task"]
+allowed-tools: ["Agent"]
 ---
 ```
 
@@ -454,7 +454,7 @@ Agent tool parameters:
 Do not process the request yourself. Launch the agent and let it handle the task.
 ```
 
-The command is a pure pass-through with zero logic. Its sole job is to translate the user invocation into a Task call with the correct `subagent_type`.
+The command is a pure pass-through with zero logic. Its sole job is to translate the user invocation into an Agent call with the correct `subagent_type`.
 
 The command does NOT have an `agent:` field in its frontmatter (unlike get-shit-done's plan-phase command). Instead, the body text explicitly instructs Claude to use the Agent tool.
 
@@ -463,7 +463,7 @@ The command does NOT have an `agent:` field in its frontmatter (unlike get-shit-
 Trace for `/rust-developer "create a CLI tool"`:
 
 1. **User types** `/rust-developer "create a CLI tool"`
-2. **Claude loads** `commands/rust-developer.md`. The command body says: immediately call `Task(subagent_type="rust-developer:rust-developer", prompt="create a CLI tool")`.
+2. **Claude loads** `commands/rust-developer.md`. The command body says: immediately call `Agent(subagent_type="rust-developer:rust-developer", prompt="create a CLI tool")`.
 3. **Claude (orchestrator) spawns** the `rust-developer` agent via Agent tool.
 4. **`rust-developer` agent** receives the task. It reads the agent body (which is its full operating manual). It decides which reference files to read based on the request:
    - Will reference `$CLAUDE_PLUGIN_ROOT/skills/rust-knowledge/references/cargo.md` for Cargo setup
@@ -479,7 +479,7 @@ Two distinct categories:
 
 **1. Command** (`commands/{plugin-name}.md`) — User-invocable entry point
 - Thin pass-through
-- Only allowed tool: `Task`
+- Only allowed tool: `Agent`
 - Body: single instruction to spawn the agent
 - No logic, no routing, no state
 
@@ -612,7 +612,7 @@ Command → spawns Agent → Agent handles task end-to-end
 ```text
 1. User: /rust-developer "create CLI"
 2. Claude loads: commands/rust-developer.md
-3. Command body: Task(subagent_type="rust-developer:rust-developer", prompt="create CLI")
+3. Command body: Agent(subagent_type="rust-developer:rust-developer", prompt="create CLI")
 4. Agent (rust-developer.md) executes:
    a. Reads task from prompt
    b. Identifies which reference files to load (Read tool, on-demand)
@@ -630,13 +630,13 @@ Command → spawns Agent → Agent handles task end-to-end
 4. Orchestrator follows plan-phase.md workflow:
    a. Initialize: call gsd-tools.cjs to load state
    b. Check flags, existing artifacts
-   c. IF research needed: Task(subagent_type="gsd-phase-researcher", prompt=...)
+   c. IF research needed: Agent(subagent_type="gsd-phase-researcher", prompt=...)
       Agent returns: ## RESEARCH COMPLETE
-   d. Task(subagent_type="gsd-planner", prompt=...)
+   d. Agent(subagent_type="gsd-planner", prompt=...)
       Agent returns: ## PLANNING COMPLETE
-   e. IF checker enabled: Task(subagent_type="gsd-plan-checker", prompt=...)
+   e. IF checker enabled: Agent(subagent_type="gsd-plan-checker", prompt=...)
       Agent returns: ## VERIFICATION PASSED or ## ISSUES FOUND
-   f. IF issues: Task(subagent_type="gsd-planner", prompt=... with revision_context)
+   f. IF issues: Agent(subagent_type="gsd-planner", prompt=... with revision_context)
       Revision loop max 3 iterations
 5. User sees planning result with wave structure
 ```
@@ -655,6 +655,6 @@ Command → spawns Agent → Agent handles task end-to-end
 
 6. **`$CLAUDE_PLUGIN_ROOT`** is the runtime variable pointing to the installed plugin directory. Use it in agent bodies to construct absolute paths to reference files and scripts.
 
-7. **`agent:` frontmatter field in commands**: This field causes Claude to hand off to the named agent directly (without a Agent tool call in the body). It is an alternative to having the body explicitly call `Task(subagent_type=...)`. Use either — both work.
+7. **`agent:` frontmatter field in commands**: This field causes Claude to hand off to the named agent directly (without a Agent tool call in the body). It is an alternative to having the body explicitly call `Agent(subagent_type=...)`. Use either — both work.
 
 8. **Subagent type syntax**: `"plugin-name:agent-name"` — the plugin name prefix is required when spawning agents from a plugin context. Example: `rust-developer:rust-developer`.

@@ -4,545 +4,374 @@
 
 # Plugin Creator & Refactoring Toolkit
 
-Complete plugin development toolkit for creating, refactoring, and validating Claude Code plugins. Combines plugin creation, systematic refactoring workflows, and comprehensive validation tools.
+Complete toolkit for creating, refactoring, validating, and auditing Claude Code plugins, skills, agents, and hooks.
 
-## Overview
+## Why Install This?
 
-This plugin provides end-to-end capabilities for plugin development:
+Building a Claude Code plugin involves a lot of moving parts: `plugin.json` schema rules, skill frontmatter constraints, agent configuration requirements, hook event wiring, and validation tooling. Without guidance, common mistakes include:
 
-**Plugin Creation:**
+- Frontmatter that silently fails YAML parsing (multiline descriptions, unquoted colons, array fields that must be comma-separated strings)
+- Skills that grow too large and get truncated from Claude's context budget
+- Agents with weak description triggers that cause misrouting
+- Hooks connected to the wrong events or written in the wrong language
 
-- Step-by-step guidance for creating new plugins
-- Frontmatter validation and auto-fixing
-- Structure scaffolding and template generation
+This plugin gives Claude a complete reference for all of those systems plus agentic workflows to handle creation, validation, and refactoring.
 
-**Plugin Refactoring:**
+## What You Get
 
-- Analyze plugin structure and identify issues
-- Create detailed refactoring plans
-- Execute tasks via specialized agents
-- Validate refactoring completeness
+### Commands
 
-**Validation Tools:**
+#### `/plugin-lifecycle`
 
-- Comprehensive frontmatter schema validation
-- Skill structure and quality checks
-- Internal link validation
-- Line count enforcement
+Orchestrates the full plugin development lifecycle from a blank canvas to a marketplace-ready plugin.
 
-## Skill Name Field
-
-**`name:` is required** per the [Agent Skills open standard](https://agentskills.io/specification).
-
-```yaml
----
-name: my-skill
-description: Does something useful
-user-invocable: true
----
+```text
+/plugin-lifecycle new <concept>
+/plugin-lifecycle existing <plugin-path>
 ```
 
-### Bug History (Resolved)
+- `new <concept>` — Creates a plugin from scratch. Runs a prerequisite check (RT-ICA), user discussion, parallel research, design, atomic implementation, multi-layer validation, documentation, and final verification.
+- `existing <plugin-path>` — Improves an existing plugin. Enters at the assessment phase, then proceeds through design, planning, and execution.
 
-**Discovered:** 2026-01-29 (Claude Code v2.1.23) — **Resolved:** 2026-02-20
+#### `/plugin-creator`
 
-A bug caused plugin skills with an explicit `name:` field to not appear as slash commands. As a workaround, validators automatically removed `name:` from plugin skill frontmatter. That workaround has been reversed. The `skilllint` CLI now automatically **adds** the `name:` field when absent, deriving it from the directory name.
+Focused new-plugin creation workflow. Runs discussion capture, parallel research, design with verification, and atomic implementation. Use this when creating a new plugin from scratch without the full lifecycle orchestration.
 
-## When to Use
-
-Use this plugin when:
-
-- Creating new plugins, skills, commands, or agents
-- Validating frontmatter in SKILL.md or agent files
-- A skill exceeds the validator token threshold and needs splitting
-- Skills cover multiple distinct domains
-- Agent descriptions have weak triggers
-- Plugin structure needs reorganization
-- Systematically improving plugin quality
-
-## Quick Start
-
-### Creating Plugins
-
-```bash
-# Generate new plugin structure
-uv run ./scripts/create_plugin.py
-
-# Validate frontmatter
-uvx skilllint@latest check ./skills/my-skill/SKILL.md
-
-# Auto-fix common frontmatter issues
-uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md
+```text
+/plugin-creator <plugin-concept>
 ```
 
-### Refactoring Plugins
+#### `/skill-creator`
 
-```bash
-# Check skill complexity via token metrics
-uvx skilllint@latest check --verbose ./plugins/my-plugin
+Guides through creating a new skill at any scope: plugin, project, or user level. Covers frontmatter schema, invocation control, progressive disclosure with `references/` directories, and validation.
+
+```text
+/skill-creator
 ```
 
-## Skills
+After invoking, Claude will ask about the skill's purpose and guide through the creation process step by step. Scope choices: plugin (`plugins/{name}/skills/{skill-name}/`), project (`.claude/skills/{skill-name}/`), or user (`~/.claude/skills/{skill-name}/`).
 
-### Creation Skills
+#### `/agent-creator`
 
-| Skill                           | Purpose                                                                                        |
-| ------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `plugin-creator`                | Step-by-step guidance for creating Claude Code plugins                                         |
-| `skill-creator`                 | Official Anthropic guide for creating effective skills (modified from upstream)                |
-| `agent-creator`                 | Create high-quality Claude Code agents from scratch or by adapting existing agents             |
-| `write-frontmatter-description` | Write or rewrite frontmatter description fields for skills and agents following best practices |
+Creates Claude Code agent files from requirements. Handles discovery of existing agents, template selection, frontmatter generation, scope determination, and `plugin.json` updates.
+
+```text
+/agent-creator
+```
+
+Trigger phrases that activate this automatically: "create an agent", "add an agent to my plugin", "I need an agent for...".
+
+#### `/hook-creator`
+
+Creates hook scripts for Claude Code plugins. Enforces the mandatory constraints for production hooks: Node.js `.cjs` extension, `execFileSync` over `execSync`, `${CLAUDE_PLUGIN_ROOT}` path anchoring, correct `hookSpecificOutput` schema, and explicit timeouts.
+
+```text
+/hook-creator
+```
+
+Trigger phrases: "create a hook", "add a hook to my plugin", "build a PostToolUse hook", "I need a hook that...".
+
+#### `/lint`
+
+Runs the `skilllint` validator on a skill, agent, or plugin directory. Reports token complexity, broken links, frontmatter issues, and structural problems.
+
+```text
+/lint <path-to-skill-or-plugin>
+```
+
+#### `/refactor-plugin`
+
+Starts a complete plugin refactoring workflow: assessment, design, task planning, and parallel agent execution.
+
+```text
+/refactor-plugin <plugin-path>
+```
+
+#### `/refactor-skill`
+
+Assesses and refactors oversized or multi-domain skills. First determines whether splitting or `references/` extraction is appropriate — then executes the correct action. Preserves 100% of content and maintains backwards compatibility.
+
+```text
+/refactor-skill <path-to-skill-directory>
+```
+
+Use when `skilllint` reports SK006 (warning threshold) or SK007 (error threshold) on a skill.
+
+#### `/assessor`
+
+Analyzes a plugin's structure, scores its quality, and generates a phased refactoring plan with design map and task files.
+
+```text
+/assessor <plugin-name>
+```
+
+#### `/implement-refactor`
+
+Executes refactoring tasks from a task file created by `/assessor`. Reads task files, resolves dependencies, delegates to specialist agents, and tracks completion with parallel orchestration.
+
+```text
+/implement-refactor <plugin-slug or task-file-path>
+```
+
+#### `/ensure-complete`
+
+Validates that a completed refactoring achieved its goals. Checks improvement against the original assessment score, looks for documentation drift, and creates follow-up task files if issues remain.
+
+```text
+/ensure-complete <task-file-path>
+```
+
+#### `/start-refactor-task`
+
+Picks up a specific refactoring task from a task file, updates its status, implements acceptance criteria, and runs verification steps. Used by sub-agents during parallel refactoring execution.
+
+```text
+/start-refactor-task <task-file-path> [--task <task-id>] [--complete <task-id>]
+```
+
+#### `/add-doc-updater`
+
+Adds an automated documentation sync pipeline to any skill that wraps external documentation (API references, CLI docs, framework docs). Creates a Python script that downloads upstream docs, processes markdown for AI consumption, and enforces a configurable refresh cooldown.
+
+```text
+/add-doc-updater <target-plugin-or-skill-path>
+```
+
+#### `/audit-agent-lifecycle`
+
+Validates that agents can actually accomplish what they claim to do. Runs 8 semantic audits: capability vs configuration alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, and pattern learning. Writes reports to `.claude/audits/`.
+
+```text
+/audit-agent-lifecycle <plugin-path>
+```
+
+#### `/audit-skill-lifecycle`
+
+Deep semantic validation of how skills interconnect. Traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences. Generates audit reports to `.claude/audits/`.
+
+```text
+/audit-skill-lifecycle <plugin-path>
+```
+
+#### `/audit-skill-completeness`
+
+Evaluates a single skill's quality against 8 completeness categories derived from Anthropic's official skills repository. Scores preparation, progression, verification, scripts, examples, anti-patterns, references, and assets (0-3 per category). Generates a scored report.
+
+```text
+/audit-skill-completeness <skill-path>
+```
+
+#### `/agent-capability-analyzer`
+
+Runs the description-drift experiment: spawns all Claude Code agents simultaneously to collect self-reported capabilities, then compares them against static frontmatter descriptions. Use to measure how reliable orchestrator routing based on descriptions actually is.
+
+#### `/optimize-claude-md`
+
+Optimizes CLAUDE.md files, SKILL.md files, agent definitions, and other AI-facing files for Claude comprehension. Measures baseline metrics, runs optimization via the `contextual-ai-documentation-optimizer` agent, verifies with a second agent, then presents a before/after report.
+
+```text
+/optimize-claude-md <file-or-directory-path>
+```
+
+Only runs when you invoke it directly — Claude will not trigger this automatically.
+
+#### `/optimize`
+
+Guides writing lean AI-facing instructions. Flags content that Claude does not need: discoverable data, over-explained concepts, invented constraints, duplicated content, and stale cached facts.
+
+#### `/write-frontmatter-description`
+
+Writes or rewrites frontmatter `description` fields for skills and agents. Enforces single-line format, no YAML multiline indicators, no bare colons, front-loaded critical information, and trigger keywords for tool selection. Use when a description exceeds 1024 characters or fails validation.
+
+#### `/mission-statement`
+
+Defines a plugin mission statement — purpose, values, anti-patterns, and trade-offs. Produces `mission.json` with `[draft]` status and creates a backlog interview task for refinement. Use when creating a new plugin or auditing alignment.
+
+```text
+/mission-statement <plugin-path>
+```
+
+#### `/rt-ica` (moved to development-harness)
+
+This skill has moved to the `development-harness` plugin. Use `/dh:rt-ica` instead.
+
+Mandatory pre-planning checkpoint (Reverse Thinking — Information Completeness Assessment). Blocks planning until all prerequisites are verified. Use before creating plans, delegating to agents, or defining acceptance criteria.
+
+#### `/memory-and-rules`
+
+Reference for configuring Claude Code persistent memory: `CLAUDE.md` files, auto memory, `.claude/rules/` directories, memory hierarchy, and best practices for each scope level.
+
+#### `/permissions`
+
+Reference for configuring Claude Code permissions: tool approval rules, permission modes, managed policies, and sandboxing. Covers allow/deny/ask policies for Bash, Read, Edit, WebFetch, MCP, and Agent tools.
 
 ### Reference Skills
 
-| Skill                           | Purpose                                                          |
-| ------------------------------- | ---------------------------------------------------------------- |
-| `claude-skills-overview-2026`   | Complete reference for Claude Code skills system (January 2026)  |
-| `claude-plugins-reference-2026` | Complete reference for Claude Code plugins system (January 2026) |
-| `hooks-guide`                   | Cross-platform hooks reference — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp |
-
-### Refactoring Skills
-
-| Skill                 | Purpose                                                   |
-| --------------------- | --------------------------------------------------------- |
-| `assessor`            | Analyze plugin and create refactoring task files          |
-| `implement-refactor`  | Execute refactoring tasks with parallel orchestration     |
-| `ensure-complete`     | Validate refactoring and create follow-up tasks if needed |
-| `refactor-plugin`     | Complete plugin refactoring workflow                      |
-| `refactor-skill`      | Split oversized skills into smaller focused skills        |
-| `start-refactor-task` | Execute individual refactoring tasks                      |
-| `feature-discovery`   | Research feature requests and identify gaps               |
-
-## Agents
-
-| Agent                | Purpose                                       | Triggers                                                |
-| -------------------- | --------------------------------------------- | ------------------------------------------------------- |
-| `refactor-planner`   | Analyze plugins and create refactoring plans  | "plan a refactoring", "analyze plugin for refactoring"  |
-| `refactor-executor`  | Execute refactoring tasks from plans          | "execute refactoring tasks", "run the refactoring plan" |
-| `refactor-validator` | Validate refactoring completeness and quality | "validate refactoring", "verify refactoring complete"   |
-
-## Scripts
-
-### Validation Scripts
-
-| Script                        | Purpose                                       | Usage                                              |
-| ----------------------------- | --------------------------------------------- | -------------------------------------------------- |
-| `skilllint`               | Comprehensive schema validation with auto-fix | `uvx skilllint@latest check SKILL.md`                |
-| `validate-task-file.sh`       | Validate refactoring task file format         | `./validate-task-file.sh tasks.md`                 |
-
-### Utility Scripts
-
-| Script                 | Purpose                                   | Usage                                        |
-| ---------------------- | ----------------------------------------- | -------------------------------------------- |
-| `create_plugin.py`     | Interactive plugin scaffolding            | `uv run create_plugin.py`                    |
-| `fix_tool_formats.py`  | Fix tool field formatting issues          | `uv run fix_tool_formats.py`                 |
-
-### Script Usage Examples
-
-```bash
-# Validate frontmatter (comprehensive)
-uvx skilllint@latest check ./skills/my-skill/SKILL.md
-
-# Validate all frontmatter in a directory
-uvx skilllint@latest check ./plugins/my-plugin
-
-# Auto-fix frontmatter issues
-uvx skilllint@latest check --check ./skills/my-skill/SKILL.md
-uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md
-
-# Batch fix entire plugin
-uvx skilllint@latest check --fix ./plugins/my-plugin
-
-```
-
-## Validation Capabilities
-
-### Frontmatter Validation (skilllint)
-
-**Checks:**
-
-- YAML syntax validity
-- No forbidden multiline indicators (`>-`, `|-`)
-- Required fields present (`name`, `description` for agents)
-- Field types match schema (string, bool, object)
-- Field values within constraints (length, pattern, valid values)
-- Enumeration validation (model, permissionMode)
-
-**Auto-fixes:**
-
-- YAML arrays → comma-separated strings (tools, skills, etc.)
-- Multiline descriptions → single-line strings
-- Unquoted colons in descriptions — adds quotes to prevent YAML parsing failures
-
-**Supports:**
-
-- Skills (SKILL.md)
-- Agents (.md in agents/ directories)
-- Commands (.md in commands/ directories)
-
-## Refactoring Workflow
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    REFACTORING WORKFLOW                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Invoke @"plugin-creator:refactor-planner (agent)"              │
-│           │                                                      │
-│           ▼                                                      │
-│  ┌─────────────────┐                                            │
-│  │ Phase 1:        │                                            │
-│  │ Assessment      │──▶ Plugin Assessment Report                │
-│  └────────┬────────┘                                            │
-│           │                                                      │
-│           ▼                                                      │
-│  ┌─────────────────┐                                            │
-│  │ Phase 2:        │                                            │
-│  │ Design          │──▶ refactor-design-{slug}.md               │
-│  └────────┬────────┘                                            │
-│           │                                                      │
-│           ▼                                                      │
-│  ┌─────────────────┐                                            │
-│  │ Phase 3:        │                                            │
-│  │ Task Planning   │──▶ tasks-refactor-{slug}.md                │
-│  └────────┬────────┘                                            │
-│           │                                                      │
-│           ▼                                                      │
-│  Invoke @"plugin-creator:refactor-executor (agent)"             │
-│           │                                                      │
-│           ▼                                                      │
-│  ┌─────────────────┐                                            │
-│  │ Phase 4:        │                                            │
-│  │ Execution       │──▶ Parallel agent execution                │
-│  └────────┬────────┘                                            │
-│           │                                                      │
-│           ▼                                                      │
-│  Invoke @"plugin-creator:refactor-validator (agent)"            │
-│           │                                                      │
-│           ▼                                                      │
-│  ┌─────────────────┐                                            │
-│  │ Phase 5:        │                                            │
-│  │ Validation      │──▶ Validation Report                       │
-│  └────────┬────────┘                                            │
-│           │                                                      │
-│     ┌─────┴─────┐                                               │
-│     │           │                                               │
-│     ▼           ▼                                               │
-│  [Issues]    [No Issues]                                        │
-│     │           │                                               │
-│     ▼           ▼                                               │
-│  Follow-up   COMPLETE                                           │
-│  Tasks                                                          │
-│     │                                                           │
-│     └─────────▶ Recurse                                         │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Quality Standards
-
-### Skill Size Limits
-
-Complexity is measured by token count (via `skilllint`). Token thresholds replace line-count heuristics.
-
-- **Warning**: TOKEN_WARNING_THRESHOLD tokens - consider splitting
-- **Critical**: TOKEN_ERROR_THRESHOLD tokens - must split
-
-### Skill Split Requirements
-
-When splitting skills:
-
-- No content loss (100% migration)
-- Cross-references between new skills
-- Original skill becomes facade/meta-skill
-- Backwards compatibility maintained
-
-### Frontmatter Requirements
-
-**Skills:**
-
-- `name`: Optional (uses directory name if omitted)
-- `description`: Optional (uses first paragraph if omitted)
-- Valid tool/model values if specified
-
-**Agents:**
-
-- `name`: Required (lowercase, hyphens)
-- `description`: Required (trigger keywords)
-- `model`: One of sonnet/opus/haiku/inherit
-- `tools`: Comma-separated string (not array)
-
-## Plugin System Fundamentals
-
-### Plugin Caching and File Resolution
-
-Claude Code copies plugins to a cache directory rather than using them in-place for security and verification.
-
-**How it works:**
-
-- Marketplace plugins: The `source` path is copied recursively
-- Plugins with `.claude-plugin/plugin.json`: The directory containing `.claude-plugin/` is copied recursively
-
-**Path traversal limitations:**
-
-- Plugins cannot reference files outside their directory (`../shared-utils` will fail)
-- External files are not copied to the cache
-
-**Solutions for external dependencies:**
-
-1. **Use symlinks:** Create symlinks within your plugin directory (symlinks are followed during copy)
-
-   ```bash
-   ln -s /path/to/shared-utils ./shared-utils
-   ```
-
-2. **Restructure marketplace:** Set source to parent directory that contains all required files
-
-### Installation Scopes
-
-When installing a plugin, choose a scope that determines availability:
-
-| Scope     | Settings file                 | Use case                                                 |
-| --------- | ----------------------------- | -------------------------------------------------------- |
-| `user`    | `~/.claude/settings.json`     | Personal plugins available across all projects (default) |
-| `project` | `.claude/settings.json`       | Team plugins shared via version control                  |
-| `local`   | `.claude/settings.local.json` | Project-specific plugins, gitignored                     |
-| `managed` | `managed-settings.json`       | Managed plugins (read-only, update only)                 |
-
-**Examples:**
-
-```bash
-# Install to user scope (default)
-claude plugin install plugin-creator@jamie-bitflight-skills
-
-# Install to project scope (shared with team)
-claude plugin install plugin-creator@jamie-bitflight-skills --scope project
-
-# Install to local scope (gitignored)
-claude plugin install plugin-creator@jamie-bitflight-skills --scope local
-```
-
-### Environment Variables
-
-**`${CLAUDE_PLUGIN_ROOT}`:** Absolute path to your plugin directory. Use in hooks, MCP servers, and scripts.
-
-**`${CLAUDE_PROJECT_DIR}`:** Project root directory (where Claude Code was started).
-
-**Example:**
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [{
-      "hooks": [{
-        "type": "command",
-        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/process.sh"
-      }]
-    }]
-  }
-}
-```
-
-### CLI Commands Reference
-
-**Install plugin:**
-
-```bash
-claude plugin install <plugin> [--scope user|project|local]
-```
-
-**Uninstall plugin:**
-
-```bash
-claude plugin uninstall <plugin> [--scope user|project|local]
-# Aliases: remove, rm
-```
-
-**Enable/disable plugin:**
-
-```bash
-claude plugin enable <plugin> [--scope user|project|local]
-claude plugin disable <plugin> [--scope user|project|local]
-```
-
-**Update plugin:**
-
-```bash
-claude plugin update <plugin> [--scope user|project|local|managed]
-```
-
-**Validate plugin:**
-
-```bash
-claude plugin validate <plugin-directory>
-/plugin validate <plugin-directory>  # In session
-```
-
-### Testing Without Installation
-
-```bash
-# Load plugin for current session only
-claude --plugin-dir ./plugins/plugin-creator
-
-# Load multiple plugins
-claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
-```
+These load automatically when Claude needs them, or you can invoke them directly for reference.
+
+| Skill | What it provides |
+|---|---|
+| `/claude-skills-overview-2026` | Complete Claude Code skills system reference — frontmatter schema, invocation control, context fork, hooks in skills, token budget |
+| `/claude-plugins-reference-2026` | Complete Claude Code plugins system reference — `plugin.json` schema, all component types, marketplace format, CLI commands |
+| `/hooks-guide` | Cross-platform hooks reference for Claude Code, GitHub Copilot, Cursor, Windsurf, and Amp |
+| `/hooks-core-reference` | Claude Code hook system fundamentals — all events, matchers, environment variables, execution behavior, debugging |
+| `/hooks-io-api` | Hook JSON input/output API — what data hooks receive via stdin, what JSON they return to control Claude Code behavior |
+| `/hooks-patterns` | Hook recipes and working examples in Python and Node.js |
+| `/agentskills` | Agent Skills Open Standard (agentskills.io) — portable skill format for Claude Code, Cursor, Gemini CLI, and 20+ other agents |
+| `/prompt-optimization` | Principles for optimizing CLAUDE.md files and skills for Claude Code |
+| `/command-development` | Legacy `.claude/commands/` format — frontmatter fields, argument syntax, bash execution, AskUserQuestion patterns, workflow locking |
+| `/mcp-integration` | MCP server configuration within plugins — stdio/SSE/HTTP/WebSocket types, authentication, tool naming, lifecycle, security |
+| `/plugin-settings` | Per-project plugin configuration via `.local.md` — YAML frontmatter parsing from hooks, configuration-driven behavior patterns |
+| `/component-patterns` | Component lifecycle and decision framework — when to use commands vs skills vs agents vs hooks vs MCP servers |
+
+### Claude Improvements
+
+With this plugin installed, Claude will:
+
+- Recognize when you describe a plugin, skill, agent, or hook and activate the appropriate creation workflow automatically
+- Validate frontmatter before writing it, catching YAML syntax errors, forbidden multiline indicators, and incorrect field types
+- Use the correct tool format for agent and skill `tools` fields (comma-separated strings, not arrays)
+- Write hook scripts in Node.js `.cjs` only, never Python or bash — the format Claude Code's hook system requires for plugins
+- Apply the `${CLAUDE_PLUGIN_ROOT}` environment variable in hook paths rather than hardcoding absolute paths
+- Check skill complexity with token-based thresholds and recommend `references/` extraction or splitting before a skill exceeds Claude's context budget
+- Route refactoring task types to the correct specialist: `SKILL_SPLIT` tasks to `/refactor-skill`, `AGENT_OPTIMIZE` tasks to the `subagent-refactorer` agent, `DOC_IMPROVE` tasks to the `contextual-ai-documentation-optimizer` agent
+- Require `name:` in all skill and agent frontmatter per the agentskills.io specification
+
+### Automatic Behaviors
+
+- **On every git commit**: The `auto-sync-manifests` pre-commit hook detects component changes (skills, agents, commands), updates `plugin.json` component arrays, bumps the plugin version (major for deletion, minor for addition, patch for modification), and updates `marketplace.json`. No manual version management required.
 
 ## Installation
 
+First, add the marketplace (one-time setup):
+
 ```bash
-# From marketplace (user scope - default)
+/plugin marketplace add Jamie-BitFlight/claude_skills
+```
+
+Then install the plugin:
+
+```bash
 /plugin install plugin-creator@jamie-bitflight-skills
-
-# Install to project scope (shared with team)
-claude plugin install plugin-creator@jamie-bitflight-skills --scope project
-
-# For development (session only)
-claude --plugin-dir ./plugins/plugin-creator
 ```
 
-## Example Sessions
+## Usage
 
-### Creating a New Plugin
+### Create a new plugin from scratch
 
 ```bash
-# Generate plugin structure interactively
-uv run ./scripts/create_plugin.py
-
-# Validate the generated frontmatter
-uvx skilllint@latest check ./my-new-plugin
-
-# Validate plugin manifest
-claude plugin validate ./my-new-plugin
+/plugin-lifecycle new "a plugin that helps with Terraform infrastructure reviews"
 ```
 
-### Refactoring an Existing Plugin
+Claude will run prerequisite checks, discuss requirements with you, conduct parallel research, design the plugin structure, implement components, validate everything, and produce a marketplace-ready plugin.
+
+### Create a new agent
 
 ```bash
-# 1. Check skill complexity
-uvx skilllint@latest check --verbose ./plugins/python3-development
-
-# Output shows skills over token thresholds
-
-# 2. Invoke @"plugin-creator:refactor-planner (agent)"
-Use @"plugin-creator:refactor-planner (agent)" to analyze ./plugins/python3-development
-
-# Assessment runs, creates plan files
-
-# 4. Review plan at .claude/plan/refactor-design-python3-development.md
-
-# 5. Invoke @"plugin-creator:refactor-executor (agent)" when ready
-Use @"plugin-creator:refactor-executor (agent)" to execute the python3-development refactoring plan
-
-# Tasks execute in parallel where possible
-
-# 6. Invoke @"plugin-creator:refactor-validator (agent)"
-Use @"plugin-creator:refactor-validator (agent)" to validate the python3-development refactoring
-
-# If issues found, follow-up tasks created and cycle repeats
+/agent-creator
 ```
 
-### Validating and Fixing Frontmatter
+Or just say "create an agent that reviews pull requests for security issues" and Claude will activate the workflow automatically.
+
+### Validate a plugin before committing
 
 ```bash
-# Check a single file
-uvx skilllint@latest check ./skills/my-skill/SKILL.md
+/lint ./plugins/my-plugin
+```
 
-# Validate all skills in a plugin
+Or use the CLI directly:
+
+```bash
 uvx skilllint@latest check ./plugins/my-plugin
-
-# Validate only (no fixes)
-uvx skilllint@latest check --check ./skills/my-skill/SKILL.md
-
-# Apply fixes
-uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md
-
-# Batch fix entire plugin
 uvx skilllint@latest check --fix ./plugins/my-plugin
 ```
 
-## Plugin Component Reference
+Auto-fix handles: YAML arrays converted to comma-separated strings, multiline descriptions collapsed to single lines, and unquoted colons in description values.
 
-### plugin.json Component Fields
+### Refactor an oversized skill
 
-| Field          | Type           | Description                                         | Example                                  |
-| -------------- | -------------- | --------------------------------------------------- | ---------------------------------------- |
-| `commands`     | string\|array  | Additional command files/directories                | `"./custom/cmd.md"` or `["./cmd1.md"]`   |
-| `agents`       | string\|array  | Additional agent files or directories               | `"./custom/agents/"` or `["./agent.md"]` |
-| `skills`       | string\|array  | Additional skill directories                        | `"./custom/skills/"`                     |
-| `hooks`        | string\|object | Hook config path or inline config                   | `"./hooks.json"`                         |
-| `mcpServers`   | string\|object | MCP config path or inline config                    | `"./mcp-config.json"`                    |
-| `outputStyles` | string\|array  | Additional output style files/directories           | `"./styles/"`                            |
-| `lspServers`   | string\|object | Language Server Protocol config (code intelligence) | `"./.lsp.json"`                          |
-
-**Path behavior:**
-
-- Custom paths supplement default directories (don't replace them)
-- All paths must be relative and start with `./`
-- Multiple paths can be specified as arrays
-
-### LSP Servers
-
-Plugins can provide Language Server Protocol (LSP) servers for real-time code intelligence:
-
-- **Instant diagnostics:** Claude sees errors and warnings immediately after edits
-- **Code navigation:** go to definition, find references, hover information
-- **Language awareness:** type information and documentation for code symbols
-
-**Configuration format:**
-
-```json
-{
-  "lspServers": {
-    "python": {
-      "command": "pyright-langserver",
-      "args": ["--stdio"],
-      "extensionToLanguage": {
-        ".py": "python"
-      }
-    }
-  }
-}
+```bash
+/refactor-skill ./plugins/my-plugin/skills/my-large-skill
 ```
 
-**Note:** LSP servers require separate binary installation. LSP plugins configure Claude Code's connection to a language server but don't include the server itself.
+Claude will assess whether the skill needs splitting (multiple independent domains) or `references/` extraction (single domain, oversized). If splitting is warranted, it produces new focused SKILL.md files and converts the original to a facade skill for backwards compatibility.
 
-**Available LSP plugins:**
+### Full plugin refactoring workflow
 
-| Plugin           | Language server  | Install command                                                                            |
-| ---------------- | ---------------- | ------------------------------------------------------------------------------------------ |
-| `pyright-lsp`    | Pyright (Python) | `pip install pyright` or `npm install -g pyright`                                          |
-| `typescript-lsp` | TypeScript LS    | `npm install -g typescript-language-server typescript`                                     |
-| `rust-lsp`       | rust-analyzer    | See [rust-analyzer installation](https://rust-analyzer.github.io/manual.html#installation) |
+```bash
+/assessor my-plugin
+# Review the assessment report and task plan
+/implement-refactor my-plugin
+# After all tasks complete:
+/ensure-complete .claude/plan/tasks-refactor-my-plugin.md
+```
 
-## Related Plugins
+## Validation Reference
 
-- **holistic-linting** - Code quality and linting workflows
-- **prompt-optimization-claude-45** - Optimize AI-facing documentation
-- **python3-development** - Python development best practices
+### What `skilllint` checks
 
-## Version
+- YAML syntax validity
+- No forbidden multiline indicators (`>-`, `|-`)
+- Required fields present (`name` and `description` for agents; `name` for plugin skills)
+- Field types match schema (string, bool, object)
+- `tools` and `skills` fields are comma-separated strings, not arrays
+- Token-based skill complexity (SK006: warning, SK007: must split)
+- Internal markdown link validity
 
-2.5.0 - Added official Anthropic skill-creator skill (modified from upstream)
+### What `claude plugin validate` checks
 
-## Author
+- `plugin.json` exists in `.claude-plugin/`
+- JSON syntax is valid
+- Required field `name` is present and kebab-case
+- All paths start with `./`
+- `agents` field is an array of individual file paths, not a directory string
+- Referenced files exist
 
-Jamie Nelson (<https://github.com/bitflight-devops>)
+### Common errors and fixes
 
-## Attributions
+| Error | Cause | Fix |
+|---|---|---|
+| Skill not appearing as slash command | Missing `name:` field | `skilllint --fix` adds it from directory name |
+| `agents: Invalid input` | Used directory string instead of array | Change `"agents": "./agents/"` to `["./agents/file.md"]` |
+| Description shows as `>-` | YAML multiline indicator | `skilllint --fix` collapses to single line |
+| Hook not firing | Script not executable | `chmod +x scripts/my-hook.cjs` |
+| Path errors after install | Used `../` traversal | Use `${CLAUDE_PLUGIN_ROOT}` or symlinks |
 
-- **skill-creator skill**: Modified version of the official Anthropic skill-creator from [anthropics/skills](https://github.com/anthropics/skills/tree/69c0b1a0674149f27b61b2635f935524b6add202/skills/skill-creator). Licensed under Apache License 2.0 (see `skills/skill-creator/LICENSE.txt`).
+## Agents
+
+These agents run internally to implement the skills above. They are not invoked directly.
+
+| Agent | Purpose |
+|---|---|
+| `refactor-planner` | Analyzes plugin structure and creates refactoring plans |
+| `refactor-executor` | Executes refactoring tasks from plans with parallel orchestration |
+| `refactor-validator` | Validates refactoring completeness and quality against original assessment |
+| `subagent-refactorer` | Rewrites agent prompt files using Anthropic prompt engineering methodology — strategic XML tagging, strong imperative instructions, model-tier selection |
+| `contextual-ai-documentation-optimizer` | Optimizes prompts, SKILL.md, and CLAUDE.md files for Claude comprehension |
+| `plugin-assessor` | Analyzes plugins for structure, frontmatter compliance, orphaned files, and cross-reference validity |
+| `hook-creator` | Generates Node.js `.cjs` hook scripts and wires `hooks.json` |
+| `agent-creator` | Creates agent files from requirements with template selection and plugin.json updates |
+
+## Scripts
+
+| Script | Purpose | Usage |
+|---|---|---|
+| `create_plugin.py` | Interactive plugin scaffolding | `uv run plugins/plugin-creator/scripts/create_plugin.py` |
+| `fix_tool_formats.py` | Fix invalid tool field formats across the codebase | `uv run plugins/plugin-creator/scripts/fix_tool_formats.py` |
+| `auto_sync_manifests.py` | Pre-commit hook — syncs plugin.json and bumps versions | Runs automatically on `git commit` |
+| `validate-task-file.sh` | Validate refactoring task file format | `./plugins/plugin-creator/scripts/validate-task-file.sh <path>` |
+
+## Requirements
+
+- Claude Code v2.0+
+- `uvx` available (for running `skilllint`)
+- `uv` available (for running Python scripts)
+- Node.js available (for hook scripts at runtime)
 
 ## License
 
-MIT License (excluding skill-creator which retains Apache License 2.0)
+MIT License, with the exception of the `skill-creator` skill which retains its original Apache License 2.0 (sourced from [anthropics/skills](https://github.com/anthropics/skills)). See `skills/skill-creator/LICENSE.txt`.
 
 ---
 
-> **The Ancient Woe**
->
-> *The master craftsman who spends all day building tools to build other tools, never actually finishing the grand cathedral he was hired to construct.*
-
-> **The Bard's Decree**
->
-> *"I need a forge that births other forges! A master mold to cast my iron servants, that I may finally rest whilst they hammer the steel into shape!"*
+**Author**: Jamie Nelson — [github.com/bitflight-devops](https://github.com/bitflight-devops)

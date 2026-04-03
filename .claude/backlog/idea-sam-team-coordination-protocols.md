@@ -4,12 +4,12 @@ description: Explore how multiple humans interact with the pipeline concurrently
 metadata:
   topic: sam-team-coordination-protocols
   source: 'GitHub Issue #121'
-  added: '2026-03-03'
+  added: '2026-03-22'
   priority: IDEA
   type: Feature
   status: needs-grooming
   issue: '#121'
-  last_synced: '2026-03-14T16:00:56Z'
+  last_synced: '2026-03-22T15:10:32Z'
 ---
 
 ## Story

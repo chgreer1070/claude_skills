@@ -146,7 +146,7 @@ These templates follow a structured contract pattern with standardized inputs/ou
 | Field             | Type   | Default     | Valid Values                                               | Description                             |
 | ----------------- | ------ | ----------- | ---------------------------------------------------------- | --------------------------------------- |
 | `model`           | string | `inherit`   | `sonnet`, `opus`, `haiku`, `inherit`                       | Claude model to use                     |
-| `tools`           | string | (all tools) | Comma-separated: `Read, Grep, Glob, Bash, Edit, Write`     | Tools available to agent                |
+| `tools`           | string | (all tools) | Comma-separated: `Read, Grep, Glob, Bash, Edit, Write`. MCP tools: exact registered name required — no wildcards, case-sensitive. Wrong names silently fail (verified 2026-03-22). | Tools available to agent |
 | `disallowedTools` | string | (none)      | Comma-separated tool names                                 | Tools explicitly forbidden              |
 | `permissionMode`  | string | (inherit)   | `dontAsk`, `plan`, `acceptEdits`, `acceptAll`              | Permission behavior                     |
 | `skills`          | string | (none)      | Comma-separated skill names                                | Skills to load                          |

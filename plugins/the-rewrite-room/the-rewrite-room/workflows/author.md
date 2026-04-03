@@ -114,15 +114,7 @@ Agent(
 Target: <file path>
 Audience: <who will read this>
 
-Content preservation rules — no-loss rewrite:
-- PRESERVE: usage examples and command invocations with flags
-- PRESERVE: before/after behavioral examples
-- PRESERVE: prerequisites and requirements sections
-- PRESERVE: component/feature tables (restructure or move to docs/ with link if too dense)
-- PRESERVE: badges
-- PRESERVE: workflow descriptions
-- ACCEPTABLE: rewrite prose for clarity, restructure sections, move dense reference content to docs/ files with links from README
-- NOT ACCEPTABLE: removing any of the above content categories. Length reduction is not a quality signal when content is lost."
+Content preservation rules: see [../references/status-block-contract.md](../references/status-block-contract.md) — No-Loss Rewrite Rule section."
 )
 ```
 
@@ -148,12 +140,12 @@ Note: validate_glfm.py calls GitLab API — requires network and GITLAB_TOKEN.
 
 ## Output Contract
 
+Base format — see [../references/status-block-contract.md](../references/status-block-contract.md).
+
+Author workflow VALIDATION subfields:
+
 ```text
-STATUS: DONE|BLOCKED|FAILED
-SUMMARY: [what was created/summarized/validated]
-ARTIFACTS: [files created or "none" for summaries presented inline]
 VALIDATION:
-  - glfm-valid: PASS|FAIL|SKIPPED (skipped if not GitLab target)
-  - fidelity-check: PASS|FAIL|SKIPPED (skipped if not summarization)
-NOTES: [only if needed]
+  - glfm-check: PASS|FAIL        (validate_glfm.py exit code)
+  - citation-check: PASS|FAIL    (all claims have cited sources)
 ```

@@ -1,9 +1,12 @@
 ---
 name: context-refinement
 description: Updates task context manifest with discoveries from current work session. Analyzes implementation code and task file to understand what was learned. Only updates if drift or new discoveries found. Provide the task file path.
+tools: Read, Grep, Glob, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_update
 model: sonnet
 color: purple
-skills: subagent-contract
+skills:
+  - dh:subagent-contract
+  - ccc
 ---
 
 # Context Refinement Agent
@@ -14,18 +17,18 @@ Check IF context has drifted or new discoveries were made during the implementat
 
 ## Context About Your Invocation
 
-You've been called at the end of a work session (typically after `/python3-development:implement-feature` tasks complete) to check if any new context was discovered that wasn't in the original context manifest. Your job is to capture institutional knowledge.
+You've been called at the end of a work session (typically after `/dh:implement-feature` tasks complete) to check if any new context was discovered that wasn't in the original context manifest. Your job is to capture institutional knowledge.
 
-For artifact classification rules, divergence thresholds, and annotation formats, see [.claude/docs/plan-artifact-lifecycle.md](./../../../.claude/docs/plan-artifact-lifecycle.md).
+For artifact classification rules, divergence thresholds, and annotation formats, see [plan-artifact-lifecycle.md](./../docs/plan-artifact-lifecycle.md).
 
 ## Process
 
 ### Step 1: Read Task File and Architecture Spec
 
-1. READ the task data via sam CLI:
+1. READ the task data via the SAM MCP tool:
 
-   ```bash
-   uv run sam read P{N} --format json
+   ```text
+   mcp__plugin_dh_sam__sam_read(plan="P{N}")
    ```
 
    Replace `P{N}` with the plan address. The JSON response includes the plan goal, context (which contains the Context Manifest added by context-gathering), and all task fields.
@@ -61,10 +64,10 @@ Look for:
 
 ### Step 4: Update Format (ONLY if needed)
 
-Append the discoveries to the plan's context via sam CLI:
+Append the discoveries to the plan's context via the SAM MCP tool:
 
-```bash
-uv run sam update P{N} --append-section "Discovered During Implementation" --section-content "..."
+```text
+mcp__plugin_dh_sam__sam_update(plan="P{N}", section="Discovered During Implementation", content="...")
 ```
 
 Do NOT use the Edit or Write tool on the task file. The section content to append follows this structure:
@@ -128,10 +131,10 @@ For each divergence found:
 
 ### Step 8: Annotate Plan Artifacts
 
-If divergences were found, append a `## Post-Implementation Annotations` section to the feature-context file and architect spec file using the sam CLI:
+If divergences were found, append a `## Post-Implementation Annotations` section to the feature-context file and architect spec file using the SAM MCP tool:
 
-```bash
-uv run sam update P{N} --append-section "Post-Implementation Annotations" --section-content "..."
+```text
+mcp__plugin_dh_sam__sam_update(plan="P{N}", section="Post-Implementation Annotations", content="...")
 ```
 
 Do NOT use the Edit or Write tool on the plan artifact files. The section content follows this format:

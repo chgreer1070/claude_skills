@@ -392,7 +392,7 @@ This is the largest group. Update all Tier 1–3 files from the migration map.
 **Pattern for skill files:** Replace every `uv run .claude/skills/backlog/scripts/backlog.py <cmd> [flags]` bash block with the equivalent MCP tool call notation:
 
 ```
-mcp__backlog__backlog_<cmd>(param=value, ...)
+mcp__plugin_dh_backlog__backlog_<cmd>(param=value, ...)
 ```
 
 ### Task 10: Update CLAUDE.md Backlog Operations section
@@ -423,7 +423,7 @@ uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|upd
 
 **File:** `.claude/hooks/session-start-backlog.cjs`
 
-Update any references to CLI commands in `additionalContext` to reference MCP tool names. Look for text like `backlog.py add` and replace with `mcp__backlog__backlog_add`.
+Update any references to CLI commands in `additionalContext` to reference MCP tool names. Look for text like `backlog.py add` and replace with `mcp__plugin_dh_backlog__backlog_add`.
 
 **File:** `.claude/hooks/stop-backlog-reminder.cjs`
 
@@ -448,17 +448,17 @@ Key replacements (apply to ALL 19 occurrences):
 
 | Old bash block | New MCP notation |
 |---|---|
-| `uv run ... backlog.py list --format json --with-status -R ...` | `mcp__backlog__backlog_list(with_status=true)` |
-| `uv run ... backlog.py list --format json -R ...` | `mcp__backlog__backlog_list()` |
-| `uv run ... backlog.py list -R ...` | `mcp__backlog__backlog_list()` |
-| `uv run ... backlog.py view "{}" --format json -R ...` | `mcp__backlog__backlog_view(selector="{}")` |
-| `uv run ... backlog.py update "{title}" --plan "..." -R ...` | `mcp__backlog__backlog_update(selector="{title}", plan="...")` |
-| `uv run ... backlog.py update "{title}" --status in-progress -R ...` | `mcp__backlog__backlog_update(selector="{title}", status="in-progress")` |
-| `uv run ... backlog.py update "{title}" --create-issue -R ...` | `mcp__backlog__backlog_update(selector="{title}", create_issue=true)` |
-| `uv run ... backlog.py close "{title}" --reason "..." -R ...` | `mcp__backlog__backlog_close(selector="{title}", reason="...")` |
-| `uv run ... backlog.py close "{title}" --plan "..." --checklist-pass -R ...` | `mcp__backlog__backlog_close(selector="{title}", plan="...", checklist_pass=true)` |
-| `uv run ... backlog.py close "#{N}" --plan "..." --checklist-pass -R ...` | `mcp__backlog__backlog_close(selector="#{N}", plan="...", checklist_pass=true)` |
-| `uv run ... backlog.py resolve "{title or #N}" --reason "..." -R ...` | `mcp__backlog__backlog_resolve(selector="...", reason="...")` |
+| `uv run ... backlog.py list --format json --with-status -R ...` | `mcp__plugin_dh_backlog__backlog_list(with_status=true)` |
+| `uv run ... backlog.py list --format json -R ...` | `mcp__plugin_dh_backlog__backlog_list()` |
+| `uv run ... backlog.py list -R ...` | `mcp__plugin_dh_backlog__backlog_list()` |
+| `uv run ... backlog.py view "{}" --format json -R ...` | `mcp__plugin_dh_backlog__backlog_view(selector="{}")` |
+| `uv run ... backlog.py update "{title}" --plan "..." -R ...` | `mcp__plugin_dh_backlog__backlog_update(selector="{title}", plan="...")` |
+| `uv run ... backlog.py update "{title}" --status in-progress -R ...` | `mcp__plugin_dh_backlog__backlog_update(selector="{title}", status="in-progress")` |
+| `uv run ... backlog.py update "{title}" --create-issue -R ...` | `mcp__plugin_dh_backlog__backlog_update(selector="{title}", create_issue=true)` |
+| `uv run ... backlog.py close "{title}" --reason "..." -R ...` | `mcp__plugin_dh_backlog__backlog_close(selector="{title}", reason="...")` |
+| `uv run ... backlog.py close "{title}" --plan "..." --checklist-pass -R ...` | `mcp__plugin_dh_backlog__backlog_close(selector="{title}", plan="...", checklist_pass=true)` |
+| `uv run ... backlog.py close "#{N}" --plan "..." --checklist-pass -R ...` | `mcp__plugin_dh_backlog__backlog_close(selector="#{N}", plan="...", checklist_pass=true)` |
+| `uv run ... backlog.py resolve "{title or #N}" --reason "..." -R ...` | `mcp__plugin_dh_backlog__backlog_resolve(selector="...", reason="...")` |
 
 Also update the reference files:
 - `.claude/skills/work-backlog-item/references/step-procedures.md` (2 invocations)
@@ -472,7 +472,7 @@ Also update the reference files:
 Replace the single `backlog.py add` bash block with:
 
 ```
-mcp__backlog__backlog_add(
+mcp__plugin_dh_backlog__backlog_add(
     title="{title}",
     priority="{priority}",
     description="{description}",
@@ -491,7 +491,7 @@ Replace the 6 CLI invocations using the mapping from migration map Tier 2, item 
 
 **File:** `.claude/skills/group-items-to-milestone/SKILL.md`
 
-Replace the single `backlog.py list --format json` with `mcp__backlog__backlog_list()`.
+Replace the single `backlog.py list --format json` with `mcp__plugin_dh_backlog__backlog_list()`.
 
 ### Task 16: Commit and push migration
 

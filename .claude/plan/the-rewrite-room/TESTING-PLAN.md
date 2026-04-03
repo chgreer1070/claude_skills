@@ -91,7 +91,7 @@ Resume a session to continue testing the same agent instance. Useful for multi-s
 
 ### T2: subagent_type Resolution Check (Pre-Invocation)
 
-**Purpose**: Verify the `subagent_type` strings used in agent Task calls resolve to real agents.
+**Purpose**: Verify the `subagent_type` strings used in agent Agent calls resolve to real agents.
 
 Agents referenced:
 

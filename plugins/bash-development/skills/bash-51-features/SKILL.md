@@ -2,6 +2,7 @@
 name: bash-51-features
 description: Bash 5.1 release features and improvements with practical examples. Use when working with Bash 5.1 features, epoch time variables, redirection enhancements, or when user asks about Bash 5.1 changes, new features, or version-specific capabilities.
 ---
+
 # Bash 5.1 Features and Improvements
 
 Released in December 2020, Bash 5.1 introduced several notable features and improvements for modern shell scripting.

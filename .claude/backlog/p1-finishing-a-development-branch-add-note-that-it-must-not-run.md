@@ -3,13 +3,13 @@ name: 'finishing-a-development-branch: add note that it must not run while subag
 description: 'The `superpowers:finishing-a-development-branch` skill can be invoked from the plan at the end of `superpowers:executing-plans`, but when `superpowers:subagent-driven-development` is the active execution pattern the finishing step must not run mid-session — it is only valid after the final code quality reviewer has approved all tasks. The skill currently has no guard against being invoked while subagent-driven-development is still dispatching subagents. A note (and ideally a check) is needed: if a subagent-driven-development session is in progress in the current worktree, warn and refuse to run finishing-a-development-branch until all tasks show complete.'
 metadata:
   topic: finishing-a-development-branch-add-note-that-it-must-not-run
-  source: Session observation — executing-plans invoked finishing-a-development-branch without awareness that subagent-driven-development was the active execution pattern
-  added: '2026-03-04'
+  source: 'GitHub Issue #430'
+  added: '2026-03-22'
   priority: P1
   type: Docs
   status: needs-grooming
   issue: '#430'
-  last_synced: '2026-03-14T16:00:39Z'
+  last_synced: '2026-03-22T15:10:15Z'
 ---
 
 ## Story

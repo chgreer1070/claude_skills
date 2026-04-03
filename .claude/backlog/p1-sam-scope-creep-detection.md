@@ -3,14 +3,13 @@ name: 'SAM: Scope Creep Detection'
 description: Define mechanism to detect when execution diverges from plan. How does Forensic Review detect that the execution agent solved a different problem than planned?
 metadata:
   topic: sam-scope-creep-detection
-  source: Gap analysis of SAM framework
-  added: '2026-02-01'
+  source: 'GitHub Issue #89'
+  added: '2026-03-22'
   priority: P1
   type: Feature
   status: needs-grooming
   issue: '#89'
-  plan: ''
-  last_synced: '2026-03-14T16:01:15Z'
+  last_synced: '2026-03-22T15:10:51Z'
 ---
 
 ## Story

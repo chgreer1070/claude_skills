@@ -14,13 +14,13 @@ stage_skills:
   planning-task-decomposition: [python3-planning-task-decomposition]
   implementation: [python3-implementation]
   testing-forensic-review: [python3-testing-forensic-review]
-  testing-verification: [python3-testing]
+  testing-final-verification: [python3-testing]
 
 # Quality gate commands. {files} is a template variable substituted at
 # dispatch time via str.format(files=...) with the list of affected files.
 quality_gates:
   format: "uv run ruff format {files}"
   lint: "uv run ruff check {files}"
-  typecheck: "uv run mypy {files}"
+  typecheck: "uv run ty check {files}"
   test: "uv run pytest tests/ --tb=short"
   standards: "/python3-development:modernpython"

@@ -29,7 +29,7 @@ Never introduce hard-coded truncation or length limits on content that a consume
 1. !`uv self update || true` — ensure uv is v0.10.0 or newer
 2. !`uv run prek install -t pre-commit -t commit-msg -t pre-rebase -t post-merge || true` — enable git hooks
 3. Follow `./CONTRIBUTING.md` procedures when modifying plugins
-4. Multi-step work identified: create backlog items via /create-backlog-item or process backlog items via /work-backlog-item — add items freely, they get groomed and checked later.
+4. Multi-step work identified: create backlog items via /dh:create-backlog-item or process backlog items via /dh:work-backlog-item — add items freely, they get groomed and checked later.
 
 **Runtime**: All Python via `uv`, `uv run`, `uv run python -c 'some python code'`. All pre-commit via `prek`, `uv run prek run --files <file>`
 
@@ -47,7 +47,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 
 | Stage | Command | Purpose |
 |-------|---------|---------|
-| Starting complex task | `/plugin-creator:rt-ica` | High Quality Details |
+| Starting complex task | `/dh:rt-ica` | High Quality Details |
 | Delegating to sub-agent | `/delegate` | Enforces delegation framework |
 | Reviewing agent output | `/hallucination-detector:hallucination-audit` | Checks hallucinations, unverified causality |
 | Claiming task complete | `/verify` | Runs "Is It Done?" checklist |
@@ -58,7 +58,18 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 - Output contains "likely", "probably", or "I think" — STOP and verify before continuing
 - **Pass file paths, let agents read** — agents perform their own Chain of Verification against actual source. Provide the path; the agent reads, verifies, and acts on it with a fresh context window. Never transcribe file contents into prompts — it bypasses agent verification.
 - Do NOT discover file paths on behalf of agents — the agent has full tool access and an empty context window; it finds what it needs itself. Pre-discovering paths wastes orchestrator context and duplicates agent work.
-- **Investigation requires hypothesis first** — when your first action on a new task is a Read/Grep/Bash investigation (not a planned delegation), load `/scientific-method:scientific-thinking` first. Investigation without hypothesis is debugging theater.
+- **Structured thinking before action** — form a hypothesis and plan internally before acting. Then:
+
+```mermaid
+flowchart TD
+    Q{Destructive or ambiguous?}
+    Q -->|"YES — deletes files, overwrites state,<br>unclear requirements"| Align[Think then seek alignment]
+    Q -->|"NO — routine non-destructive:<br>write, create, fix known error, add test"| Act[Think then act immediately]
+    Act --> Verify[Verify after]
+    Align --> Verify
+```
+
+  For unknown failures (unclear cause, flaky test): load `/scientific-method:scientific-thinking` to structure the hypothesis.
 
 **Tool Usage:**
 
@@ -86,9 +97,46 @@ Reason: Permission denial is a user boundary signal. Some commands are blocked b
 
 **Investigation Escalation Hard-Stop:**
 
-Three or more Read/Grep/Bash calls on source files without an intervening Edit/Write or Task delegation are the trigger signal for investigation escalation.
+Three or more Read/Grep/Bash calls on source files without an intervening Edit/Write or Agent delegation are the trigger signal for investigation escalation.
 
 When triggered: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate to a specialist agent.
+
+**Parallel execution rule**: When 2+ independent tasks need doing, use TeamCreate to dispatch parallel agents. Create the team, create tasks for tracking, spawn one agent per independent problem domain as a teammate. Teams are the standard mechanism for parallel work — not a special case. Do not serialize independent work.
+
+---
+
+## Task Classification
+
+```mermaid
+flowchart TD
+    T{Task type?}
+    T -->|"Clear requirements, known output:<br>write file, fix known error, add test"| Exec[Execution — act immediately]
+    T -->|"Known bug, CI failure, broken behavior"| Fix[Fix — reproduction first]
+    T -->|"Unknown cause, unclear path:<br>debug failure, diagnose perf, flaky test"| Inv[Investigation — hypothesis first]
+    Exec --> V[Verify after completion]
+    Fix --> FD[".claude/rules/fix-delegation-discipline.md<br>Reproduce → Fix → Validate against reproduction"]
+    FD --> V
+    Inv --> H[Load /scientific-method:scientific-thinking] --> V
+```
+
+## Parallel Execution
+
+When a task decomposes into 2+ independent subtasks, execute in parallel. Sequential execution of independent work requires justification (shared state, ordered dependencies).
+
+| Independent subtasks | Execution method |
+|---|---|
+| 2 | Launch 2 background agents simultaneously |
+| 3+ | Use TeamCreate for parallel agent pool |
+
+## Autonomous Action Boundary
+
+| Act without asking | Ask before acting |
+|---|---|
+| Read files, run tests, run linters | Delete files |
+| Create subagents for research/implementation | Push to remote |
+| Create teams for parallel work | Modify files the user did not mention |
+| Write files the user explicitly requested | Change architectural decisions |
+| Fix errors discovered during current task | Destructive git operations |
 
 ---
 
@@ -115,7 +163,7 @@ Activate `/plugin-creator:skill-creator` when ANY condition matches:
 
 ---
 
-## Task Delegation Standards
+## Agent Delegation Standards
 
 Follow Delegation Template in agent-orchestration:agent-orchestration skill when invoking Agent tool.
 
@@ -162,6 +210,10 @@ flowchart TD
 SOURCE: Experimental validation (2026-02-02). Context-gathering: 4/4 correct. Explore: 2/4 correct.
 
 </sub_agent_selection>
+
+---
+
+- Scratch Directory Convention: `.claude/rules/scratch-directory.md`
 
 ---
 
@@ -223,8 +275,8 @@ Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not 
 
 When you identify that work will need multiple steps or jobs: create backlog items for them — don't just describe them.
 
-1. **Backlog**: Create via `create-backlog-item` or match via `work-backlog-item` before starting.
-2. **Plan**: When writing a plan, add it to the item via `mcp__backlog__backlog_update(selector="{title}", plan="{path}")`.
+1. **Backlog**: Create via `dh:create-backlog-item` or match via `dh:work-backlog-item` before starting.
+2. **Plan**: When writing a plan, add it to the item via `mcp__plugin_dh_backlog__backlog_update(selector="{title}", plan="{path}")`.
 3. **Progress**: When completing actions, update the task/plan artifact (checklist, status) so progression is visible.
 
 Skip only for trivial single-step requests (typos, one-off questions, immediate one-action fixes).
@@ -235,8 +287,10 @@ Skip only for trivial single-step requests (typos, one-off questions, immediate 
 
 <backlog_operations>
 
-**Primary interface (MCP)**: Use `mcp__backlog__*` tools for all backlog and GitHub issue CRUD.
-GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache.
+**Primary interface (MCP)**: Use `mcp__plugin_dh_backlog__*` tools for all backlog and GitHub issue CRUD.
+GitHub Issues are the source of truth; `~/.dh/projects/{slug}/backlog/` per-item files are the local cache.
+
+**DH state location**: `~/.dh/projects/{slug}/` where `{slug}` is the absolute project path with directory separators replaced by hyphens (leading hyphen is intentional). Example: `/home/ubuntulinuxqa2/repos/claude_skills` → `-home-ubuntulinuxqa2-repos-claude_skills`. Override with `DH_STATE_HOME` env var.
 
 Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`,
 `backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`.
@@ -244,16 +298,9 @@ Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, 
 All tools return a dict. Check for `error` key on failure. Success responses include `messages`
 and `warnings` lists.
 
-**CI fallback (CLI)**: GitHub Actions (`backlog-sync.yml`) and environments without an MCP client
-use the CLI:
+Do not edit `~/.dh/projects/{slug}/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|update ...
-```
-
-Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
-
-Skills `/create-backlog-item` and `/work-backlog-item` invoke these tools. See `/backlog` skill.
+Skills `/dh:create-backlog-item` and `/dh:work-backlog-item` invoke these tools. See `/backlog` skill.
 
 **Capability gap fallback**: If the MCP tools or CLI lack the needed operation, invoke
 `/backlog-tools-administrator` to extend both the CLI and MCP server simultaneously.
@@ -263,6 +310,10 @@ Skills `/create-backlog-item` and `/work-backlog-item` invoke these tools. See `
 ---
 
 - Plugin Development Workflows: `.claude/rules/plugin-development.md`
+
+**Plugin manifest location**: `plugin.json` is always at `<plugin-root>/.claude-plugin/plugin.json` (or `.cursor-plugin/plugin.json` when developing a Cursor plugin, or both).
+
+**Skill and plugin reload lifecycle**: Skills added or changed in the user or project `.claude/skills/` directory are immediately available after a change. Plugin changes to agents, skills, MCP servers, hooks, language servers, and other components require the plugin version to be bumped (this happens automatically after any commit that changes files in a plugin) and then the user must restart their session to reload the plugin from the cache. To verify the cache is current, check that the plugin cache path includes the same version as the plugin.json: `~/.claude/plugins/cache/<marketplace>/<plugin-name>/<version>/`.
 
 **Automatic version bumping**: `plugin.json` and `marketplace.json` are automatically bumped and staged by the pre-commit hook when any plugin file is modified. Do not manually edit version fields — the hook handles this. After a successful commit, the updated versions are already included.
 
@@ -333,6 +384,15 @@ Reference other skills using activation syntax:
 
 ✅ `For comprehensive Astral uv documentation, use the /uv skill.`
 ❌ `See /uv/SKILL.md for uv documentation`
+
+### Subdirectory Namespaces — Skills Do NOT Support This
+
+Skills in subdirectories under `skills/` silently fail to register. Subdirectory namespacing (`plugin:group:skill-name`) was a `commands/` feature only.
+
+- `skills/testing/analyze-test-failures/SKILL.md` → **DEAD — not registered**
+- `skills/analyze-test-failures/SKILL.md` → `/plugin:analyze-test-failures` — correct
+
+All skill directories must sit directly under `skills/` — one level deep only. Do not create grouping subdirectories.
 
 ---
 
@@ -410,6 +470,8 @@ uv run prek run --files <file>
 
 **Reason**: Repository uses `prek` (Rust-based pre-commit replacement) with `.pre-commit-config.yaml` — identical syntax to `pre-commit` but faster.
 
+**ty type errors**: Fix the code to satisfy the type checker — inline `# ty: ignore` suppressions and per-file-ignores relaxation are prohibited. Unresolved imports: add missing dependencies via `uv add --dev` or fix the import path. Type mismatches in tests: use `model_validate()` for raw-input testing instead of passing untyped values to typed constructors.
+
 ---
 
 - Linting Exception Conditions: `.claude/rules/linting-exceptions.md`
@@ -424,7 +486,15 @@ uv run prek run --files <file>
 
 ---
 
+- Markdown AST Parsing: Use `marko` for any task that requires parsing markdown structure (headers, list items, inline code, bold, tables, section extraction). Do NOT write regex parsers for markdown. Reference usage and processing patterns in `../agentskills-linter` (`/home/ubuntulinuxqa2/repos/agentskills-linter`) — `marko` is already a dependency there with established patterns for walking the AST. Add `marko` as a dependency via `uv add marko` if not already present in the target project.
+
+---
+
 - Silent Failure Prevention: `.claude/rules/silent-failure-prevention.md`
+
+---
+
+- Exception Handling (narrow catches, BLE001, the "must not crash" anti-pattern): `.claude/rules/exception-handling.md`
 
 ---
 

@@ -138,7 +138,8 @@ uv run pytest
 
 # Run linters
 uv run ruff check .
-uv run mypy src/
+uv run ty check src/ tests/
+# If the project uses mypy: uv run mypy src/
 ```
 
 ## Testing
