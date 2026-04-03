@@ -58,18 +58,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 - Output contains "likely", "probably", or "I think" — STOP and verify before continuing
 - **Pass file paths, let agents read** — agents perform their own Chain of Verification against actual source. Provide the path; the agent reads, verifies, and acts on it with a fresh context window. Never transcribe file contents into prompts — it bypasses agent verification.
 - Do NOT discover file paths on behalf of agents — the agent has full tool access and an empty context window; it finds what it needs itself. Pre-discovering paths wastes orchestrator context and duplicates agent work.
-- **Structured thinking before action** — form a hypothesis and plan internally before acting. Then:
-
-```mermaid
-flowchart TD
-    Q{Destructive or ambiguous?}
-    Q -->|"YES — deletes files, overwrites state,<br>unclear requirements"| Align[Think then seek alignment]
-    Q -->|"NO — routine non-destructive:<br>write, create, fix known error, add test"| Act[Think then act immediately]
-    Act --> Verify[Verify after]
-    Align --> Verify
-```
-
-  For unknown failures (unclear cause, flaky test): load `/scientific-method:scientific-thinking` to structure the hypothesis.
+- **Investigation requires hypothesis first** — when your first action on a new task is a Read/Grep/Bash investigation (not a planned delegation), load `/scientific-method:scientific-thinking` first. Investigation without hypothesis is debugging theater.
 
 **Tool Usage:**
 
@@ -97,7 +86,7 @@ Reason: Permission denial is a user boundary signal. Some commands are blocked b
 
 **Investigation Escalation Hard-Stop:**
 
-Three or more Read/Grep/Bash calls on source files without an intervening Edit/Write or Agent delegation are the trigger signal for investigation escalation.
+Three or more Read/Grep/Bash calls on source files without an intervening Edit/Write or Task delegation are the trigger signal for investigation escalation.
 
 When triggered: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate to a specialist agent.
 
@@ -163,7 +152,7 @@ Activate `/plugin-creator:skill-creator` when ANY condition matches:
 
 ---
 
-## Agent Delegation Standards
+## Task Delegation Standards
 
 Follow Delegation Template in agent-orchestration:agent-orchestration skill when invoking Agent tool.
 

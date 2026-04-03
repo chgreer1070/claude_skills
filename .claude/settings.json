@@ -41,6 +41,6 @@
   "enabledPlugins": {
     "hallucination-detector@jamie-bitflight-skills": true,
     "superpowers-lab@superpowers-marketplace": true,
-    "orchestrator-discipline": true
+    "orchestrator-discipline@jamie-bitflight-skills": true
   }
 }
