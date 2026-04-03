@@ -629,9 +629,16 @@ def create(
             y = YAML()
             parsed = y.load(raw)
             if isinstance(parsed, dict) and "tasks" in parsed:
-                tasks = list(parsed["tasks"])
+                raw_tasks = list(parsed["tasks"])
+                non_dict = [i for i, t in enumerate(raw_tasks) if not isinstance(t, dict)]
+                if non_dict:
+                    _err(f"stdin tasks[{non_dict[0]}] is not a mapping — every task must be a YAML mapping")
+                tasks = raw_tasks  # type: ignore[assignment]
             elif isinstance(parsed, list):
-                tasks = [item for item in parsed if isinstance(item, dict)]
+                non_dict = [i for i, t in enumerate(parsed) if not isinstance(t, dict)]
+                if non_dict:
+                    _err(f"stdin item[{non_dict[0]}] is not a mapping — every task must be a YAML mapping")
+                tasks = parsed  # type: ignore[assignment]
             else:
                 _err("stdin must be YAML with a top-level 'tasks:' list or a bare list")
 
