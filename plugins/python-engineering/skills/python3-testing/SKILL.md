@@ -20,6 +20,8 @@ Tests are specifications. When a test fails, investigate both possibilities:
 
 **Red flags**: Never immediately change tests to match implementation. Never assume implementation is always correct. Never bulk-update tests without individual analysis.
 
+For the full investigation protocol, red flags, and example responses, load `/python-engineering:test-failure-mindset`.
+
 ## Fixture Design
 
 - Session fixtures for expensive resources (DB, servers)

@@ -102,6 +102,14 @@ async def _fetch_all(urls: list[str], limit: int) -> list[str]:
 - `references/rich-console-and-markup.md`, `references/rich-renderables.md`, `references/rich-text-and-syntax.md`, `references/rich-advanced-patterns.md`, `references/rich-progress-and-live.md`, `references/rich-logging-and-tracebacks.md` — Rich tables, panels, progress, live displays
 - `references/typer-rich-non-tty-patterns.md`, `references/typer-rich-tables.md`, `references/typer-rich-exception-handling.md`, `references/typer-rich-testing-patterns.md` — Typer+Rich integration, non-TTY, width, testing
 
+## Related Skills
+
+Load `python-engineering:textual` when the task involves Textual TUI widgets, screen stack, CSS styling, reactive attributes, Pilot testing, or background workers.
+
+Load `python-engineering:typer` when the task is focused on Typer commands, parameter configuration, subcommand composition, or Typer-specific documentation.
+
+Load `python-engineering:typer-and-rich` when the task involves Rich table rendering in non-TTY contexts, Typer/Rich integration pitfalls, or correctness review of CLI output handling.
+
 ## Assets
 
 - `assets/python-cli-demo.py` — complete working example

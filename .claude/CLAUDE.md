@@ -51,6 +51,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 | Delegating to sub-agent | `/delegate` | Enforces delegation framework |
 | Reviewing agent output | `/hallucination-detector:hallucination-audit` | Checks hallucinations, unverified causality |
 | Claiming task complete | `/verify` | Runs "Is It Done?" checklist |
+| Writing or improving a process | `/process-siren:improve-processes` | Evaluates process completeness, improves before Mermaid conversion |
 
 **Critical Constraints:**
 
@@ -63,8 +64,8 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 ```mermaid
 flowchart TD
     Q{Destructive or ambiguous?}
-    Q -->|"YES — deletes files, overwrites state,<br>unclear requirements"| Align[Think then seek alignment]
-    Q -->|"NO — routine non-destructive:<br>write, create, fix known error, add test"| Act[Think then act immediately]
+    Q -->|"YES: deletes files, overwrites state, unclear requirements"| Align[Think then seek alignment]
+    Q -->|"NO: routine non-destructive, write, create, fix known error, add test"| Act[Think then act immediately]
     Act --> Verify[Verify after]
     Align --> Verify
 ```
@@ -76,6 +77,7 @@ flowchart TD
 - Files: `Read`, `Write`, `Edit` — not `cat`, `sed`, `echo >`
 - Search: `Grep`, `Glob` — not `find`, `ls -R`
 - Python: `Bash(uv run script.py)`
+- Mermaid validation: `mcp__claude_ai_Mermaid_Chart__validate_and_render_mermaid_diagram` — validate all Mermaid diagrams before committing
 - Large File Write Strategy: `.claude/rules/large-file-write-strategy.md`
 
 **Reference notation the user may mention, or when you want to tell the user about a command or agent:**
@@ -95,12 +97,6 @@ When ANY tool use is denied by the user:
 
 Reason: Permission denial is a user boundary signal. Some commands are blocked because safer alternatives exist (e.g., `git checkout` is destructive — `git switch` is the safe equivalent). When no permitted alternative exists, state the block and wait for direction.
 
-**Investigation Escalation Hard-Stop:**
-
-Three or more Read/Grep/Bash calls on source files without an intervening Edit/Write or Agent delegation are the trigger signal for investigation escalation.
-
-When triggered: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate to a specialist agent.
-
 **Parallel execution rule**: When 2+ independent tasks need doing, use TeamCreate to dispatch parallel agents. Create the team, create tasks for tracking, spawn one agent per independent problem domain as a teammate. Teams are the standard mechanism for parallel work — not a special case. Do not serialize independent work.
 
 ---
@@ -110,11 +106,11 @@ When triggered: STOP. Write the file paths and observations gathered so far into
 ```mermaid
 flowchart TD
     T{Task type?}
-    T -->|"Clear requirements, known output:<br>write file, fix known error, add test"| Exec[Execution — act immediately]
-    T -->|"Known bug, CI failure, broken behavior"| Fix[Fix — reproduction first]
-    T -->|"Unknown cause, unclear path:<br>debug failure, diagnose perf, flaky test"| Inv[Investigation — hypothesis first]
+    T -->|"Clear requirements, known output: write file, fix known error, add test"| Exec[Execution: act immediately]
+    T -->|"Known bug, CI failure, broken behavior"| Fix[Fix: reproduction first]
+    T -->|"Unknown cause, unclear path: debug failure, diagnose perf, flaky test"| Inv[Investigation: hypothesis first]
     Exec --> V[Verify after completion]
-    Fix --> FD[".claude/rules/fix-delegation-discipline.md<br>Reproduce → Fix → Validate against reproduction"]
+    Fix --> FD["fix-delegation-discipline.md: Reproduce, Fix, Validate against reproduction"]
     FD --> V
     Inv --> H[Load /scientific-method:scientific-thinking] --> V
 ```
@@ -176,9 +172,9 @@ Use paths relative to current working directory when delegating to sub-agents.
 ```mermaid
 flowchart TD
     Start([Construct path for sub-agent]) --> Q{Path starts with?}
-    Q -->|./ relative| Use[Use as-is]
-    Q -->|/home/ or /usr/| Abs[Convert to ../../relative/path]
-    Q -->|~/.claude/skills/| Sym[Convert to ~/.claude/skills/]
+    Q -->|"./ relative"| Use[Use as-is]
+    Q -->|"/home/ or /usr/"| Abs["Convert to ../../relative/path"]
+    Q -->|"~/.claude/skills/"| Sym["Convert to ~/.claude/skills/"]
     Abs -->|Why| Reason1[Absolute paths are verbose and non-portable]
     Sym -->|Why| Reason2[Symlink paths trigger manual approval on every file op]
     Use --> Done([Sub-agent inherits same working directory])

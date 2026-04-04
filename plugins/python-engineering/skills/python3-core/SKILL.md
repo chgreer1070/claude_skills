@@ -109,6 +109,14 @@ Load `python3-stdlib-only` ONLY when confirmed environment restrictions prevent 
 - `/python-engineering:lint` — deterministic quality checks (manual entrypoint)
 - `/python-engineering:debug` — structured debugging (manual entrypoint)
 
+### Async/Concurrent Python
+
+Load `async-python-patterns` when the task involves async/await patterns, asyncio, concurrent I/O operations, task scheduling, or non-blocking systems.
+
+### Documentation Sites
+
+Load `mkdocs` when the task involves generating a documentation site with MkDocs or Material theme.
+
 ### Tool-Specific
 
 Load `python3-tools` when the task involves uv, Hatchling, ty, pre-commit, TOML editing, or PyPI packaging.
