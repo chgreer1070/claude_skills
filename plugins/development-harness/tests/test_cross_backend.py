@@ -34,11 +34,13 @@ from __future__ import annotations
 
 import os
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 import pytest
 from backlog_core.backends.memory_backend import InMemoryBackend
 from backlog_core.backends.sqlite_backend import SQLiteBackend
 from backlog_core.models import BackendAvailability, BacklogItem, BacklogItemMetadata, ViewItemResult
+from github.Repository import Repository as GithubRepository
 
 if TYPE_CHECKING:
     from backlog_core.backend_protocol import BacklogBackend
@@ -49,6 +51,12 @@ pytestmark = pytest.mark.cross_backend
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
+
+# A MagicMock that satisfies the Repository type annotation.
+# Local backends (InMemoryBackend, SQLiteBackend) ignore the repo argument
+# entirely — this mock fulfils the type contract without requiring a live
+# GitHub connection.
+_MOCK_REPO: GithubRepository = MagicMock(spec=GithubRepository)
 
 _GITHUB_MARKER = pytest.mark.skipif(
     not os.environ.get("BACKLOG_CROSS_BACKEND_GITHUB"),
@@ -173,7 +181,7 @@ class TestCreateItem:
         item = _make_item()
 
         # Act
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
 
         # Assert
         assert isinstance(number, int)
@@ -189,9 +197,9 @@ class TestCreateItem:
         item = _make_item("Fetchable Feature")
 
         # Act
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert node["number"] == number
@@ -207,9 +215,9 @@ class TestCreateItem:
         item = _make_item()
 
         # Act
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert node["state"] == "OPEN"
@@ -225,8 +233,8 @@ class TestCreateItem:
         item_b = _make_item("Beta")
 
         # Act
-        num_a = backend.create_issue_for_item(None, item_a)  # type: ignore[arg-type]
-        num_b = backend.create_issue_for_item(None, item_b)  # type: ignore[arg-type]
+        num_a = backend.create_issue_for_item(_MOCK_REPO, item_a)
+        num_b = backend.create_issue_for_item(_MOCK_REPO, item_b)
 
         # Assert
         assert num_a is not None
@@ -252,7 +260,7 @@ class TestDryRun:
         item = _make_item()
 
         # Act
-        result = backend.create_issue_for_item(None, item, dry_run=True)  # type: ignore[arg-type]
+        result = backend.create_issue_for_item(_MOCK_REPO, item, dry_run=True)
 
         # Assert
         assert result is None
@@ -265,10 +273,10 @@ class TestDryRun:
         """
         # Arrange
         item = _make_item()
-        backend.create_issue_for_item(None, item, dry_run=True)  # type: ignore[arg-type]
+        backend.create_issue_for_item(_MOCK_REPO, item, dry_run=True)
 
         # Act — fetch all open issues; should be empty
-        issues = backend._fetch_issues_graphql(None, "", "")  # type: ignore[arg-type]
+        issues = backend._fetch_issues_graphql(_MOCK_REPO, "", "")
 
         # Assert
         assert len(issues) == 0
@@ -290,15 +298,15 @@ class TestListItems:
         """
         # Arrange
         item = _make_item("Open One")
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
         backend.close_github_issue(str(number), "done")
 
         open_item = _make_item("Open Two")
-        backend.create_issue_for_item(None, open_item)  # type: ignore[arg-type]
+        backend.create_issue_for_item(_MOCK_REPO, open_item)
 
         # Act
-        open_issues = backend._fetch_issues_graphql(None, "", "", state="OPEN")  # type: ignore[arg-type]
+        open_issues = backend._fetch_issues_graphql(_MOCK_REPO, "", "", state="OPEN")
 
         # Assert
         assert all(issue["state"] == "OPEN" for issue in open_issues)
@@ -313,14 +321,14 @@ class TestListItems:
         """
         # Arrange
         item = _make_item("Will Close")
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
         backend.close_github_issue(str(number), "done")
 
-        backend.create_issue_for_item(None, _make_item("Stays Open"))  # type: ignore[arg-type]
+        backend.create_issue_for_item(_MOCK_REPO, _make_item("Stays Open"))
 
         # Act
-        closed = backend._fetch_issues_graphql(None, "", "", state="CLOSED")  # type: ignore[arg-type]
+        closed = backend._fetch_issues_graphql(_MOCK_REPO, "", "", state="CLOSED")
 
         # Assert
         assert all(issue["state"] == "CLOSED" for issue in closed)
@@ -335,7 +343,7 @@ class TestListItems:
         # Arrange — backend has no issues
 
         # Act
-        result = backend._fetch_issues_graphql(None, "", "")  # type: ignore[arg-type]
+        result = backend._fetch_issues_graphql(_MOCK_REPO, "", "")
 
         # Assert
         assert result == []
@@ -357,13 +365,13 @@ class TestUpdateItem:
         """
         # Arrange
         item = _make_item("Original Title")
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Act
-        backend._update_issue_graphql(None, node["id"], title="Updated Title")  # type: ignore[arg-type]
-        refreshed = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        backend._update_issue_graphql(_MOCK_REPO, node["id"], title="Updated Title")
+        refreshed = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert refreshed["title"] == "Updated Title"
@@ -376,13 +384,13 @@ class TestUpdateItem:
         """
         # Arrange
         item = _make_item()
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Act
-        backend._update_issue_graphql(None, node["id"], body="Updated body content")  # type: ignore[arg-type]
-        refreshed = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        backend._update_issue_graphql(_MOCK_REPO, node["id"], body="Updated body content")
+        refreshed = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert refreshed["body"] == "Updated body content"
@@ -395,13 +403,13 @@ class TestUpdateItem:
         """
         # Arrange
         item = _make_item()
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Act
-        backend._update_issue_graphql(None, node["id"], state="CLOSED")  # type: ignore[arg-type]
-        refreshed = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        backend._update_issue_graphql(_MOCK_REPO, node["id"], state="CLOSED")
+        refreshed = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert refreshed["state"] == "CLOSED"
@@ -423,12 +431,12 @@ class TestCloseItem:
         """
         # Arrange
         item = _make_item()
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
 
         # Act
         backend.close_github_issue(str(number), "completed")
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert node["state"] == "CLOSED"
@@ -441,12 +449,12 @@ class TestCloseItem:
         """
         # Arrange
         item = _make_item()
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
 
         # Act
         backend.close_github_issue(f"#{number}", "completed")
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert node["state"] == "CLOSED"
@@ -468,12 +476,12 @@ class TestResolveItem:
         """
         # Arrange
         item = _make_item()
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
 
         # Act
         backend.resolve_github_issue(str(number), summary="Resolved in v2")
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert node["state"] == "CLOSED"
@@ -495,11 +503,11 @@ class TestFetchBody:
         """
         # Arrange
         item = _make_item("Feature", "The description text")
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
 
         # Act
-        body = backend.fetch_github_issue_body(None, number)  # type: ignore[arg-type]
+        body = backend.fetch_github_issue_body(_MOCK_REPO, number)
 
         # Assert
         assert body is not None
@@ -514,7 +522,7 @@ class TestFetchBody:
         # Arrange — no issues created
 
         # Act
-        result = backend.fetch_github_issue_body(None, 99999)  # type: ignore[arg-type]
+        result = backend.fetch_github_issue_body(_MOCK_REPO, 99999)
 
         # Assert
         assert result is None
@@ -536,11 +544,11 @@ class TestFetchByTitle:
         """
         # Arrange
         item = _make_item("My Open Feature")
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
 
         # Act
-        title_map = backend.fetch_open_issues_by_title(None)  # type: ignore[arg-type]
+        title_map = backend.fetch_open_issues_by_title(_MOCK_REPO)
 
         # Assert
         assert "My Open Feature" in title_map
@@ -554,12 +562,12 @@ class TestFetchByTitle:
         """
         # Arrange
         item = _make_item("Closed Feature")
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
         backend.close_github_issue(str(number), "done")
 
         # Act
-        title_map = backend.fetch_open_issues_by_title(None)  # type: ignore[arg-type]
+        title_map = backend.fetch_open_issues_by_title(_MOCK_REPO)
 
         # Assert
         assert "Closed Feature" not in title_map
@@ -581,7 +589,7 @@ class TestBatchStatus:
         """
         # Arrange
         item = _make_item()
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
         tracked = _make_item_with_issue(number)
 
@@ -624,13 +632,13 @@ class TestComments:
         """
         # Arrange
         item = _make_item()
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
 
         # Act
-        backend._add_comment_graphql(None, node["id"], "First comment")  # type: ignore[arg-type]
-        comments = backend._fetch_issue_comments_graphql(None, "", "", number)  # type: ignore[arg-type]
+        backend._add_comment_graphql(_MOCK_REPO, node["id"], "First comment")
+        comments = backend._fetch_issue_comments_graphql(_MOCK_REPO, "", "", number)
 
         # Assert
         assert len(comments) >= 1
@@ -644,14 +652,14 @@ class TestComments:
         """
         # Arrange
         item = _make_item()
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
-        node = backend._fetch_issue_graphql(None, "", "", number)  # type: ignore[arg-type]
-        comment_id = backend._add_comment_graphql(None, node["id"], "Original")  # type: ignore[arg-type]
+        node = backend._fetch_issue_graphql(_MOCK_REPO, "", "", number)
+        comment_id = backend._add_comment_graphql(_MOCK_REPO, node["id"], "Original")
 
         # Act
-        backend._update_issue_comment_graphql(None, comment_id, "Updated body")  # type: ignore[arg-type]
-        comment = backend._fetch_comment_by_id_graphql(None, comment_id)  # type: ignore[arg-type]
+        backend._update_issue_comment_graphql(_MOCK_REPO, comment_id, "Updated body")
+        comment = backend._fetch_comment_by_id_graphql(_MOCK_REPO, comment_id)
 
         # Assert
         assert comment["body"] == "Updated body"
@@ -674,7 +682,7 @@ class TestMilestones:
         # Arrange — fresh backend
 
         # Act
-        milestones = backend._fetch_milestones_graphql(None, "", "")  # type: ignore[arg-type]
+        milestones = backend._fetch_milestones_graphql(_MOCK_REPO, "", "")
 
         # Assert
         assert milestones == []
@@ -710,7 +718,7 @@ class TestBranchOps:
         """
         # SQLiteBackend raises RuntimeError for branch operations — skip there.
         if isinstance(backend, SQLiteBackend):
-            pytest.skip("SQLiteBackend does not support branch operations")
+            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
 
         # Arrange / Act
         info = backend.create_integration_branch(42, "feature-slug")
@@ -726,7 +734,7 @@ class TestBranchOps:
              a try/except that the protocol does not mandate.
         """
         if isinstance(backend, SQLiteBackend):
-            pytest.skip("SQLiteBackend does not support branch operations")
+            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
 
         # Act
         result = backend.get_integration_branch_status("milestone/99-nonexistent")
@@ -741,7 +749,7 @@ class TestBranchOps:
              from the list would cause CI to believe no branch exists.
         """
         if isinstance(backend, SQLiteBackend):
-            pytest.skip("SQLiteBackend does not support branch operations")
+            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
 
         # Arrange
         backend.create_integration_branch(7, "alpha")
@@ -760,7 +768,7 @@ class TestBranchOps:
              rather than a no-op, letting callers log the action correctly.
         """
         if isinstance(backend, SQLiteBackend):
-            pytest.skip("SQLiteBackend does not support branch operations")
+            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
 
         # Arrange
         info = backend.create_integration_branch(8, "beta")
@@ -780,7 +788,7 @@ class TestBranchOps:
              defensive try/except blocks throughout calling code.
         """
         if isinstance(backend, SQLiteBackend):
-            pytest.skip("SQLiteBackend does not support branch operations")
+            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
 
         # Act
         result = backend.delete_integration_branch("milestone/999-ghost")
@@ -805,7 +813,7 @@ class TestViewEnrich:
         """
         # Arrange
         item = _make_item("Enrichable")
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
         result = ViewItemResult(title="Enrichable")
 
@@ -823,7 +831,7 @@ class TestViewEnrich:
         """
         # Arrange
         item = _make_item("Numbered Feature")
-        number = backend.create_issue_for_item(None, item)  # type: ignore[arg-type]
+        number = backend.create_issue_for_item(_MOCK_REPO, item)
         assert number is not None
         result = ViewItemResult(title="Numbered Feature")
 

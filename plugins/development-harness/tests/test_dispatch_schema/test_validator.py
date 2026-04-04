@@ -451,8 +451,9 @@ def test_validation_result_is_frozen() -> None:
     Why: Callers must not mutate results after construction; frozen enforcement is the guarantee.
     """
     result = ValidationResult(is_valid=True, errors=[], warnings=[])
+    attr = "is_valid"
     with pytest.raises(AttributeError):
-        result.is_valid = False
+        setattr(result, attr, False)
 
 
 def test_stale_plan_result_is_frozen() -> None:
@@ -463,8 +464,9 @@ def test_stale_plan_result_is_frozen() -> None:
     Why: Callers must not mutate results after construction; frozen enforcement is the guarantee.
     """
     result = StalePlanResult(is_stale=False, added_issues=[], removed_issues=[], message="ok")
+    attr = "is_stale"
     with pytest.raises(AttributeError):
-        result.is_stale = True
+        setattr(result, attr, True)
 
 
 def test_validation_result_warnings_default_empty() -> None:

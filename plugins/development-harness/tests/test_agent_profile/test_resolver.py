@@ -336,7 +336,7 @@ class TestPathSafety:
         try:
             symlink_target.symlink_to(outside_dir)
         except (OSError, NotImplementedError):
-            pytest.skip("Symlinks not supported on this platform")
+            raise pytest.skip.Exception("Symlinks not supported on this platform", allow_module_level=False) from None
 
         resolver = SkillResolver(plugins_root)
         skills, warnings = resolver.resolve(["plugin-a:evil-skill"], "plugin-a")
