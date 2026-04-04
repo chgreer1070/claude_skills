@@ -36,10 +36,13 @@ parsing.py            ← imports from models; provides loads_frontmatter/dump_f
 entry_blocks.py       ← timestamped entry block parse/render/rewrite; imports from models, parsing
 yaml_io.py            ← pure-YAML read/write for .yaml backlog items; imports from models, parsing
 github_sync.py        ← GitHub issue body conversion (render/parse/merge); imports from models, parsing, entry_blocks
-gh_client.py             ← imports from models, parsing
-operations.py         ← imports from models, parsing, github, yaml_io
+gh_client.py          ← imports from models, parsing
+rendering.py          ← shared rendering utilities (section_display_title, render_groomed_section); imported by backend implementations
+backend_protocol.py   ← BacklogBackend Protocol, BacklogConfig, create_backend; imports from models (type hints only)
+backends/             ← GitHubBackend, SQLiteBackend, InMemoryBackend; each implements BacklogBackend Protocol
+operations.py         ← imports from models, parsing, backend_protocol, yaml_io
 dispatch_state.py     ← imports from models (DispatchItemRecord, DispatchWaveRecord); no MCP awareness
-server.py             ← imports from models, operations, dispatch_state
+server.py             ← imports from models, operations, dispatch_state, backend_protocol
 backlog.py            ← imports from operations (thin CLI wrapper)
 ```
 
@@ -261,6 +264,35 @@ do not import from `gh_client.py`, `operations.py`, or `server.py`)
 
 ---
 
+## Module: backend_protocol.py
+
+**Responsibility**: Defines the `BacklogBackend` Protocol and `BacklogConfig` dataclass. Provides `create_backend()` factory and `get_config()` / `set_config()` / `reset_config()` module-level accessors. Decouples all operations and server code from any specific storage platform.
+
+**Public API** (`__all__`): `BacklogBackend`, `BacklogConfig`, `IssueCommentNode`, `IssueNode`, `MilestoneFullNode`, `create_backend`, `get_config`, `reset_config`
+
+- `BacklogBackend` — `@runtime_checkable` Protocol defining the full backend contract. Method groups: repository access, GraphQL utilities, issue CRUD, issue comments, status mutations, milestones/projects, task issues, sync/serialisation (including rendering methods), and integration branches.
+- `BacklogConfig` — dataclass wrapping the active `BacklogBackend` instance; passed by dependency injection to `operations.py` and `server.py`.
+- `create_backend(name)` — factory that instantiates the backend by name (`"github"`, `"sqlite"`, `"memory"`). Resolution order: explicit name → `BACKLOG_BACKEND` env var → `[backend] name` in `backend.toml` → default `"github"`.
+- `get_config()` — returns the module-level `BacklogConfig` singleton, auto-initialising on first call.
+
+**Rendering utilities via protocol dispatch**: Rendering methods (`section_heading`, `render_groomed_section`, `section_display_title`) are part of the `BacklogBackend` Protocol surface. Callers access rendering through the active backend rather than importing directly from `github_sync`. Shared rendering logic lives in `rendering.py` and is used by all backend implementations.
+
+**Imports from other modules**: `from .models import ...` (type annotations only, under `TYPE_CHECKING`). Does NOT import from `gh_client`, `github_sync`, or `github_branches` — those are implementation details of the GitHub backend.
+
+---
+
+## Backends: backends/
+
+**Responsibility**: Platform-specific implementations of `BacklogBackend`.
+
+- `backends/github_backend.py` — `GitHubBackend`: delegates to `gh_client.py`, `github_sync.py`, `github_branches.py`. Requires `GITHUB_TOKEN`. Default backend.
+- `backends/sqlite_backend.py` — `SQLiteBackend`: local 6-table SQLite schema, WAL mode. No external credentials.
+- `backends/memory_backend.py` — `InMemoryBackend`: in-memory test double. No persistence.
+
+Each backend imports from `backend_protocol` (for TypedDicts and config) and `models`. Backend selection is resolved at startup via `create_backend()`; consumers access the active backend through `get_config().backend`.
+
+---
+
 ## Module: operations.py
 
 **Responsibility**: High-level CRUD operations that combine parsing, GitHub, and file I/O. Each public function returns a dict or list and takes an optional `output: Output` parameter.
@@ -433,4 +465,4 @@ Bootstrap receives the project root from `models.get_repo_root()`, which returns
 **Keeps**: Rich table formatting for `list` command, text formatting for `view` command.
 These are CLI-specific display concerns that don't belong in core logic.
 
-**Imports**: `from .mcp.operations import ...`, `from .mcp.models import ...`
+**Imports**: `from .operations import ...`, `from .models import ...`
