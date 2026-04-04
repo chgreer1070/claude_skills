@@ -210,7 +210,7 @@ class BacklogBackend(Protocol):
     # ------------------------------------------------------------------
 
     def _graphql_request(
-        self, repo: Repository | None, query: str, variables: dict[str, object] | None = None
+        self, repo: Repository, query: str, variables: dict[str, object] | None = None
     ) -> dict[str, Any]:
         """Execute a raw GraphQL query/mutation against the backend.
 
@@ -225,7 +225,7 @@ class BacklogBackend(Protocol):
         ...
 
     def _resolve_labels_graphql(
-        self, repo: Repository | None, repo_owner: str, repo_name: str, label_names: list[str]
+        self, repo: Repository, repo_owner: str, repo_name: str, label_names: list[str]
     ) -> list[str]:
         """Resolve label names to backend node IDs.
 
@@ -244,7 +244,7 @@ class BacklogBackend(Protocol):
     # Issue CRUD
     # ------------------------------------------------------------------
 
-    def _fetch_issue_graphql(self, repo: Repository | None, owner: str, repo_name: str, issue_number: int) -> IssueNode:
+    def _fetch_issue_graphql(self, repo: Repository, owner: str, repo_name: str, issue_number: int) -> IssueNode:
         """Fetch a single issue by number.
 
         Args:
@@ -260,7 +260,7 @@ class BacklogBackend(Protocol):
 
     def _fetch_issues_graphql(
         self,
-        repo: Repository | None,
+        repo: Repository,
         owner: str,
         repo_name: str,
         state: str = "OPEN",
@@ -288,7 +288,7 @@ class BacklogBackend(Protocol):
 
     def _update_issue_graphql(
         self,
-        repo: Repository | None,
+        repo: Repository,
         issue_node_id: str,
         *,
         state: str | None = None,
@@ -312,7 +312,7 @@ class BacklogBackend(Protocol):
 
     def sync_issues_graphql(
         self,
-        repo: Repository | None,
+        repo: Repository,
         owner: str,
         repo_name: str,
         *,
@@ -342,7 +342,7 @@ class BacklogBackend(Protocol):
         ...
 
     def create_issue_for_item(
-        self, repo: Repository | None, item: BacklogItem, dry_run: bool = False, output: Output | None = None
+        self, repo: Repository, item: BacklogItem, dry_run: bool = False, output: Output | None = None
     ) -> int | None:
         """Create a backend issue from a BacklogItem.
 
@@ -405,7 +405,7 @@ class BacklogBackend(Protocol):
         """
         ...
 
-    def fetch_open_issues_by_title(self, repo: Repository | None) -> dict[str, int]:
+    def fetch_open_issues_by_title(self, repo: Repository) -> dict[str, int]:
         """Return a mapping of open issue titles to issue numbers.
 
         Args:
@@ -416,9 +416,7 @@ class BacklogBackend(Protocol):
         """
         ...
 
-    def fetch_github_issue_body(
-        self, repo_obj: Repository | None, issue_num: int, output: Output | None = None
-    ) -> str | None:
+    def fetch_github_issue_body(self, repo_obj: Repository, issue_num: int, output: Output | None = None) -> str | None:
         """Fetch the raw body of an issue.
 
         Args:
@@ -496,7 +494,7 @@ class BacklogBackend(Protocol):
     # Issue comments
     # ------------------------------------------------------------------
 
-    def _add_comment_graphql(self, repo: Repository | None, issue_node_id: str, body: str) -> str:
+    def _add_comment_graphql(self, repo: Repository, issue_node_id: str, body: str) -> str:
         """Add a comment to an issue.
 
         Args:
@@ -510,7 +508,7 @@ class BacklogBackend(Protocol):
         ...
 
     def _fetch_issue_comments_graphql(
-        self, repo: Repository | None, owner: str, repo_name: str, issue_number: int
+        self, repo: Repository, owner: str, repo_name: str, issue_number: int
     ) -> list[IssueCommentNode]:
         """Fetch all comments on an issue.
 
@@ -525,7 +523,7 @@ class BacklogBackend(Protocol):
         """
         ...
 
-    def _fetch_comment_by_id_graphql(self, repo: Repository | None, comment_node_id: str) -> IssueCommentNode:
+    def _fetch_comment_by_id_graphql(self, repo: Repository, comment_node_id: str) -> IssueCommentNode:
         """Fetch a single comment by its GraphQL node ID.
 
         Args:
@@ -537,7 +535,7 @@ class BacklogBackend(Protocol):
         """
         ...
 
-    def _update_issue_comment_graphql(self, repo: Repository | None, comment_node_id: str, body: str) -> None:
+    def _update_issue_comment_graphql(self, repo: Repository, comment_node_id: str, body: str) -> None:
         """Update an existing comment's body.
 
         Args:
@@ -583,7 +581,7 @@ class BacklogBackend(Protocol):
 
     def sync_groomed_to_github_issue(
         self,
-        repo_obj: Repository | None,
+        repo_obj: Repository,
         issue_num: int,
         groomed_content: str,
         section_name: str | None = None,
@@ -608,7 +606,7 @@ class BacklogBackend(Protocol):
     # ------------------------------------------------------------------
 
     def _fetch_milestones_graphql(
-        self, repo: Repository | None, owner: str, repo_name: str, states: list[str] | None = None
+        self, repo: Repository, owner: str, repo_name: str, states: list[str] | None = None
     ) -> list[MilestoneFullNode]:
         """Fetch milestones from the backend.
 
@@ -653,7 +651,7 @@ class BacklogBackend(Protocol):
 
     def create_task_issue(
         self,
-        repo: Repository | None,
+        repo: Repository,
         parent_issue_number: int,
         task: SamTask,
         description: str = "",
@@ -678,7 +676,7 @@ class BacklogBackend(Protocol):
         ...
 
     def get_task_issues(
-        self, repo: Repository | None, parent_issue_number: int, output: Output | None = None
+        self, repo: Repository, parent_issue_number: int, output: Output | None = None
     ) -> list[IssueNode]:
         """Fetch all child task issues for a parent issue.
 
@@ -693,7 +691,7 @@ class BacklogBackend(Protocol):
         ...
 
     def update_task_status(
-        self, repo: Repository | None, issue_number: int, new_status: str, output: Output | None = None
+        self, repo: Repository, issue_number: int, new_status: str, output: Output | None = None
     ) -> bool:
         """Update the status label on a task issue.
 
