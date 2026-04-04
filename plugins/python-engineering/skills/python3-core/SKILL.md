@@ -102,6 +102,42 @@ Load `python3-data` when working with pandas, numpy, scipy, jupyter, or data pip
 
 Load `python3-stdlib-only` ONLY when confirmed environment restrictions prevent dependency installation (airgapped, no uv, no internet). Do NOT assume restrictions.
 
+### Test Suite Design
+
+Load `python3-test-design` when designing test suites before implementation — coverage strategy, test pyramid distribution, fixture hierarchy, mutation testing plan.
+
+### Test Failure Analysis
+
+Load `analyze-test-failures` when analyzing failing tests to determine whether the failure is a genuine bug or a test implementation issue.
+
+### Test Suite Review
+
+Load `comprehensive-test-review` when conducting a full test quality audit — coverage, isolation, mock usage, naming, completeness.
+
+### Test Investigation Approach
+
+Load `test-failure-mindset` when resetting investigation approach to test failures — dual-hypothesis protocol, red flags, worked examples.
+
+### Feature Addition Workflow
+
+Load `python3-add-feature` when adding a new feature to an existing Python project — discovery, MoSCoW prioritization, TDD implementation, integration, verification.
+
+### SAM Task Creation
+
+Load `create-feature-task` when creating a structured feature task with SAM tracking — produces task documentation with phases, acceptance criteria, and context preservation ready for the SAM pipeline.
+
+### Package Configuration
+
+Load `python3-packaging` when configuring package metadata or build targets — pyproject.toml templates, build backend options (Hatchling/Setuptools/Flit), entry points, dependency specification.
+
+### PyPI Publishing Pipeline
+
+Load `python3-publish-release-pipeline` when publishing to PyPI or cutting a release — GitHub Actions / GitLab CI workflows, trusted publishing, version management, TestPyPI.
+
+### Specialist Skill Routing
+
+Load `specialist-skill-routing` at the start of any Python task to activate granular trigger-based routing across all 17+ specialist categories. This is the master router — agents activate it before starting work when broad task classification is insufficient.
+
 ### Quality Workflows
 
 - `/python-engineering:review` — comprehensive code review (manual entrypoint)
