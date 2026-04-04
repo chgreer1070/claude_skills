@@ -27,7 +27,6 @@ from .artifact_provider import GitHubArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .backend_protocol import IssueCommentNode, IssueNode, MilestoneFullNode, get_config
 from .entry_blocks import ENTRY_RE, _render_entry_raw, generate_diff, parse_entries, strike_entry as strike_entry_block
-from .github_sync import SECTION_HEADING as _SECTION_HEADING_MAP, _render_groomed as _render_groomed_md
 from .models import (
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     MIN_FRONTMATTER_PARTS,
@@ -2279,10 +2278,8 @@ def _merge_section_entries(existing: _SectionMetadata, new_entries: list[Section
 def _section_display_title(key: str, groomed_date: str = "") -> str:
     """Return the human-readable title for a section key.
 
-    Known keys are looked up in the inverse of ``_SECTION_HEADING``.  Unknown
-    keys with the ``"unknown__"`` prefix are reconstructed via
-    :func:`~.github_sync.unknown_key_to_heading`.  All other keys are
-    title-cased with underscores replaced by spaces.
+    Delegates to the active backend's :meth:`section_display_title` method,
+    which in turn delegates to :func:`~.rendering.section_display_title`.
 
     Args:
         key: Section storage key (e.g. ``"fact_check"``, ``"unknown__story"``).
@@ -2292,13 +2289,7 @@ def _section_display_title(key: str, groomed_date: str = "") -> str:
     Returns:
         Display title string (e.g. ``"Fact-Check"``, ``"Story"``).
     """
-    if key in _SECTION_HEADING_MAP:
-        return _SECTION_HEADING_MAP[key]
-    if key == "groomed":
-        return f"Groomed \u2014 {groomed_date}" if groomed_date else "Groomed"
-    if key.startswith("unknown__"):
-        return unknown_key_to_heading(key)
-    return key.replace("_", " ").title()
+    return get_config().backend.section_display_title(key, groomed_date)
 
 
 def _render_section_index(item: BacklogItem) -> str:
@@ -2417,7 +2408,7 @@ def render_sections_as_body(item: BacklogItem, section: str | None = None) -> st
 
     for key, sec_data in sections_to_render.items():
         if isinstance(sec_data, GroomedData):
-            parts.append(_render_groomed_md(sec_data))
+            parts.append(get_config().backend.render_groomed_section(sec_data))
         elif isinstance(sec_data, Section):
             title = _section_display_title(key)
             content = "\n".join(e.content for e in sec_data.entries if e.content)

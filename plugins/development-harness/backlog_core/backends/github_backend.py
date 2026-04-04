@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from backlog_core import gh_client, github_branches, github_sync
+from backlog_core import gh_client, github_branches, github_sync, rendering as _rendering
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
         BackendStatus,
         BacklogItem,
         BranchInfo,
+        GroomedData,
         IssueLocalFields,
         IssueStatus,
         MergeResult,
@@ -455,6 +456,38 @@ class GitHubBackend:
             Heading text string (e.g. ``"My Section"``).
         """
         return github_sync.unknown_key_to_heading(key)
+
+    @property
+    def section_heading(self) -> dict[str, str]:
+        """Return the mapping of section key to display heading.
+
+        Returns:
+            Dict mapping section storage key to display heading string.
+        """
+        return _rendering.SECTION_HEADING
+
+    def render_groomed_section(self, groomed: GroomedData) -> str:
+        """Render a GroomedData as ``## Groomed ({date})`` with subsection children.
+
+        Args:
+            groomed: GroomedData to render.
+
+        Returns:
+            Rendered section string (no trailing newline).
+        """
+        return _rendering.render_groomed_section(groomed)
+
+    def section_display_title(self, key: str, groomed_date: str = "") -> str:
+        """Return the human-readable title for a section storage key.
+
+        Args:
+            key: Section storage key (e.g. ``"fact_check"``).
+            groomed_date: Optional date string for the ``"groomed"`` key.
+
+        Returns:
+            Display title string (e.g. ``"Fact-Check"``).
+        """
+        return _rendering.section_display_title(key, groomed_date)
 
     # ------------------------------------------------------------------
     # Integration branches

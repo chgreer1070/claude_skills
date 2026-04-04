@@ -42,6 +42,7 @@ if TYPE_CHECKING:
         BackendStatus,
         BacklogItem,
         BranchInfo,
+        GroomedData,
         IssueLocalFields,
         IssueStatus,
         MergeResult,
@@ -162,7 +163,7 @@ class BacklogBackend(Protocol):
       _projects_v2_list_query, _projects_v2_create_mutation
     - **Task issues**: create_task_issue, get_task_issues, update_task_status
     - **Sync / serialisation**: render_issue_body, parse_issue_body, merge_item,
-      unknown_key_to_heading
+      unknown_key_to_heading, section_heading, render_groomed_section, section_display_title
     - **Branches**: create_integration_branch, get_integration_branch_status,
       merge_integration_branch, delete_integration_branch, list_integration_branches
     """
@@ -754,6 +755,49 @@ class BacklogBackend(Protocol):
 
         Returns:
             Heading text string (e.g. ``"My Section"``).
+        """
+        ...
+
+    @property
+    def section_heading(self) -> dict[str, str]:
+        """Return the mapping of section key to display heading for this backend.
+
+        Returns:
+            Dict mapping section storage key to display heading string,
+            e.g. ``{"fact_check": "Fact-Check", "rt_ica": "RT-ICA", ...}``.
+        """
+        ...
+
+    def render_groomed_section(self, groomed: GroomedData) -> str:
+        r"""Render a GroomedData as ``## Groomed ({date})`` with subsection children.
+
+        Subsections are emitted in canonical order (Priority, Impact, Benefits,
+        …) with any extras appended alphabetically.
+
+        Args:
+            groomed: GroomedData to render.
+
+        Returns:
+            Markdown string such as
+            ``"## Groomed (2026-03-01)\\n\\n### Priority\\n\\n..."``.
+        """
+        ...
+
+    def section_display_title(self, key: str, groomed_date: str = "") -> str:
+        """Return the human-readable title for a section storage key.
+
+        Delegates to the shared ``rendering.section_display_title`` utility.
+        Known keys are looked up in :attr:`section_heading`.  Unknown keys with
+        the ``"unknown__"`` prefix are reconstructed from the prefix.  The
+        special ``"groomed"`` key returns ``"Groomed — {date}"`` when a date is
+        provided.
+
+        Args:
+            key: Section storage key (e.g. ``"fact_check"``, ``"unknown__story"``).
+            groomed_date: Optional date string appended to the ``"groomed"`` title.
+
+        Returns:
+            Display title string (e.g. ``"Fact-Check"``, ``"Story"``).
         """
         ...
 

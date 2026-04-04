@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import re
 
+from . import rendering as _rendering
 from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
 from .entry_blocks import _render_entry_raw, parse_entries
 from .models import BacklogItem, Entry, GroomedData, Section, parse_issue_number
@@ -134,8 +135,9 @@ def _render_section_entries(section: Section) -> str:
 def _render_groomed(groomed: GroomedData) -> str:
     """Render a GroomedData as ``## Groomed ({date})`` with ### subsection children.
 
-    Subsections are emitted in canonical order.  Any keys not in the canonical
-    list are appended alphabetically.
+    Delegates to :func:`rendering.render_groomed_section` for shared
+    backend-neutral rendering.  Kept for backward compatibility with existing
+    callers that import this symbol directly from ``github_sync``.
 
     Args:
         groomed: GroomedData to render.
@@ -143,11 +145,7 @@ def _render_groomed(groomed: GroomedData) -> str:
     Returns:
         Rendered section string (no trailing newline).
     """
-    parts: list[str] = [f"## Groomed ({groomed.date})"]
-    ordered = [k for k in _GROOMED_SUBSECTION_ORDER if k in groomed.subsections]
-    extras = sorted(k for k in groomed.subsections if k not in _GROOMED_SUBSECTION_ORDER)
-    parts.extend(f"### {key}\n\n{groomed.subsections[key]}" for key in ordered + extras)
-    return "\n\n".join(parts)
+    return _rendering.render_groomed_section(groomed)
 
 
 # ---------------------------------------------------------------------------
