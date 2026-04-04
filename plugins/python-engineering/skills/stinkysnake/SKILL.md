@@ -22,10 +22,10 @@ user-invocable: true
 ### Phase 1: Static Analysis
 
 ```bash
-uv run ruff format $ARGUMENTS
-uv run ruff check --fix $ARGUMENTS
-uv run ty check $ARGUMENTS
-# If project runs mypy: uv run mypy $ARGUMENTS
+uv run prek run --files $ARGUMENTS
+# Fallback when no .pre-commit-config.yaml:
+# uv run ruff format $ARGUMENTS
+# uv run ruff check --fix $ARGUMENTS
 ```
 
 ### Phase 2: Type Inventory
@@ -49,7 +49,8 @@ Use `/python-engineering:cleanup` for implementation, or load `python3-tdd` for 
 ### Phase 7: Verify
 
 ```bash
-uv run ruff check $ARGUMENTS
-uv run ty check $ARGUMENTS
+uv run prek run --files $ARGUMENTS
+# Fallback when no .pre-commit-config.yaml:
+# uv run ruff check $ARGUMENTS
 uv run pytest -v --cov --cov-report=term-missing
 ```

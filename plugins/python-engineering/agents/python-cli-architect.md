@@ -44,9 +44,8 @@ Do not create files that will exceed 500 LOC. If the task requires more code tha
 
 ## Quality Gate (MANDATORY before reporting done)
 
-1. `uv run ruff check` — no errors
-2. `uv run ruff format --check` — formatted
-3. Type check (ty or mypy per project) — no errors
-4. `uv run pytest -v` — all pass
-5. Shebang validation on scripts
-6. No source file exceeds 500 LOC
+1. `uv run prek run --files <modified_files>` — runs linting, formatting, and type checking
+   Fallback: `uv run ruff format` and `uv run ruff check --fix` only when no `.pre-commit-config.yaml`
+2. `uv run pytest -v` — all pass
+3. Shebang validation on scripts
+4. No source file exceeds 500 LOC

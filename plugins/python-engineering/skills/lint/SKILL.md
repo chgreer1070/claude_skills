@@ -24,15 +24,11 @@ Scope: $ARGUMENTS
 ## Commands to Run
 
 ```bash
-# Formatting
-uv run ruff format --check $ARGUMENTS
-
-# Linting
-uv run ruff check $ARGUMENTS
-
-# Type check — detect from hooks/CI
-uv run ty check $ARGUMENTS
-# If project runs mypy: uv run mypy $ARGUMENTS
+# Linting, formatting, and type checking
+uv run prek run --files $ARGUMENTS
+# Fallback when no .pre-commit-config.yaml:
+# uv run ruff format --check $ARGUMENTS
+# uv run ruff check $ARGUMENTS
 
 # Tests (if scope includes test files)
 uv run pytest $ARGUMENTS -v --tb=short

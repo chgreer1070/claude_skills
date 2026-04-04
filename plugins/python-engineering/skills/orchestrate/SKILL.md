@@ -36,7 +36,7 @@ If no argument is supplied, derive the task from the active conversation.
 
 Before reporting done:
 
-1. `uv run ruff check` and `uv run ruff format --check`
-2. Project type checker (detected from hooks/CI)
-3. `uv run pytest` — all pass, coverage ≥80%
-4. Shebang validated on any scripts
+1. `uv run prek run --files <modified_files>` — runs linting, formatting, and type checking
+   Fallback: `uv run ruff format` and `uv run ruff check --fix` only when no `.pre-commit-config.yaml`
+2. `uv run pytest` — all pass, coverage ≥80%
+3. Shebang validated on any scripts

@@ -26,16 +26,11 @@ Scope: $ARGUMENTS
 ### 1. Static Analysis
 
 ```bash
-# Format
-uv run ruff format $ARGUMENTS
-
-# Auto-fix linting
-uv run ruff check --fix $ARGUMENTS
-uv run ruff check --fix --unsafe-fixes $ARGUMENTS
-
-# Type check
-uv run ty check $ARGUMENTS
-# If project runs mypy: uv run mypy $ARGUMENTS
+uv run prek run --files $ARGUMENTS
+# Fallback when no .pre-commit-config.yaml:
+# uv run ruff format $ARGUMENTS
+# uv run ruff check --fix $ARGUMENTS
+# uv run ruff check --fix --unsafe-fixes $ARGUMENTS
 ```
 
 ### 2. Smell Investigation
@@ -63,9 +58,10 @@ For each smell found:
 ### 5. Verification
 
 ```bash
-uv run ruff check $ARGUMENTS
-uv run ruff format --check $ARGUMENTS
-uv run ty check $ARGUMENTS
+uv run prek run --files $ARGUMENTS
+# Fallback when no .pre-commit-config.yaml:
+# uv run ruff check $ARGUMENTS
+# uv run ruff format --check $ARGUMENTS
 uv run pytest $ARGUMENTS -v
 ```
 

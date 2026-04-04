@@ -33,8 +33,9 @@ Execute the implementation plan from `/python-engineering:stinkysnake`.
 uv run pytest -v --tb=short
 
 # Final verification
-uv run ruff check $ARGUMENTS
-uv run ty check $ARGUMENTS
+uv run prek run --files $ARGUMENTS
+# Fallback when no .pre-commit-config.yaml:
+# uv run ruff check $ARGUMENTS
 uv run pytest -v --cov --cov-report=term-missing
 ```
 

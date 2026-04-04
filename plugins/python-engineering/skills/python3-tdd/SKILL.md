@@ -38,13 +38,11 @@ Task: $ARGUMENTS
 ### 4. Verify
 
 ```bash
-# Linting
-uv run ruff check src/ tests/
-uv run ruff format --check src/ tests/
-
-# Type check — detect from hooks/CI (see python3-tools)
-uv run ty check src/ tests/
-# If project runs mypy: uv run mypy src/ tests/
+# Linting, formatting, and type checking
+uv run prek run --files src/ tests/
+# Fallback when no .pre-commit-config.yaml:
+# uv run ruff check src/ tests/
+# uv run ruff format --check src/ tests/
 
 # Tests with coverage
 uv run pytest --cov=src --cov-report=term-missing

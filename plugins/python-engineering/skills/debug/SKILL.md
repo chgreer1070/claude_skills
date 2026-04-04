@@ -69,7 +69,8 @@ def investigate(data: InputType) -> OutputType:
 ## Checks After Fix
 
 ```bash
-uv run ruff check
+uv run prek run --files <modified_files>
+# Fallback when no .pre-commit-config.yaml:
+# uv run ruff check
 uv run pytest -v
-uv run ty check  # or project checker
 ```
