@@ -99,7 +99,7 @@ The development harness uses three subsystems. The backlog MCP now uses a plugga
 
 ## BacklogBackend Protocol
 
-The `BacklogBackend` Protocol (defined in `backlog_core/backend_protocol.py`) decouples all backlog MCP operations from any specific storage platform. `BacklogConfig` wraps the active backend instance; `operations.py` and `server.py` receive it via dependency injection and never import from `gh_client`, `github_sync`, or `github_branches` directly.
+The `BacklogBackend` Protocol (defined in `backlog_core/backend_protocol.py`) decouples all backlog MCP operations from any specific storage platform. `BacklogConfig` wraps the active backend instance; `operations.py` and `server.py` receive it via dependency injection. Rendering utilities (`section_heading`, `render_groomed_section`, `section_display_title`) are accessed through the protocol rather than imported directly from `github_sync`.
 
 All protocol methods are synchronous. The MCP layer wraps calls in `asyncio.to_thread()` when needed.
 
@@ -112,7 +112,7 @@ All protocol methods are synchronous. The MCP layer wraps calls in `asyncio.to_t
 - **Status mutations**: `apply_status_in_progress`, `apply_status_verified`, `apply_status_groomed`, `sync_groomed_to_github_issue`
 - **Milestones / projects**: `_fetch_milestones_graphql`, `_projects_v2_list_query`, `_projects_v2_create_mutation`
 - **Task issues**: `create_task_issue`, `get_task_issues`, `update_task_status`
-- **Sync / serialisation**: `render_issue_body`, `parse_issue_body`, `merge_item`, `unknown_key_to_heading`
+- **Sync / serialisation**: `render_issue_body`, `parse_issue_body`, `merge_item`, `unknown_key_to_heading`, `section_heading` (property), `render_groomed_section`, `section_display_title`
 - **Integration branches**: `create_integration_branch`, `get_integration_branch_status`, `merge_integration_branch`, `delete_integration_branch`, `list_integration_branches`
 
 ### Available Backends
