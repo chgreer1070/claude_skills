@@ -246,13 +246,13 @@ class SQLiteBackend:
     # ------------------------------------------------------------------
 
     def _graphql_request(
-        self, repo: Repository, query: str, variables: dict[str, object] | None = None
+        self, repo: Repository | None, query: str, variables: dict[str, object] | None = None
     ) -> dict[str, Any]:
         """Return empty dict — SQLite backend has no GraphQL layer."""
         return {}
 
     def _resolve_labels_graphql(
-        self, repo: Repository, repo_owner: str, repo_name: str, label_names: list[str]
+        self, repo: Repository | None, repo_owner: str, repo_name: str, label_names: list[str]
     ) -> list[str]:
         """Return synthetic label node IDs — SQLite uses tag strings directly."""
         return [f"label-{name}" for name in label_names]
@@ -261,7 +261,7 @@ class SQLiteBackend:
     # Issue CRUD
     # ------------------------------------------------------------------
 
-    def _fetch_issue_graphql(self, repo: Repository, owner: str, repo_name: str, issue_number: int) -> IssueNode:
+    def _fetch_issue_graphql(self, repo: Repository | None, owner: str, repo_name: str, issue_number: int) -> IssueNode:
         """Return the stored IssueNode for the given number.
 
         Args:
@@ -284,7 +284,7 @@ class SQLiteBackend:
 
     def _fetch_issues_graphql(
         self,
-        repo: Repository,
+        repo: Repository | None,
         owner: str,
         repo_name: str,
         state: str = "OPEN",
@@ -332,7 +332,7 @@ class SQLiteBackend:
 
     def _update_issue_graphql(
         self,
-        repo: Repository,
+        repo: Repository | None,
         issue_node_id: str,
         *,
         state: str | None = None,
@@ -394,7 +394,7 @@ class SQLiteBackend:
 
     def sync_issues_graphql(
         self,
-        repo: Repository,
+        repo: Repository | None,
         owner: str,
         repo_name: str,
         *,
@@ -430,7 +430,7 @@ class SQLiteBackend:
         return issues
 
     def create_issue_for_item(
-        self, repo: Repository, item: BacklogItem, dry_run: bool = False, output: Output | None = None
+        self, repo: Repository | None, item: BacklogItem, dry_run: bool = False, output: Output | None = None
     ) -> int | None:
         """Create an issue from a BacklogItem and return its number.
 
@@ -513,7 +513,7 @@ class SQLiteBackend:
         )
         self._conn.commit()
 
-    def fetch_open_issues_by_title(self, repo: Repository) -> dict[str, int]:
+    def fetch_open_issues_by_title(self, repo: Repository | None) -> dict[str, int]:
         """Return a mapping of open issue titles to issue numbers.
 
         Args:
@@ -525,7 +525,9 @@ class SQLiteBackend:
         rows = self._conn.execute("SELECT title, issue_number FROM items WHERE status = 'open'").fetchall()
         return {str(row["title"]): int(row["issue_number"]) for row in rows}
 
-    def fetch_github_issue_body(self, repo_obj: Repository, issue_num: int, output: Output | None = None) -> str | None:
+    def fetch_github_issue_body(
+        self, repo_obj: Repository | None, issue_num: int, output: Output | None = None
+    ) -> str | None:
         """Return the body of the stored issue, or None if not found.
 
         Args:
@@ -629,7 +631,7 @@ class SQLiteBackend:
     # Issue comments
     # ------------------------------------------------------------------
 
-    def _add_comment_graphql(self, repo: Repository, issue_node_id: str, body: str) -> str:
+    def _add_comment_graphql(self, repo: Repository | None, issue_node_id: str, body: str) -> str:
         """Add a comment to an issue and return its ID.
 
         Args:
@@ -651,7 +653,7 @@ class SQLiteBackend:
         return comment_id
 
     def _fetch_issue_comments_graphql(
-        self, repo: Repository, owner: str, repo_name: str, issue_number: int
+        self, repo: Repository | None, owner: str, repo_name: str, issue_number: int
     ) -> list[IssueCommentNode]:
         """Return all comments on the issue.
 
@@ -679,7 +681,7 @@ class SQLiteBackend:
             for row in rows
         ]
 
-    def _fetch_comment_by_id_graphql(self, repo: Repository, comment_node_id: str) -> IssueCommentNode:
+    def _fetch_comment_by_id_graphql(self, repo: Repository | None, comment_node_id: str) -> IssueCommentNode:
         """Return a comment by its ID.
 
         Args:
@@ -705,7 +707,7 @@ class SQLiteBackend:
             updated_at=str(row["updated_at"]),
         )
 
-    def _update_issue_comment_graphql(self, repo: Repository, comment_node_id: str, body: str) -> None:
+    def _update_issue_comment_graphql(self, repo: Repository | None, comment_node_id: str, body: str) -> None:
         """Update a comment's body.
 
         Args:
@@ -767,7 +769,7 @@ class SQLiteBackend:
 
     def sync_groomed_to_github_issue(
         self,
-        repo_obj: Repository,
+        repo_obj: Repository | None,
         issue_num: int,
         groomed_content: str,
         section_name: str | None = None,
@@ -802,7 +804,7 @@ class SQLiteBackend:
     # ------------------------------------------------------------------
 
     def _fetch_milestones_graphql(
-        self, repo: Repository, owner: str, repo_name: str, states: list[str] | None = None
+        self, repo: Repository | None, owner: str, repo_name: str, states: list[str] | None = None
     ) -> list[MilestoneFullNode]:
         """Return stored milestones, optionally filtered by state.
 
@@ -851,7 +853,7 @@ class SQLiteBackend:
 
     def create_task_issue(
         self,
-        repo: Repository,
+        repo: Repository | None,
         parent_issue_number: int,
         task: SamTask,
         description: str = "",
@@ -895,7 +897,7 @@ class SQLiteBackend:
         return self._row_to_issue_node(row)
 
     def get_task_issues(
-        self, repo: Repository, parent_issue_number: int, output: Output | None = None
+        self, repo: Repository | None, parent_issue_number: int, output: Output | None = None
     ) -> list[IssueNode]:
         """Return all stored issues (SQLite backend has no parent tracking).
 
@@ -911,7 +913,7 @@ class SQLiteBackend:
         return [self._row_to_issue_node(r) for r in rows]
 
     def update_task_status(
-        self, repo: Repository, issue_number: int, new_status: str, output: Output | None = None
+        self, repo: Repository | None, issue_number: int, new_status: str, output: Output | None = None
     ) -> bool:
         """Update issue state; return True if the state changed.
 
