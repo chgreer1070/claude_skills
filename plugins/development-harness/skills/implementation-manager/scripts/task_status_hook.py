@@ -1,4 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "pydantic>=2.12.3",
+#   "pygithub>=2.8.1",
+#   "ruamel.yaml>=0.18.0",
+#   "typer>=0.21.2",
+# ]
+# ///
 """Task Status Hook - Update task status and timestamps automatically.
 
 This hook script handles multiple hook events:
