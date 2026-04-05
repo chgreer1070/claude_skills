@@ -8,7 +8,7 @@ Test groups:
     1. Backend routing — each of the 8 tools calls the expected TaskBackend method
        (not query / yaml_reader / yaml_writer) via get_task_config().backend
     2. Exception handling — PlanNotFoundError / TaskNotFoundError from the backend
-       produce {"error": "..."} response dicts, not unhandled exceptions
+       propagate as fastmcp.exceptions.ToolError (MCP isError=true), not {"error": "..."} dicts
     3. Module initialisation — server.py source contains set_task_config and
        create_task_backend at module level (not inside a function)
     4. Structural — server.py source has no direct query / yaml_reader / yaml_writer

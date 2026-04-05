@@ -22,6 +22,23 @@ import spawn as _spawn
 if TYPE_CHECKING:
     import argparse
 
+
+# ---------------------------------------------------------------------------
+# Test helpers
+# ---------------------------------------------------------------------------
+
+
+def _save_registry(state_dir: Path, session_id: str, registry: dict[str, dict]) -> None:
+    """Write each registry entry via _write_entry (mirrors the old single-file API).
+
+    The spawn module replaced _save_registry / _registry_path with per-entry
+    files in commit 6b722a4e.  This helper bridges the gap so test setup code
+    can remain readable without duplicating _write_entry calls inline.
+    """
+    for name, entry in registry.items():
+        _spawn._write_entry(state_dir, session_id, name, entry)
+
+
 # ---------------------------------------------------------------------------
 # _slugify
 # ---------------------------------------------------------------------------
@@ -129,30 +146,32 @@ def test_load_registry_returns_empty_dict_when_file_absent(tmp_path):
     assert result == {}
 
 
-def test_save_and_load_registry_round_trips(tmp_path):
-    registry = {"mysession": {"name": "mysession", "model": "sonnet"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+def test_write_entry_and_load_registry_round_trips(tmp_path):
+    entry = {"name": "mysession", "model": "sonnet"}
+    _spawn._write_entry(tmp_path, "default", "mysession", entry)
     loaded = _spawn._load_registry(tmp_path, "default")
-    assert loaded == registry
+    assert loaded == {"mysession": entry}
 
 
-def test_save_registry_writes_atomically(tmp_path):
-    registry = {"a": {"name": "a"}}
-    _spawn._save_registry(tmp_path, "default", registry)
-    rp = _spawn._registry_path(tmp_path, "default")
-    assert rp.exists()
-    # No .tmp file should remain.
-    assert not rp.with_suffix(".tmp").exists()
+def test_write_entry_writes_atomically(tmp_path):
+    entry = {"name": "a"}
+    _spawn._write_entry(tmp_path, "default", "a", entry)
+    ep = _spawn._entry_path(tmp_path, "default", "a")
+    assert ep.exists()
+    # No .tmp file should remain after atomic rename.
+    assert not ep.with_suffix(".json.tmp").exists()
 
 
-def test_registry_path_uses_session_id_in_filename(tmp_path):
-    path = _spawn._registry_path(tmp_path, "abc123")
-    assert path.name == "registry-abc123.json"
+def test_entry_path_uses_name_in_filename(tmp_path):
+    path = _spawn._entry_path(tmp_path, "abc123", "mysess")
+    assert path.name == "mysess.json"
+    assert path.parent.name == "abc123"
 
 
-def test_registry_path_default_session_id(tmp_path):
-    path = _spawn._registry_path(tmp_path, "default")
-    assert path.name == "registry-default.json"
+def test_entry_path_default_session_id(tmp_path):
+    path = _spawn._entry_path(tmp_path, "default", "mysess")
+    assert path.parent.name == "default"
+    assert path.name == "mysess.json"
 
 
 def test_get_session_raises_system_exit_when_missing(tmp_path):
@@ -162,19 +181,19 @@ def test_get_session_raises_system_exit_when_missing(tmp_path):
 
 
 def test_get_session_returns_entry_when_present(tmp_path):
-    registry = {"mysess": {"name": "mysess", "model": "haiku"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    entry = {"name": "mysess", "model": "haiku"}
+    _spawn._write_entry(tmp_path, "default", "mysess", entry)
     result = _spawn._get_session(tmp_path, "default", "mysess")
     assert result["model"] == "haiku"
 
 
 def test_session_id_scoping_isolates_registries(tmp_path):
-    """Two session IDs write to separate files and do not clobber each other."""
-    reg_a = {"sess-a": {"name": "sess-a", "model": "sonnet"}}
-    reg_b = {"sess-b": {"name": "sess-b", "model": "haiku"}}
+    """Two session IDs write to separate directories and do not clobber each other."""
+    entry_a = {"name": "sess-a", "model": "sonnet"}
+    entry_b = {"name": "sess-b", "model": "haiku"}
 
-    _spawn._save_registry(tmp_path, "orchestrator-1", reg_a)
-    _spawn._save_registry(tmp_path, "orchestrator-2", reg_b)
+    _spawn._write_entry(tmp_path, "orchestrator-1", "sess-a", entry_a)
+    _spawn._write_entry(tmp_path, "orchestrator-2", "sess-b", entry_b)
 
     loaded_a = _spawn._load_registry(tmp_path, "orchestrator-1")
     loaded_b = _spawn._load_registry(tmp_path, "orchestrator-2")
@@ -324,7 +343,12 @@ def test_build_parser_status_requires_name():
 
 def test_build_spawn_shell_cmd_returns_interactive_argv_without_p_flag():
     argv = _spawn._build_spawn_shell_cmd("mysess", "sonnet", None, "sess-001", "tmux-mysess")
-    assert argv[0] == "claude"
+    # env is used to inject child-session env vars before the claude executable
+    assert argv[0] == "env"
+    assert "KAGE_BUNSHIN_CHILD=1" in argv
+    assert "KAGE_BUNSHIN_PARENT_SESSION_ID=sess-001" in argv
+    assert "KAGE_BUNSHIN_TMUX_SESSION=tmux-mysess" in argv
+    assert "claude" in argv
     assert "-p" not in argv
     assert "--output-format" not in argv
     assert "--input-format" not in argv
@@ -591,7 +615,7 @@ def test_cmd_send_exits_1_when_session_not_found(tmp_path):
 
 def test_cmd_send_exits_1_when_tmux_dead(tmp_path):
     registry = {"sess": {"name": "sess", "model": "sonnet", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -610,7 +634,7 @@ def test_cmd_send_exits_1_when_tmux_dead(tmp_path):
 def test_cmd_send_sends_message_via_tmux(tmp_path, capsys):
     """Verify send calls _tmux_run_in_session with the message directly."""
     registry = {"sess": {"name": "sess", "model": "sonnet", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -647,7 +671,7 @@ def test_cmd_send_sends_message_via_tmux(tmp_path, capsys):
 
 def test_cmd_kill_removes_registry_entry(tmp_path):
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -661,7 +685,7 @@ def test_cmd_kill_removes_registry_entry(tmp_path):
 
 def test_cmd_kill_kills_claude_tmux_session(tmp_path):
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -718,7 +742,7 @@ def test_cmd_list_shows_alive_and_dead_sessions(tmp_path, capsys):
             "tmux_session": "claude_skills_worktree-dead-sess",
         },
     }
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     def fake_alive(tmux_session: str) -> bool:
         return "alive-sess" in tmux_session
@@ -758,8 +782,8 @@ def test_cmd_list_all_registries_when_no_session_id(tmp_path, capsys):
             "tmux_session": "proj_worktree-sess-b",
         }
     }
-    _spawn._save_registry(tmp_path, "orchestrator-1", reg_a)
-    _spawn._save_registry(tmp_path, "orchestrator-2", reg_b)
+    _save_registry(tmp_path, "orchestrator-1", reg_a)
+    _save_registry(tmp_path, "orchestrator-2", reg_b)
 
     ns = MagicMock()
     ns.session_id = None
@@ -803,7 +827,7 @@ def test_cmd_status_shows_alive_true(tmp_path, capsys):
             "tmux_session": "claude_skills_worktree-sess",
         }
     }
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -832,7 +856,7 @@ def test_cmd_status_shows_session_fields(tmp_path, capsys):
             "tmux_session": "claude_skills_worktree-sess",
         }
     }
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -859,7 +883,7 @@ def test_cmd_status_shows_session_fields(tmp_path, capsys):
 
 def test_cmd_read_prints_pane_content(tmp_path, capsys):
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -886,7 +910,7 @@ def test_cmd_read_prints_pane_content(tmp_path, capsys):
 def test_cmd_read_calls_capture_pane_with_correct_session(tmp_path):
     """Verify cmd_read invokes tmux capture-pane targeting the registered session."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -921,7 +945,7 @@ def test_cmd_read_calls_capture_pane_with_correct_session(tmp_path):
 
 def test_cmd_read_exits_1_when_session_not_alive(tmp_path):
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = MagicMock()
     ns.name = "sess"
@@ -1000,7 +1024,7 @@ def _make_stop_ns(name: str = "sess", session_id: str = "default") -> MagicMock:
 def test_cmd_stop_graceful_exit_path_removes_registry_entry(tmp_path, capsys):
     """Ctrl-C causes session to exit within timeout — success without force."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
 
@@ -1025,7 +1049,7 @@ def test_cmd_stop_graceful_exit_path_removes_registry_entry(tmp_path, capsys):
 def test_cmd_stop_graceful_exit_path_does_not_force_kill(tmp_path):
     """Ctrl-C causes session to exit within timeout — tmux kill-session NOT called for main session."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
     killed: list[str] = []
@@ -1047,7 +1071,7 @@ def test_cmd_stop_graceful_exit_path_does_not_force_kill(tmp_path):
 def test_cmd_stop_timeout_path_force_kills_and_sets_forced_true(tmp_path, capsys):
     """Session does not exit within timeout — force kill and forced=true in output."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
     killed: list[str] = []
@@ -1074,7 +1098,7 @@ def test_cmd_stop_timeout_path_force_kills_and_sets_forced_true(tmp_path, capsys
 def test_cmd_stop_already_dead_session_cleans_up_registry_without_force(tmp_path, capsys):
     """Session tmux is already gone — registry cleaned, already_dead=true reported."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
 
@@ -1098,7 +1122,7 @@ def test_cmd_stop_already_dead_session_cleans_up_registry_without_force(tmp_path
 def test_cmd_stop_sends_ctrlc_to_correct_session(tmp_path):
     """Verify Ctrl-C is sent to the tmux session from the registry, not the launcher."""
     registry = {"sess": {"name": "sess", "tmux_session": "claude_skills_worktree-sess"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns()
     ctrlc_targets: list[str] = []
@@ -1125,7 +1149,7 @@ def test_cmd_stop_exits_1_when_session_not_in_registry(tmp_path):
 def test_cmd_stop_kills_launcher_session_after_graceful_exit(tmp_path):
     """kb-launcher-{name} is killed after the session exits gracefully."""
     registry = {"myname": {"name": "myname", "tmux_session": "proj_worktree-myname"}}
-    _spawn._save_registry(tmp_path, "default", registry)
+    _save_registry(tmp_path, "default", registry)
 
     ns = _make_stop_ns(name="myname")
     killed: list[str] = []
