@@ -480,33 +480,62 @@ def sam_create(
     return result
 
 
-def _parse_set_fields_json(raw_fields: dict[str, Any]) -> dict[str, str | int | list[str]]:
-    """Convert a raw JSON-decoded dict to a typed field mapping.
+def _validated_task_patch(
+    backend: TaskBackend, plan_id: str, task_id: str, raw_fields: dict[str, Any]
+) -> dict[str, str | int | list[str]]:
+    """Validate and coerce raw JSON patch fields through the Pydantic Task model.
 
-    Preserves ``str`` and ``int`` values unchanged.  Converts ``list`` values to
-    ``list[str]`` by coercing each element.  Raises ``TypeError`` for any value
-    whose type is not ``str``, ``int``, or ``list``.
+    Reads the current task, merges *raw_fields* into its data, then passes the
+    merged dict through ``Task.model_validate`` so field validators run (e.g.
+    ``validate_task_id_list`` normalises ``dependencies``).  Returns only the
+    patched field names with their Pydantic-validated values.
+
+    Key mapping: Pydantic accepts both snake_case and kebab-case aliases (via
+    ``AliasChoices``).  ``model_dump()`` always returns snake_case keys, so for
+    each input key the validated value is retrieved under the canonical Python
+    attribute name; the original input key is preserved in the returned dict so
+    the backend's YAML layer can map it to the correct field.
 
     Args:
-        raw_fields: JSON-decoded dict from ``set_fields_json``.
+        backend: Active TaskBackend instance.
+        plan_id: Backend-assigned plan identifier.
+        task_id: Task identifier within the plan.
+        raw_fields: JSON-decoded patch dict from ``set_fields_json``.
 
     Returns:
-        Validated mapping of field names to ``str | int | list[str]`` values.
+        Dict mapping each input key to its Pydantic-validated value.
 
     Raises:
-        TypeError: When a field value is not ``str``, ``int``, or ``list``.
+        PlanNotFoundError: When plan_id cannot be resolved by the backend.
+        TaskNotFoundError: When task_id does not exist within the plan.
+        pydantic.ValidationError: When a field value fails Task model validation.
     """
+    from pydantic.fields import AliasChoices  # noqa: PLC0415
+
+    task_data = backend.read_task(plan_id, task_id)
+    current = Task.model_validate(task_data)
+    updated = Task.model_validate({**current.model_dump(), **raw_fields})
+    updated_dump = updated.model_dump()
+
+    # Build a lookup from any alias or Python name -> Python attribute name.
+    alias_to_name: dict[str, str] = {}
+    for attr_name, field in Task.model_fields.items():
+        alias_to_name[attr_name] = attr_name
+        if isinstance(field.validation_alias, AliasChoices):
+            for choice in field.validation_alias.choices:
+                if isinstance(choice, str):
+                    alias_to_name[choice] = attr_name
+
     out: dict[str, str | int | list[str]] = {}
-    for k, v in raw_fields.items():
-        key = str(k)
-        if isinstance(v, (str, int)):
-            out[key] = v
-        elif isinstance(v, list):
-            out[key] = [str(item) for item in v]
+    for k, raw_val in raw_fields.items():
+        python_name = alias_to_name.get(k, k)
+        validated_val = updated_dump.get(python_name)
+        if validated_val is not None:
+            out[k] = validated_val
         else:
-            raise TypeError(
-                f"set_fields_json field '{key}' has unsupported type {type(v).__name__!r}; expected str, int, or list"
-            )
+            # Field absent from model_dump (e.g. optional field set to None);
+            # keep the raw value — backend handles None storage.
+            out[k] = raw_val
     return out
 
 
@@ -556,23 +585,26 @@ def sam_update(
     plan_id = plan_part
     backend = _get_backend(plan_dir)
 
-    set_fields: dict[str, str | int | list[str]] | None = None
-    if set_fields_json is not None:
-        raw_fields: Any = json.loads(set_fields_json)
-        if not isinstance(raw_fields, dict):
-            raise ValueError("set_fields_json must be a JSON object")
-        set_fields = _parse_set_fields_json(raw_fields)
-
     if task_id is None:
         # Plan-level operations: context and/or field updates on the plan.
-        backend.update_plan_fields(plan_id, context=context, set_fields=set_fields)
+        plan_fields: dict[str, str | int | list[str]] | None = None
+        if set_fields_json is not None:
+            raw_fields: Any = json.loads(set_fields_json)
+            if not isinstance(raw_fields, dict):
+                raise ValueError("set_fields_json must be a JSON object")
+            plan_fields = cast("dict[str, str | int | list[str]]", raw_fields)
+        backend.update_plan_fields(plan_id, context=context, set_fields=plan_fields)
     else:
         # Task-level operations.
         # context is plan-level per the tool description; apply it separately.
         if context is not None:
             backend.update_plan_fields(plan_id, context=context)
-        if set_fields:
-            backend.update_task_fields(plan_id, task_id, set_fields)
+        if set_fields_json is not None:
+            raw_fields = json.loads(set_fields_json)
+            if not isinstance(raw_fields, dict):
+                raise ValueError("set_fields_json must be a JSON object")
+            task_fields = _validated_task_patch(backend, plan_id, task_id, raw_fields)
+            backend.update_task_fields(plan_id, task_id, task_fields)
         if append_section is not None:
             backend.append_task_section(plan_id, task_id, append_section, section_content or "")
     return {"updated": True, "address": address}
