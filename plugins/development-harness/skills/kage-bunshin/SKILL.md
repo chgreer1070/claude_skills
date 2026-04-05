@@ -92,13 +92,15 @@ flowchart TD
 
 The claude CLI's built-in `--worktree` creates a git worktree at `.claude/worktrees/{name}`. The built-in `--tmux` creates a tmux session named `{repo}_worktree-{name}`. The script wraps the launch in `tmux new-session -d` to provide the TTY that `--tmux` requires in headless environments.
 
-**Verify prompt submission after spawn.** The script sends the initial prompt with Enter via `tmux send-keys`, but the REPL may not be fully initialized when the prompt arrives (race condition with the 3-second wait). After spawning, always verify the session started processing by reading the output within 10-15 seconds. If the REPL still shows the pasted prompt with a `❯` cursor and no activity, the Enter was swallowed — resend it:
+**Verify prompt submission after spawn.** The script sends the initial prompt with Enter via `tmux send-keys`, but the REPL may not be fully initialized when the prompt arrives (race condition with the 3-second wait). After spawning, read the pane within 15 seconds. If `capture-pane` still shows the `❯` prompt with no tool use or response text below the prompt, the Enter was swallowed — resend it:
 
 ```bash
 tmux send-keys -t {tmux_session} Enter
 ```
 
-The same applies to `send` — after sending a message, check within a few seconds that processing began.
+Retry up to 2 times (15s apart). If the session still shows `❯` with no activity after 2 retries, the session failed to initialize — kill it and re-spawn.
+
+**Verify `send` delivery.** After sending a message, read the pane within 5 seconds. If `capture-pane` still shows `❯` with the sent text but no response in progress, the message was not submitted — resend with Enter: `tmux send-keys -t {tmux_session} Enter`. Retry once. If still no activity after the second Enter, the session is stuck — `stop` it and re-spawn.
 
 **Permission prompts use cursor selection, not text input.** When the session shows a numbered menu (e.g., "1. Yes / 2. No"), send `Enter` to accept the highlighted option or arrow keys to change selection. Do NOT send "1" or "2" as text — the REPL uses a cursor-based selection widget.
 
@@ -185,8 +187,6 @@ Sends `C-c` to the claude REPL, then polls for up to 30 seconds. If the session 
 
 Output: `{"status": "stopped", "name": "worker-42", "forced": false}`
 
-A `TaskCompleted` hook automatically reminds the orchestrator to stop any sessions that outlive their tasks.
-
 ### kill
 
 Force-kill a session — last resort for hung/unresponsive sessions.
@@ -199,7 +199,7 @@ Calls `tmux kill-session` directly. Bypasses shutdown hooks and session persiste
 
 ## Session State
 
-The registry is stored at `~/.dh/projects/{slug}/kage-bunshin/registry.json`. The `{slug}` is derived from the git repo root path by replacing `/` with `-` (leading hyphen is intentional). Override the base directory with `DH_STATE_HOME` environment variable.
+The registry is stored as one file per session under `~/.dh/projects/{slug}/kage-bunshin/sessions/{session-id}/{name}.json`. `list` and `status` aggregate by globbing that directory. The `{slug}` is derived from the git repo root path by replacing `/` with `-` (leading hyphen is intentional). Override the base directory with `DH_STATE_HOME` environment variable.
 
 ## Capability Inheritance
 
@@ -284,6 +284,11 @@ done
 
 $SPAWN --session-id $SID list
 $SPAWN --session-id $SID read --name "groom-42"
+
+# Clean up after wave
+for ISSUE in "${UNGROOMED_ISSUES[@]}"; do
+  $SPAWN --session-id $SID stop --name "groom-${ISSUE}"
+done
 ```
 
 ### Work Dispatch
@@ -319,15 +324,15 @@ The monitor is `plugins/development-harness/skills/kage-bunshin/scripts/monitor.
 
 **Option A — Background bash (passive wait, no intervention needed)**
 
-Use when you only need to be notified when sessions complete or time out. Cheaper: zero LLM tokens.
+Use when all sessions were spawned with `--dangerously-skip-permissions` (bypass mode). In bypass mode, no permission prompts can occur, so passive notification on completion or timeout is sufficient. Zero LLM tokens.
 
 ```bash
-uv run plugins/development-harness/skills/kage-bunshin/scripts/monitor.py \
+uv run "${CLAUDE_SKILL_DIR}/scripts/monitor.py" \
   --session-id <SID> --interval 15 --timeout 1800 \
   > /tmp/monitor-<SID>.json 2>&1
 ```
 
-Pass `run_in_background: true` to the Bash tool. When notified, read `/tmp/monitor-<SID>.json` for the JSON result. Use this when sessions are running autonomously and you don't expect permission prompts.
+Pass `run_in_background: true` to the Bash tool. When notified, read `/tmp/monitor-<SID>.json` for the JSON result.
 
 **Option B — Background agent (intervention-capable)**
 
@@ -337,7 +342,7 @@ Use when sessions may hit permission prompts, Y/n gates, or `AskUserQuestion` ev
 Task — model: haiku, run_in_background: true
 
 Prompt:
-  Run: uv run plugins/development-harness/skills/kage-bunshin/scripts/monitor.py \
+  Run: uv run "${CLAUDE_SKILL_DIR}/scripts/monitor.py" \
          --session-id <SID> --interval 5
 
   Wait for the script to exit and read its JSON output.
@@ -368,13 +373,23 @@ flowchart TD
     AgentMon --> Poll
     Poll --> Q{Detected?}
     Q -->|"intervention_needed"| Intervene["Orchestrator receives\nsession, type, content\nReads pane, responds via send"]
-    Q -->|"all_complete"| Done(["All sessions finished — no action needed"])
-    Q -->|"timeout"| Check["Orchestrator checks active_sessions\nand decides next step"]
-    Intervene --> Respawn["Orchestrator re-spawns monitor\nto continue watching remaining sessions"]
+    Q -->|"all_complete"| StopFleet["Orchestrator calls stop\nfor each session in fleet"]
+    StopFleet --> Done(["Fleet stopped — cleanup complete"])
+    Q -->|"timeout"| Check{"active_sessions empty?"}
+    Check -->|"Yes — all dead"| Done
+    Check -->|"No — sessions still running"| ReadPanes["Orchestrator reads each active pane\nto determine state manually"]
+    ReadPanes --> Decide{"Intervention\nneeded?"}
+    Decide -->|"Yes"| Intervene
+    Decide -->|"No — working normally"| Respawn
+    Intervene --> Respawn["Orchestrator re-spawns monitor\n--timeout 1800 to continue watching"]
     Respawn --> Poll
 ```
 
 The monitor exits immediately on first detection — it does not continue watching after reporting. Re-spawn it after handling an intervention to resume coverage.
+
+**On `all_complete`:** Call `stop` for every session in the fleet before continuing. Sessions left running after their task completes hold git worktrees open and consume tmux resources.
+
+**On `timeout`:** Read each active pane with `spawn.py read`. If sessions are working normally (no `❯` prompt, tool use visible), re-spawn the monitor with `--timeout 1800`. If any session shows `❯` with unexpected content, read and act before re-spawning.
 
 ### CLI flags
 
