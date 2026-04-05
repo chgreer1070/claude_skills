@@ -281,6 +281,7 @@ jobs:
       issues: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_REPO: Jamie-BitFlight/claude_skills
     steps:
       - uses: actions/checkout@v6
         with:
