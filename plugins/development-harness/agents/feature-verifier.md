@@ -246,7 +246,79 @@ EVIDENCE:
 - Check detail: [what was verified and result]
 ```
 
-## Step 8: Determine Overall Status
+## Step 8: Live Delivery Surface Validation
+
+Tests and static analysis verify code structure — they do not exercise the actual dispatch layer a real user or caller would use. A change can pass all tests while the live wiring is broken, because tests import code directly and bypass the real runtime path. This step closes that gap.
+
+### Detect Delivery Surface
+
+```mermaid
+flowchart TD
+    Start([Scan project files]) --> Q1{FastMCP or fastmcp import<br>in server files?}
+    Q1 -->|Yes| MCP["Delivery surface: MCP server<br>Locate the runner script (run_server.py or equivalent)"]
+    Q1 -->|No| Q2{typer app, argparse, or<br>click entrypoint present?}
+    Q2 -->|Yes| CLI["Delivery surface: CLI tool<br>Identify entrypoint and relevant subcommand"]
+    Q2 -->|No| Q3{FastAPI, Flask, or<br>Starlette app present?}
+    Q3 -->|Yes| Web["Delivery surface: Web system<br>Flag for agent-browser validation"]
+    Q3 -->|No| None["No delivery surface detected<br>Skip this step — record as N/A"]
+    MCP --> Validate
+    CLI --> Validate
+    Web --> Flag["Flag in output — load /agent-browser skill<br>for live web validation<br>Record status: DEFERRED_BROWSER"]
+    None --> Done(["Step complete"])
+    Validate["Run live invocation"] --> Done
+    Flag --> Done
+```
+
+### Live Invocation by Surface
+
+**MCP server:**
+
+```bash
+uv run fastmcp call \
+  --command "uv run python <runner_script>" \
+  --target <tool_name> \
+  --input-json '{}'
+```
+
+Use the feature's primary MCP tool as `<tool_name>`. Pass minimal valid input. Capture full stdout and stderr.
+
+**CLI tool:**
+
+```bash
+uv run <entrypoint> <feature_subcommand> [--dry-run or safe args]
+```
+
+Use `--help` first to discover valid invocation, then exercise the happy path. Capture full output.
+
+### Evaluate Live Invocation Result
+
+The live invocation passes when:
+
+- Exit code is 0
+- No unhandled exception in stderr
+- Output matches expected behavior for the input provided
+
+The live invocation fails when:
+
+- Non-zero exit code
+- Exception traceback in stderr
+- Output is empty or clearly wrong for the input
+
+### Evidence Block
+
+Record live validation output verbatim in the verification report:
+
+```text
+LIVE_VALIDATION:
+  Surface: [MCP | CLI | Web | None]
+  Command: [exact command run]
+  Exit code: [0 or non-zero]
+  Stdout: [captured output]
+  Stderr: [captured output or "none"]
+  Result: [PASS | FAIL | DEFERRED_BROWSER | N/A]
+```
+
+## Step 9: Determine Overall Status
 
 **Status: VERIFIED**
 
@@ -255,6 +327,7 @@ EVIDENCE:
 - All key links connected
 - No blocking issues
 - Proportional response check is VERIFIED or SKIPPED
+- Live delivery surface validation is PASS, DEFERRED_BROWSER, or N/A
 
 **Status: GAPS_FOUND**
 
@@ -262,6 +335,7 @@ EVIDENCE:
 - OR one or more artifacts MISSING/STUB
 - OR one or more key links broken
 - OR proportional response check is FAILED — include specific failure description
+- OR live delivery surface validation is FAIL — include command, exit code, and captured output as evidence
 
 </verification_process>
 
@@ -285,6 +359,13 @@ VERIFICATION_EVIDENCE:
     - Truth: {what must be true}
     - Verified by: {command or check}
     - Result: PASS
+LIVE_VALIDATION:
+  Surface: [MCP | CLI | Web | None]
+  Command: [exact command run]
+  Exit code: 0
+  Stdout: [captured output]
+  Stderr: none
+  Result: PASS
 NOTES:
   - {observations}
 NEXT_STEP: Feature complete, proceed to documentation
@@ -310,6 +391,13 @@ GAPS:
     - Reason: {why it failed}
     - Missing:
       - {specific thing to add/fix}
+LIVE_VALIDATION:
+  Surface: [MCP | CLI | Web | None]
+  Command: [exact command run]
+  Exit code: [non-zero or 0]
+  Stdout: [captured output]
+  Stderr: [captured output or "none"]
+  Result: [FAIL | PASS | DEFERRED_BROWSER | N/A]
 FOLLOW_UP_TASKS:
   1. {task description} (Agent: {agent-name})
   2. {task description} (Agent: {agent-name})
@@ -393,9 +481,17 @@ def on_complete(result):
 - [ ] Guardrail added and pattern-scoped (for recurring-pattern type)
 - [ ] Results included in overall status determination
 
-### Status Determination (Step 8)
+### Live Delivery Surface Validation (Step 8)
+
+- [ ] Delivery surface detected (MCP, CLI, Web, or None)
+- [ ] Live invocation command constructed and run
+- [ ] Full stdout and stderr captured as evidence
+- [ ] Result recorded (PASS, FAIL, DEFERRED_BROWSER, or N/A)
+
+### Status Determination (Step 9)
 
 - [ ] Overall status determined (VERIFIED or GAPS_FOUND)
+- [ ] Live validation FAIL treated as GAPS_FOUND with captured output as evidence
 - [ ] Gaps structured with specific fixes if found
 - [ ] Structured return provided to orchestrator
 
