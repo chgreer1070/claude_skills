@@ -3,6 +3,7 @@
   "hooks": {
     "SubagentStop": [
       {
+        "matcher": "rewrite-room-.*",
         "hooks": [
           {
             "type": "prompt",
