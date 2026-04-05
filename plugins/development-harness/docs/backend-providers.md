@@ -137,7 +137,7 @@ Backend selection uses this resolution order:
 **Environment variable:**
 
 ```bash
-BACKLOG_BACKEND=sqlite uv run python plugins/development-harness/scripts/run_backlog_server.py
+BACKLOG_BACKEND=sqlite uv run --script plugins/development-harness/scripts/run_backlog_server.py
 ```
 
 **`backend.toml` file:**

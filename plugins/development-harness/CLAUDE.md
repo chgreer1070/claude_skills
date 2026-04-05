@@ -363,17 +363,17 @@ Run all commands from the **project root** (where `pyproject.toml` lives). `$(pw
 ```bash
 # List all 42 tools
 uv run fastmcp list \
-  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_backlog_server.py"
+  --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_backlog_server.py"
 
 # View a backlog item (full content)
 uv run fastmcp call \
-  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
+  --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
   --target backlog_view \
   --input-json '{"selector": "groom-milestone", "summary": false}'
 
 # Search backlog items
 uv run fastmcp call \
-  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
+  --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
   --target backlog_list \
   --input-json '{"search": "sdlc", "limit": 3}'
 ```
@@ -398,7 +398,7 @@ uv run fastmcp call \
 
 ```bash
 BACKLOG_BACKEND=memory uv run fastmcp call \
-  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
+  --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
   --target backlog_list \
   --input-json '{}'
 ```
