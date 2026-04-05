@@ -17,6 +17,7 @@ import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from sam_schema.core.dependencies import TERMINAL_STATUSES as _TERMINAL_STATUSES
 from sam_schema.core.exceptions import PlanNotFoundError, TaskNotFoundError, TaskValidationError
 from sam_schema.core.task_backend_types import (
     DocumentData,
@@ -63,8 +64,6 @@ _STATUS_TO_LABEL: dict[str, str] = {
     "skipped": "sam:skipped",
 }
 _LABEL_TO_STATUS: dict[str, str] = {v: k for k, v in _STATUS_TO_LABEL.items()}
-_TERMINAL_STATUSES: frozenset[str] = frozenset({"complete", "deferred", "skipped"})
-
 _METADATA_BEGIN = "<!-- sam-task-metadata:begin -->"
 _METADATA_END = "<!-- sam-task-metadata:end -->"
 _META_ROW_RE = re.compile(r"^\|\s*(?P<key>[^|]+?)\s*\|\s*(?P<value>[^|]*?)\s*\|$")

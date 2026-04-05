@@ -19,6 +19,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
@@ -54,22 +55,6 @@ try:
     get_task_config()
 except RuntimeError:
     set_task_config(TaskConfig(backend=create_task_backend()))
-
-
-def _resolve_plan_id(plan: str) -> str:
-    """Convert a plan address to the backend plan ID.
-
-    The backend resolves all address forms (numeric index, slug, ``P{N}``
-    identifier) internally.  This function forwards the address as-is.
-
-    Args:
-        plan: Plan address component (e.g., ``'P912'``, ``'auth-system'``).
-
-    Returns:
-        Plan identifier to pass to :class:`~sam_schema.core.task_backend.TaskBackend`
-        methods.
-    """
-    return plan
 
 
 def _get_backend(plan_dir_str: str) -> TaskBackend:
@@ -148,7 +133,7 @@ def sam_read(
         provided, or ``Plan`` fields when ``task`` is omitted.
     """
     backend = _get_backend(plan_dir)
-    plan_id = _resolve_plan_id(plan)
+    plan_id = plan
     plan_data = backend.read_plan(plan_id)
 
     if task is not None:
@@ -191,10 +176,11 @@ def sam_state(
         Updated task fields as a JSON-serializable dict.
     """
     backend = _get_backend(plan_dir)
-    plan_id = _resolve_plan_id(plan)
+    plan_id = plan
     backend.update_task_status(plan_id, task, status)
-    task_data = backend.read_task(plan_id, task)
-    return dict(task_data)
+    # Avoid a second full plan read: return the known fields rather than re-reading.
+    # update_task_status raises on invalid status before reaching here.
+    return {"id": task, "status": status}
 
 
 @mcp.tool
@@ -220,7 +206,7 @@ def sam_ready(
         and ``issue`` envelope fields.
     """
     backend = _get_backend(plan_dir)
-    plan_id = _resolve_plan_id(plan)
+    plan_id = plan
     plan_data = backend.read_plan(plan_id)
     tasks_data = backend.get_ready_tasks(plan_id)
     if full:
@@ -264,7 +250,7 @@ def sam_status(
         ``completion_pct``, and ``has_cycles``.
     """
     backend = _get_backend(plan_dir)
-    plan_id = _resolve_plan_id(plan)
+    plan_id = plan
     return dict(backend.get_plan_status(plan_id))
 
 
@@ -537,7 +523,7 @@ def sam_update(
         plan_part = address
         task_id = None
 
-    plan_id = _resolve_plan_id(plan_part)
+    plan_id = plan_part
     backend = _get_backend(plan_dir)
 
     set_fields: dict[str, str | int | list[str]] | None = None
@@ -584,7 +570,7 @@ def sam_claim(
         ``{"claimed": false, "error": str}`` if the task is not in a claimable state.
     """
     backend = _get_backend(plan_dir)
-    plan_id = _resolve_plan_id(plan)
+    plan_id = plan
     claimed = backend.claim_task(plan_id, task)
 
     if not claimed:
@@ -600,5 +586,6 @@ def sam_claim(
                 "error": f"Cannot claim task '{task}': expected status 'not-started' but found '{current_status}'.",
             }
 
-    task_data = backend.read_task(plan_id, task)
-    return {"claimed": True, "task_id": task_data["id"], "started": task_data["started"]}
+    # Option (b): avoid a second full plan read — task_id is the argument already,
+    # and started is set by claim_task at the moment of transition.
+    return {"claimed": True, "task_id": task, "started": datetime.now(UTC).isoformat()}

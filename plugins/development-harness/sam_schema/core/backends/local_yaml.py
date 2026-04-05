@@ -603,9 +603,10 @@ class LocalYamlTaskProvider:
             DocumentNotFoundError: When the content_ref path does not exist.
         """
         doc_path = Path(handle["content_ref"])
-        if not doc_path.exists():
-            raise DocumentNotFoundError(handle["content_ref"])
-        content = doc_path.read_text(encoding="utf-8")
+        try:
+            content = doc_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            raise DocumentNotFoundError(handle["content_ref"]) from None
         doc_data: DocumentData = {
             "content_ref": handle["content_ref"],
             "title": handle["title"],

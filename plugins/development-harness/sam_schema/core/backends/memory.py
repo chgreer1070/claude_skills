@@ -22,6 +22,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
 
+from sam_schema.core.dependencies import TERMINAL_STATUSES as _TERMINAL_STATUSES
 from sam_schema.core.exceptions import (
     DocumentNotFoundError,
     PlanExistsError,
@@ -41,9 +42,6 @@ if TYPE_CHECKING:
     )
 
 __all__ = ["InMemoryTaskProvider"]
-
-# Statuses that satisfy a dependency requirement — matches TERMINAL_STATUSES in dependencies.py.
-_TERMINAL_STATUSES: frozenset[str] = frozenset({"complete", "deferred", "skipped"})
 
 # All valid TaskStatus values.
 _VALID_STATUSES: frozenset[str] = frozenset({
