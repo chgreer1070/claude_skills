@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from fastmcp.client import Client
+from fastmcp.exceptions import ToolError
 from sam_schema.core.models import Complexity, Plan, Priority, Task, TaskStatus
 from sam_schema.server import mcp
 from sam_schema.writers.yaml_writer import write_plan
@@ -154,20 +155,17 @@ async def test_mcp_sam_read_plan_only_returns_plan_fields(plan_dir: Path) -> Non
 
 
 async def test_mcp_sam_read_missing_task_returns_error_dict(plan_dir: Path) -> None:
-    """sam_read returns error dict for a non-existent task via MCP protocol.
+    """sam_read raises ToolError for a non-existent task via MCP protocol.
 
-    Tests: sam_read MCP error path — tool does not raise, returns dict.
+    Tests: sam_read MCP error path.
     How: Request T99 which does not exist.
-    Why: MCP clients receive error dicts, not protocol-level exceptions.
+    Why: FastMCP converts unhandled TaskNotFoundError to isError=true, which
+         the client surfaces as ToolError. The error message includes the task ID.
     """
-    # Act
-    async with Client(mcp) as client:
-        result = await client.call_tool("sam_read", {"plan": "P1", "task": "T99", "plan_dir": str(plan_dir)})
-
-    # Assert
-    data = result.data
-    assert isinstance(data, dict)
-    assert "error" in data
+    # Act / Assert
+    with pytest.raises(ToolError, match="T99"):
+        async with Client(mcp) as client:
+            await client.call_tool("sam_read", {"plan": "P1", "task": "T99", "plan_dir": str(plan_dir)})
 
 
 # ---------------------------------------------------------------------------
@@ -196,22 +194,19 @@ async def test_mcp_sam_state_transitions_task_status(plan_dir: Path) -> None:
 
 
 async def test_mcp_sam_state_invalid_status_returns_error_dict(plan_dir: Path) -> None:
-    """sam_state returns error dict for unrecognized status via MCP protocol.
+    """sam_state raises ToolError for unrecognized status via MCP protocol.
 
     Tests: sam_state input validation through MCP.
     How: Pass 'garbage-status' as the status value.
-    Why: Protocol-level call confirms tool handles bad input without raising.
+    Why: FastMCP converts unhandled TaskValidationError to isError=true, which
+         the client surfaces as ToolError.
     """
-    # Act
-    async with Client(mcp) as client:
-        result = await client.call_tool(
-            "sam_state", {"plan": "P1", "task": "T2", "status": "garbage-status", "plan_dir": str(plan_dir)}
-        )
-
-    # Assert
-    data = result.data
-    assert isinstance(data, dict)
-    assert "error" in data
+    # Act / Assert
+    with pytest.raises(ToolError):
+        async with Client(mcp) as client:
+            await client.call_tool(
+                "sam_state", {"plan": "P1", "task": "T2", "status": "garbage-status", "plan_dir": str(plan_dir)}
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -613,11 +608,13 @@ async def test_sam_list_has_more_true_includes_next_call_hint(multi_plan_dir: Pa
 
 
 async def test_sam_list_nonexistent_plan_dir_returns_error(tmp_path: Path) -> None:
-    """sam_list with non-existent plan_dir returns errors list, not a raise.
+    """sam_list with non-existent plan_dir returns an empty result, not a raise.
 
     Tests: sam_list error path for missing directory.
     How: Pass plan_dir pointing to a path that does not exist.
-    Why: MCP tools must not raise — error information must be in the response dict.
+    Why: LocalYamlTaskProvider.list_plans returns [] when plan_dir does not exist.
+         sam_list wraps this as an empty paginated response with count=0.
+         No errors are added because the backend treats a missing dir as empty.
     """
     # Act
     async with Client(mcp) as client:
@@ -627,8 +624,9 @@ async def test_sam_list_nonexistent_plan_dir_returns_error(tmp_path: Path) -> No
     data = result.data
     assert isinstance(data, dict)
     assert data["count"] == 0
-    assert len(data["errors"]) > 0
+    assert data["items"] == []
     assert data["pagination"]["total"] == 0
+    assert data["pagination"]["has_more"] is False
 
 
 async def test_sam_list_items_include_required_summary_fields(multi_plan_dir: Path) -> None:

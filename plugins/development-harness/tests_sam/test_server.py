@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from sam_schema.core.exceptions import PlanNotFoundError, TaskNotFoundError, TaskValidationError
 from sam_schema.core.models import Complexity, Plan, Priority, Task, TaskStatus
 from sam_schema.server import sam_read, sam_ready, sam_state, sam_status
 from sam_schema.writers.yaml_writer import write_plan
@@ -121,46 +122,42 @@ def test_sam_read_returns_dict_with_all_required_fields(plan_dir: Path, plan_dir
 
 
 def test_sam_read_missing_task_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_read returns {'error': ...} for a task ID that does not exist.
+    """sam_read raises TaskNotFoundError for a task ID that does not exist.
 
     Tests: sam_read error handling for missing task.
     How: Request task 'T99' which is not in the plan.
-    Why: MCP tools must never raise exceptions; they return error dicts instead.
+    Why: Exceptions propagate from the tool function; FastMCP converts them to
+         isError=true MCP responses. Direct callers must handle TaskNotFoundError.
     """
-    # Act
-    result = sam_read(plan="P1", task="T99", plan_dir=plan_dir_str)
-
-    # Assert
-    assert "error" in result
-    assert "T99" in result["error"]
+    # Act / Assert
+    with pytest.raises(TaskNotFoundError, match="T99"):
+        sam_read(plan="P1", task="T99", plan_dir=plan_dir_str)
 
 
 def test_sam_read_invalid_plan_address_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_read returns {'error': ...} for an unresolvable plan address.
+    """sam_read raises PlanNotFoundError for an unresolvable plan address.
 
     Tests: sam_read error handling for invalid plan address.
     How: Request plan 'P999' which has no matching file in the directory.
-    Why: Agents must be able to detect addressing failures from the return value.
+    Why: Exceptions propagate from the tool function; direct callers must handle
+         PlanNotFoundError. MCP clients receive ToolError via FastMCP conversion.
     """
-    # Act
-    result = sam_read(plan="P999", task="T1", plan_dir=plan_dir_str)
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(PlanNotFoundError):
+        sam_read(plan="P999", task="T1", plan_dir=plan_dir_str)
 
 
 def test_sam_read_nonexistent_plan_dir_returns_error_dict(tmp_path: Path) -> None:
-    """sam_read returns {'error': ...} when plan_dir does not exist.
+    """sam_read raises PlanNotFoundError when plan_dir does not exist.
 
     Tests: sam_read error handling for missing plan directory.
     How: Pass a path that does not exist.
-    Why: The tool must handle filesystem errors gracefully without raising.
+    Why: The backend converts FileNotFoundError to PlanNotFoundError. Direct
+         callers must handle it; MCP clients receive ToolError.
     """
-    # Act
-    result = sam_read(plan="P1", task="T1", plan_dir=str(tmp_path / "missing"))
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(PlanNotFoundError):
+        sam_read(plan="P1", task="T1", plan_dir=str(tmp_path / "missing"))
 
 
 # ---------------------------------------------------------------------------
@@ -198,46 +195,42 @@ def test_sam_state_accepts_all_valid_status_values(plan_dir: Path, plan_dir_str:
 
 
 def test_sam_state_invalid_status_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_state returns {'error': ...} for an unrecognized status string.
+    """sam_state raises TaskValidationError for an unrecognized status string.
 
     Tests: sam_state error handling for invalid status values.
     How: Pass 'typo-status' which is not in TaskStatus.
-    Why: Prevents agents from writing garbage status values that would corrupt
-    plan files and trigger silent re-dispatch of completed tasks.
+    Why: Invalid status raises TaskValidationError. FastMCP converts it to
+         isError=true; direct callers must handle it.
     """
-    # Act
-    result = sam_state(plan="P1", task="T2", status="typo-status", plan_dir=plan_dir_str)
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(TaskValidationError):
+        sam_state(plan="P1", task="T2", status="typo-status", plan_dir=plan_dir_str)
 
 
 def test_sam_state_missing_task_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_state returns {'error': ...} when the task ID is not found.
+    """sam_state raises TaskNotFoundError when the task ID is not found.
 
     Tests: sam_state error handling for missing task.
     How: Attempt to update status on 'T99' which does not exist.
-    Why: Tools must never raise; error dicts allow callers to inspect failures.
+    Why: Exceptions propagate from the tool function. Direct callers must handle
+         TaskNotFoundError; MCP clients receive ToolError.
     """
-    # Act
-    result = sam_state(plan="P1", task="T99", status="complete", plan_dir=plan_dir_str)
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(TaskNotFoundError, match="T99"):
+        sam_state(plan="P1", task="T99", status="complete", plan_dir=plan_dir_str)
 
 
 def test_sam_state_invalid_plan_address_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_state returns {'error': ...} for an unresolvable plan address.
+    """sam_state raises PlanNotFoundError for an unresolvable plan address.
 
     Tests: sam_state error handling for invalid plan address.
     How: Address 'P999' does not match any file in the plan directory.
-    Why: Addressing failures must surface via return value, not exceptions.
+    Why: Exceptions propagate from the tool function. Direct callers must handle
+         PlanNotFoundError; MCP clients receive ToolError.
     """
-    # Act
-    result = sam_state(plan="P999", task="T1", status="complete", plan_dir=plan_dir_str)
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(PlanNotFoundError):
+        sam_state(plan="P999", task="T1", status="complete", plan_dir=plan_dir_str)
 
 
 # ---------------------------------------------------------------------------
@@ -278,17 +271,16 @@ def test_sam_ready_count_matches_ready_tasks_length(plan_dir: Path, plan_dir_str
 
 
 def test_sam_ready_invalid_plan_address_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_ready returns {'error': ...} for an unresolvable plan address.
+    """sam_ready raises PlanNotFoundError for an unresolvable plan address.
 
     Tests: sam_ready error handling.
     How: Pass 'P999' which does not match any file.
-    Why: Addressing failures must be surfaced as error dicts.
+    Why: Exceptions propagate from the tool function. Direct callers must handle
+         PlanNotFoundError; MCP clients receive ToolError.
     """
-    # Act
-    result = sam_ready(plan="P999", plan_dir=plan_dir_str)
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(PlanNotFoundError):
+        sam_ready(plan="P999", plan_dir=plan_dir_str)
 
 
 def test_sam_ready_all_complete_plan_returns_empty_list(tmp_path: Path) -> None:
@@ -373,17 +365,16 @@ def test_sam_status_by_status_contains_complete_and_not_started(plan_dir: Path, 
 
 
 def test_sam_status_invalid_plan_address_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_status returns {'error': ...} for an unresolvable plan address.
+    """sam_status raises PlanNotFoundError for an unresolvable plan address.
 
     Tests: sam_status error handling.
     How: Pass 'P999' which does not match any file.
-    Why: Tools must return error dicts, not raise exceptions.
+    Why: Exceptions propagate from the tool function. Direct callers must handle
+         PlanNotFoundError; MCP clients receive ToolError.
     """
-    # Act
-    result = sam_status(plan="P999", plan_dir=plan_dir_str)
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(PlanNotFoundError):
+        sam_status(plan="P999", plan_dir=plan_dir_str)
 
 
 def test_sam_status_has_cycles_false_for_acyclic_plan(plan_dir: Path, plan_dir_str: str) -> None:
@@ -503,26 +494,21 @@ def test_sam_read_without_task_returns_plan_fields(plan_dir_str: str) -> None:
 
 
 def test_sam_read_with_missing_task_returns_error(plan_dir_str: str) -> None:
-    """sam_read with a task ID not in the plan returns a dict with 'error' key."""
-    # Act
-    result = sam_read(plan="P1", task="T99", plan_dir=plan_dir_str)
-
-    # Assert
-    assert "error" in result
-    assert "T99" in result["error"]
+    """sam_read with a task ID not in the plan raises TaskNotFoundError."""
+    # Act / Assert
+    with pytest.raises(TaskNotFoundError, match="T99"):
+        sam_read(plan="P1", task="T99", plan_dir=plan_dir_str)
 
 
 def test_sam_read_with_missing_plan_returns_error(tmp_path: Path) -> None:
-    """sam_read with a plan address not found returns a dict with 'error' key."""
+    """sam_read with a plan address not found raises PlanNotFoundError."""
     # Arrange
     empty_dir = tmp_path / "plan"
     empty_dir.mkdir()
 
-    # Act
-    result = sam_read(plan="P99", task="T1", plan_dir=str(empty_dir))
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(PlanNotFoundError):
+        sam_read(plan="P99", task="T1", plan_dir=str(empty_dir))
 
 
 # ---------------------------------------------------------------------------
@@ -599,22 +585,21 @@ def test_sam_create_file_is_readable_by_sam_read(tmp_path: Path) -> None:
 
 
 def test_sam_create_invalid_tasks_yaml_returns_error(tmp_path: Path) -> None:
-    """sam_create returns error dict when tasks_yaml lacks 'tasks' key.
+    """sam_create raises ValueError when tasks_yaml lacks 'tasks' key.
 
     Tests: sam_create input validation.
     How: Pass YAML without 'tasks' key.
-    Why: MCP tools must never raise; all errors surface as dicts.
+    Why: Invalid input raises ValueError. FastMCP converts it to isError=true;
+         direct callers must handle it.
     """
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
     from sam_schema.server import sam_create
 
-    # Act
-    result = sam_create(slug="bad", goal="Bad goal", tasks_yaml="not_tasks: []", plan_dir=str(p_dir))
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(ValueError, match="tasks"):
+        sam_create(slug="bad", goal="Bad goal", tasks_yaml="not_tasks: []", plan_dir=str(p_dir))
 
 
 def test_sam_create_assigns_incrementing_plan_numbers(tmp_path: Path) -> None:
@@ -741,22 +726,21 @@ def test_sam_update_append_section_adds_to_task_body(tmp_path: Path) -> None:
 
 
 def test_sam_update_invalid_address_returns_error(tmp_path: Path) -> None:
-    """sam_update with non-existent plan address returns error dict.
+    """sam_update with non-existent plan address raises PlanNotFoundError.
 
     Tests: sam_update error handling.
     How: Update non-existent plan P99.
-    Why: MCP tools must never raise exceptions.
+    Why: Exceptions propagate from the tool function. Direct callers must handle
+         PlanNotFoundError; MCP clients receive ToolError.
     """
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
     from sam_schema.server import sam_update
 
-    # Act
-    result = sam_update(address="P99", plan_dir=str(p_dir), context="test")
-
-    # Assert
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(PlanNotFoundError):
+        sam_update(address="P99", plan_dir=str(p_dir), context="test")
 
 
 # ---------------------------------------------------------------------------
@@ -837,11 +821,12 @@ def test_sam_claim_already_claimed_returns_claimed_false(tmp_path: Path) -> None
 
 
 def test_sam_claim_missing_task_returns_claimed_false(tmp_path: Path) -> None:
-    """sam_claim with a non-existent task ID returns claimed=false.
+    """sam_claim with a non-existent task ID raises TaskNotFoundError.
 
     Tests: sam_claim error handling for unknown task ID.
     How: Call sam_claim for T99 which does not exist in the plan.
-    Why: MCP tools return error dicts, never raise exceptions.
+    Why: backend.claim_task raises TaskNotFoundError when the task is absent.
+         FastMCP converts it to isError=true; direct callers must handle it.
     """
     # Arrange
     p_dir = tmp_path / "plan"
@@ -862,28 +847,24 @@ def test_sam_claim_missing_task_returns_claimed_false(tmp_path: Path) -> None:
     assert "error" not in create_result
     plan_number = create_result["plan_number"]
 
-    # Act
-    result = sam_claim(plan=f"P{plan_number}", task="T99", plan_dir=str(p_dir))
-
-    # Assert
-    assert result.get("claimed") is False
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(TaskNotFoundError, match="T99"):
+        sam_claim(plan=f"P{plan_number}", task="T99", plan_dir=str(p_dir))
 
 
 def test_sam_claim_invalid_plan_returns_error(tmp_path: Path) -> None:
-    """sam_claim with non-existent plan address returns error dict.
+    """sam_claim with non-existent plan address raises PlanNotFoundError.
 
     Tests: sam_claim address resolution error path.
     How: Call sam_claim on empty plan dir.
-    Why: Ensures clean error dict rather than exception propagation.
+    Why: Exceptions propagate from the tool function. Direct callers must handle
+         PlanNotFoundError; MCP clients receive ToolError.
     """
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
     from sam_schema.server import sam_claim
 
-    # Act
-    result = sam_claim(plan="P99", task="T01", plan_dir=str(p_dir))
-
-    # Assert — resolution failure hits the broad except block, not claimed=false
-    assert "error" in result
+    # Act / Assert
+    with pytest.raises(PlanNotFoundError):
+        sam_claim(plan="P99", task="T01", plan_dir=str(p_dir))
