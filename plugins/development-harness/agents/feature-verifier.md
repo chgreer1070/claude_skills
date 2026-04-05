@@ -281,17 +281,20 @@ flowchart TD
     Q8 -->|Yes| Q9{"Value is 'agent-browser'?"}
     Q8 -->|No| Absent["live_validation absent<br>Record gap"]
     Q9 -->|Yes| Browser["Flag for agent-browser validation<br>Record: DEFERRED_BROWSER"]
-    Q9 -->|No| RunCommand["Run the live_validation command verbatim"]
+    Q9 -->|No| Q10{"Value is 'claude-skill'?"}
+    Q10 -->|Yes| Skill["Delivery surface verification deferred<br>Record: DEFERRED_SKILL<br>(run_live_validation_skill.py invoked externally — not from this flow)"]
+    Q10 -->|No| RunCommand["Run the live_validation command verbatim"]
     RunCommand --> Evaluate
     NoManifest --> Done(["Step complete"])
     Absent --> Done
     Browser --> Done
+    Skill --> Done
     Evaluate --> Done
 ```
 
 ### Run Live Validation Command
 
-When `quality_gates.live_validation` is present and not `agent-browser`, run it verbatim from the project root:
+When `quality_gates.live_validation` is present and is neither `agent-browser` nor `claude-skill`, run it verbatim from the project root:
 
 ```bash
 # Execute exactly what the manifest declares — no modification
@@ -329,12 +332,12 @@ Record live validation output verbatim in the verification report:
 
 ```text
 LIVE_VALIDATION:
-  Surface: [manifest-declared | agent-browser | None]
+  Surface: [manifest-declared | agent-browser | claude-skill | None]
   Command: [exact command run, or "none"]
   Exit code: [0 or non-zero, or "n/a"]
   Stdout: [captured output]
   Stderr: [captured output or "none"]
-  Result: [PASS | FAIL | DEFERRED_BROWSER | SKIPPED]
+  Result: [PASS | FAIL | DEFERRED_BROWSER | DEFERRED_SKILL | SKIPPED]
 ```
 
 ## Step 9: Determine Overall Status
@@ -346,7 +349,7 @@ LIVE_VALIDATION:
 - All key links connected
 - No blocking issues
 - Proportional response check is VERIFIED or SKIPPED
-- Live delivery surface validation is PASS, DEFERRED_BROWSER, or N/A
+- Live delivery surface validation is PASS, DEFERRED_BROWSER, DEFERRED_SKILL, or N/A
 
 **Status: GAPS_FOUND**
 
@@ -416,7 +419,7 @@ LIVE_VALIDATION:
   Exit code: [non-zero or 0]
   Stdout: [captured output]
   Stderr: [captured output or "none"]
-  Result: [FAIL | PASS | DEFERRED_BROWSER | N/A]
+  Result: [FAIL | PASS | DEFERRED_BROWSER | DEFERRED_SKILL | N/A]
 FOLLOW_UP_TASKS:
   1. {task description} (Agent: {agent-name})
   2. {task description} (Agent: {agent-name})
@@ -505,7 +508,7 @@ def on_complete(result):
 - [ ] Delivery surface detected (MCP, CLI, Web, or None)
 - [ ] Live invocation command constructed and run
 - [ ] Full stdout and stderr captured as evidence
-- [ ] Result recorded (PASS, FAIL, DEFERRED_BROWSER, or N/A)
+- [ ] Result recorded (PASS, FAIL, DEFERRED_BROWSER, DEFERRED_SKILL, or N/A)
 
 ### Status Determination (Step 9)
 

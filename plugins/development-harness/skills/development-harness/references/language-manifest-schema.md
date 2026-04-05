@@ -85,6 +85,14 @@ Declares the commands the harness runs at quality checkpoints.
 
 Set `live_validation: agent-browser` when the delivery surface is a web system that requires a browser to exercise. The feature-verifier will defer to the `/agent-browser` skill and record `DEFERRED_BROWSER` status rather than failing.
 
+Set `live_validation: claude-skill` when the changed functionality is a Claude Code skill, agent, or plugin component that can only be exercised inside a Claude Code session. The feature-verifier records `DEFERRED_SKILL` status and does not invoke `run_live_validation_skill.py` — the script must be run externally after verification completes. This is not flagged as a gap.
+
+**Example:**
+
+```yaml
+live_validation: "claude-skill"
+```
+
 ---
 
 ### 3. Project Detection (Required)

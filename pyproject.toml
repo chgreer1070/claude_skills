@@ -82,6 +82,7 @@ extra-paths = [
     "./plugins/gitlab-skill/skills/gitlab-skill/scripts",
     "./plugins/holistic-linting/skills/holistic-linting/scripts",
     "./plugins/plugin-creator/scripts",
+    "./plugins/plugin-creator/skills/skill-creator",
     "./plugins/plugin-creator/skills/skill-creator/scripts",
     "./plugins/python3-development/skills/mkdocs/scripts",
     "./plugins/python3-development/skills/uv/scripts",
@@ -300,6 +301,14 @@ unfixable = ["F401"]
 "plugins/agentskill-kaizen/scripts/sentiment-score.py" = ["PLC0415"]
 # Executable bit is set at runtime via uv run (PEP 723 shebang)
 "plugins/development-harness/scripts/verify_migration_fidelity.py" = ["EXE001"]
+# live_validation_step: S105 false-positive (enum value "PASS" ≠ password),
+# S602 shell=True intentional (command run verbatim as manifest declares),
+# PLR0911 exceeds 6-return limit — early-return guard clauses are intentional
+"plugins/development-harness/scripts/live_validation_step.py" = [
+    "S105",
+    "S602",
+    "PLR0911",
+]
 # Hyphenated package directory name is required by MCP convention
 "plugins/scientific-method/mcp/experiment-registry/__init__.py" = ["N999"]
 # ruamel.yaml returns dynamically typed values; Any is the correct annotation here

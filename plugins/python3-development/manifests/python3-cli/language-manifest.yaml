@@ -11,3 +11,6 @@ project_detection:
 stage_skills:
   design: [python3-design-cli]
   implementation: [python3-implementation-cli]
+
+quality_gates:
+  live_validation: "claude-skill"

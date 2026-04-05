@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from ruamel.yaml import YAML, YAMLError
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 _YAML = YAML()
 
@@ -54,6 +51,7 @@ class QualityGates:
     typecheck: str | None = None
     test: str | None = None
     standards: str | None = None
+    live_validation: str | None = None
 
 
 @dataclass(slots=True)
@@ -133,7 +131,7 @@ def _parse_yaml_data(path: Path) -> dict:
     return data
 
 
-def load_manifest(path: Path) -> LanguageManifest:
+def load_manifest(path: Path | str) -> LanguageManifest:
     """Load a language manifest from a YAML file.
 
     Returns:
@@ -143,7 +141,7 @@ def load_manifest(path: Path) -> LanguageManifest:
         FileNotFoundError: If the manifest file does not exist.
         ManifestValidationError: If the manifest fails structural or semantic validation.
     """
-    data = _parse_yaml_data(path)
+    data = _parse_yaml_data(Path(path) if isinstance(path, str) else path)
 
     pd_data = data.get("project_detection", {})
     project_detection = ProjectDetection(
@@ -162,6 +160,7 @@ def load_manifest(path: Path) -> LanguageManifest:
             typecheck=qg_data.get("typecheck"),
             test=qg_data.get("test"),
             standards=qg_data.get("standards"),
+            live_validation=qg_data.get("live_validation"),
         )
 
     stage_skills_data = data.get("stage_skills", {})

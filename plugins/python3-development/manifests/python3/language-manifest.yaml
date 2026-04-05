@@ -24,3 +24,4 @@ quality_gates:
   typecheck: "uv run ty check {files}"
   test: "uv run pytest tests/ --tb=short"
   standards: "/python3-development:modernpython"
+  live_validation: "claude-skill"
