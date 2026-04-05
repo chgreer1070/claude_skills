@@ -2,6 +2,7 @@
 
 Tests: GitHubArtifactProvider with mocked GitHub API, path safety, and FastMCP
        in-memory integration tests for all four artifact MCP tools.
+       Also covers: multi-provider protocol compliance, create_artifact_provider factory.
 
 Strategy:
     - GitHubArtifactProvider tests use pytest-mock to stub PyGithub's get_github()
@@ -11,6 +12,8 @@ Strategy:
       via monkeypatching the server module's _artifact_provider singleton.
     - Security tests verify path traversal and non-plan path rejection.
     - All tests follow AAA and are independently isolated with function-scoped fixtures.
+    - TestArtifactBackendProtocol is parametrized over github, linear, and gitlab
+      providers so protocol compliance is verified for all three.
 """
 
 from __future__ import annotations
@@ -19,9 +22,16 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
 import pytest
-from backlog_core.artifact_provider import ArtifactBackend, GitHubArtifactProvider
+from backlog_core.artifact_provider import (
+    ArtifactBackend,
+    GitHubArtifactProvider,
+    GitHubGistArtifactProvider,
+    GitLabArtifactProvider,
+    LinearArtifactProvider,
+    create_artifact_provider,
+)
 from backlog_core.artifact_registry import ArtifactRegistry, render_manifest_section
-from backlog_core.models import ArtifactEntry, ArtifactManifest, ArtifactStatus, ArtifactType
+from backlog_core.models import ArtifactEntry, ArtifactManifest, ArtifactStatus, ArtifactType, BacklogError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -123,24 +133,136 @@ def registry() -> ArtifactRegistry:
 
 
 # ---------------------------------------------------------------------------
+# Multi-provider fixture: parametrized over github, linear, gitlab
+# ---------------------------------------------------------------------------
+
+
+def _make_mock_github_provider(worktree: Path, mocker: MockerFixture) -> ArtifactBackend:
+    """Construct a mocked GitHubGistArtifactProvider for protocol testing."""
+    mock = mocker.patch("backlog_core.artifact_provider.get_github")
+    repo = MagicMock()
+    repo.requester.graphql_query.return_value = (
+        {},
+        {
+            "data": {
+                "repository": {
+                    "issue": {
+                        "id": "I_node_id",
+                        "number": 1,
+                        "title": "",
+                        "state": "OPEN",
+                        "body": "",
+                        "createdAt": "2026-01-01T00:00:00Z",
+                        "updatedAt": "2026-01-01T00:00:00Z",
+                        "labels": {"nodes": []},
+                        "milestone": None,
+                        "assignees": {"nodes": []},
+                    }
+                }
+            }
+        },
+    )
+    mock.return_value = repo
+    return GitHubGistArtifactProvider(repo="owner/test-repo", root_worktree=worktree)
+
+
+def _make_mock_linear_provider(worktree: Path, mocker: MockerFixture) -> ArtifactBackend:
+    """Construct a mocked LinearArtifactProvider for protocol testing."""
+    mocker.patch("backlog_core.artifact_provider.linear_get_attachments", return_value=[])
+    mocker.patch(
+        "backlog_core.artifact_provider.linear_create_attachment",
+        return_value={"id": "a1", "url": "dh://artifact-manifest/1", "title": "DH"},
+    )
+    return LinearArtifactProvider(api_key="test-key", team_id="team-uuid", root_worktree=worktree)
+
+
+def _make_mock_gitlab_provider(worktree: Path, mocker: MockerFixture) -> ArtifactBackend:
+    """Construct a mocked GitLabArtifactProvider for protocol testing."""
+    mocker.patch("backlog_core.artifact_provider.gitlab_list_issue_notes", return_value=[])
+    mocker.patch(
+        "backlog_core.artifact_provider.gitlab_create_snippet", return_value={"id": 42, "title": "t", "web_url": "u"}
+    )
+    mocker.patch("backlog_core.artifact_provider.gitlab_update_snippet", return_value={"id": 42})
+    mocker.patch(
+        "backlog_core.artifact_provider.gitlab_create_issue_note",
+        return_value={"id": 1, "body": "<!-- artifact-snippet:42 -->"},
+    )
+    return GitLabArtifactProvider(project_id=1, private_token="test-token", root_worktree=worktree)
+
+
+_PROVIDER_FACTORIES = {
+    "github": _make_mock_github_provider,
+    "linear": _make_mock_linear_provider,
+    "gitlab": _make_mock_gitlab_provider,
+}
+
+
+@pytest.fixture(params=["github", "linear", "gitlab"])
+def any_provider(request: pytest.FixtureRequest, tmp_path: Path, mocker: MockerFixture) -> ArtifactBackend:
+    """Parametrized fixture that yields a mocked provider for each backend.
+
+    Tests: Protocol compliance across all three provider implementations.
+    How: Uses _PROVIDER_FACTORIES to construct each provider with mocked APIs.
+    Why: TestArtifactBackendProtocol should verify all providers, not only GitHub.
+    """
+    factory = _PROVIDER_FACTORIES[request.param]
+    (tmp_path / "plan").mkdir(exist_ok=True)
+    return factory(tmp_path, mocker)
+
+
+# ---------------------------------------------------------------------------
 # ArtifactBackend Protocol compliance
 # ---------------------------------------------------------------------------
 
 
 class TestArtifactBackendProtocol:
-    """Verify GitHubArtifactProvider satisfies the ArtifactBackend Protocol.
+    """Verify all three providers satisfy the ArtifactBackend Protocol.
 
-    Tests: Runtime checkable protocol compliance
+    Tests: Runtime checkable protocol compliance for github, linear, and gitlab.
     Strategy: Use isinstance() check — requires @runtime_checkable decorator.
     """
 
-    def test_provider_satisfies_artifact_backend_protocol(self, worktree: Path, mock_repo: MagicMock) -> None:
-        """GitHubArtifactProvider is an instance of ArtifactBackend protocol.
+    def test_provider_satisfies_artifact_backend_protocol(self, any_provider: ArtifactBackend) -> None:
+        """Each provider is an instance of ArtifactBackend protocol.
 
-        Tests: Protocol compliance via isinstance check
+        Tests: Protocol compliance via isinstance check (parametrized).
+        How: Receive provider from the any_provider fixture; assert isinstance.
+        Why: Protocol compliance ensures providers can be used interchangeably.
+        """
+        # Arrange: any_provider fixture provides a mocked provider instance
+
+        # Act / Assert
+        assert isinstance(any_provider, ArtifactBackend)
+
+    def test_provider_has_all_required_methods(self, any_provider: ArtifactBackend) -> None:
+        """Each provider exposes all required ArtifactBackend methods.
+
+        Tests: Method presence without invocation.
+        How: Use hasattr checks against all Protocol method names.
+        Why: A provider missing any method fails at call-site with AttributeError —
+             catching this at the protocol level gives a clearer failure.
+        """
+        # Arrange
+        required_methods = [
+            "get_manifest",
+            "set_manifest",
+            "read_artifact_content",
+            "store_artifact_content",
+            "read_artifact_content_from_remote",
+            "read_local_artifact_content",
+        ]
+
+        # Act / Assert
+        for method_name in required_methods:
+            assert hasattr(any_provider, method_name), f"Provider missing method: {method_name}"
+
+    # Keep the existing single-provider test as a named regression test.
+    def test_github_provider_satisfies_artifact_backend_protocol(self, worktree: Path, mock_repo: MagicMock) -> None:
+        """GitHubArtifactProvider (alias) is an instance of ArtifactBackend protocol.
+
+        Tests: Backward-compat alias GitHubArtifactProvider remains protocol-compliant.
         How: Construct provider; assert isinstance(provider, ArtifactBackend).
-        Why: Protocol compliance ensures the provider can be used interchangeably
-             with any other ArtifactBackend implementation.
+        Why: Consumer code may still reference GitHubArtifactProvider by name.
         """
         # Arrange / Act
         prov = GitHubArtifactProvider(repo="owner/repo", root_worktree=worktree)
@@ -268,18 +390,29 @@ class TestGitHubArtifactProviderSetManifest:
     """
 
     def test_set_manifest_calls_issue_edit_when_body_changes(
-        self, provider: GitHubArtifactProvider, mock_issue: MagicMock, mock_repo: MagicMock, registry: ArtifactRegistry
+        self,
+        provider: GitHubArtifactProvider,
+        mock_issue: MagicMock,
+        mock_repo: MagicMock,
+        registry: ArtifactRegistry,
+        mocker: MockerFixture,
     ) -> None:
         """set_manifest issues a GraphQL mutation when the body content changes.
 
         Tests: GitHub issue body update triggered by set_manifest
         How: graphql_query mock returns empty body; set_manifest with one entry;
              assert graphql_query was called twice (fetch + mutation) and the
-             mutation variables contain the manifest marker.
-        Why: set_manifest uses GraphQL (_update_issue_graphql) to persist the manifest.
-             The mutation carries the new body in its variables dict.
+             mutation variables contain the gist sentinel.
+        Why: set_manifest uses GraphQL (_update_issue_graphql) to persist the sentinel
+             after creating/updating the Gist. The mutation carries the new body with
+             <!-- artifact-gist:{id} --> in its variables dict.
         """
-        # Arrange — graphql_query fixture returns empty body (set in mock_repo fixture)
+        # Arrange — patch _make_github_client so gist creation succeeds
+        mock_gh_client = mocker.patch("backlog_core.artifact_provider._make_github_client")
+        mock_gist = MagicMock()
+        mock_gist.id = "abc123deadbeef"
+        mock_gh_client.return_value.get_user.return_value.create_gist.return_value = mock_gist
+        # graphql_query fixture returns empty body (set in mock_repo fixture)
         manifest = ArtifactManifest(issue_number=965)
         entry = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, path="plan/feature-context-foo.md")
         manifest = registry.register(manifest, entry)
@@ -287,13 +420,17 @@ class TestGitHubArtifactProviderSetManifest:
         # Act
         provider.set_manifest(965, manifest)
 
-        # Assert — graphql_query called twice: once for _fetch_issue_graphql, once for mutation
-        assert mock_repo.requester.graphql_query.call_count == 2
-        # Second call is the mutation; its variables dict contains the new body
-        mutation_call_args = mock_repo.requester.graphql_query.call_args_list[1]
-        mutation_variables: dict[str, Any] = mutation_call_args[0][1]
+        # Assert — graphql_query called at least twice: fetch + mutation
+        assert mock_repo.requester.graphql_query.call_count >= 2
+        # Find the mutation call (contains 'updateIssue')
+        mutation_calls = [
+            call for call in mock_repo.requester.graphql_query.call_args_list if "updateIssue" in call[0][0]
+        ]
+        assert len(mutation_calls) >= 1, "Expected at least one updateIssue mutation call"
+        mutation_variables: dict[str, Any] = mutation_calls[0][0][1]
         assert "body" in mutation_variables
-        assert "<!-- artifact-manifest:begin -->" in mutation_variables["body"]
+        # The implementation now writes a Gist sentinel, not the legacy inline manifest
+        assert "<!-- artifact-gist:" in mutation_variables["body"]
 
     def test_set_manifest_skips_edit_when_body_unchanged(
         self, provider: GitHubArtifactProvider, mock_issue: MagicMock, mock_repo: MagicMock, registry: ArtifactRegistry
@@ -977,3 +1114,180 @@ class TestMCPToolArtifactRead:
         with pytest.raises(ToolError):
             async with Client(patched_mcp_server) as client:
                 await client.call_tool("artifact_read", {"issue_number": 400, "artifact_type": "task-plan"})
+
+
+# ---------------------------------------------------------------------------
+# create_artifact_provider factory tests
+# ---------------------------------------------------------------------------
+
+
+class TestCreateArtifactProviderFactory:
+    """Unit tests for the create_artifact_provider() factory function.
+
+    Tests: Provider selection, credential reading from env vars, unsupported
+           backend rejection, BACKLOG_BACKEND env var fallback.
+    """
+
+    def test_github_backend_returns_github_gist_provider(self, tmp_path: Path) -> None:
+        """create_artifact_provider returns GitHubGistArtifactProvider for backend_name="github".
+
+        Tests: Factory produces correct type for GitHub backend.
+        How: Call with backend_name="github", repo="owner/repo"; assert isinstance.
+        Why: Consumer code relies on factory to select the correct implementation.
+        """
+        # Arrange / Act
+        provider = create_artifact_provider(backend_name="github", repo="owner/repo", root_worktree=tmp_path)
+
+        # Assert
+        assert isinstance(provider, GitHubGistArtifactProvider)
+
+    def test_linear_backend_returns_linear_provider(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """create_artifact_provider returns LinearArtifactProvider for backend_name="linear".
+
+        Tests: Factory produces correct type for Linear backend.
+        How: Set LINEAR_API_KEY and LINEAR_TEAM_ID env vars; call with backend_name="linear".
+        Why: Linear backend requires env vars; factory must read and inject them.
+        """
+        # Arrange
+        monkeypatch.setenv("LINEAR_API_KEY", "test-linear-key")
+        monkeypatch.setenv("LINEAR_TEAM_ID", "team-uuid")
+
+        # Act
+        provider = create_artifact_provider(backend_name="linear", root_worktree=tmp_path)
+
+        # Assert
+        assert isinstance(provider, LinearArtifactProvider)
+
+    def test_gitlab_backend_returns_gitlab_provider(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """create_artifact_provider returns GitLabArtifactProvider for backend_name="gitlab".
+
+        Tests: Factory produces correct type for GitLab backend.
+        How: Set GITLAB_TOKEN and GITLAB_PROJECT_ID env vars; call with backend_name="gitlab".
+        Why: GitLab backend requires env vars; factory must read and inject them.
+        """
+        # Arrange
+        monkeypatch.setenv("GITLAB_TOKEN", "test-gitlab-token")
+        monkeypatch.setenv("GITLAB_PROJECT_ID", "123")
+
+        # Act
+        provider = create_artifact_provider(backend_name="gitlab", root_worktree=tmp_path)
+
+        # Assert
+        assert isinstance(provider, GitLabArtifactProvider)
+
+    def test_sqlite_backend_raises_backlog_error(self, tmp_path: Path) -> None:
+        """create_artifact_provider raises BacklogError for backend_name="sqlite".
+
+        Tests: Non-remote backends are rejected with a clear error.
+        How: Call with backend_name="sqlite"; assert BacklogError raised.
+        Why: SQLite does not support remote artifact storage; the error message
+             guides users to select a supported backend.
+        """
+        # Arrange / Act / Assert
+        with pytest.raises(BacklogError, match="sqlite"):
+            create_artifact_provider(backend_name="sqlite")
+
+    def test_memory_backend_raises_backlog_error(self, tmp_path: Path) -> None:
+        """create_artifact_provider raises BacklogError for backend_name="memory".
+
+        Tests: In-memory backend is rejected with a clear error.
+        How: Call with backend_name="memory"; assert BacklogError raised.
+        Why: Memory backend has no persistence; artifact storage requires persistence.
+        """
+        # Arrange / Act / Assert
+        with pytest.raises(BacklogError, match="memory"):
+            create_artifact_provider(backend_name="memory")
+
+    def test_unknown_backend_raises_backlog_error(self) -> None:
+        """create_artifact_provider raises BacklogError for an unrecognised backend name.
+
+        Tests: Unknown backend names are rejected with a descriptive error.
+        How: Call with backend_name="redis"; assert BacklogError raised.
+        Why: Silent failures from unknown names would be hard to debug.
+        """
+        # Arrange / Act / Assert
+        with pytest.raises(BacklogError, match="Unknown"):
+            create_artifact_provider(backend_name="redis")
+
+    def test_reads_backlog_backend_env_var_when_backend_name_is_none(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """create_artifact_provider reads BACKLOG_BACKEND env var when backend_name is None.
+
+        Tests: Env var fallback — backend_name=None → read BACKLOG_BACKEND.
+        How: Set BACKLOG_BACKEND=github; call with backend_name=None; assert GitHub provider.
+        Why: Callers omit backend_name when the backend should be determined from config.
+        """
+        # Arrange
+        monkeypatch.setenv("BACKLOG_BACKEND", "github")
+
+        # Act
+        provider = create_artifact_provider(backend_name=None, repo="owner/repo", root_worktree=tmp_path)
+
+        # Assert
+        assert isinstance(provider, GitHubGistArtifactProvider)
+
+    def test_defaults_to_github_when_no_backend_env_var(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """create_artifact_provider defaults to GitHub when BACKLOG_BACKEND is not set.
+
+        Tests: Default backend selection when neither argument nor env var is set.
+        How: Unset BACKLOG_BACKEND; call with backend_name=None and repo; assert GitHub provider.
+        Why: Existing deployments rely on GitHub as the default; no configuration change needed.
+        """
+        # Arrange
+        monkeypatch.delenv("BACKLOG_BACKEND", raising=False)
+
+        # Act
+        provider = create_artifact_provider(backend_name=None, repo="owner/repo", root_worktree=tmp_path)
+
+        # Assert
+        assert isinstance(provider, GitHubGistArtifactProvider)
+
+    def test_linear_backend_missing_api_key_raises_backlog_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """create_artifact_provider raises BacklogError when LINEAR_API_KEY is not set.
+
+        Tests: Missing credential detection for Linear backend.
+        How: Ensure LINEAR_API_KEY is unset; call with backend_name="linear".
+        Why: Clear error at factory time prevents confusing failures deep inside provider methods.
+        """
+        # Arrange
+        monkeypatch.delenv("LINEAR_API_KEY", raising=False)
+
+        # Act / Assert
+        with pytest.raises(BacklogError, match="LINEAR_API_KEY"):
+            create_artifact_provider(backend_name="linear", root_worktree=tmp_path)
+
+    def test_gitlab_backend_missing_token_raises_backlog_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """create_artifact_provider raises BacklogError when GITLAB_TOKEN is not set.
+
+        Tests: Missing credential detection for GitLab backend.
+        How: Ensure GITLAB_TOKEN is unset; call with backend_name="gitlab".
+        Why: Clear error at factory time prevents confusing failures deep inside provider methods.
+        """
+        # Arrange
+        monkeypatch.delenv("GITLAB_TOKEN", raising=False)
+
+        # Act / Assert
+        with pytest.raises(BacklogError, match="GITLAB_TOKEN"):
+            create_artifact_provider(backend_name="gitlab", root_worktree=tmp_path)
+
+    def test_gitlab_backend_missing_project_id_raises_backlog_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """create_artifact_provider raises BacklogError when GITLAB_PROJECT_ID is not set.
+
+        Tests: Missing project ID detection for GitLab backend.
+        How: Set GITLAB_TOKEN but unset GITLAB_PROJECT_ID; call with backend_name="gitlab".
+        Why: GITLAB_PROJECT_ID is required to route API calls to the correct project.
+        """
+        # Arrange
+        monkeypatch.setenv("GITLAB_TOKEN", "test-token")
+        monkeypatch.delenv("GITLAB_PROJECT_ID", raising=False)
+
+        # Act / Assert
+        with pytest.raises(BacklogError, match="GITLAB_PROJECT_ID"):
+            create_artifact_provider(backend_name="gitlab", root_worktree=tmp_path)

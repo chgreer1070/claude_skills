@@ -431,7 +431,7 @@ class GitHubGistArtifactProvider:
             gist_file = gist.files.get("manifest.json")
             if gist_file is not None:
                 return ArtifactManifest.model_validate_json(gist_file.content)
-            return ArtifactManifest()
+            return ArtifactManifest(issue_number=issue_number)
 
         # Legacy inline manifest — lazy migration to Gist storage.
         if "<!-- artifact-manifest:begin -->" in body:
@@ -442,7 +442,7 @@ class GitHubGistArtifactProvider:
             )
             return manifest
 
-        return ArtifactManifest()
+        return ArtifactManifest(issue_number=issue_number)
 
     def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
         """Persist *manifest* by writing it to the linked Gist.
@@ -774,7 +774,7 @@ class LinearArtifactProvider:
                     manifest_json = metadata.get("manifest_json")
                     if isinstance(manifest_json, str):
                         return ArtifactManifest.model_validate_json(manifest_json)
-        return ArtifactManifest()
+        return ArtifactManifest(issue_number=issue_number)
 
     def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
         """Persist *manifest* as a Linear attachment on *issue_number*.
@@ -1018,13 +1018,13 @@ class GitLabArtifactProvider:
         """
         snippet_id = self._get_snippet_id_from_notes(issue_number)
         if snippet_id is None:
-            return ArtifactManifest()
+            return ArtifactManifest(issue_number=issue_number)
 
         self._snippet_cache[issue_number] = snippet_id
         snippet = gitlab_get_snippet(self._project_id, snippet_id, self._private_token, self._gitlab_url)
         manifest_json = snippet["files_content"].get("manifest.json")
         if manifest_json is None:
-            return ArtifactManifest()
+            return ArtifactManifest(issue_number=issue_number)
         return ArtifactManifest.model_validate_json(manifest_json)
 
     def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:

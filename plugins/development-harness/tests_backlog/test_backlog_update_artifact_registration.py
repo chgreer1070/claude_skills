@@ -43,23 +43,22 @@ class TestAutoRegisterPlanArtifact:
         item = _make_item(issue="#42")
         out = Output()
 
+        mock_provider = MagicMock()
+        mock_provider.get_manifest.return_value = _empty_manifest(issue_number=42)
+        updated_manifest = _empty_manifest(issue_number=42)
+
         with (
-            patch("backlog_core.operations.GitHubArtifactProvider") as mock_provider_cls,
+            patch("backlog_core.operations.create_artifact_provider", return_value=mock_provider) as mock_factory,
             patch("backlog_core.operations.ArtifactRegistry") as mock_registry_cls,
         ):
-            mock_provider = MagicMock()
-            mock_provider.get_manifest.return_value = _empty_manifest(issue_number=42)
-            mock_provider_cls.return_value = mock_provider
-
             mock_registry = MagicMock()
-            updated_manifest = _empty_manifest(issue_number=42)
             mock_registry.register.return_value = updated_manifest
             mock_registry_cls.return_value = mock_registry
 
             _auto_register_plan_artifact(item, "plan/tasks-1-foo.yaml", repo="owner/repo", output=out)
 
-        # Provider was constructed with the correct repo
-        mock_provider_cls.assert_called_once_with(repo="owner/repo")
+        # Factory was called with the correct repo
+        mock_factory.assert_called_once_with(repo="owner/repo")
         # Manifest was fetched for issue 42
         mock_provider.get_manifest.assert_called_once_with(42)
         # Register was called with a task-plan entry pointing at the plan path
@@ -80,12 +79,12 @@ class TestAutoRegisterPlanArtifact:
         out = Output()
 
         with (
-            patch("backlog_core.operations.GitHubArtifactProvider") as mock_provider_cls,
+            patch("backlog_core.operations.create_artifact_provider") as mock_factory,
             patch("backlog_core.operations.ArtifactRegistry") as mock_registry_cls,
         ):
             _auto_register_plan_artifact(item, "plan/tasks-1-foo.yaml", repo="owner/repo", output=out)
 
-            mock_provider_cls.assert_not_called()
+            mock_factory.assert_not_called()
             mock_registry_cls.assert_not_called()
 
         assert out.warnings == []
@@ -96,11 +95,10 @@ class TestAutoRegisterPlanArtifact:
         item = _make_item(issue="#99")
         out = Output()
 
-        with patch("backlog_core.operations.GitHubArtifactProvider") as mock_provider_cls:
-            mock_provider = MagicMock()
-            mock_provider.get_manifest.side_effect = RuntimeError("GitHub unavailable")
-            mock_provider_cls.return_value = mock_provider
+        mock_provider = MagicMock()
+        mock_provider.get_manifest.side_effect = RuntimeError("GitHub unavailable")
 
+        with patch("backlog_core.operations.create_artifact_provider", return_value=mock_provider):
             # Must not raise
             _auto_register_plan_artifact(item, "plan/tasks-1-bar.yaml", repo="owner/repo", output=out)
 
@@ -111,9 +109,9 @@ class TestAutoRegisterPlanArtifact:
         item = _make_item(issue="not-a-number")
         out = Output()
 
-        with patch("backlog_core.operations.GitHubArtifactProvider") as mock_provider_cls:
+        with patch("backlog_core.operations.create_artifact_provider") as mock_factory:
             _auto_register_plan_artifact(item, "plan/tasks-1-foo.yaml", repo="owner/repo", output=out)
-            mock_provider_cls.assert_not_called()
+            mock_factory.assert_not_called()
 
         assert any("WARNING" in w and "Could not parse issue number" in w for w in out.warnings)
 
@@ -122,14 +120,13 @@ class TestAutoRegisterPlanArtifact:
         item = _make_item(issue="123")
         out = Output()
 
+        mock_provider = MagicMock()
+        mock_provider.get_manifest.return_value = _empty_manifest(issue_number=123)
+
         with (
-            patch("backlog_core.operations.GitHubArtifactProvider") as mock_provider_cls,
+            patch("backlog_core.operations.create_artifact_provider", return_value=mock_provider),
             patch("backlog_core.operations.ArtifactRegistry") as mock_registry_cls,
         ):
-            mock_provider = MagicMock()
-            mock_provider.get_manifest.return_value = _empty_manifest(issue_number=123)
-            mock_provider_cls.return_value = mock_provider
-
             mock_registry = MagicMock()
             mock_registry.register.return_value = _empty_manifest(issue_number=123)
             mock_registry_cls.return_value = mock_registry
@@ -144,15 +141,14 @@ class TestAutoRegisterPlanArtifact:
         item = _make_item(issue="#7")
         out = Output()
 
+        mock_provider = MagicMock()
+        mock_provider.get_manifest.return_value = _empty_manifest(issue_number=7)
+        mock_provider.set_manifest.side_effect = OSError("network timeout")
+
         with (
-            patch("backlog_core.operations.GitHubArtifactProvider") as mock_provider_cls,
+            patch("backlog_core.operations.create_artifact_provider", return_value=mock_provider),
             patch("backlog_core.operations.ArtifactRegistry") as mock_registry_cls,
         ):
-            mock_provider = MagicMock()
-            mock_provider.get_manifest.return_value = _empty_manifest(issue_number=7)
-            mock_provider.set_manifest.side_effect = OSError("network timeout")
-            mock_provider_cls.return_value = mock_provider
-
             mock_registry = MagicMock()
             mock_registry.register.return_value = _empty_manifest(issue_number=7)
             mock_registry_cls.return_value = mock_registry
