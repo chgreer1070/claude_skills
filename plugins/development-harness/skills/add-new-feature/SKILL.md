@@ -403,13 +403,14 @@ mcp__plugin_dh_backlog__artifact_register(
 
 mcp__plugin_dh_backlog__backlog_update(
     selector="{title}",
-    plan="plan/P{NNN}-{slug}.yaml"
+    plan="P{NNN}"
 )
 ```
 
-The `backlog_update(plan=...)` call writes the plan path into the backlog item's `metadata.plan`
-field. This is required so `work-backlog-item` can route directly to `implement-feature` on
-subsequent invocations and so `backlog-lifecycle.md` Layer 3 state transitions are tracked.
+The `backlog_update(plan=...)` call writes the plan address into the backlog item's `metadata.plan`
+field. This is a backend signal — it records that a plan exists and its address, not a filesystem
+path. `work-backlog-item` uses this to route directly to `implement-feature` on subsequent
+invocations. The SAM MCP resolves `P{NNN}` to the full plan without filesystem access.
 
 ---
 

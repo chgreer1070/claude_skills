@@ -710,8 +710,10 @@ Based on Step 2 result, for each follow-up file:
 
 **Match found** -- attach follow-up as plan to the existing backlog item:
 
+Extract the plan address from the follow-up file path: `plan/P{NNN}-{slug}-followup-{k}.yaml` → `P{NNN}`.
+
 ```text
-mcp__plugin_dh_backlog__backlog_update(selector="{matched_item_title}", plan="{followup_file_path}")
+mcp__plugin_dh_backlog__backlog_update(selector="{matched_item_title}", plan="P{NNN}")
 ```
 
 **No match found** -- create a new backlog item, then attach the follow-up as plan:
@@ -720,10 +722,10 @@ mcp__plugin_dh_backlog__backlog_update(selector="{matched_item_title}", plan="{f
 Skill(skill: "dh:create-backlog-item", args: "--auto {derived_title}")
 ```
 
-Then attach the follow-up file as the plan:
+Then attach the follow-up as the plan (extract plan address first — see above):
 
 ```text
-mcp__plugin_dh_backlog__backlog_update(selector="{derived_title}", plan="{followup_file_path}")
+mcp__plugin_dh_backlog__backlog_update(selector="{derived_title}", plan="P{NNN}")
 ```
 
 **Error handling**:
@@ -910,13 +912,17 @@ SendMessage(to="{name}", message={"type": "shutdown_request"})
 
 After the commit+push step, output this block to the user:
 
-Call `mcp__plugin_dh_backlog__backlog_list()` and find the highest-priority open item whose
-title contains the current feature slug. Check the `plan` field on that item.
+Call `mcp__plugin_dh_backlog__backlog_list(title="{slug}")` — a slug-filtered search.
+Do NOT substitute a general P1/P2 listing already in context. The filter is mandatory.
+Store the first result. Check `item.plan` as a boolean only (is it set and non-empty?).
 
 ```text
 If item found AND item.plan is set (non-empty):
+  Resolve the plan address via SAM — do NOT pass item.plan directly:
+    mcp__plugin_dh_sam__sam_list(search="{slug}")
+  Use the plan address P{NNN} from the result.
   Clear context and run:
-    /dh:implement-feature {item.plan}
+    /dh:implement-feature P{NNN}
 
 If item found AND item.plan is NOT set:
   Clear context and run:

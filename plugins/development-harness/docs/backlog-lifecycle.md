@@ -273,7 +273,7 @@ Fields stored locally:
 | `metadata.status` | MCP tools | Mirrors the GitHub `status:*` label |
 | `metadata.priority` | `backlog_add` | Mirrors the GitHub `priority:*` label |
 | `metadata.groomed` | `backlog_groom` | Date when grooming completed (set after all 7 sections present) |
-| `metadata.plan` | `backlog_update(plan=...)` | SAM plan file path or address |
+| `metadata.plan` | `backlog_update(plan=...)` | SAM plan address (`P{NNN}`) — backend signal, not a file path |
 | `metadata.issue` | `backlog_add`, `backlog_sync` | GitHub issue number |
 | `metadata.milestone` | `group-items-to-milestone` | GitHub milestone number |
 | Groomed sections | `backlog_groom` | RT-ICA, Impact Radius, Fact-Check, and other groomed subsections |
@@ -286,8 +286,10 @@ Created by `add-new-feature` Phase 4 via `sam_create`. Managed by the SAM MCP se
 accessed via filesystem path directly. Access via `sam_read(plan="P{NNN}")` and
 `sam_list(search="{slug}")`.
 
-The plan file path is written back to the backlog item via
-`backlog_update(selector="{title}", plan="plan/P{NNN}-{slug}.yaml")`.
+The plan address is written back to the backlog item via
+`backlog_update(selector="{title}", plan="P{NNN}")`. The `metadata.plan` field is a
+backend signal — it records the plan address so the MCP can resolve it, not a filesystem
+path. Do not write or read it as a file path.
 
 ### Layer 4 — Active-task context files (ephemeral)
 
