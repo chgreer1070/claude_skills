@@ -228,6 +228,10 @@ unfixable = ["F401"]
 # GitHubBackend implements every method of BacklogBackend — PLR0904 does not apply to protocol implementations
 # SLF001 — protocol surface includes _-prefixed methods that delegate to _-prefixed gh_client functions by design
 "**/backlog_core/backends/github_backend.py" = ["PLR0904", "SLF001"]
+# GitHubTaskProvider implements every method of TaskBackend — PLR0904 does not apply to protocol implementations
+# SLF001 — BacklogBackend Protocol surface includes _-prefixed GraphQL methods by design (same justification as github_backend.py)
+# DOC201 — single-line docstrings for private helpers already state the return value; formal Returns sections add no information
+"**/sam_schema/core/backends/github_task.py" = ["PLR0904", "SLF001", "DOC201"]
 # InMemoryBackend implements the full BacklogBackend Protocol surface — PLR0904 and DOC201 do not apply
 # DOC201 — single-line docstrings already state the return value; formal Returns sections add no information
 "**/backlog_core/backends/memory_backend.py" = ["DOC201", "PLR0904"]
