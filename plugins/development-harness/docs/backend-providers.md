@@ -89,7 +89,7 @@ The development harness uses three subsystems. The backlog MCP now uses a plugga
 - **Implementation**: `sam_schema/` package with pluggable `TaskBackend` Protocol, exposed as FastMCP 3.x server (`mcp__plugin_dh_sam__*`)
 - **Operations**: List plans, read/claim/update tasks, check readiness, create plans
 - **Format**: YAML frontmatter per task file (legacy: monolithic markdown with `## Task {ID}` headers)
-- **Backend selection**: `TASKBACKEND` env var → `taskbackend.toml` → default `local`
+- **Backend selection**: `TASKBACKEND` env var → `taskbackend.toml` (git project root, then `~/.dh/`) → default `local`
 
 ### Artifact Manifest (backlog MCP artifact tools)
 
@@ -173,7 +173,7 @@ All protocol methods are synchronous. The MCP layer wraps calls in `asyncio.to_t
 |---------|-----------|---------|
 | `LocalYamlTaskProvider` | `local` | Default. Wraps `yaml_reader.py` / `yaml_writer.py` + query layer. Single-machine use only — documents written to `plan_dir/{plan_id}/documents/`. |
 | `InMemoryTaskProvider` | `memory` | In-memory test double. No persistence. Use in tests and CI where filesystem access is unavailable. |
-| `GitHubTaskProvider` | `github` | Stub. Requires IssueBackend + DocumentBackend (#984). Raises `NotImplementedError` when selected. |
+| `GitHubTaskProvider` | `github` | Fully implemented (13 methods). Not selectable via factory — `create_task_backend("github")` raises `NotImplementedError` until #984 lands. Instantiate directly: `GitHubTaskProvider(issue_backend, doc_backend)`. Current `issue_backend` type is `BacklogBackend` (from `backlog_core.backend_protocol`) — stand-in until #984 delivers a standalone `IssueBackend`. `doc_backend` type is the `DocumentBackend` stub in `github_task.py`. |
 
 ### Configuration
 
@@ -521,7 +521,7 @@ class TaskBackend(Protocol):
         ...
 
     def update_task_status(self, plan_id: str, task_id: str, status: str) -> None:
-        """Set task status. Valid: not-started, in-progress, complete, failed, skipped."""
+        """Set task status. Valid: not-started, in-progress, complete, blocked, deferred, skipped."""
         ...
 
     def update_task_fields(
@@ -563,7 +563,7 @@ class TaskBackend(Protocol):
 | Backend | Identifier | Class | Purpose |
 |---------|-----------|-------|---------|
 | `LocalYamlTaskProvider` | `local` | `sam_schema.core.backends.local_yaml` | Default. Wraps existing YAML I/O stack (yaml_reader, yaml_writer, query). Single-machine only. |
-| `GitHubTaskProvider` | `github` | `sam_schema.core.backends.github_task` | Maps plans → GitHub Issues (`sam:plan` label), tasks → sub-issues (`sam:{status}` labels). Requires IssueBackend + DocumentBackend (#984). |
+| `GitHubTaskProvider` | `github` | `sam_schema.core.backends.github_task` | Maps plans → GitHub Issues (`sam:plan` label), tasks → sub-issues (`sam:{status}` labels). Constructor: `GitHubTaskProvider(issue_backend: BacklogBackend, doc_backend: DocumentBackend)`. `BacklogBackend` is from `backlog_core.backend_protocol`; `DocumentBackend` is a stub in `github_task.py` pending #984. |
 | `InMemoryTaskProvider` | `memory` | `sam_schema.core.backends.memory` | In-memory test double. No persistence. Use in tests and CI. |
 
 #### Configuration
@@ -625,4 +625,8 @@ Backend selection is configured via a config file at server startup. Each MCP se
 - [artifact-manifest-backends.md](./artifact-manifest-backends.md) -- artifact-specific backend details
 - [backlog_core/artifact_provider.py](../backlog_core/artifact_provider.py) -- ArtifactBackend Protocol definition and GitHubArtifactProvider
 - [backlog_core/gh_client.py](../backlog_core/gh_client.py) -- current GitHub-specific issue operations
-- [sam_schema/](../sam_schema/) -- current local YAML task implementation
+- [sam_schema/core/task_backend.py](../sam_schema/core/task_backend.py) -- TaskBackend Protocol definition (13 methods)
+- [sam_schema/core/task_backend_types.py](../sam_schema/core/task_backend_types.py) -- TypedDict shapes: TaskDefinition, TaskData, PlanData, PlanSummary, DocumentHandle, DocumentData
+- [sam_schema/core/task_config.py](../sam_schema/core/task_config.py) -- create_task_backend factory, TaskConfig dataclass, reset_task_config
+- [sam_schema/core/exceptions.py](../sam_schema/core/exceptions.py) -- SAM exception hierarchy (SamError, PlanNotFoundError, PlanExistsError, TaskNotFoundError, TaskValidationError, DocumentNotFoundError)
+- [sam_schema/core/backends/](../sam_schema/core/backends/) -- LocalYamlTaskProvider, InMemoryTaskProvider, GitHubTaskProvider implementations
