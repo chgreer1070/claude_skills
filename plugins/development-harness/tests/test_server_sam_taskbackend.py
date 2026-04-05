@@ -195,6 +195,28 @@ async def test_sam_read_with_task_routes_through_backend_read_task(backend_mock:
     backend_mock.read_task.assert_called_once_with("P1", "T1")
 
 
+async def test_sam_read_with_task_returns_task_assignment_envelope(backend_mock: MagicMock) -> None:
+    """sam_read with task returns TaskAssignment envelope including plan_goal and task fields.
+
+    After the P912 follow-up fix, sam_read(plan='P1', task='T1') must return a dict
+    containing plan-level envelope fields (plan-goal, plan-number) alongside the nested
+    task object — matching the old TaskAssignment serialization shape.
+
+    Arrange: inject mock backend; _PLAN_DATA has goal='test goal', feature='test-feature'.
+    Act: call sam_read with plan='P1' and task='T1'.
+    Assert: response contains 'plan-goal' (by_alias serialization) and 'task' keys,
+            with plan-goal matching the plan data value.
+    """
+    # Act
+    response = await _call("sam_read", {"plan": "P1", "task": "T1"})
+
+    # Assert
+    assert "plan-goal" in response, f"Expected 'plan-goal' in response, got keys: {sorted(response.keys())}"
+    assert "task" in response, f"Expected 'task' in response, got keys: {sorted(response.keys())}"
+    assert response["plan-goal"] == "test goal"
+    assert response["task"]["id"] == "T1"
+
+
 async def test_sam_state_routes_through_backend_update_task_status(backend_mock: MagicMock) -> None:
     """sam_state calls backend.update_task_status, not query.update_status.
 

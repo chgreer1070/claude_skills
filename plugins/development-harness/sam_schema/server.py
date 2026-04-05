@@ -38,7 +38,7 @@ from sam_schema.core.exceptions import (
     TaskNotFoundError,
     TaskValidationError,
 )
-from sam_schema.core.models import Plan, Task
+from sam_schema.core.models import Plan, Task, TaskAssignment
 from sam_schema.core.task_config import TaskConfig, create_task_backend, get_task_config, set_task_config
 
 if TYPE_CHECKING:
@@ -161,7 +161,18 @@ def sam_read(
 
         if task is not None:
             task_data = backend.read_task(plan_id, task)
-            return dict(task_data)
+            task_model = Task.model_validate(task_data)
+            assignment = TaskAssignment(
+                plan_number=plan_data.get("plan_id", plan_id),
+                plan_slug=plan_data.get("feature") or None,
+                plan_goal=plan_data.get("goal") or None,
+                plan_context=plan_data.get("context") or None,
+                plan_acceptance_criteria=plan_data.get("acceptance_criteria")
+                or plan_data.get("acceptance-criteria")
+                or None,
+                task=task_model,
+            )
+            return assignment.model_dump(mode="json", by_alias=True, exclude_none=True)
 
         # Plan-only read: rebuild through Plan model for exact serialization shape.
         plan_dict = {k: v for k, v in plan_data.items() if k != "plan_id"}
