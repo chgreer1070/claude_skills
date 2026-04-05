@@ -497,7 +497,7 @@ After each dispatched phase completes, run the phase-specific processing before 
 ```mermaid
 flowchart TD
     Done{Which task<br>just completed?}
-    Done -->|T1 Code Review| T1Post["Extract follow-up task files<br>from code-reviewer ARTIFACTS output.<br>Store file paths for Step 4 of<br>Recursive Follow-up Handling."]
+    Done -->|T1 Code Review| T1Post["Call artifact_read(issue_number, 'codebase-analysis')<br>Check verdict field: PASS proceeds.<br>NEEDS-WORK or FAIL: extract blocking findings<br>from 'Required changes (blocking)' section<br>to drive Recursive Follow-up Handling."]
     Done -->|T4 Drift Audit| T4Post{Drift found<br>in T4 output?}
     T4Post -->|No drift| SkipT5["sam_state(plan='{QG}', task='T5', status='skipped')"]
     T4Post -->|Drift found| T5Ready["T5 remains NOT_STARTED — will be<br>dispatched on next loop iteration"]
@@ -596,9 +596,19 @@ After all six phases complete, route any follow-up task files created by Phase 1
 
 ### Step 1: Detect Follow-up Files
 
-Extract file paths from the `Task files:` list in the code-reviewer's ARTIFACTS output (the `STATUS: DONE` block from Phase 1).
+Retrieve the review report registered by `@dh:code-reviewer` during Phase 1:
 
-If the `Task files:` list is empty or absent, search for follow-up plans via the SAM MCP:
+```text
+mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, artifact_type="codebase-analysis")
+```
+
+Check the `verdict` field in the report:
+
+- `PASS` — no blocking findings; skip the entire routing section (no follow-ups to route)
+- `NEEDS-WORK` or `FAIL` — extract the "Required changes (blocking)" section from the report;
+  each blocking item becomes a follow-up task to route
+
+If `artifact_read` returns an error or the artifact is absent, fall back to the SAM MCP search:
 
 ```text
 mcp__plugin_dh_sam__sam_list(search="{slug}-followup")
@@ -606,9 +616,9 @@ mcp__plugin_dh_sam__sam_list(search="{slug}-followup")
 
 Where `{slug}` is extracted from the parent task file path (`plan/P{NNN}-{slug}.yaml` — strip `P{NNN}-` prefix and `.yaml` suffix).
 
-If both ARTIFACTS and glob return empty: skip the entire routing section (no follow-ups to route).
+If both `artifact_read` and the SAM search return empty: skip the entire routing section (no follow-ups to route).
 
-**Error handling**: If a glob returns files from a different feature slug, filter results to only include files matching the parent task file's slug.
+**Error handling**: If the SAM fallback returns plans from a different feature slug, filter results to only include plans matching the parent task file's slug.
 
 ### Step 2: Search Backlog by Title Keywords
 

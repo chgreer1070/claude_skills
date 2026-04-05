@@ -4,7 +4,7 @@
 
 - architect: @python3-development:python-cli-architect
 - test-designer: @python3-development:python-pytest-architect
-- code-reviewer: @python3-development:code-reviewer
+- code-reviewer: @dh:code-reviewer
 - design-spec: @python3-development:python-cli-design-spec
 - linting: /holistic-linting:linting-root-cause-resolver
 
