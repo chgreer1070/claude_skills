@@ -641,7 +641,10 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
     # Check current task status before marking complete.
     try:
         current_task = sam_get_task(full_path, task_id)
-    except (KeyError, FileNotFoundError, ValueError, OSError):
+    except ValueError as e:
+        print(f"[hook] SubagentStop: schema violation in task file {full_path} — {e}", file=sys.stderr)
+        sys.exit(2)
+    except (KeyError, FileNotFoundError, OSError):
         # Task not found in file — delete stale context file.
         with contextlib.suppress(OSError):
             context_file.unlink()
@@ -709,7 +712,10 @@ def handle_activity_update(hook_input: dict[str, Any]) -> None:
         current_task = sam_get_task(full_path, task_id)
         if current_task.status == SamTaskStatus.COMPLETE:
             return
-    except (KeyError, FileNotFoundError, ValueError, OSError):
+    except ValueError as e:
+        print(f"[hook] PostToolUse: schema violation in task file {full_path} — {e}", file=sys.stderr)
+        sys.exit(2)
+    except (KeyError, FileNotFoundError, OSError):
         sys.exit(0)
 
     timestamp = get_iso_timestamp()
