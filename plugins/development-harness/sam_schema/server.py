@@ -29,15 +29,9 @@ from backlog_core.artifact_registry import ArtifactRegistry as _ArtifactRegistry
 from backlog_core.models import ArtifactEntry, ArtifactStatus, ArtifactType, BacklogError
 from fastmcp import FastMCP
 from pydantic import Field
-from ruamel.yaml import YAML, YAMLError
+from ruamel.yaml import YAML
 
-from sam_schema.core.exceptions import (
-    PlanExistsError,
-    PlanNotFoundError,
-    SamError,
-    TaskNotFoundError,
-    TaskValidationError,
-)
+from sam_schema.core.exceptions import PlanNotFoundError, SamError, TaskNotFoundError
 from sam_schema.core.models import Plan, Task, TaskAssignment
 from sam_schema.core.task_config import TaskConfig, create_task_backend, get_task_config, set_task_config
 
@@ -151,35 +145,31 @@ def sam_read(
 
     Returns:
         ``TaskAssignment`` fields as a JSON-serializable dict when ``task`` is
-        provided, or ``Plan`` fields when ``task`` is omitted.  Returns a dict
-        with an ``error`` key on failure.
+        provided, or ``Plan`` fields when ``task`` is omitted.
     """
-    try:
-        backend = _get_backend(plan_dir)
-        plan_id = _resolve_plan_id(plan)
-        plan_data = backend.read_plan(plan_id)
+    backend = _get_backend(plan_dir)
+    plan_id = _resolve_plan_id(plan)
+    plan_data = backend.read_plan(plan_id)
 
-        if task is not None:
-            task_data = backend.read_task(plan_id, task)
-            task_model = Task.model_validate(task_data)
-            assignment = TaskAssignment(
-                plan_number=plan_data.get("plan_id", plan_id),
-                plan_slug=plan_data.get("feature") or None,
-                plan_goal=plan_data.get("goal") or None,
-                plan_context=plan_data.get("context") or None,
-                plan_acceptance_criteria=plan_data.get("acceptance_criteria")
-                or plan_data.get("acceptance-criteria")
-                or None,
-                task=task_model,
-            )
-            return assignment.model_dump(mode="json", by_alias=True, exclude_none=True)
+    if task is not None:
+        task_data = backend.read_task(plan_id, task)
+        task_model = Task.model_validate(task_data)
+        assignment = TaskAssignment(
+            plan_number=plan_data.get("plan_id", plan_id),
+            plan_slug=plan_data.get("feature") or None,
+            plan_goal=plan_data.get("goal") or None,
+            plan_context=plan_data.get("context") or None,
+            plan_acceptance_criteria=plan_data.get("acceptance_criteria")
+            or plan_data.get("acceptance-criteria")
+            or None,
+            task=task_model,
+        )
+        return assignment.model_dump(mode="json", by_alias=True, exclude_none=True)
 
-        # Plan-only read: rebuild through Plan model for exact serialization shape.
-        plan_dict = {k: v for k, v in plan_data.items() if k != "plan_id"}
-        plan_model = Plan.model_validate(plan_dict)
-        return plan_model.model_dump(mode="json", by_alias=True, exclude_none=True)
-    except (PlanNotFoundError, TaskNotFoundError, SamError) as exc:
-        return {"error": str(exc)}
+    # Plan-only read: rebuild through Plan model for exact serialization shape.
+    plan_dict = {k: v for k, v in plan_data.items() if k != "plan_id"}
+    plan_model = Plan.model_validate(plan_dict)
+    return plan_model.model_dump(mode="json", by_alias=True, exclude_none=True)
 
 
 @mcp.tool
@@ -198,17 +188,13 @@ def sam_state(
         plan_dir: Path to the directory containing plan files.
 
     Returns:
-        Updated task fields as a JSON-serializable dict, or a dict with an
-        ``error`` key on failure.
+        Updated task fields as a JSON-serializable dict.
     """
-    try:
-        backend = _get_backend(plan_dir)
-        plan_id = _resolve_plan_id(plan)
-        backend.update_task_status(plan_id, task, status)
-        task_data = backend.read_task(plan_id, task)
-        return dict(task_data)
-    except (TaskValidationError, PlanNotFoundError, TaskNotFoundError, SamError) as exc:
-        return {"error": str(exc)}
+    backend = _get_backend(plan_dir)
+    plan_id = _resolve_plan_id(plan)
+    backend.update_task_status(plan_id, task, status)
+    task_data = backend.read_task(plan_id, task)
+    return dict(task_data)
 
 
 @mcp.tool
@@ -231,37 +217,34 @@ def sam_ready(
 
     Returns:
         Dict with ``ready_tasks`` list, ``count``, ``feature``, ``source_path``,
-        and ``issue`` envelope fields, or a dict with an ``error`` key on failure.
+        and ``issue`` envelope fields.
     """
-    try:
-        backend = _get_backend(plan_dir)
-        plan_id = _resolve_plan_id(plan)
-        plan_data = backend.read_plan(plan_id)
-        tasks_data = backend.get_ready_tasks(plan_id)
-        if full:
-            ready_tasks: list[dict[str, Any]] = [Task.model_validate(t).model_dump(mode="json") for t in tasks_data]
-        else:
-            ready_tasks = [
-                {
-                    "id": t["id"],
-                    "task": t["title"],
-                    "agent": t["agent"],
-                    "skills": t["skills"] or [],
-                    "dependencies": t["dependencies"] or [],
-                    "status": t["status"],
-                    "priority": int(t["priority"]),
-                }
-                for t in tasks_data
-            ]
-        return {
-            "ready_tasks": ready_tasks,
-            "count": len(tasks_data),
-            "feature": plan_data["feature"],
-            "source_path": str(plan_data["source_path"] or plan_id),
-            "issue": plan_data["issue"],
-        }
-    except (PlanNotFoundError, SamError) as exc:
-        return {"error": str(exc)}
+    backend = _get_backend(plan_dir)
+    plan_id = _resolve_plan_id(plan)
+    plan_data = backend.read_plan(plan_id)
+    tasks_data = backend.get_ready_tasks(plan_id)
+    if full:
+        ready_tasks: list[dict[str, Any]] = [Task.model_validate(t).model_dump(mode="json") for t in tasks_data]
+    else:
+        ready_tasks = [
+            {
+                "id": t["id"],
+                "task": t["title"],
+                "agent": t["agent"],
+                "skills": t["skills"] or [],
+                "dependencies": t["dependencies"] or [],
+                "status": t["status"],
+                "priority": int(t["priority"]),
+            }
+            for t in tasks_data
+        ]
+    return {
+        "ready_tasks": ready_tasks,
+        "count": len(tasks_data),
+        "feature": plan_data["feature"],
+        "source_path": str(plan_data["source_path"] or plan_id),
+        "issue": plan_data["issue"],
+    }
 
 
 @mcp.tool
@@ -278,15 +261,11 @@ def sam_status(
     Returns:
         ``PlanStatus`` fields as a JSON-serializable dict including
         ``total_tasks``, ``by_status``, ``ready_tasks``, ``blocked_tasks``,
-        ``completion_pct``, and ``has_cycles``, or a dict with an ``error``
-        key on failure.
+        ``completion_pct``, and ``has_cycles``.
     """
-    try:
-        backend = _get_backend(plan_dir)
-        plan_id = _resolve_plan_id(plan)
-        return dict(backend.get_plan_status(plan_id))
-    except (PlanNotFoundError, SamError) as exc:
-        return {"error": str(exc)}
+    backend = _get_backend(plan_dir)
+    plan_id = _resolve_plan_id(plan)
+    return dict(backend.get_plan_status(plan_id))
 
 
 def _paginate_results(
@@ -384,14 +363,8 @@ def sam_list(
     errors: list[str] = []
     messages: list[str] = []
 
-    try:
-        backend = _get_backend(plan_dir)
-        summaries = backend.list_plans(search=search)
-    except SamError as exc:
-        errors.append(str(exc))
-        return _paginate_results(
-            [], offset=offset, limit=limit, messages=messages, warnings=warnings, errors=errors, tool_name="sam_list"
-        )
+    backend = _get_backend(plan_dir)
+    summaries = backend.list_plans(search=search)
 
     all_items: list[dict[str, Any]] = [
         {
@@ -490,21 +463,15 @@ def sam_create(
         issue: Optional GitHub issue number.
 
     Returns:
-        ``{"path": str, "plan_number": int, "task_count": int}`` on success, or
-        ``{"error": str}`` on failure.
+        ``{"path": str, "plan_number": int, "task_count": int}`` on success.
     """
-    try:
-        yaml_parser: Any = YAML()
-        parsed: dict[str, Any] = yaml_parser.load(tasks_yaml)
-        if not isinstance(parsed, dict) or "tasks" not in parsed:
-            return {"error": "tasks_yaml must be a YAML string with a top-level 'tasks' key"}
-        task_defs = cast("list[TaskDefinition]", parsed["tasks"])
-        backend = _get_backend(plan_dir)
-        plan_data = backend.create_plan(slug=slug, goal=goal, tasks=task_defs, context=context, issue=issue)
-    except YAMLError as exc:
-        return {"error": str(exc)}
-    except (TaskValidationError, PlanExistsError, SamError) as exc:
-        return {"error": str(exc)}
+    yaml_parser: Any = YAML()
+    parsed: dict[str, Any] = yaml_parser.load(tasks_yaml)
+    if not isinstance(parsed, dict) or "tasks" not in parsed:
+        raise ValueError("tasks_yaml must be a YAML string with a top-level 'tasks' key")
+    task_defs = cast("list[TaskDefinition]", parsed["tasks"])
+    backend = _get_backend(plan_dir)
+    plan_data = backend.create_plan(slug=slug, goal=goal, tasks=task_defs, context=context, issue=issue)
 
     # Derive plan_number from plan_id (e.g., "P912" → 912).
     plan_number: int | None = None
@@ -561,45 +528,38 @@ def sam_update(
         section_content: Body text for the appended section.
 
     Returns:
-        ``{"updated": true, "address": str}`` on success, or ``{"error": str}``
-        on failure.
+        ``{"updated": true, "address": str}`` on success.
     """
-    try:
-        # Split address into plan and optional task components.
-        if "/" in address:
-            plan_part, task_id = address.split("/", 1)
-        else:
-            plan_part = address
-            task_id = None
-
-        plan_id = _resolve_plan_id(plan_part)
-        backend = _get_backend(plan_dir)
-
-        set_fields: dict[str, str | int | list[str]] | None = None
-        if set_fields_json is not None:
-            raw_fields: Any = json.loads(set_fields_json)
-            if not isinstance(raw_fields, dict):
-                return {"error": "set_fields_json must be a JSON object"}
-            set_fields = {str(k): str(v) for k, v in raw_fields.items()}
-
-        if task_id is None:
-            # Plan-level operations: context and/or field updates on the plan.
-            backend.update_plan_fields(plan_id, context=context, set_fields=set_fields)
-        else:
-            # Task-level operations.
-            # context is plan-level per the tool description; apply it separately.
-            if context is not None:
-                backend.update_plan_fields(plan_id, context=context)
-            if set_fields:
-                backend.update_task_fields(plan_id, task_id, set_fields)
-            if append_section is not None:
-                backend.append_task_section(plan_id, task_id, append_section, section_content or "")
-    except (PlanNotFoundError, TaskNotFoundError, SamError) as exc:
-        return {"error": str(exc)}
-    except ValueError as exc:
-        return {"error": str(exc)}
+    # Split address into plan and optional task components.
+    if "/" in address:
+        plan_part, task_id = address.split("/", 1)
     else:
-        return {"updated": True, "address": address}
+        plan_part = address
+        task_id = None
+
+    plan_id = _resolve_plan_id(plan_part)
+    backend = _get_backend(plan_dir)
+
+    set_fields: dict[str, str | int | list[str]] | None = None
+    if set_fields_json is not None:
+        raw_fields: Any = json.loads(set_fields_json)
+        if not isinstance(raw_fields, dict):
+            raise ValueError("set_fields_json must be a JSON object")
+        set_fields = {str(k): str(v) for k, v in raw_fields.items()}
+
+    if task_id is None:
+        # Plan-level operations: context and/or field updates on the plan.
+        backend.update_plan_fields(plan_id, context=context, set_fields=set_fields)
+    else:
+        # Task-level operations.
+        # context is plan-level per the tool description; apply it separately.
+        if context is not None:
+            backend.update_plan_fields(plan_id, context=context)
+        if set_fields:
+            backend.update_task_fields(plan_id, task_id, set_fields)
+        if append_section is not None:
+            backend.append_task_section(plan_id, task_id, append_section, section_content or "")
+    return {"updated": True, "address": address}
 
 
 @mcp.tool
@@ -621,16 +581,11 @@ def sam_claim(
 
     Returns:
         ``{"claimed": true, "task_id": str, "started": str}`` on success, or
-        ``{"claimed": false, "error": str}`` if the task cannot be claimed.
+        ``{"claimed": false, "error": str}`` if the task is not in a claimable state.
     """
-    try:
-        backend = _get_backend(plan_dir)
-        plan_id = _resolve_plan_id(plan)
-        claimed = backend.claim_task(plan_id, task)
-    except (PlanNotFoundError, TaskNotFoundError) as exc:
-        return {"claimed": False, "error": str(exc)}
-    except SamError as exc:
-        return {"error": str(exc)}
+    backend = _get_backend(plan_dir)
+    plan_id = _resolve_plan_id(plan)
+    claimed = backend.claim_task(plan_id, task)
 
     if not claimed:
         # Read current status to provide a meaningful error message.

@@ -26,6 +26,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastmcp.client import Client
+from fastmcp.exceptions import ToolError
 from pytest_mock import MockerFixture  # noqa: F401 — available for future use
 from sam_schema.core.exceptions import PlanNotFoundError, TaskNotFoundError
 from sam_schema.core.task_config import TaskConfig, reset_task_config, set_task_config
@@ -381,73 +382,69 @@ async def test_sam_claim_routes_through_backend_claim_task(backend_mock: MagicMo
 
 
 # ---------------------------------------------------------------------------
-# Group 2: Exception handling — SAM exceptions produce {"error": "..."} dicts
+# Group 2: Exception handling — SAM exceptions propagate as MCP ToolError
 # ---------------------------------------------------------------------------
 
 
-async def test_sam_read_returns_error_dict_when_backend_raises_plan_not_found(backend_mock: MagicMock) -> None:
-    """sam_read returns {"error": "Plan not found: P999"} when backend raises PlanNotFoundError.
+async def test_sam_read_raises_tool_error_when_backend_raises_plan_not_found(backend_mock: MagicMock) -> None:
+    """sam_read raises ToolError when backend raises PlanNotFoundError.
 
-    After T04, the tool catches PlanNotFoundError from the backend and returns
-    a structured error dict. The error message must include the plan_id so
-    callers can identify which plan was missing.
+    FastMCP converts unhandled tool exceptions to isError=true MCP responses,
+    which the client surfaces as ToolError. The error message must include the
+    plan_id so callers can identify which plan was missing.
 
     Arrange: configure backend.read_plan to raise PlanNotFoundError("P999").
     Act: call sam_read with plan='P999'.
-    Assert: response has 'error' key containing "Plan not found" and "P999".
+    Assert: ToolError is raised containing "Plan not found" and "P999".
     """
     # Arrange
     backend_mock.read_plan.side_effect = PlanNotFoundError("P999")
 
-    # Act
-    response = await _call("sam_read", {"plan": "P999"})
-
-    # Assert
-    assert "error" in response
-    assert "Plan not found" in response["error"]
-    assert "P999" in response["error"]
+    # Act / Assert
+    with pytest.raises(ToolError) as exc_info:
+        await _call("sam_read", {"plan": "P999"})
+    assert "Plan not found" in str(exc_info.value)
+    assert "P999" in str(exc_info.value)
 
 
-async def test_sam_state_returns_error_dict_when_backend_raises_task_not_found(backend_mock: MagicMock) -> None:
-    """sam_state returns {"error": "Task not found: ..."} when backend raises TaskNotFoundError.
+async def test_sam_state_raises_tool_error_when_backend_raises_task_not_found(backend_mock: MagicMock) -> None:
+    """sam_state raises ToolError when backend raises TaskNotFoundError.
 
-    After T04, the tool catches TaskNotFoundError from the backend and returns
-    a structured error dict. The message must reference the missing task_id.
+    FastMCP converts unhandled tool exceptions to isError=true MCP responses,
+    which the client surfaces as ToolError. The error message must reference
+    the missing task_id.
 
     Arrange: configure backend.update_task_status to raise TaskNotFoundError("P1", "T999").
     Act: call sam_state with plan='P1', task='T999', status='complete'.
-    Assert: response has 'error' key containing "T999".
+    Assert: ToolError is raised containing "T999".
     """
     # Arrange
     backend_mock.update_task_status.side_effect = TaskNotFoundError("P1", "T999")
 
-    # Act
-    response = await _call("sam_state", {"plan": "P1", "task": "T999", "status": "complete"})
-
-    # Assert
-    assert "error" in response
-    assert "T999" in response["error"]
+    # Act / Assert
+    with pytest.raises(ToolError) as exc_info:
+        await _call("sam_state", {"plan": "P1", "task": "T999", "status": "complete"})
+    assert "T999" in str(exc_info.value)
 
 
-async def test_sam_claim_returns_error_dict_when_backend_raises_plan_not_found(backend_mock: MagicMock) -> None:
-    """sam_claim returns {"error": "..."} when backend.claim_task raises PlanNotFoundError.
+async def test_sam_claim_raises_tool_error_when_backend_raises_plan_not_found(backend_mock: MagicMock) -> None:
+    """sam_claim raises ToolError when backend.claim_task raises PlanNotFoundError.
 
-    After T04, PlanNotFoundError raised by the backend during claim must produce
-    a structured error response, not an unhandled exception visible to the MCP client.
+    FastMCP converts unhandled tool exceptions to isError=true MCP responses,
+    which the client surfaces as ToolError. MCP clients must use the isError
+    flag (not dict key inspection) to detect tool failures.
 
     Arrange: configure backend.claim_task to raise PlanNotFoundError("P999").
     Act: call sam_claim with plan='P999', task='T1'.
-    Assert: response has 'error' key containing "P999".
+    Assert: ToolError is raised containing "P999".
     """
     # Arrange
     backend_mock.claim_task.side_effect = PlanNotFoundError("P999")
 
-    # Act
-    response = await _call("sam_claim", {"plan": "P999", "task": "T1"})
-
-    # Assert
-    assert "error" in response
-    assert "P999" in response["error"]
+    # Act / Assert
+    with pytest.raises(ToolError) as exc_info:
+        await _call("sam_claim", {"plan": "P999", "task": "T1"})
+    assert "P999" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
