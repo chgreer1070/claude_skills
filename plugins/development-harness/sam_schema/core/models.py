@@ -296,6 +296,12 @@ class Plan(BaseModel):
     source_path: Path | None = None
     source_format: str | None = None  # FormatType value
 
+    # Backend routing — overrides the default backend for this plan.
+    # None means use the active TaskConfig backend (local by default).
+    backend_ref: str | None = Field(
+        default=None, validation_alias=AliasChoices("backend-ref", "backend_ref"), serialization_alias="backend-ref"
+    )
+
     @field_validator("issue", mode="before")
     @classmethod
     def coerce_issue_to_str(cls, v: object) -> str | None:
