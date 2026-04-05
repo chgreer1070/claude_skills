@@ -26,14 +26,26 @@ _plugin_root = _scripts_dir.parent
 sys.path.insert(0, str(_plugin_root))
 sys.path.insert(0, str(_scripts_dir))
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
 
-load_dotenv()
+    load_dotenv()
 
-from dh_mcp_preinit import apply_project_dir_from_argv
+    from dh_mcp_preinit import apply_project_dir_from_argv
 
-apply_project_dir_from_argv()
+    apply_project_dir_from_argv()
 
-from backlog_core.server import mcp
+    from backlog_core.server import mcp
+except ImportError:
+    import sys
+
+    _script = Path(__file__).resolve()
+    print(
+        f"Error: missing dependencies. Run this script with uv:\n\n"
+        f"    uv run --script {_script}\n\n"
+        f"Do not invoke it directly with python3.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 mcp.run()

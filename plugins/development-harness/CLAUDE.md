@@ -358,21 +358,29 @@ Built-in MCP tool calls (`mcp__plugin_dh_backlog__*`, `mcp__plugin_dh_sam__*`) r
 
 Run all commands from the **project root** (where `pyproject.toml` lives). `$(pwd)` resolves to the project root at execution time.
 
+**Suppress banner noise**: Set `FASTMCP_SHOW_SERVER_BANNER=false` to suppress the startup banner. Set `FASTMCP_LOG_ENABLED=false` to suppress INFO log lines. Both can be combined:
+
+```bash
+FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false uv run fastmcp call ...
+```
+
+SOURCE: [FastMCP Settings docs](https://gofastmcp.com/more/settings) — `FASTMCP_SHOW_SERVER_BANNER` (bool, default true), also controllable via `--no-banner`.
+
 **Backlog server** (`scripts/run_backlog_server.py`):
 
 ```bash
-# List all 42 tools
-uv run fastmcp list \
+# List all tools
+FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false uv run fastmcp list \
   --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_backlog_server.py"
 
 # View a backlog item (full content)
-uv run fastmcp call \
+FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false uv run fastmcp call \
   --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
   --target backlog_view \
   --input-json '{"selector": "groom-milestone", "summary": false}'
 
-# Search backlog items
-uv run fastmcp call \
+# List backlog items (compact — body excluded by default, use fields=["body"] to include)
+FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false uv run fastmcp call \
   --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
   --target backlog_list \
   --input-json '{"search": "sdlc", "limit": 3}'
@@ -381,23 +389,36 @@ uv run fastmcp call \
 **SAM server** (`scripts/run_sam_server.py`):
 
 ```bash
-# List all 8 tools
-uv run fastmcp list \
-  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_sam_server.py"
+# List all tools
+FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false uv run fastmcp list \
+  --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_sam_server.py"
 
 # List all plans
-uv run fastmcp call \
-  --command "uv run python $(pwd)/plugins/development-harness/scripts/run_sam_server.py" \
+FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false uv run fastmcp call \
+  --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_sam_server.py" \
   --target sam_list \
   --input-json '{}'
 ```
 
-**Why `--command` is required**: The server files use relative imports (`from . import models`) and sibling packages (`import dh_paths`). Running `fastmcp call server.py` directly breaks module resolution. The `--command` flag launches the runner script as a subprocess with the correct Python path, matching how the plugin cache launches the server.
+**Why `--command` is required**: The server files use relative imports (`from . import models`) and sibling packages (`import dh_paths`). Running `fastmcp call server.py` directly hits an asyncio conflict when invoked from within Claude Code's async context. The `--command` flag launches the runner script as a fresh subprocess, matching how the plugin cache launches the server.
+
+**`--json` output structure**: When using `--json`, fastmcp wraps the result — parse with:
+
+```python
+outer = json.loads(stdout)
+data = json.loads(outer["content"][0]["text"])
+```
+
+**`backlog_list` filter notes**:
+
+- `status` matches workflow labels (e.g. `"status:in-progress"`, `"status:groomed"`), NOT GitHub open/closed state. Passing `"open"` returns zero results.
+- `body` is excluded from default list responses. Use `fields=["body"]` to include it, or check `available_fields` in the response for the full list of requestable fields.
 
 **Backend selection during testing**: Prefix `fastmcp call` commands with `BACKLOG_BACKEND=sqlite` or `BACKLOG_BACKEND=memory` to test against a non-GitHub backend without requiring live credentials:
 
 ```bash
-BACKLOG_BACKEND=memory uv run fastmcp call \
+BACKLOG_BACKEND=memory FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false \
+uv run fastmcp call \
   --command "uv run --script $(pwd)/plugins/development-harness/scripts/run_backlog_server.py" \
   --target backlog_list \
   --input-json '{}'
