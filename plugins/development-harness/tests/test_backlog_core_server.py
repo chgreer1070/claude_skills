@@ -3464,3 +3464,193 @@ async def test_backlog_list_match_context_false_page_param_uses_offset_limit():
     assert "match_pages" not in response
     assert len(response["items"]) == 1
     assert response["items"][0]["issue"] == "2"
+
+
+# ---------------------------------------------------------------------------
+# backlog_list — fields parameter (TDD Phase 2)
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_list_default_response_excludes_body() -> None:
+    """backlog_list default response must not include body on each item.
+
+    Tests: body is excluded from the default item shape.
+    How: Supply items with a body field from operations.list_items.
+         Call backlog_list with no parameters.
+         Assert no returned item has a 'body' key.
+    Why: body contains full markdown content and makes responses large even
+         when callers only need titles and issue numbers. Excluding body by
+         default is the primary motivation for the fields parameter.
+    """
+    items = [
+        {
+            "issue": "42",
+            "title": "Auth token refactor",
+            "section": "P1",
+            "topic": "security",
+            "type": "Feature",
+            "status": "open",
+            "body": "## Details\nThis is the full body content of the item.",
+        },
+        {
+            "issue": "43",
+            "title": "Deploy pipeline fix",
+            "section": "P2",
+            "topic": "infra",
+            "type": "Bug",
+            "status": "open",
+            "body": "## Acceptance Criteria\n- [ ] Pipeline runs without error",
+        },
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    assert "items" in response
+    for item in response["items"]:
+        assert "body" not in item, f"Expected body excluded by default, found it in item: {item.get('title')}"
+
+
+async def test_backlog_list_response_includes_available_fields() -> None:
+    """backlog_list response must include an available_fields key listing all requestable fields.
+
+    Tests: available_fields presence and completeness — callers can discover what fields
+           exist without reading source code.
+    How: Call backlog_list with mocked items that have known fields including body.
+         Assert the response root contains an 'available_fields' key.
+         Assert 'body' is present in available_fields.
+         Assert common fields (title, issue, section, topic, type, status) are present.
+    Why: Callers need a discovery mechanism for the fields parameter without reading source.
+    """
+    items = [
+        {
+            "issue": "10",
+            "title": "Sample item",
+            "section": "P1",
+            "topic": "testing",
+            "type": "Feature",
+            "status": "open",
+            "body": "Full content here.",
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    assert "available_fields" in response, "Expected 'available_fields' key in backlog_list response"
+    available = response["available_fields"]
+    assert "body" in available, "Expected 'body' to appear in available_fields"
+    for expected_field in ("title", "issue", "section", "topic", "type", "status"):
+        assert expected_field in available, f"Expected '{expected_field}' in available_fields, got: {available}"
+
+
+async def test_backlog_list_fields_returns_only_requested_fields() -> None:
+    """backlog_list with fields=['title', 'issue'] returns only those two fields per item.
+
+    Tests: fields parameter projection — only the listed fields appear per item.
+    How: Supply items with title, issue, section, topic, type, status, body.
+         Call backlog_list with fields=['title', 'issue'].
+         Assert each returned item has exactly 'title' and 'issue' and no other keys.
+    Why: Callers that only need identifying info should not pay the cost of full item dicts.
+    """
+    items = [
+        {
+            "issue": "7",
+            "title": "Feature request",
+            "section": "P1",
+            "topic": "auth",
+            "type": "Feature",
+            "status": "open",
+            "body": "This body should not appear.",
+        },
+        {
+            "issue": "8",
+            "title": "Bug report",
+            "section": "P2",
+            "topic": "infra",
+            "type": "Bug",
+            "status": "open",
+            "body": "Another body that should not appear.",
+        },
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"fields": ["title", "issue"]})
+
+    assert "items" in response
+    assert len(response["items"]) == 2
+    for item in response["items"]:
+        item_keys = set(item.keys())
+        assert item_keys == {"title", "issue"}, f"Expected exactly {{'title', 'issue'}} keys per item, got: {item_keys}"
+
+
+async def test_backlog_list_fields_body_returns_body_content() -> None:
+    """backlog_list with fields=['body'] returns the body field on each item.
+
+    Tests: body is requestable via fields — it is not removed from the model,
+           just excluded by default.
+    How: Supply items that have a body. Call backlog_list with fields=['body'].
+         Assert each returned item has a 'body' key with the original content.
+    Why: Callers that specifically need body content must be able to request it explicitly.
+    """
+    body_text = "## Acceptance Criteria\n- [ ] This must work\n- [ ] Tests must pass"
+    items = [
+        {
+            "issue": "99",
+            "title": "Critical fix",
+            "section": "P0",
+            "topic": "auth",
+            "type": "Bug",
+            "status": "open",
+            "body": body_text,
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"fields": ["body"]})
+
+    assert "items" in response
+    assert len(response["items"]) == 1
+    item = response["items"][0]
+    assert "body" in item, "Expected 'body' present when fields=['body']"
+    assert item["body"] == body_text, f"Expected original body text, got: {item['body']!r}"
+
+
+async def test_backlog_list_fields_nonexistent_field_returns_warning_or_error() -> None:
+    """backlog_list with fields=['nonexistent'] returns a useful warning or error.
+
+    Tests: unknown field name handling — caller gets actionable feedback, not a silent
+           empty-key response.
+    How: Call backlog_list with fields=['nonexistent'].
+         Assert the response contains either:
+           (a) a non-empty 'warnings' list mentioning the unknown field, or
+           (b) an 'error' key describing the unknown field.
+         The response must not silently succeed with items that have no fields at all.
+    Why: Callers who typo a field name need to know what went wrong.
+    """
+    items = [
+        {
+            "issue": "5",
+            "title": "Some item",
+            "section": "P1",
+            "topic": "docs",
+            "type": "Docs",
+            "status": "open",
+            "body": "body content",
+        }
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"fields": ["nonexistent"]})
+
+    has_warning = bool(response.get("warnings"))
+    has_error = "error" in response
+    assert has_warning or has_error, (
+        f"Expected a warning or error for unknown field 'nonexistent', got response keys: {list(response.keys())}"
+    )
+    # If warnings present, at least one must reference the unknown field name
+    if has_warning:
+        warning_text = " ".join(response["warnings"]).lower()
+        assert "nonexistent" in warning_text, (
+            f"Expected warning to mention 'nonexistent', got warnings: {response['warnings']}"
+        )

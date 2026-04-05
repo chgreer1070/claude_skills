@@ -67,11 +67,54 @@ _SEARCH_FIELDS: tuple[str, ...] = ("title", "section", "topic", "type", "body")
 # Minimum length for a valid /pattern/ regex term (e.g. "/x/" has length 3).
 _REGEX_SLASH_MIN_LEN = 2
 
+# All fields that callers can request via the fields= parameter on backlog_list.
+# Fields in _DEFAULT_ITEM_FIELDS are returned when no fields= parameter is given.
+# ``body`` is omitted from the default set because it makes responses large.
+_AVAILABLE_FIELDS: tuple[str, ...] = ("issue", "title", "section", "topic", "type", "status", "body")
+_DEFAULT_ITEM_FIELDS: frozenset[str] = frozenset(_AVAILABLE_FIELDS) - {"body"}
+
+# item_depth value that includes the full body in each returned item.
+_ITEM_DEPTH_FULL = 3
+
 # Beads integration removed — was auto-installing @beads/bd via npm during the
 # FastMCP lifespan hook, blocking MCP initialization for 20+ seconds when the
 # download hung.  Beads local storage for task tracking is a future feature;
 # re-add as an opt-in integration (e.g. DH_ENABLE_BEADS=1) when actual tool
 # calls depend on it.
+
+
+def _apply_fields_projection(
+    items: list[dict[str, object]] | list[dict[str, str | bool]], fields: list[str] | None, item_depth: int, out: Output
+) -> list[dict[str, object]]:
+    """Project item dicts to the requested fields.
+
+    When ``fields`` is provided, each item is reduced to only those keys.
+    Unknown field names are emitted as warnings on ``out``.
+    When ``fields`` is None, ``body`` is excluded from the default response
+    unless ``item_depth`` is at the full-content level (``_ITEM_DEPTH_FULL``),
+    which already adds body intentionally.
+
+    Args:
+        items: Enriched item dicts to project.
+        fields: Caller-requested field names, or None for the default shape.
+        item_depth: The item_depth parameter value from the tool call.
+        out: Output collector for warnings.
+
+    Returns:
+        Projected item dicts.
+    """
+    if fields is not None:
+        unknown = [f for f in fields if f not in _AVAILABLE_FIELDS]
+        for u in unknown:
+            out.warn(f"Unknown field '{u}' — available fields: {', '.join(_AVAILABLE_FIELDS)}")
+        known = [f for f in fields if f in _AVAILABLE_FIELDS]
+        return [{f: item[f] for f in known if f in item} for item in items]
+    if item_depth < _ITEM_DEPTH_FULL:
+        # Exclude body by default — callers must opt-in via fields=['body'].
+        # At depth=3, _apply_item_depth already adds body intentionally.
+        return [{k: v for k, v in item.items() if k != "body"} for item in items]
+    # Widen to the declared return type — items may be the narrower str|bool variant.
+    return [dict(item) for item in items]
 
 
 def _item_field_text(item: dict[str, str | bool], field: str) -> str:
@@ -1342,6 +1385,17 @@ async def backlog_list(
             ),
         ),
     ] = 4000,
+    fields: Annotated[
+        list[str] | None,
+        Field(
+            description=(
+                "When provided, each returned item contains only the listed fields. "
+                "Available fields: issue, title, section, topic, type, status, body. "
+                "body is excluded from the default response but can be requested here. "
+                "Unknown field names produce a warning in the warnings list."
+            )
+        ),
+    ] = None,
 ) -> dict:
     """List all open backlog items.
 
@@ -1470,11 +1524,15 @@ async def backlog_list(
     if item_depth > 0:
         enriched_items = [_apply_item_depth(dict(it), item_depth) for it in enriched_items]
 
+    # Apply fields projection or default body exclusion.
+    enriched_items = _apply_fields_projection(enriched_items, fields=fields, item_depth=item_depth, out=out)
+
     pagination: dict = {"offset": offset, "limit": effective_limit, "total": total, "has_more": has_more}
     response: dict = {
         **result,
         "items": enriched_items,
         "count": len(enriched_items),
+        "available_fields": list(_AVAILABLE_FIELDS),
         "pagination": pagination,
         "backend": backend_status.model_dump(),
         **out.to_dict(),
