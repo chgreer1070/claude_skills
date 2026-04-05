@@ -480,21 +480,13 @@ def sam_create(
     return result
 
 
-def _validated_task_patch(
-    backend: TaskBackend, plan_id: str, task_id: str, raw_fields: dict[str, Any]
-) -> dict[str, str | int | list[str]]:
-    """Validate and coerce raw JSON patch fields through the Pydantic Task model.
+def _validated_task_patch(backend: TaskBackend, plan_id: str, task_id: str, raw_fields: dict[str, Any]) -> Task:
+    """Validate raw JSON patch fields through the Pydantic Task model.
 
     Reads the current task, merges *raw_fields* into its data, then passes the
     merged dict through ``Task.model_validate`` so field validators run (e.g.
-    ``validate_task_id_list`` normalises ``dependencies``).  Returns only the
-    patched field names with their Pydantic-validated values.
-
-    Key mapping: Pydantic accepts both snake_case and kebab-case aliases (via
-    ``AliasChoices``).  ``model_dump()`` always returns snake_case keys, so for
-    each input key the validated value is retrieved under the canonical Python
-    attribute name; the original input key is preserved in the returned dict so
-    the backend's YAML layer can map it to the correct field.
+    ``validate_task_id_list`` normalises ``dependencies``).  Returns the
+    fully-validated Task model for the caller to write via ``backend.update_task``.
 
     Args:
         backend: Active TaskBackend instance.
@@ -503,40 +495,16 @@ def _validated_task_patch(
         raw_fields: JSON-decoded patch dict from ``set_fields_json``.
 
     Returns:
-        Dict mapping each input key to its Pydantic-validated value.
+        Fully-validated Task model with the patched fields applied.
 
     Raises:
         PlanNotFoundError: When plan_id cannot be resolved by the backend.
         TaskNotFoundError: When task_id does not exist within the plan.
         pydantic.ValidationError: When a field value fails Task model validation.
     """
-    from pydantic.fields import AliasChoices  # noqa: PLC0415
-
     task_data = backend.read_task(plan_id, task_id)
     current = Task.model_validate(task_data)
-    updated = Task.model_validate({**current.model_dump(), **raw_fields})
-    updated_dump = updated.model_dump()
-
-    # Build a lookup from any alias or Python name -> Python attribute name.
-    alias_to_name: dict[str, str] = {}
-    for attr_name, field in Task.model_fields.items():
-        alias_to_name[attr_name] = attr_name
-        if isinstance(field.validation_alias, AliasChoices):
-            for choice in field.validation_alias.choices:
-                if isinstance(choice, str):
-                    alias_to_name[choice] = attr_name
-
-    out: dict[str, str | int | list[str]] = {}
-    for k, raw_val in raw_fields.items():
-        python_name = alias_to_name.get(k, k)
-        validated_val = updated_dump.get(python_name)
-        if validated_val is not None:
-            out[k] = validated_val
-        else:
-            # Field absent from model_dump (e.g. optional field set to None);
-            # keep the raw value — backend handles None storage.
-            out[k] = raw_val
-    return out
+    return Task.model_validate({**current.model_dump(), **raw_fields})
 
 
 @mcp.tool
@@ -603,8 +571,8 @@ def sam_update(
             raw_fields = json.loads(set_fields_json)
             if not isinstance(raw_fields, dict):
                 raise ValueError("set_fields_json must be a JSON object")
-            task_fields = _validated_task_patch(backend, plan_id, task_id, raw_fields)
-            backend.update_task_fields(plan_id, task_id, task_fields)
+            validated_task = _validated_task_patch(backend, plan_id, task_id, raw_fields)
+            backend.update_task(plan_id, validated_task)
         if append_section is not None:
             backend.append_task_section(plan_id, task_id, append_section, section_content or "")
     return {"updated": True, "address": address}

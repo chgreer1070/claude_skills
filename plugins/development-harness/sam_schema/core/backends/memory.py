@@ -32,6 +32,7 @@ from sam_schema.core.exceptions import (
 )
 
 if TYPE_CHECKING:
+    from sam_schema.core.models import Task
     from sam_schema.core.task_backend_types import (
         DocumentData,
         DocumentHandle,
@@ -434,6 +435,32 @@ class InMemoryTaskProvider:
         task = self._find_task(plan_id, task_id)
         for key, value in fields.items():
             cast("dict[str, object]", task)[key] = value
+
+    def update_task(self, plan_id: str, task: Task) -> None:
+        """Replace the stored task with the provided Task model.
+
+        Converts the Task model to a TaskData dict and substitutes the matching
+        task entry by index in the plan's task list.
+
+        Args:
+            plan_id: Backend-assigned plan identifier.
+            task: Fully-validated Task model whose ``id`` identifies the target
+                task within the plan.
+
+        Raises:
+            PlanNotFoundError: When plan_id is not known.
+            TaskNotFoundError: When ``task.id`` is not in the plan.
+        """
+        from sam_schema.core.backends.local_yaml import _task_to_task_data  # noqa: PLC0415
+
+        if plan_id not in self._plans:
+            raise PlanNotFoundError(plan_id)
+        tasks = self._plans[plan_id]["tasks"]
+        for idx, stored in enumerate(tasks):
+            if stored["id"] == task.id:
+                tasks[idx] = _task_to_task_data(task)
+                return
+        raise TaskNotFoundError(plan_id, task.id)
 
     def append_task_section(self, plan_id: str, task_id: str, section_name: str, content: str) -> None:
         """Append markdown content to a named section stored in ``context_notes``.

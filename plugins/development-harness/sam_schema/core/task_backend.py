@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 from typing_extensions import Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from sam_schema.core.models import Task
     from sam_schema.core.task_backend_types import (
         DocumentData,
         DocumentHandle,
@@ -194,6 +195,24 @@ class TaskBackend(Protocol):
         Raises:
             PlanNotFoundError: When plan_id does not resolve to a known plan.
             TaskNotFoundError: When task_id does not exist within the plan.
+        """
+        ...
+
+    def update_task(self, plan_id: str, task: Task) -> None:
+        """Replace the stored task with the provided Task model.
+
+        Serializes the full Task model to the backend's native storage format
+        and writes it atomically, replacing all fields of the existing task
+        entry.  Fields not present on the Task model are not preserved.
+
+        Args:
+            plan_id: Backend-assigned plan identifier.
+            task: Fully-validated Task model whose ``id`` identifies the target
+                task within the plan.
+
+        Raises:
+            PlanNotFoundError: When plan_id does not resolve to a known plan.
+            TaskNotFoundError: When ``task.id`` does not exist within the plan.
         """
         ...
 

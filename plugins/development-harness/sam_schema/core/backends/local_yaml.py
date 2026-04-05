@@ -452,6 +452,41 @@ class LocalYamlTaskProvider:
         except FileNotFoundError as exc:
             raise PlanNotFoundError(plan_id) from exc
 
+    def update_task(self, plan_id: str, task: Task) -> None:
+        """Replace the stored task with the provided Task model.
+
+        Loads the full plan, substitutes the matching task in the task list,
+        then writes the plan back using ``write_plan``.  This preserves all
+        native YAML types (list fields serialise as sequences, not repr strings)
+        and handles fields like ``body`` that the field-level update path does
+        not support.
+
+        Args:
+            plan_id: Backend-assigned plan identifier.
+            task: Fully-validated Task model whose ``id`` identifies the target
+                task within the plan.
+
+        Raises:
+            PlanNotFoundError: When plan_id cannot be resolved.
+            TaskNotFoundError: When ``task.id`` does not exist within the plan.
+        """
+        from sam_schema.writers.yaml_writer import write_plan  # noqa: PLC0415
+
+        path = self._resolve_path(plan_id)
+        try:
+            result = query.load_plan(path)
+        except FileNotFoundError as exc:
+            raise PlanNotFoundError(plan_id) from exc
+
+        plan = result.plan
+        task_ids = [t.id for t in plan.tasks]
+        if task.id not in task_ids:
+            raise TaskNotFoundError(plan_id, task.id)
+
+        updated_tasks = [task if t.id == task.id else t for t in plan.tasks]
+        updated_plan = plan.model_copy(update={"tasks": updated_tasks})
+        write_plan(updated_plan, path, force_single=True)
+
     def append_task_section(self, plan_id: str, task_id: str, section_name: str, content: str) -> None:
         """Append markdown content to a named section of a task body.
 

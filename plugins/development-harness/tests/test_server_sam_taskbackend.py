@@ -34,6 +34,7 @@ from sam_schema.server import mcp
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Shared call helper
@@ -328,21 +329,27 @@ async def test_sam_update_plan_fields_routes_through_backend_update_plan_fields(
     backend_mock.update_plan_fields.assert_called_once()
 
 
-async def test_sam_update_task_fields_routes_through_backend_update_task_fields(backend_mock: MagicMock) -> None:
-    """sam_update with task address and set_fields_json calls backend.update_task_fields.
+async def test_sam_update_task_fields_routes_through_backend_update_task(backend_mock: MagicMock) -> None:
+    """sam_update with task address and set_fields_json calls backend.update_task.
 
-    After T04, task scalar field updates (e.g. agent, status) go through
-    backend.update_task_fields when a task address ('P1/T1') is provided.
+    After the Pydantic round-trip refactor, task scalar field updates (e.g. agent)
+    go through backend.update_task (full Task model write) rather than
+    backend.update_task_fields (field-level patch) when a task address ('P1/T1')
+    is provided.
 
     Arrange: inject mock backend via set_task_config.
     Act: call sam_update with address='P1/T1' and set_fields_json for agent field.
-    Assert: backend.update_task_fields called once.
+    Assert: backend.update_task called once; backend.update_task_fields NOT called.
     """
+    # Arrange
+    backend_mock.update_task.return_value = None
+
     # Act
     await _call("sam_update", {"address": "P1/T1", "set_fields_json": '{"agent": "new-agent"}'})
 
     # Assert
-    backend_mock.update_task_fields.assert_called_once()
+    backend_mock.update_task.assert_called_once()
+    backend_mock.update_task_fields.assert_not_called()
 
 
 async def test_sam_update_append_section_routes_through_backend_append_task_section(backend_mock: MagicMock) -> None:
@@ -548,36 +555,132 @@ async def test_sam_update_set_fields_json_list_value_passes_list_to_backend(back
     """sam_update preserves list values in set_fields_json as list[str] to backend.
 
     Regression guard for the bug where str(["T01", "T02", "T03"]) produced the
-    Python repr string "['T01', 'T02', 'T03']" instead of a YAML sequence.
+    Python repr string "['T01', 'T02', 'T03']" instead of a list.
 
-    The fix: set_fields_json deserialization must preserve list values, not coerce
-    them with str().
+    After the Pydantic round-trip refactor, sam_update calls backend.update_task
+    with a fully-validated Task model.  The Task model's dependencies field must
+    carry a list[str], not a string repr of a list.
 
     Arrange: inject mock backend via set_task_config.
     Act: call sam_update with address='P1/T1' and set_fields_json containing a
          list-valued field: {"dependencies": ["T01", "T02", "T03"]}.
-    Assert: backend.update_task_fields was called with a dict whose 'dependencies'
-            value is the list ["T01", "T02", "T03"], not a string repr of it.
+    Assert: backend.update_task was called once with a Task whose dependencies
+            is the list ["T01", "T02", "T03"], not a string repr of it.
     """
     # Arrange
+    backend_mock.update_task.return_value = None
     fields_json = '{"dependencies": ["T01", "T02", "T03"]}'
 
     # Act
     await _call("sam_update", {"address": "P1/T1", "set_fields_json": fields_json})
 
-    # Assert
-    backend_mock.update_task_fields.assert_called_once()
-    call_args = backend_mock.update_task_fields.call_args
-    # update_task_fields(plan_id, task_id, fields) — fields is 3rd positional arg
-    if call_args.args and len(call_args.args) >= 3:
-        fields_passed = call_args.args[2]
-    else:
-        fields_passed = call_args.kwargs.get("fields", {})
+    # Assert: update_task called, update_task_fields NOT called
+    backend_mock.update_task.assert_called_once()
+    backend_mock.update_task_fields.assert_not_called()
 
-    assert "dependencies" in fields_passed, f"Expected 'dependencies' key in fields_passed, got: {fields_passed}"
-    deps = fields_passed["dependencies"]
+    call_args = backend_mock.update_task.call_args
+    # update_task(plan_id, task) — task is 2nd positional arg
+    task_passed = call_args.args[1] if call_args.args and len(call_args.args) >= 2 else call_args.kwargs.get("task")
+
+    assert task_passed is not None, "Expected task argument in backend.update_task call"
+    deps = task_passed.dependencies
     assert isinstance(deps, list), (
         f"Expected list for 'dependencies' but got {type(deps).__name__!r}: {deps!r}\n"
         "This is the str() coercion bug — set_fields_json must preserve list values."
     )
     assert deps == ["T01", "T02", "T03"], f"Expected ['T01', 'T02', 'T03'] but got: {deps!r}"
+
+
+# ---------------------------------------------------------------------------
+# update_task round-trip: list fields preserved; server routes through update_task
+# ---------------------------------------------------------------------------
+
+
+def test_update_task_round_trips_list_fields_without_coercion(tmp_path: Path) -> None:
+    """update_task preserves list[str] fields as lists, not Python repr strings.
+
+    Regression guard: LocalYamlTaskProvider.update_task must write dependencies
+    as a YAML sequence, not as str(["T01", "T02"]) which would produce the
+    Python repr string.
+
+    Arrange: create a plan with one task; call LocalYamlTaskProvider.update_task
+             with a Task model whose dependencies=["T01", "T02"].
+    Act: read the raw YAML file back after the write.
+    Assert: dependencies is a list of strings in the stored YAML, not a string repr.
+    """
+    from pathlib import Path as _Path
+
+    from ruamel.yaml import YAML
+    from sam_schema.core.backends.local_yaml import LocalYamlTaskProvider
+    from sam_schema.core.models import Task as _Task
+    from sam_schema.core.task_config import TaskConfig, reset_task_config, set_task_config
+    from sam_schema.server import sam_create
+
+    # Arrange: create plan via LocalYamlTaskProvider so the file is real YAML
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    minimal_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task One\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 2\n"
+        "    complexity: low\n"
+    )
+    backend = LocalYamlTaskProvider(p_dir)
+    set_task_config(TaskConfig(backend=backend))
+    try:
+        result = sam_create(slug="roundtrip", goal="Goal", tasks_yaml=minimal_yaml, plan_dir="plan")
+        assert "error" not in result, f"sam_create failed: {result}"
+        plan_number = result["plan_number"]
+        plan_path = _Path(result["path"])
+
+        # Act: update task with a Task model that has non-empty dependencies
+        task_data = backend.read_task(f"P{plan_number}", "T01")
+        updated_task = _Task.model_validate({**task_data, "dependencies": ["T01", "T02"]})
+        backend.update_task(f"P{plan_number}", updated_task)
+
+        # Assert: read the raw YAML file — dependencies must be a sequence, not a string
+        yaml = YAML()
+        loaded = yaml.load(plan_path)
+        # Navigate to the task in the loaded structure
+        tasks_raw = loaded.get("tasks") or loaded.get("task") or []
+        if not isinstance(tasks_raw, list):
+            tasks_raw = [tasks_raw]
+        t01 = next((t for t in tasks_raw if t.get("task") == "T01" or t.get("id") == "T01"), None)
+        assert t01 is not None, f"Could not find T01 in raw YAML: {dict(loaded)}"
+        deps_raw = t01.get("dependencies", [])
+        assert isinstance(deps_raw, list), (
+            f"Expected list for 'dependencies' in YAML but got {type(deps_raw).__name__!r}: {deps_raw!r}\n"
+            "This is the str() coercion bug — update_task must write YAML sequences."
+        )
+        assert list(deps_raw) == ["T01", "T02"], f"Expected ['T01', 'T02'] but got: {list(deps_raw)!r}"
+    finally:
+        reset_task_config()
+
+
+async def test_sam_update_set_fields_json_writes_via_update_task(backend_mock: MagicMock) -> None:
+    """sam_update routes through backend.update_task, not field-level setters.
+
+    After the refactor, sam_update with set_fields_json must call
+    backend.update_task(plan_id, validated_task) with a full Task model —
+    NOT backend.update_task_fields(plan_id, task_id, field_dict).
+
+    Arrange: inject mock backend; configure update_task return value.
+    Act: call sam_update with address='P1/T1' and set_fields_json containing
+         a list-valued dependencies field.
+    Assert: backend.update_task was called once; backend.update_task_fields
+            was NOT called.
+    """
+    # Arrange
+    backend_mock.update_task.return_value = None
+    fields_json = '{"dependencies": ["T01", "T02"]}'
+
+    # Act
+    await _call("sam_update", {"address": "P1/T1", "set_fields_json": fields_json})
+
+    # Assert: update_task called, update_task_fields NOT called
+    backend_mock.update_task.assert_called_once()
+    backend_mock.update_task_fields.assert_not_called()
