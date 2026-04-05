@@ -93,10 +93,12 @@ The development harness uses three subsystems. The backlog MCP now uses a plugga
 
 ### Artifact Manifest (backlog MCP artifact tools)
 
-- **Source of truth**: GitHub Issue body (structured section between `<!-- artifact-manifest:begin/end -->` delimiters)
-- **Implementation**: `backlog_core/artifact_provider.py` defines the `ArtifactBackend` Protocol and `GitHubArtifactProvider`
+- **Source of truth**: Determined by the active artifact backend (default: GitHub Gist linked from issue body)
+- **Implementation**: `backlog_core/artifact_provider.py` defines the `ArtifactBackend` Protocol, `GitHubGistArtifactProvider` (default), `LinearArtifactProvider`, and `GitLabArtifactProvider`
 - **Operations**: `get_manifest`, `set_manifest`, `read_artifact_content`
 - **File content**: Always served from local filesystem regardless of manifest backend
+- **Backend selection**: `BACKLOG_BACKEND` env var → default `github`
+- **Factory**: `create_artifact_provider(backend_name=None, repo=None, root_worktree=None)` in `backlog_core/artifact_provider.py`
 
 ## BacklogBackend Protocol
 
@@ -211,7 +213,7 @@ The development harness uses Protocol-based abstraction to decouple MCP tools fr
 | Protocol | Primitive | Backlog item | Current state |
 |---|---|---|---|
 | `IssueBackend` | Work Items + Sub-items | #389 (P2, groomed) | Operations hardcoded to GitHub in `backlog_core/gh_client.py` |
-| `DocumentBackend` | Documents (durable handoff content) | #984 (P2, groomed) | `ArtifactBackend` Protocol exists in `backlog_core/artifact_provider.py` with `GitHubArtifactProvider` |
+| `DocumentBackend` | Documents (durable handoff content) | #984 (P2, complete) | `ArtifactBackend` Protocol in `backlog_core/artifact_provider.py`; `GitHubGistArtifactProvider`, `LinearArtifactProvider`, `GitLabArtifactProvider` all implemented |
 | `TaskBackend` | SAM orchestration over IssueBackend + DocumentBackend | #912 (P1, complete) | Protocol in `sam_schema/core/task_backend.py`, three backends: LocalYaml, GitHub, InMemory |
 
 `TaskBackend` is a SAM-specific orchestration layer. It does not own its own storage — it composes over `IssueBackend` (for coordination state: create work items, create/claim/update sub-items) and `DocumentBackend` (for handoff content: store/read stage artifacts). This keeps SAM's semantic operations (readiness, dependency resolution, atomic claiming) separate from the storage primitives.
@@ -289,9 +291,9 @@ How each platform maps to the three SAM primitives:
 
 Three Protocol abstractions are needed, one per subsystem:
 
-### DocumentBackend Protocol (#984 — evolves from existing ArtifactBackend)
+### DocumentBackend Protocol (#984 — implemented)
 
-Currently defined as `ArtifactBackend` in `backlog_core/artifact_provider.py` with `GitHubArtifactProvider`. Evolves to `DocumentBackend` to reflect the SAM storage model: Documents are durable handoff content between agents and stages, not just metadata manifests.
+Defined as `ArtifactBackend` in `backlog_core/artifact_provider.py`. Three provider implementations are available: `GitHubGistArtifactProvider` (default), `LinearArtifactProvider`, and `GitLabArtifactProvider`. The factory function `create_artifact_provider()` selects the provider based on `BACKLOG_BACKEND` env var or `backend_name` argument. Future evolution to `DocumentBackend` will reflect the full SAM storage model for durable handoff content between agents and stages.
 
 **What a backend must provide to be pluggable**: durable, versioned content storage addressable by a backend-opaque `content_ref`. Content must be accessible from any environment with valid credentials. The backend must support querying documents by owner (work item or sub-item), type, and stage.
 
@@ -372,6 +374,78 @@ class DocumentBackend(Protocol):
         """
         ...
 ```
+
+#### Artifact Provider Implementations
+
+##### GitHubGistArtifactProvider (default)
+
+`GitHubGistArtifactProvider` stores the artifact manifest as `manifest.json` in a private GitHub Gist. The Gist is linked to the issue body via the sentinel comment `<!-- artifact-gist:{gist_id} -->`.
+
+Artifact file content (plan documents, research files) is stored as additional files in the same Gist, with `/` in the path replaced by `--` to form valid Gist filenames (e.g. `plan/architect-foo.md` → `plan--architect-foo.md`).
+
+**Lazy migration**: Issues that still use the legacy `<!-- artifact-manifest:begin/end -->` inline format are automatically migrated to Gist storage on the first `get_manifest` call. The inline block is replaced with the Gist sentinel.
+
+**Credentials**: `GITHUB_TOKEN` (must include the `gist` OAuth scope). No additional credentials required.
+
+**Backward-compat alias**: `GitHubArtifactProvider` remains importable as an alias for `GitHubGistArtifactProvider`. No callers need to update their imports.
+
+Source: `backlog_core/artifact_provider.py` — `GitHubGistArtifactProvider`
+
+##### LinearArtifactProvider
+
+`LinearArtifactProvider` stores the artifact manifest in Linear Attachments metadata using the `dh://artifact-manifest/{issue_number}` URL scheme as an idempotency key.
+
+The manifest JSON is stored in the `metadata["manifest_json"]` field of the attachment. Linear treats attachments with the same URL on the same issue as idempotent — `set_manifest` updates the existing attachment rather than creating a duplicate.
+
+**Issue ID note**: The provider passes `str(issue_number)` as the Linear issue UUID. Backlog items must store the Linear UUID (not the short sequence number) in their `issue_number` field.
+
+**Size warning**: Linear attachment metadata has undocumented size limits. The provider logs a warning when the serialised manifest exceeds 10,000 characters.
+
+**Credentials**:
+
+- `LINEAR_API_KEY` — Linear personal API key (required)
+- `LINEAR_TEAM_ID` — Linear team UUID (required; stored for team-scoped queries)
+
+Source: `backlog_core/artifact_provider.py` — `LinearArtifactProvider`
+
+##### GitLabArtifactProvider
+
+`GitLabArtifactProvider` stores the artifact manifest as `manifest.json` in a private GitLab project snippet. The snippet is linked to the issue via a note (comment) containing the sentinel `<!-- artifact-snippet:{snippet_id} -->`.
+
+Artifact file content is stored as additional files in the same snippet, with `/` replaced by `--` and `.txt` appended to the filename.
+
+**Credentials**:
+
+- `GITLAB_TOKEN` — GitLab personal access token (required)
+- `GITLAB_PROJECT_ID` — GitLab project ID as an integer (required)
+- `GITLAB_URL` — GitLab instance base URL (optional; defaults to `https://gitlab.com`)
+
+Source: `backlog_core/artifact_provider.py` — `GitLabArtifactProvider`
+
+#### Factory Function
+
+`create_artifact_provider(backend_name=None, repo=None, root_worktree=None)` in `backlog_core/artifact_provider.py` selects and instantiates an artifact provider.
+
+**Selection order**:
+
+1. `backend_name` argument (explicit override)
+2. `BACKLOG_BACKEND` environment variable
+3. Default: `github`
+
+**Supported values**: `github`, `linear`, `gitlab`. Values `sqlite` and `memory` raise `BacklogError` — those backends do not support artifact storage.
+
+**Environment variables summary**:
+
+| Variable | Required for | Default |
+|---|---|---|
+| `GITHUB_TOKEN` | `github` backend | — |
+| `LINEAR_API_KEY` | `linear` backend | — |
+| `LINEAR_TEAM_ID` | `linear` backend | — |
+| `GITLAB_TOKEN` | `gitlab` backend | — |
+| `GITLAB_PROJECT_ID` | `gitlab` backend | — |
+| `GITLAB_URL` | `gitlab` backend | `https://gitlab.com` |
+
+**`backend.toml` extensions** for Linear and GitLab — set `BACKLOG_BACKEND` in environment or use the `backend_name` argument. There is no `backend.toml` key specific to artifact providers; artifact backend selection uses the same `BACKLOG_BACKEND` mechanism as the `BacklogBackend`.
 
 ### IssueBackend Protocol (#389 — to be created)
 
@@ -623,7 +697,9 @@ Backend selection is configured via a config file at server startup. Each MCP se
 - `~/.dh/projects/{slug}/plan/architect-artifact-manifest.md` -- architecture spec for ArtifactBackend Protocol (access via `artifact_read`)
 - `~/.dh/projects/{slug}/plan/feature-context-artifact-manifest.md` -- problem space and desired outcomes (access via `artifact_read`)
 - [artifact-manifest-backends.md](./artifact-manifest-backends.md) -- artifact-specific backend details
-- [backlog_core/artifact_provider.py](../backlog_core/artifact_provider.py) -- ArtifactBackend Protocol definition and GitHubArtifactProvider
+- [backlog_core/artifact_provider.py](../backlog_core/artifact_provider.py) -- ArtifactBackend Protocol definition; GitHubGistArtifactProvider, LinearArtifactProvider, GitLabArtifactProvider implementations; create_artifact_provider factory
+- [backlog_core/linear_client.py](../backlog_core/linear_client.py) -- Linear Attachments API client (linear_get_attachments, linear_create_attachment)
+- [backlog_core/gitlab_client.py](../backlog_core/gitlab_client.py) -- GitLab Snippets and Notes API client (gitlab_create_snippet, gitlab_get_snippet, gitlab_update_snippet, gitlab_create_issue_note, gitlab_list_issue_notes)
 - [backlog_core/gh_client.py](../backlog_core/gh_client.py) -- current GitHub-specific issue operations
 - [sam_schema/core/task_backend.py](../sam_schema/core/task_backend.py) -- TaskBackend Protocol definition (13 methods)
 - [sam_schema/core/task_backend_types.py](../sam_schema/core/task_backend_types.py) -- TypedDict shapes: TaskDefinition, TaskData, PlanData, PlanSummary, DocumentHandle, DocumentData
