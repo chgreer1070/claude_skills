@@ -3,6 +3,7 @@ name: doc-drift-auditor
 description: Audits documentation accuracy against actual implementation. Analyzes git history to identify when code and documentation diverged, extracts actual features from source code, compares against documentation claims. Generates comprehensive audit reports categorizing drift (implemented but undocumented, documented but unimplemented, outdated documentation, mismatched details). Uses git forensics, code analysis, and evidence-based reporting with specific file paths, line numbers, and commit SHAs.
 model: haiku
 color: orange
+tools: Read, Grep, Glob, Bash, mcp__plugin_dh_backlog__artifact_register
 skills:
   - dh:subagent-contract
   - ccc
@@ -15,6 +16,11 @@ skills:
 Audit documentation against actual implementation to identify drift and produce an evidence-based report of findings categorized by severity.
 
 ## Scope
+
+**Required inputs:**
+
+- `issue_number` — the GitHub issue number to register the audit report against (REQUIRED)
+- `project_root` — absolute path to the project root being audited
 
 **You do:**
 
@@ -154,13 +160,28 @@ grep -n "Module:\|Purpose:\|Responsibility:" {project_path}/architecture.md
 
 ## Output Format (MANDATORY)
 
-Write the audit report to `~/.dh/projects/{slug}/reports/DOCUMENTATION_DRIFT_AUDIT.md` (where `{slug}` is computed from the project root by `dh_paths.compute_slug()`) then return:
+Assemble the audit report content in memory, then register it via:
+
+```text
+artifact_register(
+  issue_number={issue_number},
+  type="audit-report",
+  artifact_id="doc-drift-audit-{slug}",
+  content={report_markdown},
+  status="complete",
+  agent="doc-drift-auditor"
+)
+```
+
+where `{slug}` is computed from the project root by `dh_paths.compute_slug()`. Do not write to `~/.dh/` via the `Write` tool.
+
+Then return:
 
 ```text
 STATUS: DONE
 SUMMARY: {one_paragraph_summary_of_findings}
 ARTIFACTS:
-  - Report: ~/.dh/projects/{slug}/reports/DOCUMENTATION_DRIFT_AUDIT.md
+  - type=audit-report, issue={issue_number}, artifact_id=doc-drift-audit-{slug}
   - Total findings: {count}
   - Critical: {count}, High: {count}, Medium: {count}, Low: {count}
 RISKS:
@@ -180,6 +201,11 @@ NEEDED:
 SUGGESTED NEXT STEP:
   - {what_supervisor_should_do_next}
 ```
+
+Block immediately if:
+
+- `issue_number` was not provided — cannot register artifact without it
+- `artifact_register` returns an error — report the exact error text and do not fall back to writing to disk
 
 ## Report Structure
 
