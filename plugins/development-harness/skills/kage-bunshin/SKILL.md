@@ -318,7 +318,7 @@ done
 
 After spawning one or more sessions, the orchestrator SHOULD spawn a background Haiku subagent to watch for interactive states that require a response — permission approvals, Y/n prompts, and `AskUserQuestion` events. Without a monitor, these states block the child session silently until the orchestrator happens to `read` the pane.
 
-The monitor is `plugins/development-harness/skills/kage-bunshin/scripts/monitor.py`. It polls all sessions registered under the given `--session-id`, exits as soon as it finds an intervention or all sessions finish, and emits a single JSON object to stdout.
+The monitor is `${CLAUDE_SKILL_DIR}/scripts/monitor.py`. It has two subcommands: `poll` (watch sessions, emit JSON on completion or intervention) and `health` (snapshot team state, exit immediately). All monitoring uses `poll`; team inspection uses `health`.
 
 ### Spawning the monitor — choose based on what you need
 
@@ -327,7 +327,7 @@ The monitor is `plugins/development-harness/skills/kage-bunshin/scripts/monitor.
 Use when all sessions were spawned with `--dangerously-skip-permissions` (bypass mode). In bypass mode, no permission prompts can occur, so passive notification on completion or timeout is sufficient. Zero LLM tokens.
 
 ```bash
-uv run "${CLAUDE_SKILL_DIR}/scripts/monitor.py" \
+uv run "${CLAUDE_SKILL_DIR}/scripts/monitor.py" poll \
   --session-id <SID> --interval 15 --timeout 1800 \
   > /tmp/monitor-<SID>.json 2>&1
 ```
@@ -342,7 +342,7 @@ Use when sessions may hit permission prompts, Y/n gates, or `AskUserQuestion` ev
 Task — model: haiku, run_in_background: true
 
 Prompt:
-  Run: uv run "${CLAUDE_SKILL_DIR}/scripts/monitor.py" \
+  Run: uv run "${CLAUDE_SKILL_DIR}/scripts/monitor.py" poll \
          --session-id <SID> --interval 5
 
   Wait for the script to exit and read its JSON output.
@@ -409,14 +409,14 @@ The monitor exits immediately on first detection — it does not continue watchi
 
 Inspect a running Claude Code agent team's live state — last JSONL tool calls per member and current tmux pane snapshot. Use this after spawning a team via `TeamCreate` to see what teammates are doing without waiting for message delivery.
 
-**Script**: `plugins/development-harness/skills/kage-bunshin/scripts/monitor.py health`
+**Script**: `${CLAUDE_SKILL_DIR}/scripts/monitor.py health`
 
 ```bash
 # Most recently modified team
-uv run plugins/development-harness/skills/kage-bunshin/scripts/monitor.py health
+uv run "${CLAUDE_SKILL_DIR}/scripts/monitor.py" health
 
 # Specific team by name
-uv run plugins/development-harness/skills/kage-bunshin/scripts/monitor.py health {team-name}
+uv run "${CLAUDE_SKILL_DIR}/scripts/monitor.py" health {team-name}
 ```
 
 ### Team name discovery

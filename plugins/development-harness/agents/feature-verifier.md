@@ -250,45 +250,55 @@ EVIDENCE:
 
 Tests and static analysis verify code structure — they do not exercise the actual dispatch layer a real user or caller would use. A change can pass all tests while the live wiring is broken, because tests import code directly and bypass the real runtime path. This step closes that gap.
 
-### Detect Delivery Surface
+### Detect Project Language and Read Language Manifest
 
 ```mermaid
 flowchart TD
-    Start([Scan project files]) --> Q1{FastMCP or fastmcp import<br>in server files?}
-    Q1 -->|Yes| MCP["Delivery surface: MCP server<br>Locate the runner script (run_server.py or equivalent)"]
-    Q1 -->|No| Q2{typer app, argparse, or<br>click entrypoint present?}
-    Q2 -->|Yes| CLI["Delivery surface: CLI tool<br>Identify entrypoint and relevant subcommand"]
-    Q2 -->|No| Q3{FastAPI, Flask, or<br>Starlette app present?}
-    Q3 -->|Yes| Web["Delivery surface: Web system<br>Flag for agent-browser validation"]
-    Q3 -->|No| None["No delivery surface detected<br>Skip this step — record as N/A"]
-    MCP --> Validate
-    CLI --> Validate
-    Web --> Flag["Flag in output — load /agent-browser skill<br>for live web validation<br>Record status: DEFERRED_BROWSER"]
-    None --> Done(["Step complete"])
-    Validate["Run live invocation"] --> Done
-    Flag --> Done
+    Start([Scan project root]) --> Q1{pyproject.toml present?}
+    Q1 -->|Yes| Python[Language: Python]
+    Q1 -->|No| Q2{package.json present?}
+    Q2 -->|Yes| JS[Language: TypeScript/JS]
+    Q2 -->|No| Q3{go.mod present?}
+    Q3 -->|Yes| Go[Language: Go]
+    Q3 -->|No| Q4{Cargo.toml present?}
+    Q4 -->|Yes| Rust[Language: Rust]
+    Q4 -->|No| Q5{Gemfile present?}
+    Q5 -->|Yes| Ruby[Language: Ruby]
+    Q5 -->|No| Q6{Makefile or CMakeLists.txt present?}
+    Q6 -->|Yes| C[Language: C/C++]
+    Q6 -->|No| Unknown[Language: unknown]
+    Python --> ReadManifest
+    JS --> ReadManifest
+    Go --> ReadManifest
+    Rust --> ReadManifest
+    Ruby --> ReadManifest
+    C --> ReadManifest
+    Unknown --> ReadManifest
+    ReadManifest["Read .dh/language-manifest.yaml<br>(or .dh/language-manifest.yml)"] --> Q7{File exists?}
+    Q7 -->|Yes| ReadField["Read quality_gates.live_validation field"]
+    Q7 -->|No| NoManifest["No manifest — live_validation absent<br>Record: SKIPPED (no manifest)"]
+    ReadField --> Q8{live_validation present<br>and not empty?}
+    Q8 -->|Yes| Q9{"Value is 'agent-browser'?"}
+    Q8 -->|No| Absent["live_validation absent<br>Record gap"]
+    Q9 -->|Yes| Browser["Flag for agent-browser validation<br>Record: DEFERRED_BROWSER"]
+    Q9 -->|No| RunCommand["Run the live_validation command verbatim"]
+    RunCommand --> Evaluate
+    NoManifest --> Done(["Step complete"])
+    Absent --> Done
+    Browser --> Done
+    Evaluate --> Done
 ```
 
-### Live Invocation by Surface
+### Run Live Validation Command
 
-**MCP server:**
+When `quality_gates.live_validation` is present and not `agent-browser`, run it verbatim from the project root:
 
 ```bash
-uv run fastmcp call \
-  --command "uv run python <runner_script>" \
-  --target <tool_name> \
-  --input-json '{}'
+# Execute exactly what the manifest declares — no modification
+{live_validation command from manifest}
 ```
 
-Use the feature's primary MCP tool as `<tool_name>`. Pass minimal valid input. Capture full stdout and stderr.
-
-**CLI tool:**
-
-```bash
-uv run <entrypoint> <feature_subcommand> [--dry-run or safe args]
-```
-
-Use `--help` first to discover valid invocation, then exercise the happy path. Capture full output.
+Capture full stdout, stderr, and exit code.
 
 ### Evaluate Live Invocation Result
 
@@ -304,18 +314,27 @@ The live invocation fails when:
 - Exception traceback in stderr
 - Output is empty or clearly wrong for the input
 
+### Gap: No `live_validation` Declared
+
+When `live_validation` is absent from the manifest (or the manifest does not exist), record this block verbatim in the verification report — this is a gap, not a pass:
+
+```text
+LIVE_VALIDATION: SKIPPED — no live_validation command declared in language manifest.
+Add quality_gates.live_validation to your .dh/language-manifest.yaml to enable live delivery surface validation.
+```
+
 ### Evidence Block
 
 Record live validation output verbatim in the verification report:
 
 ```text
 LIVE_VALIDATION:
-  Surface: [MCP | CLI | Web | None]
-  Command: [exact command run]
-  Exit code: [0 or non-zero]
+  Surface: [manifest-declared | agent-browser | None]
+  Command: [exact command run, or "none"]
+  Exit code: [0 or non-zero, or "n/a"]
   Stdout: [captured output]
   Stderr: [captured output or "none"]
-  Result: [PASS | FAIL | DEFERRED_BROWSER | N/A]
+  Result: [PASS | FAIL | DEFERRED_BROWSER | SKIPPED]
 ```
 
 ## Step 9: Determine Overall Status

@@ -72,6 +72,18 @@ Declares the commands the harness runs at quality checkpoints.
 - The `standards` gate is optional and references a skill for language-specific standards enforcement
 - Commands must be runnable from the project root directory
 - **Non-typed languages**: Use `typecheck: (none)` to skip the typecheck gate (e.g., Bash, Perl without strict typing)
+- **`live_validation`**: Optional. Declares the command that demonstrably exercises the changed functionality through the real delivery path (not tests). The command must invoke the actual runtime — not test imports or mocked surfaces. When absent, the feature-verifier must flag it as a gap in the verification report.
+
+**`live_validation` examples by language and delivery surface:**
+
+- MCP server (Python): `` `uv run fastmcp call --command "uv run python scripts/run_server.py" --target health_check --input-json '{}'` ``
+- CLI tool (Go): `` `go run ./cmd/mytool --version` ``
+- Web service (TypeScript): `` `curl -sf http://localhost:3000/health` ``
+- Library (Ruby): `` `ruby -e "require './lib/mylib'; puts MyLib::VERSION"` ``
+- Compiled binary (C): `` `./build/mytool --smoke-test` ``
+- Web system (agent-browser required): `agent-browser`
+
+Set `live_validation: agent-browser` when the delivery surface is a web system that requires a browser to exercise. The feature-verifier will defer to the `/agent-browser` skill and record `DEFERRED_BROWSER` status rather than failing.
 
 ---
 
