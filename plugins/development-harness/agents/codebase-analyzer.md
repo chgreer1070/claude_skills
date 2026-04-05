@@ -124,86 +124,150 @@ SOURCE: Adapted from gsd-codebase-mapper.md
 
 <exploration_strategy>
 
+## Search Tool Priority
+
+Use tools in this order for each exploration need:
+
+1. **ccc search** — semantic search for concepts, behaviors, and patterns across the full codebase. Preferred for "find all places that do X" questions. Requires the index to be current — run `ccc index` at session start if the codebase has changed recently.
+2. **git-forensics MCP** — co-change analysis and hot spot detection. Use for architecture and concerns focus to surface hidden coupling and churn that Grep cannot find.
+3. **Grep/Glob** — exact pattern matching for known syntax (decorator names, import statements, specific identifiers). Use after ccc narrows the search space, or when searching for exact strings.
+4. **Read** — targeted file reading after search tools identify relevant locations. Always cite file:line.
+
 ## For patterns focus
 
 ```bash
-# CLI command patterns (Typer/Click)
+# Semantic search: find CLI command registration patterns
+ccc search CLI command registration decorator
+
+# Semantic search: find shared utility usage
+ccc search shared utility helper common
+
+# Exact pattern: confirm decorator syntax
 Grep(pattern="@app\\.command|@click\\.command", path="{src_dir}/cli/")
 
-# Shared utilities
-Glob(pattern="{src_dir}/shared/*.py")
-
-# Option patterns
+# Exact pattern: option/argument definitions
 Grep(pattern="typer\\.Option|click\\.option", path="{src_dir}/")
 
-# Common decorators
+# Exact pattern: common decorators
 Grep(pattern="@.*decorator|def.*decorator", path="{src_dir}/")
 ```
 
 ## For architecture focus
 
 ```bash
-# Module structure
-find {src_dir} -type d -not -path "*__pycache__*"
+# Semantic search: module boundaries and layers
+ccc search module layer dependency import boundary
 
-# Import patterns to understand layers
+# Semantic search: entry points and initialization
+ccc search entry point initialization main startup
+
+# Exact pattern: import statements to understand layer dependencies
 Grep(pattern="^from |^import ", path="{src_dir}/")
 
-# Entry points
+# Exact pattern: entry points
 Grep(pattern="def main|if __name__", path="{src_dir}/")
+
+# Git forensics: co-change analysis reveals hidden coupling
+# Files that always change together are architecturally coupled even if grep shows no direct dependency
+mcp__git-forensics__analyze_file_changes(path="{src_dir}", days=90)
+
+# Git forensics: recent activity and hot spots
+mcp__git-forensics__get_branch_overview(path=".")
 ```
 
 ## For testing focus
 
 ```bash
-# Test file locations
+# Semantic search: test patterns and conventions
+ccc search test fixture mock setup teardown
+
+# Semantic search: find what testing utilities exist
+ccc search test helper utility assertion
+
+# Exact pattern: test file locations
 Glob(pattern="{project_path}/tests/**/*.py")
 
-# Fixture patterns
+# Exact pattern: fixture definitions
 Grep(pattern="@pytest\\.fixture", path="{project_path}/tests/")
 
-# Mock patterns
+# Exact pattern: mock patterns
 Grep(pattern="mock|Mock|patch|MagicMock", path="{project_path}/tests/")
 ```
 
 ## For conventions focus
 
 ```bash
-# Docstring patterns
+# Semantic search: docstring and documentation patterns
+ccc search docstring documentation style format
+
+# Semantic search: error handling conventions
+ccc search error handling exception raise catch
+
+# Exact pattern: docstring styles
 Grep(pattern='""".*Args:|""".*Returns:', path="{src_dir}/")
 
-# Type annotation patterns
+# Exact pattern: type annotations
 Grep(pattern="def.*->|: list\\[|: dict\\[", path="{src_dir}/")
 
-# Error handling patterns
+# Exact pattern: error handling
 Grep(pattern="raise |except |try:", path="{src_dir}/")
 ```
 
 ## For concerns focus
 
 ```bash
-# TODO/FIXME comments indicating incomplete work
+# Semantic search: debt indicators and incomplete work
+ccc search TODO FIXME workaround temporary hack incomplete
+
+# Semantic search: broad error suppression patterns
+ccc search except pass swallow ignore error silent
+
+# Exact pattern: TODO/FIXME comments
 Grep(pattern="TODO|FIXME|HACK|XXX|NOQA", path="{src_dir}/")
 
-# Large files (potential complexity)
-find {src_dir} -name "*.py" -not -path "*__pycache__*" | xargs wc -l 2>/dev/null | sort -rn | head -20
+# Exact pattern: large files (potential complexity)
+Bash("fdfind -e py . {src_dir} --exclude __pycache__ | xargs wc -l 2>/dev/null | sort -rn | head -20")
 
-# Empty stubs or placeholders
+# Exact pattern: stubs and placeholders
 Grep(pattern="pass$|raise NotImplementedError|\\.\\.\\.\\s*$", path="{src_dir}/")
 
-# Broad exception handling (code smell)
+# Exact pattern: broad exception handling (code smell)
 Grep(pattern="except Exception:|except:$", path="{src_dir}/")
 
-# Type ignore comments
+# Exact pattern: type ignore comments
 Grep(pattern="# type: ignore|# noqa", path="{src_dir}/")
 
-# Deprecated imports or patterns
+# Exact pattern: deprecated typing imports
 Grep(pattern="from typing import Optional|from typing import List|from typing import Dict", path="{src_dir}/")
+
+# Git forensics: files with high churn indicate fragile areas or ongoing technical debt
+mcp__git-forensics__analyze_time_period(path=".", days=60)
+
+# Git forensics: co-change clusters that cross module boundaries signal architectural concerns
+mcp__git-forensics__analyze_file_changes(path="{src_dir}", days=90)
 ```
+
+## Multi-hypothesis analysis
+
+When the focus area yields conflicting evidence or unexpected patterns, use sequential thinking
+to structure the analysis before writing the document:
+
+```text
+mcp__plugin_dh_sequential_thinking__sequentialthinking(
+  thought="I found X pattern in module A but Y pattern in module B. I need to determine whether these are intentional alternatives, historical inconsistency, or module-specific conventions before documenting either as authoritative.",
+  thoughtNumber=1,
+  totalThoughts=3,
+  nextThoughtNeeded=true
+)
+```
+
+Use sequential thinking when: findings contradict each other, the feature context points to a
+module that appears inconsistently structured, or you are uncertain which of two observed
+patterns is the intended convention.
 
 SOURCE: Adapted from gsd-codebase-mapper.md
 
-Read key files identified during exploration. Use Glob and Grep liberally.
+Read key files identified during exploration. Use Glob and Grep liberally after ccc narrows the search space.
 
 </exploration_strategy>
 
