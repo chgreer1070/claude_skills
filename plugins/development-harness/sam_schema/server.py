@@ -20,10 +20,9 @@ import contextlib
 import json
 import logging
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import backlog_core.models as _backlog_models
-import dh_paths
 import tiktoken
 from backlog_core.artifact_provider import GitHubArtifactProvider
 from backlog_core.artifact_registry import ArtifactRegistry as _ArtifactRegistry
@@ -32,54 +31,77 @@ from fastmcp import FastMCP
 from pydantic import Field
 from ruamel.yaml import YAML, YAMLError
 
-from sam_schema.core.addressing import AddressingError, resolve_plan_address
-from sam_schema.core.models import TaskStatus
-from sam_schema.core.query import (
-    claim_task,
-    create_plan,
-    get_plan_status,
-    get_ready_tasks,
-    get_task_assignment,
-    load_plan,
-    update_plan_fields,
-    update_status,
+from sam_schema.core.exceptions import (
+    PlanExistsError,
+    PlanNotFoundError,
+    SamError,
+    TaskNotFoundError,
+    TaskValidationError,
 )
-from sam_schema.readers.detect import FormatDetectionError
+from sam_schema.core.models import Plan, Task
+from sam_schema.core.task_config import TaskConfig, create_task_backend, get_task_config, set_task_config
+
+if TYPE_CHECKING:
+    from sam_schema.core.task_backend import TaskBackend
+    from sam_schema.core.task_backend_types import TaskDefinition
 
 _log = logging.getLogger(__name__)
 _artifact_registry = _ArtifactRegistry()
 
-_PLAN_READ_ERRORS: tuple[type[Exception], ...] = (
-    FileNotFoundError,
-    AddressingError,
-    FormatDetectionError,
-    KeyError,
-    ValueError,
-    TypeError,
-)
-
 _PLAN_DIR_SENTINEL = "plan"
 
+# Stem parsing thresholds used in _build_task_assignment.
+_STEM_MIN_PARTS_FOR_NUMBER: int = 2
+_STEM_MIN_PARTS_FOR_SLUG: int = 3
 
-def _resolve_plan_dir(plan_dir: str) -> Path:
-    """Resolve the plan directory, using dh_paths when the caller passes the default sentinel.
+# Initialize the default backend at module import time.
+# Tests may call set_task_config() before importing this module to inject a custom backend.
+try:
+    get_task_config()
+except RuntimeError:
+    set_task_config(TaskConfig(backend=create_task_backend()))
 
-    The MCP API exposes ``plan_dir`` with a default of ``"plan"`` (the legacy
-    repo-relative path).  When a caller omits the parameter (or passes the
-    sentinel value ``"plan"``), we route through :func:`dh_paths.plan_dir` so
-    the resolved path follows the three-tier DH state layout.  Explicit
-    non-sentinel values are resolved as-is, preserving backward compatibility
-    for callers that supply a concrete path.
+
+def _resolve_plan_id(plan: str) -> str:
+    """Convert a plan address to the backend plan ID.
+
+    The backend resolves all address forms (numeric index, slug, ``P{N}``
+    identifier) internally.  This function forwards the address as-is.
 
     Args:
-        plan_dir: The raw ``plan_dir`` string from the MCP tool parameter.
+        plan: Plan address component (e.g., ``'P912'``, ``'auth-system'``).
 
     Returns:
-        Absolute :class:`~pathlib.Path` to the plan directory.
+        Plan identifier to pass to :class:`~sam_schema.core.task_backend.TaskBackend`
+        methods.
     """
-    if plan_dir == _PLAN_DIR_SENTINEL:
-        return dh_paths.plan_dir()
-    return Path(plan_dir)
+    return plan
+
+
+def _get_backend(plan_dir_str: str) -> TaskBackend:
+    """Return the configured backend, or a LocalYamlTaskProvider for an explicit plan_dir.
+
+    When *plan_dir_str* is the default sentinel (``"plan"``), returns the
+    module-level configured backend from :func:`get_task_config`.  When
+    *plan_dir_str* is a concrete filesystem path, creates a
+    :class:`~sam_schema.core.backends.local_yaml.LocalYamlTaskProvider` for
+    that path to preserve backward compatibility with callers that supply an
+    explicit directory.
+
+    Args:
+        plan_dir_str: The ``plan_dir`` parameter from the MCP tool call.
+
+    Returns:
+        :class:`~sam_schema.core.task_backend.TaskBackend` instance to use for
+        this tool call.
+    """
+    if plan_dir_str == _PLAN_DIR_SENTINEL:
+        return get_task_config().backend
+    # Non-default plan_dir: callers passing a concrete path expect local filesystem
+    # behavior, so create a LocalYamlTaskProvider for that explicit path.
+    from sam_schema.core.backends.local_yaml import LocalYamlTaskProvider  # noqa: PLC0415
+
+    return LocalYamlTaskProvider(Path(plan_dir_str))
 
 
 # Token budget for auto-pagination: 4400 tokens (cl100k_base encoding).
@@ -133,14 +155,19 @@ def sam_read(
         with an ``error`` key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
+        backend = _get_backend(plan_dir)
+        plan_id = _resolve_plan_id(plan)
+        plan_data = backend.read_plan(plan_id)
+
         if task is not None:
-            result = get_task_assignment(plan_path, task)
-            return result.model_dump(mode="json", by_alias=True, exclude_none=True)
-        # Plan-only read: return Plan metadata without TaskAssignment wrapper.
-        read_result = load_plan(plan_path)
-        return read_result.plan.model_dump(mode="json", by_alias=True, exclude_none=True)
-    except _PLAN_READ_ERRORS as exc:
+            task_data = backend.read_task(plan_id, task)
+            return dict(task_data)
+
+        # Plan-only read: rebuild through Plan model for exact serialization shape.
+        plan_dict = {k: v for k, v in plan_data.items() if k != "plan_id"}
+        plan_model = Plan.model_validate(plan_dict)
+        return plan_model.model_dump(mode="json", by_alias=True, exclude_none=True)
+    except (PlanNotFoundError, TaskNotFoundError, SamError) as exc:
         return {"error": str(exc)}
 
 
@@ -164,11 +191,12 @@ def sam_state(
         ``error`` key on failure.
     """
     try:
-        new_status = TaskStatus(status)
-        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
-        result = update_status(plan_path, task, new_status)
-        return result.model_dump(mode="json")
-    except (FileNotFoundError, AddressingError, FormatDetectionError, KeyError, ValueError) as exc:
+        backend = _get_backend(plan_dir)
+        plan_id = _resolve_plan_id(plan)
+        backend.update_task_status(plan_id, task, status)
+        task_data = backend.read_task(plan_id, task)
+        return dict(task_data)
+    except (TaskValidationError, PlanNotFoundError, TaskNotFoundError, SamError) as exc:
         return {"error": str(exc)}
 
 
@@ -195,33 +223,33 @@ def sam_ready(
         and ``issue`` envelope fields, or a dict with an ``error`` key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
-        read_result = load_plan(plan_path)
-        loaded_plan = read_result.plan
-        tasks = get_ready_tasks(plan_path)
+        backend = _get_backend(plan_dir)
+        plan_id = _resolve_plan_id(plan)
+        plan_data = backend.read_plan(plan_id)
+        tasks_data = backend.get_ready_tasks(plan_id)
         if full:
-            ready_tasks: list[dict[str, Any]] = [t.model_dump(mode="json") for t in tasks]
+            ready_tasks: list[dict[str, Any]] = [Task.model_validate(t).model_dump(mode="json") for t in tasks_data]
         else:
             ready_tasks = [
                 {
-                    "id": t.id,
-                    "task": t.title,
-                    "agent": t.agent,
-                    "skills": t.skills or [],
-                    "dependencies": t.dependencies or [],
-                    "status": str(t.status),
-                    "priority": int(t.priority),
+                    "id": t["id"],
+                    "task": t["title"],
+                    "agent": t["agent"],
+                    "skills": t["skills"] or [],
+                    "dependencies": t["dependencies"] or [],
+                    "status": t["status"],
+                    "priority": int(t["priority"]),
                 }
-                for t in tasks
+                for t in tasks_data
             ]
         return {
             "ready_tasks": ready_tasks,
-            "count": len(tasks),
-            "feature": loaded_plan.feature,
-            "source_path": str(loaded_plan.source_path or plan_path),
-            "issue": loaded_plan.issue,
+            "count": len(tasks_data),
+            "feature": plan_data["feature"],
+            "source_path": str(plan_data["source_path"] or plan_id),
+            "issue": plan_data["issue"],
         }
-    except _PLAN_READ_ERRORS as exc:
+    except (PlanNotFoundError, SamError) as exc:
         return {"error": str(exc)}
 
 
@@ -243,10 +271,10 @@ def sam_status(
         key on failure.
     """
     try:
-        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
-        result = get_plan_status(plan_path)
-        return result.model_dump(mode="json")
-    except (FileNotFoundError, AddressingError, FormatDetectionError, ValueError) as exc:
+        backend = _get_backend(plan_dir)
+        plan_id = _resolve_plan_id(plan)
+        return dict(backend.get_plan_status(plan_id))
+    except (PlanNotFoundError, SamError) as exc:
         return {"error": str(exc)}
 
 
@@ -292,26 +320,6 @@ def _paginate_results(
         next_offset = offset + len(page)
         result["next_call"] = f"{tool_name}(offset={next_offset}, limit={effective_limit})"
     return result
-
-
-def _plan_matches_search(plan_dict: dict[str, Any], search: str) -> bool:
-    """Return True if ``search`` appears (case-insensitive) in any text field of ``plan_dict``.
-
-    Checks ``feature``, ``description``, and ``goal`` — the Plan model's text fields.
-
-    Args:
-        plan_dict: JSON-serializable plan dict from ``Plan.model_dump``.
-        search: Substring to search for (case-insensitive).
-
-    Returns:
-        True if the search term is found in any of the checked fields.
-    """
-    needle = search.lower()
-    for field in ("feature", "description", "goal"):
-        value = plan_dict.get(field)
-        if isinstance(value, str) and needle in value.lower():
-            return True
-    return False
 
 
 @mcp.tool
@@ -361,42 +369,29 @@ def sam_list(
         - ``warnings``: list of non-fatal warning strings.
         - ``errors``: list of error strings (e.g. unreadable files).
     """
-    p_dir = _resolve_plan_dir(plan_dir)
     warnings: list[str] = []
     errors: list[str] = []
     messages: list[str] = []
 
-    if not p_dir.exists():
-        return {
-            "items": [],
-            "count": 0,
-            "pagination": {"offset": offset, "limit": limit or 0, "total": 0, "has_more": False},
-            "messages": messages,
-            "warnings": warnings,
-            "errors": [f"Plan directory does not exist: {plan_dir}"],
+    try:
+        backend = _get_backend(plan_dir)
+        summaries = backend.list_plans(search=search)
+    except SamError as exc:
+        errors.append(str(exc))
+        return _paginate_results(
+            [], offset=offset, limit=limit, messages=messages, warnings=warnings, errors=errors, tool_name="sam_list"
+        )
+
+    all_items: list[dict[str, Any]] = [
+        {
+            "feature": s["feature"],
+            "goal": s["goal"],
+            "description": s["description"],
+            "task_count": s["task_count"],
+            "path": str(s["source_path"] or s["plan_id"]),
         }
-
-    # Collect all plan candidates (yaml/md files and plan directories).
-    candidates: list[Path] = sorted(c for c in p_dir.iterdir() if c.suffix in {".yaml", ".md"} or c.is_dir())
-
-    # Load each candidate into a summary dict, skipping unreadable files.
-    all_items: list[dict[str, Any]] = []
-    for candidate in candidates:
-        try:
-            read_result = load_plan(candidate)
-            plan = read_result.plan
-            plan_dict = plan.model_dump(mode="json", by_alias=True, exclude_none=True)
-            summary: dict[str, Any] = {
-                "feature": plan.feature,
-                "goal": plan.goal,
-                "description": plan.description,
-                "task_count": len(plan.tasks),
-                "path": str(plan.source_path or candidate),
-            }
-            if search is None or _plan_matches_search(plan_dict, search):
-                all_items.append(summary)
-        except (FileNotFoundError, FormatDetectionError, ValueError, TypeError) as exc:
-            warnings.append(f"Skipped {candidate.name}: {exc}")
+        for s in summaries
+    ]
 
     return _paginate_results(
         all_items, offset=offset, limit=limit, messages=messages, warnings=warnings, errors=errors, tool_name="sam_list"
@@ -488,30 +483,37 @@ def sam_create(
         ``{"error": str}`` on failure.
     """
     try:
-        yaml: Any = YAML()
-        parsed: dict[str, Any] = yaml.load(tasks_yaml)
+        yaml_parser: Any = YAML()
+        parsed: dict[str, Any] = yaml_parser.load(tasks_yaml)
         if not isinstance(parsed, dict) or "tasks" not in parsed:
             return {"error": "tasks_yaml must be a YAML string with a top-level 'tasks' key"}
-        task_list: list[dict[str, Any]] = parsed["tasks"]
-        plan = create_plan(
-            slug=slug, goal=goal, tasks=task_list, plan_dir=_resolve_plan_dir(plan_dir), context=context, issue=issue
-        )
-        # Derive plan_number from source_path stem (e.g. "P003-auth-system" -> 3).
-        plan_number: int | None = None
-        if plan.source_path is not None:
-            stem = plan.source_path.stem
-            if stem.startswith("P") and "-" in stem:
-                with contextlib.suppress(ValueError):
-                    plan_number = int(stem.split("-", 1)[0][1:])
-        result = {"path": str(plan.source_path), "plan_number": plan_number, "task_count": len(plan.tasks)}
-    except (YAMLError, ValueError, OSError) as exc:
+        task_defs = cast("list[TaskDefinition]", parsed["tasks"])
+        backend = _get_backend(plan_dir)
+        plan_data = backend.create_plan(slug=slug, goal=goal, tasks=task_defs, context=context, issue=issue)
+    except YAMLError as exc:
         return {"error": str(exc)}
-    else:
-        # Auto-register the new plan file as a task-plan artifact when the plan
-        # is linked to a GitHub issue.  Best-effort: failure does not block creation.
-        if issue is not None and plan.source_path is not None:
-            _try_register_task_plan_artifact(issue, plan.source_path)
-        return result
+    except (TaskValidationError, PlanExistsError, SamError) as exc:
+        return {"error": str(exc)}
+
+    # Derive plan_number from plan_id (e.g., "P912" → 912).
+    plan_number: int | None = None
+    plan_id_str = plan_data["plan_id"]
+    if plan_id_str.startswith("P"):
+        with contextlib.suppress(ValueError):
+            plan_number = int(plan_id_str[1:])
+
+    result = {
+        "path": str(plan_data["source_path"] or ""),
+        "plan_number": plan_number,
+        "task_count": len(plan_data["tasks"]),
+    }
+
+    # Auto-register the new plan file as a task-plan artifact when the plan
+    # is linked to a GitHub issue.  Best-effort: failure does not block creation.
+    if issue is not None and plan_data["source_path"]:
+        _try_register_task_plan_artifact(issue, Path(plan_data["source_path"]))
+
+    return result
 
 
 @mcp.tool
@@ -559,7 +561,8 @@ def sam_update(
             plan_part = address
             task_id = None
 
-        plan_path = resolve_plan_address(plan_part, _resolve_plan_dir(plan_dir))
+        plan_id = _resolve_plan_id(plan_part)
+        backend = _get_backend(plan_dir)
 
         set_fields: dict[str, str | int | list[str]] | None = None
         if set_fields_json is not None:
@@ -568,15 +571,21 @@ def sam_update(
                 return {"error": "set_fields_json must be a JSON object"}
             set_fields = {str(k): str(v) for k, v in raw_fields.items()}
 
-        update_plan_fields(
-            plan_path,
-            task_id=task_id,
-            set_fields=set_fields,
-            context=context,
-            append_section_name=append_section,
-            section_content=section_content,
-        )
-    except (FileNotFoundError, AddressingError, KeyError, ValueError, OSError) as exc:
+        if task_id is None:
+            # Plan-level operations: context and/or field updates on the plan.
+            backend.update_plan_fields(plan_id, context=context, set_fields=set_fields)
+        else:
+            # Task-level operations.
+            # context is plan-level per the tool description; apply it separately.
+            if context is not None:
+                backend.update_plan_fields(plan_id, context=context)
+            if set_fields:
+                backend.update_task_fields(plan_id, task_id, set_fields)
+            if append_section is not None:
+                backend.append_task_section(plan_id, task_id, append_section, section_content or "")
+    except (PlanNotFoundError, TaskNotFoundError, SamError) as exc:
+        return {"error": str(exc)}
+    except ValueError as exc:
         return {"error": str(exc)}
     else:
         return {"updated": True, "address": address}
@@ -604,11 +613,26 @@ def sam_claim(
         ``{"claimed": false, "error": str}`` if the task cannot be claimed.
     """
     try:
-        plan_path = resolve_plan_address(plan, _resolve_plan_dir(plan_dir))
-        updated_task = claim_task(plan_path, task)
-    except (ValueError, KeyError) as exc:
+        backend = _get_backend(plan_dir)
+        plan_id = _resolve_plan_id(plan)
+        claimed = backend.claim_task(plan_id, task)
+    except (PlanNotFoundError, TaskNotFoundError) as exc:
         return {"claimed": False, "error": str(exc)}
-    except (FileNotFoundError, AddressingError, FormatDetectionError, OSError) as exc:
+    except SamError as exc:
         return {"error": str(exc)}
-    else:
-        return {"claimed": True, "task_id": updated_task.id, "started": updated_task.started}
+
+    if not claimed:
+        # Read current status to provide a meaningful error message.
+        try:
+            task_data = backend.read_task(plan_id, task)
+            current_status = task_data["status"]
+        except (PlanNotFoundError, TaskNotFoundError, SamError):
+            return {"claimed": False, "error": f"Cannot claim task '{task}': task is not available for claiming."}
+        else:
+            return {
+                "claimed": False,
+                "error": f"Cannot claim task '{task}': expected status 'not-started' but found '{current_status}'.",
+            }
+
+    task_data = backend.read_task(plan_id, task)
+    return {"claimed": True, "task_id": task_data["id"], "started": task_data["started"]}
