@@ -423,6 +423,21 @@ Future platform backends (GitLab, Linear, Supabase) will implement the same Prot
 
 The backlog MCP server also exposes `profile_load` (agent_profile tool) for loading named agent profiles that specialize task-worker behavior at dispatch time. Profile definitions live in the backlog server configuration; see [docs/backend-providers.md](./docs/backend-providers.md) for the module boundary.
 
+The SAM MCP server uses a `TaskBackend` Protocol (`sam_schema/core/task_backend.py`) to decouple plan/task operations from storage. Three backends are available:
+
+- `local` (default) — wraps existing YAML I/O stack. Single-machine only.
+- `github` — maps plans to GitHub Issues, tasks to sub-issues with `sam:{status}` labels. Requires IssueBackend + DocumentBackend (#984).
+- `memory` — in-memory test double. No persistence.
+
+Select via `TASKBACKEND` env var or `[backend] name` in `taskbackend.toml` (project root or `~/.dh/`). Default is `local` when neither is set — existing deployments require no changes.
+
+**`taskbackend.toml` schema:**
+
+```toml
+[backend]
+name = "local"   # valid: "local", "github", "memory"
+```
+
 ---
 
 ## References

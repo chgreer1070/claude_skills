@@ -84,11 +84,12 @@ The development harness uses three subsystems. The backlog MCP now uses a plugga
 
 ### Plans/Tasks (SAM MCP)
 
-- **Source of truth**: Local YAML task files in `~/.dh/projects/{slug}/plan/` directory (resolved via `dh_paths.plan_dir()`)
+- **Source of truth**: Determined by the active backend (default: local YAML in `~/.dh/projects/{slug}/plan/`, resolved via `dh_paths.plan_dir()`)
 - **GitHub link**: Each task YAML can contain a `github_issue` field linking to a GitHub sub-issue for status sync
-- **Implementation**: `sam_schema/` package, exposed as FastMCP 3.x server (`mcp__plugin_dh_sam__*`)
+- **Implementation**: `sam_schema/` package with pluggable `TaskBackend` Protocol, exposed as FastMCP 3.x server (`mcp__plugin_dh_sam__*`)
 - **Operations**: List plans, read/claim/update tasks, check readiness, create plans
 - **Format**: YAML frontmatter per task file (legacy: monolithic markdown with `## Task {ID}` headers)
+- **Backend selection**: `TASKBACKEND` env var → `taskbackend.toml` → default `local`
 
 ### Artifact Manifest (backlog MCP artifact tools)
 
@@ -152,6 +153,57 @@ Existing users are unaffected. When no `BACKLOG_BACKEND` variable and no `backen
 
 ---
 
+## TaskBackend Protocol
+
+The `TaskBackend` Protocol (defined in `sam_schema/core/task_backend.py`) decouples all SAM MCP operations from any specific storage platform. `TaskConfig` wraps the active backend instance; `server.py` receives it via dependency injection.
+
+`TaskBackend` is an **orchestration Protocol**, not a storage Protocol. It composes over `IssueBackend` (coordination state) and `DocumentBackend` (durable handoff content) rather than owning its own storage primitives. The dependency graph evaluation stays in the query layer (`sam_schema/core/query.py`), not in backend implementations — backends return raw task data; callers evaluate readiness.
+
+All protocol methods are synchronous. The MCP layer wraps calls in `asyncio.to_thread()` when needed.
+
+### Method Groups
+
+- **Plan lifecycle**: `create_plan`, `read_plan`, `list_plans`, `update_plan_fields`
+- **Task access**: `read_task`, `claim_task`, `update_task_status`, `update_task_fields`, `append_task_section`, `get_ready_tasks`, `get_plan_status`
+- **Documents**: `store_document`, `read_document`
+
+### Available Backends
+
+| Backend | Identifier | Purpose |
+|---------|-----------|---------|
+| `LocalYamlTaskProvider` | `local` | Default. Wraps `yaml_reader.py` / `yaml_writer.py` + query layer. Single-machine use only — documents written to `plan_dir/{plan_id}/documents/`. |
+| `InMemoryTaskProvider` | `memory` | In-memory test double. No persistence. Use in tests and CI where filesystem access is unavailable. |
+| `GitHubTaskProvider` | `github` | Stub. Requires IssueBackend + DocumentBackend (#984). Raises `NotImplementedError` when selected. |
+
+### Configuration
+
+Backend selection uses this resolution order:
+
+1. `TASKBACKEND` environment variable
+2. `[backend] name` in `taskbackend.toml` (project root searched first, then `~/.dh/`)
+3. Default: `local`
+
+**Environment variable:**
+
+```bash
+TASKBACKEND=memory uv run python plugins/development-harness/scripts/run_sam_server.py
+```
+
+**`taskbackend.toml` file:**
+
+```toml
+[backend]
+name = "memory"
+```
+
+Place `taskbackend.toml` in the project root or `~/.dh/` for a persistent override. Project root takes precedence over `~/.dh/`. Call `reset_task_config()` between tests to force re-resolution.
+
+### Lazy Migration
+
+Plans without a `backend_ref` field continue using `LocalYamlTaskProvider` unchanged — existing deployments require no configuration changes. Plans migrated to a remote backend carry a `backend_ref` field with a backend-native resource identifier (e.g. a GitHub Issue number). When no `TASKBACKEND` variable and no `taskbackend.toml` file exist, the server selects `local` — identical behavior to before the Protocol was introduced.
+
+---
+
 ## Backend Provider Concept
 
 The development harness uses Protocol-based abstraction to decouple MCP tools from any specific platform. Three Protocols correspond to the three primitives:
@@ -160,7 +212,7 @@ The development harness uses Protocol-based abstraction to decouple MCP tools fr
 |---|---|---|---|
 | `IssueBackend` | Work Items + Sub-items | #389 (P2, groomed) | Operations hardcoded to GitHub in `backlog_core/gh_client.py` |
 | `DocumentBackend` | Documents (durable handoff content) | #984 (P2, groomed) | `ArtifactBackend` Protocol exists in `backlog_core/artifact_provider.py` with `GitHubArtifactProvider` |
-| `TaskBackend` | SAM orchestration over IssueBackend + DocumentBackend | #912 (P1, grooming) | Local YAML in `sam_schema/`, no Protocol yet |
+| `TaskBackend` | SAM orchestration over IssueBackend + DocumentBackend | #912 (P1, complete) | Protocol in `sam_schema/core/task_backend.py`, three backends: LocalYaml, GitHub, InMemory |
 
 `TaskBackend` is a SAM-specific orchestration layer. It does not own its own storage — it composes over `IssueBackend` (for coordination state: create work items, create/claim/update sub-items) and `DocumentBackend` (for handoff content: store/read stage artifacts). This keeps SAM's semantic operations (readiness, dependency resolution, atomic claiming) separate from the storage primitives.
 
@@ -404,87 +456,144 @@ class IssueBackend(Protocol):
         ...
 ```
 
-### TaskBackend Protocol (#912 — to be created)
+### TaskBackend Protocol (#912 — implemented)
 
 SAM-specific orchestration layer that composes over `IssueBackend` (for coordination state on work items and sub-items) and `DocumentBackend` (for durable handoff content). TaskBackend does not own its own storage — it adds SAM semantics (dependency resolution, readiness queries, atomic claiming) on top of the two storage Protocols.
 
-Currently implemented as local YAML files in `sam_schema/`. The local YAML implementation (`LocalYamlTaskProvider`) is a valid backend for single-machine use only — it cannot be accessed from sandboxes, CI runners, or distributed agents without filesystem access. Any deployment requiring environment portability must use a remote-backed implementation that delegates to `IssueBackend` + `DocumentBackend`.
+Defined in `sam_schema/core/task_backend.py`. All protocol methods are synchronous. The MCP layer wraps calls in `asyncio.to_thread()` when needed — matching the pattern established in `backlog_core.backend_protocol`.
 
 **What a backend must provide to be pluggable**: atomic task claiming (conditional write on status), dependency graph evaluation for readiness queries, and durable status persistence visible to all agents immediately. The backend delegates work item and document operations to `IssueBackend` and `DocumentBackend` respectively.
 
-```python
-class TaskBackend(Protocol):
-    def list_plans(self) -> list[PlanSummary]:
-        """Return summary metadata for all plans visible to this backend.
+#### Method Groups
 
-        For remote backends, this fetches from the authoritative remote store.
-        For local backends, this scans the local plan directory.
-        Must not require filesystem access to succeed on remote backends.
-        """
+- **Plan lifecycle**: `create_plan`, `read_plan`, `list_plans`, `update_plan_fields`
+- **Task access**: `read_task`, `claim_task`, `update_task_status`, `update_task_fields`, `append_task_section`, `get_ready_tasks`, `get_plan_status`
+- **Documents**: `store_document`, `read_document`
+
+#### Protocol Interface (13 methods)
+
+```python
+@runtime_checkable
+class TaskBackend(Protocol):
+    # -- Plan lifecycle --
+
+    def create_plan(
+        self,
+        slug: str,
+        goal: str,
+        tasks: list[TaskDefinition],
+        *,
+        context: str | None = None,
+        issue: int | None = None,
+        acceptance_criteria: str | None = None,
+    ) -> PlanData:
+        """Create a new plan. Raises PlanExistsError if slug collides."""
         ...
 
     def read_plan(self, plan_id: str) -> PlanData:
-        """Return the full plan including all task definitions.
-
-        plan_id is the backend-assigned stable identifier (e.g. issue number,
-        slug, or UUID). Raises PlanNotFoundError if absent.
-
-        Remote backends must serve this from the remote store, not a local
-        cache, to ensure consistency across distributed agents.
-        """
+        """Read a plan by backend-assigned identifier (e.g. 'P912')."""
         ...
 
-    def read_task(self, plan_id: str, task_id: str) -> TaskData:
-        """Return a single task from the given plan.
+    def list_plans(
+        self, *, search: str | None = None, offset: int = 0, limit: int | None = None
+    ) -> list[PlanSummary]:
+        """Return lightweight summaries, optionally filtered by substring."""
+        ...
 
-        task_id is the task key within the plan (e.g. "T1", "T03"). Raises
-        TaskNotFoundError if the plan exists but the task does not.
-        """
+    def update_plan_fields(
+        self, plan_id: str, *, context: str | None = None,
+        set_fields: dict[str, str | int | list[str]] | None = None,
+    ) -> None:
+        """Update top-level fields on a plan."""
+        ...
+
+    # -- Task access --
+
+    def read_task(self, plan_id: str, task_id: str) -> TaskData:
+        """Read a single task from a plan. Raises TaskNotFoundError."""
         ...
 
     def claim_task(self, plan_id: str, task_id: str) -> bool:
-        """Atomically claim a task for execution. Returns True if claimed.
+        """Atomically claim a task (not-started → in-progress).
 
-        A task may only be claimed if its current status is "not-started".
-        The backend must use its platform's atomic primitive (e.g. conditional
-        write, compare-and-swap, optimistic locking) to prevent two agents
-        claiming the same task concurrently.
-
-        Returns False (not raises) if the task is already claimed or in a
-        terminal state. Callers must check the return value.
+        Returns True on success, False if already claimed or terminal.
         """
         ...
 
     def update_task_status(self, plan_id: str, task_id: str, status: str) -> None:
-        """Update the status of a task to one of the recognised SAM states.
+        """Set task status. Valid: not-started, in-progress, complete, failed, skipped."""
+        ...
 
-        Valid statuses: not-started, in-progress, complete, failed, skipped.
-        The backend persists this durably so other agents see the update
-        immediately without requiring a local file or cache refresh.
-        """
+    def update_task_fields(
+        self, plan_id: str, task_id: str, fields: dict[str, str | int | list[str]]
+    ) -> None:
+        """Set one or more scalar fields on a task."""
+        ...
+
+    def append_task_section(
+        self, plan_id: str, task_id: str, section_name: str, content: str
+    ) -> None:
+        """Append markdown content to a named section of a task body."""
         ...
 
     def get_ready_tasks(self, plan_id: str) -> list[TaskData]:
-        """Return all tasks whose dependencies are satisfied and status is not-started.
-
-        The backend evaluates the dependency graph and returns only tasks that
-        are unblocked. This must be computed from the authoritative store, not
-        a local snapshot, to avoid race conditions in parallel execution.
-        """
+        """Return tasks where status is not-started and all dependencies are complete."""
         ...
 
-    def create_plan(self, slug: str, goal: str, tasks: list[TaskDefinition], **kwargs) -> PlanData:
-        """Persist a new plan with its task definitions and return it.
+    def get_plan_status(self, plan_id: str) -> dict[str, object]:
+        """Return summary dict: feature, total_tasks, by_status, ready_tasks, blocked_tasks, completion_pct, has_cycles."""
+        ...
 
-        The backend assigns a stable plan_id and stores all task definitions
-        durably. The plan must be readable by `read_plan` from any environment
-        immediately after this call returns.
+    # -- Documents --
 
-        kwargs may include issue_number (to link the plan to a backlog item),
-        acceptance_criteria, and other plan-level metadata fields.
-        """
+    def store_document(
+        self, plan_id: str, task_id: str | None, stage: str, doc_type: str,
+        title: str, content: str, fmt: str = "md",
+    ) -> DocumentHandle:
+        """Persist a document and return an opaque retrieval handle."""
+        ...
+
+    def read_document(self, handle: DocumentHandle) -> DocumentData:
+        """Retrieve a document by its handle."""
         ...
 ```
+
+#### Available Backends
+
+| Backend | Identifier | Class | Purpose |
+|---------|-----------|-------|---------|
+| `LocalYamlTaskProvider` | `local` | `sam_schema.core.backends.local_yaml` | Default. Wraps existing YAML I/O stack (yaml_reader, yaml_writer, query). Single-machine only. |
+| `GitHubTaskProvider` | `github` | `sam_schema.core.backends.github_task` | Maps plans → GitHub Issues (`sam:plan` label), tasks → sub-issues (`sam:{status}` labels). Requires IssueBackend + DocumentBackend (#984). |
+| `InMemoryTaskProvider` | `memory` | `sam_schema.core.backends.memory` | In-memory test double. No persistence. Use in tests and CI. |
+
+#### Configuration
+
+Backend selection uses this resolution order (mirrors BacklogBackend pattern):
+
+1. `TASKBACKEND` environment variable
+2. `[backend] name` key in `taskbackend.toml` (project root searched first, then `~/.dh/`)
+3. Default: `local`
+
+**Environment variable:**
+
+```bash
+TASKBACKEND=memory uv run python plugins/development-harness/scripts/run_sam_server.py
+```
+
+**`taskbackend.toml` file:**
+
+```toml
+[backend]
+name = "local"
+```
+
+Place `taskbackend.toml` in the project root or `~/.dh/` for a persistent override. Project root takes precedence over `~/.dh/`. Call `reset_task_config()` between tests to force re-resolution.
+
+The factory function `create_task_backend(name)` in `sam_schema.core.task_config` resolves the backend name and returns a configured `TaskBackend` instance. The `TaskConfig` dataclass wraps the active backend for dependency injection into the MCP server.
+
+#### Migration Guide
+
+Existing users are unaffected. When no `TASKBACKEND` variable and no `taskbackend.toml` file exist, the server selects `local` — identical behavior to before the pluggable architecture was introduced. The `local` backend wraps the existing YAML I/O stack without modifying underlying modules. No configuration changes are required unless switching backends.
 
 ### Composition
 
