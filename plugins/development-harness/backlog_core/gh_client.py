@@ -60,6 +60,51 @@ logger = logging.getLogger(__name__)
 _HTTP_FORBIDDEN = 403
 _HTTP_NOT_FOUND = 404
 
+# ---------------------------------------------------------------------------
+# DH label taxonomy — canonical label set with colours
+# ---------------------------------------------------------------------------
+#
+# Used by ensure_dh_labels() to auto-create missing labels on first use.
+# Label creation uses REST (ADR-004 — no GraphQL createLabel mutation).
+# Colours are hex without '#' prefix (PyGithub convention).
+
+DH_LABELS: dict[str, str] = {
+    "priority:p0": "e11d48",
+    "priority:p1": "f97316",
+    "priority:p2": "eab308",
+    "priority:ideas": "8b5cf6",
+    "type:bug": "dc2626",
+    "type:feature": "16a34a",
+    "type:refactor": "2563eb",
+    "type:chore": "6b7280",
+    "type:docs": "0891b2",
+    "status:needs-grooming": "f59e0b",
+    "status:in-progress": "3b82f6",
+    "status:verified": "10b981",
+}
+
+
+def ensure_dh_labels(repo: Repository, output: Output | None = None) -> None:
+    """Create any missing dh labels on the repository.
+
+    Iterates ``DH_LABELS`` and creates each label that does not yet exist.
+    Idempotent — existing labels are left unchanged.  Label creation uses
+    REST per ADR-004 (no GraphQL createLabel mutation).
+
+    Args:
+        repo: PyGithub Repository object.
+        output: Optional Output collector for status/warning messages.
+    """
+    out = output or Output()
+    for name, color in DH_LABELS.items():
+        try:
+            repo.get_label(name)
+        except GithubException as exc:
+            if exc.status != _HTTP_NOT_FOUND:
+                raise
+            repo.create_label(name=name, color=color)
+            out.info(f"  Created label '{name}'")
+
 
 # ---------------------------------------------------------------------------
 # TypedDict response models — private to gh_client.py (ADR-002)
@@ -1261,6 +1306,7 @@ def create_issue_for_item(
         return None
     labels = ["status:needs-grooming", f"priority:{(item.priority or 'P1').lower()}", type_gh]
     owner, repo_name = repo.full_name.split("/", 1)
+    ensure_dh_labels(repo, out)
     label_id_map = _resolve_label_ids_graphql(repo, owner, repo_name, labels)
     for name in labels:
         if name not in label_id_map:
