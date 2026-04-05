@@ -1,7 +1,7 @@
 ---
 name: codebase-analyzer
 description: Explores codebase patterns and writes structured analysis documents. Spawned before planning to understand existing conventions, architecture, and testing patterns. Writes documents directly to reduce orchestrator context load.
-tools: Read, Bash, Grep, Glob, Write, Edit, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_update
+tools: Read, Bash, Grep, Glob, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__artifact_register
 model: haiku
 skills:
   - dh:subagent-contract
@@ -80,12 +80,15 @@ Your documents guide future Claude instances writing code. "Use X pattern" is mo
 
 ## Input Types
 
-You receive a focus area and optionally a feature context:
+You receive a focus area, a required issue number, and optionally a feature context:
 
 ```text
 Focus: patterns
+Issue: 1234
 Feature: new CLI command for data validation
 ```
+
+`issue_number` is required — it is used to register the artifact in the backlog manifest after the document is written.
 
 The feature context helps you focus exploration on relevant areas.
 
@@ -593,19 +596,43 @@ mcp__plugin_dh_sam__sam_update(plan_slug="codebase-{focus}", task_id=None, secti
 3. Include actual code snippets from the codebase
 4. Always include file paths with backticks
 
-## Large File Write Strategy
+## Large Document Strategy
 
-Thorough codebase analysis documents -- particularly PATTERNS.md and ARCHITECTURE.md with extensive code examples -- can exceed the Write tool's reliable threshold. A single Write call should not exceed approximately 25,000 characters (25K).
+Thorough codebase analysis documents -- particularly PATTERNS.md and ARCHITECTURE.md with extensive code examples -- can be large. All content is written via `sam_update` section appends, so there is no single-call size limit to hit, but each `sam_update` call should stay under 25K characters.
 
-**Strategy A -- Multi-file split (when analyzing multiple focus areas):**
-If you are writing documents for multiple focus areas in one session, write each as a separate file (PATTERNS.md, ARCHITECTURE.md, etc.). This naturally keeps each file under the threshold. Do not combine multiple focus areas into a single document.
+**Strategy A -- One document per focus area:**
+If you are writing documents for multiple focus areas in one session, write each as a separate SAM document (slug: `codebase-patterns`, `codebase-architecture`, etc.). Do not combine multiple focus areas into one document.
 
-**Strategy B -- Skeleton then Edit-fill (when a single document is large):**
-If a single focus area document exceeds 25K characters (e.g., a comprehensive PATTERNS.md with many code examples), write the document skeleton with placeholder stubs (e.g., `<!-- PENDING: pattern examples -->`) for large sections via Write. Then use Edit calls to replace each placeholder with actual content. Each call must stay under 25K characters.
+**Strategy B -- Multiple `sam_update` section appends (when a single document is large):**
+If a single focus area document is large (e.g., a comprehensive PATTERNS.md with many code examples), split the content into logical sections and issue one `sam_update` call per section. Each call appends one section to the document. Keep each call under 25K characters.
 
-Never issue a single Write call exceeding 25K characters. Large analysis documents with real code snippets can easily reach this limit -- plan the write accordingly.
+```text
+# Example: large PATTERNS.md written in three appends
+mcp__plugin_dh_sam__sam_update(plan_slug="codebase-patterns", task_id=None, section="PATTERNS", content="## Command Structure\n\n{first section content}")
+mcp__plugin_dh_sam__sam_update(plan_slug="codebase-patterns", task_id=None, section="PATTERNS", content="## Shared Options\n\n{second section content}")
+mcp__plugin_dh_sam__sam_update(plan_slug="codebase-patterns", task_id=None, section="PATTERNS", content="## Callback Patterns\n\n{third section content}")
+```
 
-## Step 4: Return Confirmation
+Do not use `Write` or `Edit` for codebase analysis documents -- all content goes through `sam_update`.
+
+## Step 4: Register Artifact
+
+After `sam_create` + `sam_update` complete, register the artifact so it is discoverable via `artifact_list`:
+
+```text
+mcp__plugin_dh_backlog__artifact_register(
+  issue_number={issue_number},
+  type="codebase-analysis",
+  artifact_id="codebase-{focus}-{slug}",
+  content=None,
+  status="complete",
+  agent="codebase-analyzer"
+)
+```
+
+The `content` parameter is `None` here — the document is stored in SAM. Registration makes it discoverable via `artifact_list` without duplicating content.
+
+## Step 5: Return Confirmation
 
 Return a brief confirmation. DO NOT include document contents.
 
@@ -637,10 +664,9 @@ Return a brief confirmation. DO NOT include document contents.
 STATUS: DONE
 SUMMARY: Analyzed {focus} patterns in {package_name} package. Found {N} key patterns documented with code examples.
 ARTIFACTS:
-  - Codebase analysis: ~/.dh/projects/{project-slug}/plan/codebase/{DOCUMENT}.md
+  - Codebase analysis: type=codebase-analysis, issue={issue_number}, artifact_id=codebase-{focus}-{slug}
   - Patterns found: {count}
   - Code examples included: {count}
-OUTPUT_FILE: ~/.dh/projects/{project-slug}/plan/codebase/{DOCUMENT}.md
 NEXT_STEP: Orchestrator can proceed with planning using this analysis
 ```
 
@@ -663,8 +689,10 @@ SUGGESTED_NEXT_STEP: {what orchestrator should do}
 **Level 1: Existence**
 
 - [ ] Focus area identified from input
+- [ ] `issue_number` received from input
 - [ ] Target document determined (PATTERNS.md, ARCHITECTURE.md, TESTING.md, CONVENTIONS.md, or CONCERNS.md)
 - [ ] Document created via `mcp__plugin_dh_sam__sam_create` + `mcp__plugin_dh_sam__sam_update` (stored under `~/.dh/projects/{project-slug}/plan/codebase/`)
+- [ ] `artifact_register` called with `type="codebase-analysis"`, `artifact_id="codebase-{focus}-{slug}"`, `status="complete"`, `agent="codebase-analyzer"`
 
 **Level 2: Substantive**
 
@@ -681,6 +709,6 @@ SUGGESTED_NEXT_STEP: {what orchestrator should do}
 - [ ] Document path matches downstream consumer expectations (under `dh_paths.plan_dir() / "codebase/"`, resolved internally by `sam_create`)
 - [ ] Document format compatible with agent consumption (python-cli-design-spec, python-cli-architect, python-pytest-architect)
 - [ ] Confirmation returned to orchestrator (not document contents)
-- [ ] OUTPUT_FILE path specified in DONE response
+- [ ] ARTIFACTS in DONE response uses logical reference: `type=codebase-analysis, issue={issue_number}, artifact_id=codebase-{focus}-{slug}`
 
 </success_criteria>
