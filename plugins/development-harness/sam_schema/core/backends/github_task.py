@@ -33,11 +33,7 @@ if TYPE_CHECKING:
 
 __all__ = ["DocumentBackend", "GitHubTaskProvider"]
 
-# ---------------------------------------------------------------------------
-# DocumentBackend stub
-# TODO(#984): Remove stub and import from canonical location once #984 delivers
-#             the concrete DocumentBackend implementation.
-# ---------------------------------------------------------------------------
+# TODO(#984): Remove DocumentBackend stub and import from canonical location once #984 delivers.
 
 
 @runtime_checkable
@@ -55,10 +51,6 @@ class DocumentBackend(Protocol):
         ...
 
 
-# ---------------------------------------------------------------------------
-# SAM label / status constants
-# ---------------------------------------------------------------------------
-
 _SAM_PLAN_LABEL = "sam:plan"
 _SAM_TASK_LABEL = "sam:task"
 
@@ -71,12 +63,7 @@ _STATUS_TO_LABEL: dict[str, str] = {
     "skipped": "sam:skipped",
 }
 _LABEL_TO_STATUS: dict[str, str] = {v: k for k, v in _STATUS_TO_LABEL.items()}
-_SAM_STATUS_LABELS: frozenset[str] = frozenset(_STATUS_TO_LABEL.values())
 _TERMINAL_STATUSES: frozenset[str] = frozenset({"complete", "deferred", "skipped"})
-
-# ---------------------------------------------------------------------------
-# Body-format constants
-# ---------------------------------------------------------------------------
 
 _METADATA_BEGIN = "<!-- sam-task-metadata:begin -->"
 _METADATA_END = "<!-- sam-task-metadata:end -->"
@@ -84,11 +71,6 @@ _META_ROW_RE = re.compile(r"^\|\s*(?P<key>[^|]+?)\s*\|\s*(?P<value>[^|]*?)\s*\|$
 _TASK_TITLE_RE = re.compile(r"^\[(?P<tid>T\d+)\] (?P<title>.+)$")
 _PLAN_SLUG_RE = re.compile(r"<!-- sam-plan-slug: (?P<slug>[^>]+?) -->")
 _GOAL_RE = re.compile(r"## Goal\n\n(?P<goal>.+?)(?=\n\n##|\Z)", re.DOTALL)
-
-
-# ---------------------------------------------------------------------------
-# Pure helpers — no I/O
-# ---------------------------------------------------------------------------
 
 
 def _now_iso() -> str:
@@ -171,10 +153,8 @@ def _node_to_task_data(node: IssueNode) -> TaskData:
     meta = _parse_metadata(node["body"])
     task_id = meta.get("task_id") or (m.group("tid") if m else str(node["number"]))
     title = m.group("title") if m else node["title"]
-    deps_raw = meta.get("dependencies", "")
-    deps = [d.strip() for d in deps_raw.split(",") if d.strip()]
-    skills_raw = meta.get("skills", "")
-    skills = [s.strip() for s in skills_raw.split(",") if s.strip()]
+    deps = [d.strip() for d in meta.get("dependencies", "").split(",") if d.strip()]
+    skills = [s.strip() for s in meta.get("skills", "").split(",") if s.strip()]
     return TaskData(
         id=task_id,
         title=title,
@@ -235,11 +215,6 @@ def _rebuild_metadata_body(node: IssueNode, meta: dict[str, str]) -> str:
     return new_section + "\n\n" + body
 
 
-# ---------------------------------------------------------------------------
-# GitHubTaskProvider
-# ---------------------------------------------------------------------------
-
-
 class GitHubTaskProvider:
     """SAM TaskBackend that stores plans and tasks as GitHub Issues.
 
@@ -257,10 +232,6 @@ class GitHubTaskProvider:
         self._issue_backend = issue_backend
         self._doc_backend = doc_backend
 
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
     def _get_repo(self) -> tuple[Repository, str, str]:
         """Return (repo, owner, repo_name) from the IssueBackend."""
         repo = self._issue_backend.get_github()
@@ -276,8 +247,7 @@ class GitHubTaskProvider:
             raise PlanNotFoundError(plan_id) from None
         repo, owner, name = self._get_repo()
         node = self._issue_backend._fetch_issue_graphql(repo, owner, name, issue_number)  # type: ignore[arg-type]
-        label_names = [lbl["name"] for lbl in node["labels"]]  # type: ignore[index]
-        if _SAM_PLAN_LABEL not in label_names:
+        if _SAM_PLAN_LABEL not in [lbl["name"] for lbl in node["labels"]]:  # type: ignore[index]
             raise PlanNotFoundError(plan_id)
         return node
 
@@ -304,12 +274,7 @@ class GitHubTaskProvider:
         slug_m = _PLAN_SLUG_RE.search(body)
         slug = slug_m.group("slug").strip() if slug_m else node["title"].removeprefix("SAM Plan: ")
         goal_m = _GOAL_RE.search(body)
-        goal = goal_m.group("goal").strip() if goal_m else ""
-        return slug, goal
-
-    # ------------------------------------------------------------------
-    # Plan lifecycle
-    # ------------------------------------------------------------------
+        return slug, goal_m.group("goal").strip() if goal_m else ""
 
     def create_plan(
         self,
@@ -327,9 +292,10 @@ class GitHubTaskProvider:
                 raise TaskValidationError(i, "Task must have 'id' and 'title' fields")
 
         repo, _, _ = self._get_repo()
-        plan_body = _render_plan_body(slug, goal, context, acceptance_criteria)
         parent_issue = repo.create_issue(  # type: ignore[attr-defined]
-            title=f"SAM Plan: {slug}", body=plan_body, labels=[_SAM_PLAN_LABEL]
+            title=f"SAM Plan: {slug}",
+            body=_render_plan_body(slug, goal, context, acceptance_criteria),
+            labels=[_SAM_PLAN_LABEL],
         )
         plan_id = str(parent_issue.number)  # type: ignore[attr-defined]
 
@@ -416,9 +382,8 @@ class GitHubTaskProvider:
                 )
             )
         summaries.sort(key=lambda s: int(s["plan_id"]))
-        start = offset
-        end = start + limit if limit is not None else None
-        return summaries[start:end]
+        end = offset + limit if limit is not None else None
+        return summaries[offset:end]
 
     def update_plan_fields(
         self, plan_id: str, *, context: str | None = None, set_fields: dict[str, str | int | list[str]] | None = None
@@ -434,16 +399,13 @@ class GitHubTaskProvider:
                 body = (body[:ctx_start] + ctx_block) + ("\n\n" + body[next_sec + 1 :] if next_sec != -1 else "")
             else:
                 slug_pos = body.find("<!-- sam-plan-slug:")
-                if slug_pos != -1:
-                    body = body[:slug_pos] + ctx_block + "\n\n" + body[slug_pos:]
-                else:
-                    body = body + "\n\n" + ctx_block
+                body = (
+                    (body[:slug_pos] + ctx_block + "\n\n" + body[slug_pos:])
+                    if slug_pos != -1
+                    else (body + "\n\n" + ctx_block)
+                )
         repo, _, _ = self._get_repo()
         self._issue_backend._update_issue_graphql(repo, node["id"], body=body)  # type: ignore[arg-type]
-
-    # ------------------------------------------------------------------
-    # Task access
-    # ------------------------------------------------------------------
 
     def read_task(self, plan_id: str, task_id: str) -> TaskData:
         """Fetch a single task sub-issue."""
@@ -523,10 +485,6 @@ class GitHubTaskProvider:
             "completion_pct": pct,
             "has_cycles": _has_cycles(tasks),
         }
-
-    # ------------------------------------------------------------------
-    # Documents
-    # ------------------------------------------------------------------
 
     def store_document(
         self, plan_id: str, task_id: str | None, stage: str, doc_type: str, title: str, content: str, fmt: str = "md"
