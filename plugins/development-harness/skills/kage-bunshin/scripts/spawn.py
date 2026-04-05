@@ -18,13 +18,14 @@ Usage:
 
 Session Isolation:
     --session-id (or KB_SESSION_ID env var) scopes the registry to a single
-    orchestrator session.  Each session gets its own registry file:
+    orchestrator session.  Each named session gets its own file:
 
-        ~/.dh/projects/{slug}/kage-bunshin/registry-{session_id}.json
+        ~/.dh/projects/{slug}/kage-bunshin/sessions/{session_id}/{name}.json
+
+    Parallel spawns write to disjoint files — no shared-file race condition.
 
     Omitting --session-id and KB_SESSION_ID defaults to 'default' for all
-    subcommands except 'list', which then shows all registries across all
-    session IDs.
+    subcommands except 'list', which then shows all session IDs.
 
 Session State Directory:
     ~/.dh/projects/{slug}/kage-bunshin/
@@ -66,6 +67,7 @@ Exit Codes:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
@@ -75,7 +77,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -166,65 +168,125 @@ def _session_state_dir() -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Registry helpers
+# Registry helpers — directory-per-entry design
 # ---------------------------------------------------------------------------
+#
+# Design rationale: the old registry-{session_id}.json approach required every
+# writer (spawn) to read the file, append its entry, and write the whole file
+# back.  When multiple spawns run in parallel they all read the same (possibly
+# empty) file, each builds a single-entry dict, and the last os.replace() wins
+# — earlier entries are silently lost.
+#
+# The fix eliminates the shared file entirely:
+#
+#   sessions/{session_id}/{name}.json   — one file per named session
+#
+# Write path (spawn):  write only {name}.json.  No read required, no shared
+#   state — parallel spawns touch completely disjoint files.
+# Read path (list/status):  glob all {name}.json files and aggregate — pure
+#   reads, no write contention.
+# Cleanup (stop/kill):  delete {name}.json — no read-modify-write cycle.
+#
+# Old registry-{session_id}.json files left from prior runs are ignored.
 
 
-def _registry_path(state_dir: Path, session_id: str) -> Path:
-    """Return the path to the session-scoped registry file within the state directory.
-
-    Each orchestrator session gets its own isolated registry file named
-    ``registry-{session_id}.json``, preventing concurrent read-modify-write
-    collisions when multiple orchestrators work in the same repository.
+def _session_entries_dir(state_dir: Path, session_id: str) -> Path:
+    """Return the directory that holds per-entry JSON files for one session.
 
     Args:
-        state_dir: Session state directory.
-        session_id: Orchestrator session identifier (default ``"default"``).
+        state_dir: kage-bunshin state directory.
+        session_id: Orchestrator session identifier.
 
     Returns:
-        Path to ``registry-{session_id}.json``.
+        Path to ``sessions/{session_id}/`` (not created here).
     """
-    return state_dir / f"registry-{session_id}.json"
+    return state_dir / "sessions" / session_id
+
+
+def _entry_path(state_dir: Path, session_id: str, name: str) -> Path:
+    """Return the path to the per-entry JSON file for a named session.
+
+    Args:
+        state_dir: kage-bunshin state directory.
+        session_id: Orchestrator session identifier.
+        name: Session name.
+
+    Returns:
+        Path to ``sessions/{session_id}/{name}.json``.
+    """
+    return _session_entries_dir(state_dir, session_id) / f"{name}.json"
 
 
 def _load_registry(state_dir: Path, session_id: str) -> dict[str, Any]:
-    """Load the session registry from disk, returning an empty dict if absent.
+    """Aggregate all per-entry JSON files for a session into a registry dict.
+
+    Globs ``sessions/{session_id}/*.json``, parses each file, and returns
+    a dict mapping session name to session metadata.  Missing or corrupt files
+    are silently skipped.  If the directory does not exist, returns an empty
+    dict (no error).
 
     Args:
-        state_dir: Session state directory.
+        state_dir: kage-bunshin state directory.
         session_id: Orchestrator session identifier.
 
     Returns:
         Dictionary mapping session name to session metadata.
     """
-    rp = _registry_path(state_dir, session_id)
-    if not rp.exists():
+    entries_dir = _session_entries_dir(state_dir, session_id)
+    if not entries_dir.exists():
         return {}
-    try:
-        return json.loads(rp.read_text())
-    except (json.JSONDecodeError, OSError):
-        return {}
+    registry: dict[str, Any] = {}
+    for path in entries_dir.glob("*.json"):
+        try:
+            entry = json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        name = entry.get("name", path.stem)
+        registry[name] = entry
+    return registry
 
 
-def _save_registry(state_dir: Path, session_id: str, registry: dict[str, Any]) -> None:
-    """Persist the session registry to disk atomically.
+def _write_entry(state_dir: Path, session_id: str, name: str, entry: dict[str, Any]) -> None:
+    """Write a single session entry atomically to its own JSON file.
+
+    Writes to ``{name}.json.tmp`` then renames to ``{name}.json`` so partial
+    writes are never visible to concurrent readers.  Creates the parent
+    directory if absent.
 
     Args:
-        state_dir: Session state directory.
+        state_dir: kage-bunshin state directory.
         session_id: Orchestrator session identifier.
-        registry: Dictionary mapping session name to session metadata.
+        name: Session name (used as the filename stem).
+        entry: Session metadata dictionary to persist.
     """
-    rp = _registry_path(state_dir, session_id)
-    tmp = rp.with_suffix(".tmp")
-    tmp.write_text(json.dumps(registry, indent=2))
-    tmp.replace(rp)
+    entries_dir = _session_entries_dir(state_dir, session_id)
+    entries_dir.mkdir(parents=True, exist_ok=True)
+    target = entries_dir / f"{name}.json"
+    tmp = entries_dir / f"{name}.json.tmp"
+    tmp.write_text(json.dumps(entry, indent=2))
+    Path(tmp).replace(target)
+
+
+def _delete_entry(state_dir: Path, session_id: str, name: str) -> None:
+    """Remove the per-entry JSON file for a named session.
+
+    Silently ignores the case where the file does not exist.
+
+    Args:
+        state_dir: kage-bunshin state directory.
+        session_id: Orchestrator session identifier.
+        name: Session name.
+    """
+    path = _entry_path(state_dir, session_id, name)
+    with contextlib.suppress(FileNotFoundError):
+        path.unlink()
 
 
 def _get_session(state_dir: Path, session_id: str, name: str) -> dict[str, Any]:
-    """Retrieve a session entry from the registry, failing loudly if absent.
+    """Retrieve a session entry from its per-entry JSON file, failing loudly if absent.
 
     Args:
-        state_dir: Session state directory.
+        state_dir: kage-bunshin state directory.
         session_id: Orchestrator session identifier.
         name: Session name.
 
@@ -232,12 +294,15 @@ def _get_session(state_dir: Path, session_id: str, name: str) -> dict[str, Any]:
         Session metadata dictionary.
 
     Raises:
-        SystemExit: If the named session does not exist in the registry.
+        SystemExit: If the named session file does not exist.
     """
-    registry = _load_registry(state_dir, session_id)
-    if name not in registry:
+    path = _entry_path(state_dir, session_id, name)
+    if not path.exists():
         _die(f"session '{name}' not found. Run 'list' to see active sessions.")
-    return registry[name]
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        _die(f"session '{name}' registry file is corrupt: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -336,7 +401,7 @@ def _wait_for_session_exit(tmux_session: str, timeout: float) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _die(message: str, code: int = 1) -> None:
+def _die(message: str, code: int = 1) -> NoReturn:
     """Print an error message to stderr and exit.
 
     Args:
@@ -413,15 +478,20 @@ def _count_active_sessions(state_dir: Path) -> int:
     live_sessions: set[str] = set(result.stdout.splitlines())
 
     count = 0
-    for path in state_dir.glob("registry-*.json"):
+    sessions_root = state_dir / "sessions"
+    if not sessions_root.exists():
+        return 0
+    for entry_path in sessions_root.glob("*/*.json"):
+        # Skip .tmp files that may be mid-write.
+        if entry_path.suffix != ".json" or entry_path.stem.endswith(".tmp"):
+            continue
         try:
-            registry: dict[str, Any] = json.loads(path.read_text())
+            entry: dict[str, Any] = json.loads(entry_path.read_text())
         except (json.JSONDecodeError, OSError):
             continue
-        for entry in registry.values():
-            tmux_session = entry.get("tmux_session", "")
-            if tmux_session and tmux_session in live_sessions:
-                count += 1
+        tmux_session = entry.get("tmux_session", "")
+        if tmux_session and tmux_session in live_sessions:
+            count += 1
     return count
 
 
@@ -560,8 +630,8 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     if name in registry:
         if _tmux_alive(claude_tmux_session):
             _die(f"session '{name}' already exists and is alive. Kill it first.")
-        # Dead entry — remove stale registry record.
-        registry.pop(name)
+        # Dead entry — remove stale per-entry file before re-spawning.
+        _delete_entry(state_dir, args.session_id, name)
 
     # Build claude argv for interactive REPL mode (no -p, no --output-format).
     # --worktree creates an isolated git worktree for the session.
@@ -602,8 +672,7 @@ def cmd_spawn(args: argparse.Namespace) -> None:
         "tmux_session": claude_tmux_session,
         "repo_dir": repo_dir,
     }
-    registry[name] = entry
-    _save_registry(state_dir, args.session_id, registry)
+    _write_entry(state_dir, args.session_id, name, entry)
 
     record: dict[str, Any] = {
         "name": name,
@@ -719,26 +788,28 @@ def cmd_status(args: argparse.Namespace) -> None:
 
 
 def _list_session_id_registries(state_dir: Path) -> list[tuple[str, dict[str, Any]]]:
-    """Discover all registry files in state_dir and return (session_id, registry) pairs.
+    """Discover all session-id directories under sessions/ and return (session_id, registry) pairs.
 
-    Globs for ``registry-*.json`` and parses each one.  Corrupt or unreadable
-    files are silently skipped.
+    Iterates ``sessions/*/`` subdirectories — each subdirectory name is a
+    session_id.  Calls ``_load_registry`` for each to aggregate the per-entry
+    JSON files within it.  Subdirectories that contain no readable entries
+    are included as empty registries.
 
     Args:
-        state_dir: Session state directory.
+        state_dir: kage-bunshin state directory.
 
     Returns:
         List of ``(session_id, registry_dict)`` tuples, sorted by session_id.
     """
+    sessions_root = state_dir / "sessions"
+    if not sessions_root.exists():
+        return []
     results: list[tuple[str, dict[str, Any]]] = []
-    for path in sorted(state_dir.glob("registry-*.json")):
-        # Derive session_id from the filename: registry-{session_id}.json
-        stem = path.stem  # e.g. "registry-default"
-        session_id = stem[len("registry-") :]
-        try:
-            registry = json.loads(path.read_text())
-        except (json.JSONDecodeError, OSError):
-            registry = {}
+    for subdir in sorted(sessions_root.iterdir()):
+        if not subdir.is_dir():
+            continue
+        session_id = subdir.name
+        registry = _load_registry(state_dir, session_id)
         results.append((session_id, registry))
     return results
 
@@ -841,9 +912,9 @@ def cmd_list(args: argparse.Namespace) -> None:
     """List registered sessions with live/dead status.
 
     When ``--session-id`` is provided (or ``KB_SESSION_ID`` is set), lists only
-    sessions in that registry.  When neither is provided, globs all
-    ``registry-*.json`` files and lists every session across all registries,
-    showing which ``SESSION_ID`` each belongs to.
+    sessions in that registry.  When neither is provided, iterates all
+    ``sessions/*/`` subdirectories and lists every session across all session
+    IDs, showing which ``SESSION_ID`` each belongs to.
 
     Args:
         args: Parsed arguments.  ``args.session_id`` is ``None`` when the user
@@ -903,10 +974,8 @@ def cmd_stop(args: argparse.Namespace) -> None:
     forced = False
 
     if not tmux_session or not _tmux_alive(tmux_session):
-        # Session already dead — just clean up the registry.
-        registry = _load_registry(state_dir, args.session_id)
-        registry.pop(args.name, None)
-        _save_registry(state_dir, args.session_id, registry)
+        # Session already dead — just clean up the registry entry.
+        _delete_entry(state_dir, args.session_id, args.name)
         _tmux_kill(launcher_session)
         print(json.dumps({"status": "stopped", "name": args.name, "forced": False, "already_dead": True}))
         return
@@ -923,9 +992,7 @@ def cmd_stop(args: argparse.Namespace) -> None:
     # Clean up launcher session whether or not we force-killed.
     _tmux_kill(launcher_session)
 
-    registry = _load_registry(state_dir, args.session_id)
-    registry.pop(args.name, None)
-    _save_registry(state_dir, args.session_id, registry)
+    _delete_entry(state_dir, args.session_id, args.name)
 
     print(json.dumps({"status": "stopped", "name": args.name, "forced": forced}))
 
@@ -948,9 +1015,7 @@ def cmd_kill(args: argparse.Namespace) -> None:
     if tmux_session:
         _tmux_kill(tmux_session)
 
-    registry = _load_registry(state_dir, args.session_id)
-    registry.pop(args.name, None)
-    _save_registry(state_dir, args.session_id, registry)
+    _delete_entry(state_dir, args.session_id, args.name)
 
     print(json.dumps({"status": "killed", "name": args.name}))
 
