@@ -315,9 +315,23 @@ After spawning one or more sessions, the orchestrator SHOULD spawn a background 
 
 The monitor is `plugins/development-harness/skills/kage-bunshin/scripts/monitor.py`. It polls all sessions registered under the given `--session-id`, exits as soon as it finds an intervention or all sessions finish, and emits a single JSON object to stdout.
 
-### Spawning the monitor agent
+### Spawning the monitor — choose based on what you need
 
-Spawn it with `model: "haiku"` and `run_in_background: true` via the Agent tool:
+**Option A — Background bash (passive wait, no intervention needed)**
+
+Use when you only need to be notified when sessions complete or time out. Cheaper: zero LLM tokens.
+
+```bash
+uv run plugins/development-harness/skills/kage-bunshin/scripts/monitor.py \
+  --session-id <SID> --interval 15 --timeout 1800 \
+  > /tmp/monitor-<SID>.json 2>&1
+```
+
+Pass `run_in_background: true` to the Bash tool. When notified, read `/tmp/monitor-<SID>.json` for the JSON result. Use this when sessions are running autonomously and you don't expect permission prompts.
+
+**Option B — Background agent (intervention-capable)**
+
+Use when sessions may hit permission prompts, Y/n gates, or `AskUserQuestion` events that require a response back into the tmux pane. The agent can relay the content and the orchestrator can act.
 
 ```text
 Task — model: haiku, run_in_background: true
@@ -333,14 +347,25 @@ Prompt:
   If status == "error": return the error message.
 ```
 
+**Decision rule:**
+
+| Sessions running with... | Use |
+|---|---|
+| `--dangerously-skip-permissions` (bypass mode) | Option A — bash |
+| Default permissions (prompts expected) | Option B — agent |
+| Unknown / mixed | Option B — agent |
+
 Replace `<SID>` with the same UUID passed to `spawn.py`.
 
 ### Monitoring lifecycle
 
 ```mermaid
 flowchart TD
-    Spawn(["Orchestrator spawns sessions"]) --> StartMon["Spawn monitor agent\nmodel=haiku, run_in_background=true"]
-    StartMon --> Poll["monitor.py polls tmux panes\nevery --interval seconds"]
+    Spawn(["Orchestrator spawns sessions"]) --> Q0{Permissions bypassed?}
+    Q0 -->|"Yes — skip-permissions"| BashMon["Option A: Bash run_in_background\nmonitor.py > /tmp/out.json"]
+    Q0 -->|"No — prompts expected"| AgentMon["Option B: Agent haiku run_in_background\nmonitor.py → relay result"]
+    BashMon --> Poll["monitor.py polls tmux panes\nevery --interval seconds"]
+    AgentMon --> Poll
     Poll --> Q{Detected?}
     Q -->|"intervention_needed"| Intervene["Orchestrator receives\nsession, type, content\nReads pane, responds via send"]
     Q -->|"all_complete"| Done(["All sessions finished — no action needed"])
