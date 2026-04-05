@@ -37,7 +37,7 @@ uv run pytest                              # Run full test suite (parallel via x
 uv run pytest -m "not slow"                # Skip slow tests
 uv run pytest --cov=scripts                # With coverage
 uv run pytest plugins/development-harness/tests/  # Specific test directory
-uv run pytest tests/test_migrate_tasks_to_github.py  # Specific test file
+uv run pytest plugins/development-harness/tests/test_migrate_tasks_to_github.py  # Specific test file
 ```
 
 ### Plugin Testing

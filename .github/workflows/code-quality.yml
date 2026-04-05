@@ -298,7 +298,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-        run: uv run scripts/close_test_issues.py
+        run: uv run plugins/development-harness/scripts/close_test_issues.py
 
   # =============================================================================
   # Summary job that requires all checks to pass

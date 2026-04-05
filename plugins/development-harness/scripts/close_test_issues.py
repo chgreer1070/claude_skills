@@ -5,8 +5,8 @@ Fetches all open issues via backlog_core shared GraphQL client, filters for titl
 containing '[MCP-TEST-', and closes each one with an explanatory comment.
 
 Usage:
-    uv run scripts/close_test_issues.py --repo <owner/repo>
-    uv run scripts/close_test_issues.py  # uses REPO env var
+    uv run plugins/development-harness/scripts/close_test_issues.py --repo <owner/repo>
+    uv run plugins/development-harness/scripts/close_test_issues.py  # uses REPO env var
 
 Environment:
     REPO          owner/repo string (required if --repo not supplied)
