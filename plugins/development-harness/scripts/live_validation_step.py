@@ -98,15 +98,24 @@ def check_live_validation(project_root: Path) -> LiveValidationOutcome:
         return LiveValidationOutcome(result=LiveValidationResult.DEFERRED_SKILL, command=live_val)
 
     # Run the command verbatim from project root
-    proc = subprocess.run(
-        live_val,
-        shell=True,
-        cwd=str(project_root),
-        capture_output=True,
-        text=True,
-        timeout=_COMMAND_TIMEOUT,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            live_val,
+            shell=True,
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=_COMMAND_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return LiveValidationOutcome(
+            result=LiveValidationResult.GAPS_FOUND,
+            command=live_val,
+            gap_message=(
+                f"LIVE_VALIDATION: TIMEOUT — command did not complete within {_COMMAND_TIMEOUT}s.\nCommand: {live_val}"
+            ),
+        )
 
     result = LiveValidationResult.PASS if proc.returncode == 0 else LiveValidationResult.GAPS_FOUND
     return LiveValidationOutcome(

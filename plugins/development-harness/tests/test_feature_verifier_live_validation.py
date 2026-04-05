@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from textwrap import dedent
+from unittest.mock import patch
 
 from live_validation_step import (
     GAP_MESSAGE_NO_LIVE_VALIDATION,
@@ -195,6 +196,28 @@ def test_python3_manifest_has_live_validation() -> None:
     # Assert
     assert manifest.quality_gates is not None
     assert manifest.quality_gates.live_validation == "claude-skill"
+
+
+def test_timeout_returns_structured_outcome(tmp_path: Path) -> None:
+    """When the live_validation command times out, result is GAPS_FOUND with timeout info."""
+    # Arrange
+    _write_manifest(tmp_path, "quality_gates:\n  live_validation: 'sleep 9999'\n")
+
+    # Act — patch subprocess.run to raise TimeoutExpired immediately
+    import subprocess
+
+    with patch(
+        "live_validation_step.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="sleep 9999", timeout=120)
+    ):
+        outcome = check_live_validation(tmp_path)
+
+    # Assert — structured outcome, not a raised exception
+    assert outcome.result == LiveValidationResult.GAPS_FOUND
+    assert outcome.gap_message is not None
+    assert "TIMEOUT" in outcome.gap_message
+    assert "120" in outcome.gap_message
+    assert "sleep 9999" in outcome.gap_message
+    assert outcome.exit_code is None
 
 
 def test_python3_cli_manifest_has_live_validation() -> None:

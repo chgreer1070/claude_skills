@@ -317,6 +317,11 @@ The live invocation fails when:
 - Exception traceback in stderr
 - Output is empty or clearly wrong for the input
 
+The live invocation times out when:
+
+- `check_live_validation()` catches `subprocess.TimeoutExpired` (command did not complete within 120 seconds)
+- Returns `GAPS_FOUND` with `gap_message` set to `"LIVE_VALIDATION: TIMEOUT — command did not complete within 120s.\nCommand: {cmd}"` and `exit_code=None`
+
 ### Gap: No `live_validation` Declared
 
 When `live_validation` is absent from the manifest (or the manifest does not exist), record this block verbatim in the verification report — this is a gap, not a pass:
@@ -334,10 +339,11 @@ Record live validation output verbatim in the verification report:
 LIVE_VALIDATION:
   Surface: [manifest-declared | agent-browser | claude-skill | None]
   Command: [exact command run, or "none"]
-  Exit code: [0 or non-zero, or "n/a"]
+  Exit code: [0 or non-zero or null (timeout), or "n/a"]
   Stdout: [captured output]
   Stderr: [captured output or "none"]
-  Result: [PASS | FAIL | DEFERRED_BROWSER | DEFERRED_SKILL | SKIPPED]
+  gap_message: [populated on TIMEOUT or FAIL, empty otherwise]
+  Result: [PASS | FAIL | TIMEOUT | DEFERRED_BROWSER | DEFERRED_SKILL | SKIPPED]
 ```
 
 ## Step 9: Determine Overall Status

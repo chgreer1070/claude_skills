@@ -72,7 +72,7 @@ Declares the commands the harness runs at quality checkpoints.
 - The `standards` gate is optional and references a skill for language-specific standards enforcement
 - Commands must be runnable from the project root directory
 - **Non-typed languages**: Use `typecheck: (none)` to skip the typecheck gate (e.g., Bash, Perl without strict typing)
-- **`live_validation`**: Optional. Declares the command that demonstrably exercises the changed functionality through the real delivery path (not tests). The command must invoke the actual runtime — not test imports or mocked surfaces. When absent, the feature-verifier must flag it as a gap in the verification report.
+- **`live_validation`**: Optional. Declares the command that demonstrably exercises the changed functionality through the real delivery path (not tests). The command must invoke the actual runtime — not test imports or mocked surfaces. When absent, the feature-verifier must flag it as a gap in the verification report. Commands have a 120-second timeout; if the command does not complete within that window, `check_live_validation()` returns `GAPS_FOUND` with a timeout `gap_message` rather than `PASS` or `FAIL`.
 
 **`live_validation` examples by language and delivery surface:**
 
