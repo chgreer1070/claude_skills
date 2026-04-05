@@ -71,14 +71,12 @@ def live_items(tmp_path_factory, monkeypatch_class):
     bd.mkdir(parents=True, exist_ok=True)
 
     existing = _bc_models._config
+    # Prefer GITHUB_REPO env var (set in CI) over the already-resolved default_repo.
+    # The fixture replaces _config directly, bypassing _discover_via_env(), so without
+    # this the env var is never consulted and default_repo stays "" in CI — causing 404s.
+    resolved_repo = os.environ.get("GITHUB_REPO", existing.default_repo if existing is not None else "")
     monkeypatch_class.setattr(
-        _bc_models,
-        "_config",
-        BacklogConfig(
-            repo_root=fake_project_root,
-            backlog_dir=bd,
-            default_repo=existing.default_repo if existing is not None else "",
-        ),
+        _bc_models, "_config", BacklogConfig(repo_root=fake_project_root, backlog_dir=bd, default_repo=resolved_repo)
     )
 
     test_id = str(uuid.uuid4())[:8]
