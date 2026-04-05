@@ -338,7 +338,7 @@ class TestGitHubArtifactProviderGetManifest:
         manifest = ArtifactManifest(issue_number=965)
         entry = ArtifactEntry(
             artifact_type=ArtifactType.ARCHITECT,
-            path="plan/architect-foo.md",
+            artifact_id="plan/architect-foo.md",
             status=ArtifactStatus.CURRENT,
             agent="architect-agent",
             created_at="2026-03-21T10:00:00Z",
@@ -375,7 +375,7 @@ class TestGitHubArtifactProviderGetManifest:
         # Assert
         assert len(result.artifacts) == 1
         assert result.artifacts[0].artifact_type == ArtifactType.ARCHITECT
-        assert result.artifacts[0].path == "plan/architect-foo.md"
+        assert result.artifacts[0].artifact_id == "plan/architect-foo.md"
 
 
 # ---------------------------------------------------------------------------
@@ -414,7 +414,7 @@ class TestGitHubArtifactProviderSetManifest:
         mock_gh_client.return_value.get_user.return_value.create_gist.return_value = mock_gist
         # graphql_query fixture returns empty body (set in mock_repo fixture)
         manifest = ArtifactManifest(issue_number=965)
-        entry = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, path="plan/feature-context-foo.md")
+        entry = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, artifact_id="plan/feature-context-foo.md")
         manifest = registry.register(manifest, entry)
 
         # Act
@@ -767,7 +767,7 @@ class TestMCPToolArtifactRegister:
                 {
                     "issue_number": 965,
                     "artifact_type": "feature-context",
-                    "path": "plan/feature-context-foo.md",
+                    "artifact_id": "plan/feature-context-foo.md",
                     "status": "current",
                     "agent": "feature-researcher",
                 },
@@ -798,19 +798,19 @@ class TestMCPToolArtifactRegister:
                 {
                     "issue_number": 965,
                     "artifact_type": "architect",
-                    "path": "plan/architect-foo.md",
+                    "artifact_id": "plan/architect-foo.md",
                     "status": "draft",
                     "agent": "agent",
                 },
             )
 
-            # Act — register same path again
+            # Act — register same artifact_id again
             result = await client.call_tool(
                 "artifact_register",
                 {
                     "issue_number": 965,
                     "artifact_type": "architect",
-                    "path": "plan/architect-foo.md",
+                    "artifact_id": "plan/architect-foo.md",
                     "status": "current",
                     "agent": "updated-agent",
                 },
@@ -835,7 +835,7 @@ class TestMCPToolArtifactRegister:
         async with Client(patched_mcp_server) as client:
             result = await client.call_tool(
                 "artifact_register",
-                {"issue_number": 100, "artifact_type": "not-a-real-type", "path": "plan/something.md"},
+                {"issue_number": 100, "artifact_type": "not-a-real-type", "artifact_id": "plan/something.md"},
             )
 
         # Assert
@@ -857,7 +857,7 @@ class TestMCPToolArtifactRegister:
                 {
                     "issue_number": 100,
                     "artifact_type": "architect",
-                    "path": "plan/architect-foo.md",
+                    "artifact_id": "plan/architect-foo.md",
                     "status": "not-a-real-status",
                 },
             )
@@ -887,10 +887,11 @@ class TestMCPToolArtifactList:
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=965)
         manifest = registry.register(
-            manifest, ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, path="plan/feature-context-foo.md")
+            manifest,
+            ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, artifact_id="plan/feature-context-foo.md"),
         )
         manifest = registry.register(
-            manifest, ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect-foo.md")
+            manifest, ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect-foo.md")
         )
         in_memory_backend.set_manifest(965, manifest)
 
@@ -918,10 +919,10 @@ class TestMCPToolArtifactList:
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=10)
         manifest = registry.register(
-            manifest, ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect-test.md")
+            manifest, ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect-test.md")
         )
         manifest = registry.register(
-            manifest, ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, path="plan/tasks-1-test.yaml")
+            manifest, ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, artifact_id="plan/tasks-1-test.yaml")
         )
         in_memory_backend.set_manifest(10, manifest)
 
@@ -978,7 +979,9 @@ class TestMCPToolArtifactGet:
         manifest = ArtifactManifest(issue_number=50)
         manifest = registry.register(
             manifest,
-            ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect-bar.md", agent="spec-agent"),
+            ArtifactEntry(
+                artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect-bar.md", agent="spec-agent"
+            ),
         )
         in_memory_backend.set_manifest(50, manifest)
 
@@ -989,7 +992,7 @@ class TestMCPToolArtifactGet:
         # Assert
         data = result.data
         assert data["count"] == 1
-        assert data["artifacts"][0]["path"] == "plan/architect-bar.md"
+        assert data["artifacts"][0]["artifact_id"] == "plan/architect-bar.md"
 
     async def test_artifact_get_returns_error_for_absent_type(
         self, patched_mcp_server: Any, in_memory_backend: _InMemoryArtifactBackend
@@ -1006,7 +1009,7 @@ class TestMCPToolArtifactGet:
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=51)
         manifest = registry.register(
-            manifest, ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect-baz.md")
+            manifest, ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect-baz.md")
         )
         in_memory_backend.set_manifest(51, manifest)
 
@@ -1041,7 +1044,7 @@ class TestMCPToolArtifactRead:
         manifest = ArtifactManifest(issue_number=200)
         entry = ArtifactEntry(
             artifact_type=ArtifactType.FEATURE_CONTEXT,
-            path="plan/feature-context-test.md",
+            artifact_id="plan/feature-context-test.md",
             status=ArtifactStatus.CURRENT,
         )
         manifest = registry.register(manifest, entry)
@@ -1056,7 +1059,7 @@ class TestMCPToolArtifactRead:
         data = result.data
         assert "content" in data
         assert "# Feature Context" in data["content"]
-        assert data["path"] == "plan/feature-context-test.md"
+        assert data["path"] == "plan/feature-context-test.md"  # ArtifactContent.path maps to ArtifactEntry.artifact_id
 
     async def test_artifact_read_returns_error_when_type_not_registered(
         self, patched_mcp_server: Any, in_memory_backend: _InMemoryArtifactBackend
@@ -1104,7 +1107,9 @@ class TestMCPToolArtifactRead:
         manifest = reg.register(
             manifest,
             ArtifactEntry(
-                artifact_type=ArtifactType.TASK_PLAN, path="plan/tasks-1-missing.yaml", status=ArtifactStatus.CURRENT
+                artifact_type=ArtifactType.TASK_PLAN,
+                artifact_id="plan/tasks-1-missing.yaml",
+                status=ArtifactStatus.CURRENT,
             ),
         )
         in_memory_backend.set_manifest(400, manifest)

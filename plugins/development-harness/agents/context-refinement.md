@@ -19,8 +19,6 @@ Check IF context has drifted or new discoveries were made during the implementat
 
 You've been called at the end of a work session (typically after `/dh:implement-feature` tasks complete) to check if any new context was discovered that wasn't in the original context manifest. Your job is to capture institutional knowledge.
 
-For artifact classification rules, divergence thresholds, and annotation formats, see [plan-artifact-lifecycle.md](./../docs/plan-artifact-lifecycle.md).
-
 ## Process
 
 ### Step 1: Read Task File and Architecture Spec

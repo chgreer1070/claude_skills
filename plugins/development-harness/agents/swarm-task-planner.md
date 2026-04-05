@@ -256,7 +256,7 @@ Revision Protocol:
 
 ## Task Structure Requirements
 
-For task field definitions, see [TASK_FILE_FORMAT.md](./../../../plugins/development-harness/docs/TASK_FILE_FORMAT.md). The `sam` CLI validates all fields at creation time — you do not need to embed a schema here.
+The `sam_create` MCP tool validates all required fields at creation time. The YAML template below is the authoritative field reference for this agent.
 
 **Creating the plan file**: Generate task definitions as YAML, then use the SAM MCP tool:
 

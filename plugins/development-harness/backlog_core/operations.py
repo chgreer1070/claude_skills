@@ -761,7 +761,7 @@ def _auto_register_plan_artifact(item: BacklogItem, plan: str, repo: str = "", o
         provider = create_artifact_provider(repo=resolve_repo(repo))
         registry = ArtifactRegistry()
         manifest = provider.get_manifest(issue_number)
-        entry = ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, path=plan)
+        entry = ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, artifact_id=plan)
         updated_manifest = registry.register(manifest, entry)
         provider.set_manifest(issue_number, updated_manifest)
         out.info(f"  Artifact registered: task-plan {plan} on issue #{issue_number}")

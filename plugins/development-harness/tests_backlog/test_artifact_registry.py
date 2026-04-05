@@ -60,7 +60,7 @@ def feature_context_entry() -> ArtifactEntry:
     """
     return ArtifactEntry(
         artifact_type=ArtifactType.FEATURE_CONTEXT,
-        path="plan/feature-context-foo.md",
+        artifact_id="plan/feature-context-foo.md",
         status=ArtifactStatus.CURRENT,
         agent="feature-researcher",
         created_at="2026-03-21T10:00:00Z",
@@ -77,7 +77,7 @@ def architect_entry() -> ArtifactEntry:
     """
     return ArtifactEntry(
         artifact_type=ArtifactType.ARCHITECT,
-        path="plan/architect-foo.md",
+        artifact_id="plan/architect-foo.md",
         status=ArtifactStatus.CURRENT,
         agent="python-cli-design-spec",
         created_at="2026-03-21T11:00:00Z",
@@ -120,7 +120,7 @@ class TestArtifactEntryModelValidation:
         # Arrange / Act
         entry = ArtifactEntry(
             artifact_type=ArtifactType.ARCHITECT,
-            path="plan/architect-test.md",
+            artifact_id="plan/architect-test.md",
             status=ArtifactStatus.DRAFT,
             created_at="2026-01-01T00:00:00Z",
             agent="test-agent",
@@ -128,7 +128,7 @@ class TestArtifactEntryModelValidation:
 
         # Assert
         assert entry.artifact_type == ArtifactType.ARCHITECT
-        assert entry.path == "plan/architect-test.md"
+        assert entry.artifact_id == "plan/architect-test.md"
         assert entry.status == ArtifactStatus.DRAFT
         assert entry.created_at == "2026-01-01T00:00:00Z"
         assert entry.agent == "test-agent"
@@ -181,7 +181,7 @@ class TestArtifactEntryModelValidation:
         Why: Ensures newly registered artifacts are current by default.
         """
         # Arrange / Act
-        entry = ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, path="plan/tasks-1-foo.yaml")
+        entry = ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, artifact_id="plan/tasks-1-foo.yaml")
 
         # Assert
         assert entry.status == ArtifactStatus.CURRENT
@@ -194,7 +194,7 @@ class TestArtifactEntryModelValidation:
         Why: Guards against ArtifactType members being accidentally invalid.
         """
         for art_type in ArtifactType:
-            entry = ArtifactEntry(artifact_type=art_type, path=f"plan/{art_type}-test.md")
+            entry = ArtifactEntry(artifact_type=art_type, artifact_id=f"plan/{art_type}-test.md")
             assert entry.artifact_type == art_type
 
     def test_all_artifact_statuses_are_valid(self) -> None:
@@ -205,7 +205,9 @@ class TestArtifactEntryModelValidation:
         Why: Guards against ArtifactStatus members being accidentally invalid.
         """
         for status in ArtifactStatus:
-            entry = ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect-test.md", status=status)
+            entry = ArtifactEntry(
+                artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect-test.md", status=status
+            )
             assert entry.status == status
 
 
@@ -289,7 +291,7 @@ class TestArtifactRegistryRegister:
         # Assert
         assert len(result.artifacts) == 1
         assert result.artifacts[0].artifact_type == ArtifactType.FEATURE_CONTEXT
-        assert result.artifacts[0].path == "plan/feature-context-foo.md"
+        assert result.artifacts[0].artifact_id == "plan/feature-context-foo.md"
 
     def test_register_same_type_and_path_updates_in_place(
         self, registry: ArtifactRegistry, manifest_with_feature_context: ArtifactManifest
@@ -304,7 +306,7 @@ class TestArtifactRegistryRegister:
         # Arrange
         updated_entry = ArtifactEntry(
             artifact_type=ArtifactType.FEATURE_CONTEXT,
-            path="plan/feature-context-foo.md",
+            artifact_id="plan/feature-context-foo.md",
             status=ArtifactStatus.SUPERSEDED,
             agent="updated-agent",
             created_at="2026-03-22T00:00:00Z",
@@ -331,7 +333,7 @@ class TestArtifactRegistryRegister:
         # Arrange
         second_entry = ArtifactEntry(
             artifact_type=ArtifactType.FEATURE_CONTEXT,
-            path="plan/feature-context-bar.md",  # Different path
+            artifact_id="plan/feature-context-bar.md",  # Different artifact_id
             status=ArtifactStatus.CURRENT,
             agent="feature-researcher",
             created_at="2026-03-22T00:00:00Z",
@@ -342,8 +344,8 @@ class TestArtifactRegistryRegister:
 
         # Assert
         assert len(result.artifacts) == 2
-        paths = {e.path for e in result.artifacts}
-        assert paths == {"plan/feature-context-foo.md", "plan/feature-context-bar.md"}
+        artifact_ids = {e.artifact_id for e in result.artifacts}
+        assert artifact_ids == {"plan/feature-context-foo.md", "plan/feature-context-bar.md"}
 
     def test_register_two_codebase_analysis_artifacts_both_appear(
         self, registry: ArtifactRegistry, empty_manifest: ArtifactManifest
@@ -357,12 +359,12 @@ class TestArtifactRegistryRegister:
         # Arrange
         entry_a = ArtifactEntry(
             artifact_type=ArtifactType.CODEBASE_ANALYSIS,
-            path="plan/codebase/auth-patterns.md",
+            artifact_id="plan/codebase/auth-patterns.md",
             agent="codebase-analyzer",
         )
         entry_b = ArtifactEntry(
             artifact_type=ArtifactType.CODEBASE_ANALYSIS,
-            path="plan/codebase/api-patterns.md",
+            artifact_id="plan/codebase/api-patterns.md",
             agent="codebase-analyzer",
         )
 
@@ -387,7 +389,7 @@ class TestArtifactRegistryRegister:
         # Arrange
         entry = ArtifactEntry(
             artifact_type=ArtifactType.TASK_PLAN,
-            path="plan/tasks-1-foo.yaml",
+            artifact_id="plan/tasks-1-foo.yaml",
             created_at="",  # Explicitly empty — should be auto-stamped
         )
 
@@ -553,8 +555,8 @@ class TestArtifactRegistryGetByType:
         Why: codebase-analysis commonly has multiple scoped entries.
         """
         # Arrange
-        entry_a = ArtifactEntry(artifact_type=ArtifactType.CODEBASE_ANALYSIS, path="plan/codebase/scope-a.md")
-        entry_b = ArtifactEntry(artifact_type=ArtifactType.CODEBASE_ANALYSIS, path="plan/codebase/scope-b.md")
+        entry_a = ArtifactEntry(artifact_type=ArtifactType.CODEBASE_ANALYSIS, artifact_id="plan/codebase/scope-a.md")
+        entry_b = ArtifactEntry(artifact_type=ArtifactType.CODEBASE_ANALYSIS, artifact_id="plan/codebase/scope-b.md")
         manifest = registry.register(empty_manifest, entry_a)
         manifest = registry.register(manifest, entry_b)
 
@@ -688,7 +690,7 @@ class TestParseManifestSection:
         assert manifest.issue_number == 965
         assert len(manifest.artifacts) == 1
         assert manifest.artifacts[0].artifact_type == ArtifactType.FEATURE_CONTEXT
-        assert manifest.artifacts[0].path == "plan/feature-context-foo.md"
+        assert manifest.artifacts[0].artifact_id == "plan/feature-context-foo.md"
         assert manifest.artifacts[0].status == ArtifactStatus.CURRENT
         assert manifest.artifacts[0].agent == "feature-researcher"
 
@@ -897,7 +899,7 @@ class TestParseRenderRoundtrip:
         original = manifest.artifacts[0]
         recovered = reparsed.artifacts[0]
         assert recovered.artifact_type == original.artifact_type
-        assert recovered.path == original.path
+        assert recovered.artifact_id == original.artifact_id
         assert recovered.status == original.status
         assert recovered.agent == original.agent
         assert recovered.created_at == original.created_at
@@ -927,7 +929,7 @@ class TestParseRenderRoundtrip:
         assert len(reparsed.artifacts) == len(manifest.artifacts)
         for original, recovered in zip(manifest.artifacts, reparsed.artifacts, strict=False):
             assert recovered.artifact_type == original.artifact_type
-            assert recovered.path == original.path
+            assert recovered.artifact_id == original.artifact_id
             assert recovered.status == original.status
 
     @pytest.mark.parametrize("artifact_type", list(ArtifactType), ids=[t.value for t in ArtifactType])
@@ -943,7 +945,7 @@ class TestParseRenderRoundtrip:
         # Arrange
         entry = ArtifactEntry(
             artifact_type=artifact_type,
-            path=f"plan/{artifact_type}-test.md",
+            artifact_id=f"plan/{artifact_type}-test.md",
             status=ArtifactStatus.CURRENT,
             agent="test-agent",
             created_at="2026-03-21T00:00:00Z",
@@ -971,7 +973,7 @@ class TestParseRenderRoundtrip:
         # Arrange
         entry = ArtifactEntry(
             artifact_type=ArtifactType.ARCHITECT,
-            path="plan/architect-status-test.md",
+            artifact_id="plan/architect-status-test.md",
             status=status,
             agent="agent",
             created_at="2026-03-21T00:00:00Z",

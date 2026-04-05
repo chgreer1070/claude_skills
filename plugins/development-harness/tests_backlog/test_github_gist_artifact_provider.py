@@ -231,7 +231,7 @@ class TestLazyMigration:
 
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=1)
-        entry = ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect-test.md")
+        entry = ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect-test.md")
         manifest = registry.register(manifest, entry)
         legacy_body = render_manifest_section(manifest)
 

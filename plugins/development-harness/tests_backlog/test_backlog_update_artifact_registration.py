@@ -66,7 +66,7 @@ class TestAutoRegisterPlanArtifact:
         call_args = mock_registry.register.call_args
         entry = call_args[0][1]  # second positional arg is the ArtifactEntry
         assert entry.artifact_type == ArtifactType.TASK_PLAN
-        assert entry.path == "plan/tasks-1-foo.yaml"
+        assert entry.artifact_id == "plan/tasks-1-foo.yaml"
         # Updated manifest was persisted
         mock_provider.set_manifest.assert_called_once_with(42, updated_manifest)
         # Info message was emitted

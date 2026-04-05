@@ -20,8 +20,8 @@ Module-level parse/render helpers:
     - :func:`replace_manifest_in_body` — update section in-place or append
 
 Registry operations (all via ``ArtifactRegistry``):
-    - :meth:`~ArtifactRegistry.register` — idempotent upsert by (type, path)
-    - :meth:`~ArtifactRegistry.remove` — delete entry by type and path
+    - :meth:`~ArtifactRegistry.register` — idempotent upsert by (type, artifact_id)
+    - :meth:`~ArtifactRegistry.remove` — delete entry by type and artifact_id
     - :meth:`~ArtifactRegistry.get_by_type` — filter entries by artifact type
     - :meth:`~ArtifactRegistry.update_status` — set lifecycle status on a specific entry
 """
@@ -83,7 +83,7 @@ def _parse_table_row(row: str) -> ArtifactEntry | None:
     except ValueError:
         status = ArtifactStatus.CURRENT
     return ArtifactEntry(
-        artifact_type=artifact_type, path=path_cell, status=status, created_at=created_cell, agent=agent_cell
+        artifact_type=artifact_type, artifact_id=path_cell, status=status, created_at=created_cell, agent=agent_cell
     )
 
 
@@ -159,7 +159,7 @@ def render_manifest_section(manifest: ArtifactManifest) -> str:
     separator_row = "|------|------|--------|-------|---------|"
     rows = [header_row, separator_row]
     rows.extend(
-        f"| {entry.artifact_type} | {entry.path} | {entry.status} | {entry.agent} | {entry.created_at} |"
+        f"| {entry.artifact_type} | {entry.artifact_id} | {entry.status} | {entry.agent} | {entry.created_at} |"
         for entry in manifest.artifacts
     )
     table = "\n".join(rows)
@@ -212,7 +212,7 @@ class ArtifactRegistry:
 
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=965)
-        entry = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, path="plan/feature-context-foo.md")
+        entry = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, artifact_id="plan/feature-context-foo.md")
         manifest = registry.register(manifest, entry)
         # manifest.artifacts now contains one entry
     """
@@ -249,7 +249,7 @@ class ArtifactRegistry:
         upserted = False
 
         for existing in manifest.artifacts:
-            if existing.artifact_type == entry.artifact_type and existing.path == entry.path:
+            if existing.artifact_type == entry.artifact_type and existing.artifact_id == entry.artifact_id:
                 # Exact match — update in-place.
                 updated.append(
                     existing.model_copy(
@@ -278,7 +278,7 @@ class ArtifactRegistry:
         Returns:
             New ``ArtifactManifest`` with the matching entry removed.
         """
-        remaining = [e for e in manifest.artifacts if not (e.artifact_type == artifact_type and e.path == path)]
+        remaining = [e for e in manifest.artifacts if not (e.artifact_type == artifact_type and e.artifact_id == path)]
         return manifest.model_copy(update={"artifacts": remaining})
 
     def get_by_type(self, manifest: ArtifactManifest, artifact_type: ArtifactType) -> list[ArtifactEntry]:
@@ -313,7 +313,9 @@ class ArtifactRegistry:
             New ``ArtifactManifest`` with the matching entry's status updated.
         """
         updated = [
-            e.model_copy(update={"status": status}) if (e.artifact_type == artifact_type and e.path == path) else e
+            e.model_copy(update={"status": status})
+            if (e.artifact_type == artifact_type and e.artifact_id == path)
+            else e
             for e in manifest.artifacts
         ]
         return manifest.model_copy(update={"artifacts": updated})

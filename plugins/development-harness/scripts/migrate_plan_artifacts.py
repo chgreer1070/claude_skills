@@ -354,7 +354,7 @@ def register_one(
     agent = _AGENT_BY_TYPE.get(candidate.artifact_type, "migration-script")
     entry = ArtifactEntry(
         artifact_type=candidate.artifact_type,
-        path=candidate.rel_path,
+        artifact_id=candidate.rel_path,
         status=ArtifactStatus.CURRENT,
         created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         agent=agent,
@@ -384,7 +384,7 @@ def register_one(
     provider.set_manifest(candidate.issue, updated)
 
     existed = any(
-        e.artifact_type == candidate.artifact_type and e.path == candidate.rel_path for e in manifest.artifacts
+        e.artifact_type == candidate.artifact_type and e.artifact_id == candidate.rel_path for e in manifest.artifacts
     )
     action = "updated" if existed else "added"
 

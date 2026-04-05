@@ -492,11 +492,11 @@ async def test_artifact_register_without_content_and_no_local_file_registers_man
         patch("backlog_core.server._artifact_registry") as mock_registry,
     ):
         mock_registry.register.return_value = mock_manifest.model_copy(
-            update={"artifacts": [ArtifactEntry(artifact_type=ArtifactType.RESEARCH, path="plan/r.md")]}
+            update={"artifacts": [ArtifactEntry(artifact_type=ArtifactType.RESEARCH, artifact_id="plan/r.md")]}
         )
         # Act
         result = await _call(
-            "artifact_register", {"issue_number": 42, "artifact_type": "research", "path": "plan/r.md"}
+            "artifact_register", {"issue_number": 42, "artifact_type": "research", "artifact_id": "plan/r.md"}
         )
 
     # Assert
@@ -527,12 +527,17 @@ async def test_artifact_register_with_content_stores_to_github() -> None:
         patch("backlog_core.server._artifact_registry") as mock_registry,
     ):
         mock_registry.register.return_value = mock_manifest.model_copy(
-            update={"artifacts": [ArtifactEntry(artifact_type=ArtifactType.RESEARCH, path="plan/r.md")]}
+            update={"artifacts": [ArtifactEntry(artifact_type=ArtifactType.RESEARCH, artifact_id="plan/r.md")]}
         )
         # Act
         result = await _call(
             "artifact_register",
-            {"issue_number": 42, "artifact_type": "research", "path": "plan/r.md", "content": "# Research content"},
+            {
+                "issue_number": 42,
+                "artifact_type": "research",
+                "artifact_id": "plan/r.md",
+                "content": "# Research content",
+            },
         )
 
     # Assert
@@ -562,11 +567,11 @@ async def test_artifact_register_without_content_reads_local_file_and_uploads() 
         patch("backlog_core.server._artifact_registry") as mock_registry,
     ):
         mock_registry.register.return_value = mock_manifest.model_copy(
-            update={"artifacts": [ArtifactEntry(artifact_type=ArtifactType.RESEARCH, path="plan/r.md")]}
+            update={"artifacts": [ArtifactEntry(artifact_type=ArtifactType.RESEARCH, artifact_id="plan/r.md")]}
         )
         # Act
         result = await _call(
-            "artifact_register", {"issue_number": 42, "artifact_type": "research", "path": "plan/r.md"}
+            "artifact_register", {"issue_number": 42, "artifact_type": "research", "artifact_id": "plan/r.md"}
         )
 
     # Assert
@@ -588,7 +593,7 @@ async def test_artifact_register_with_invalid_type_returns_error() -> None:
     """
     # Arrange / Act
     result = await _call(
-        "artifact_register", {"issue_number": 42, "artifact_type": "not-a-real-type", "path": "plan/foo.md"}
+        "artifact_register", {"issue_number": 42, "artifact_type": "not-a-real-type", "artifact_id": "plan/foo.md"}
     )
 
     # Assert
@@ -608,7 +613,7 @@ async def test_artifact_read_returns_github_content_when_available() -> None:
     Why: GitHub-stored content takes precedence over filesystem for worktree isolation.
     """
     # Arrange
-    entry = ArtifactEntry(artifact_type=ArtifactType.RESEARCH, path="plan/r.md", status=ArtifactStatus.CURRENT)
+    entry = ArtifactEntry(artifact_type=ArtifactType.RESEARCH, artifact_id="plan/r.md", status=ArtifactStatus.CURRENT)
     mock_manifest = ArtifactManifest(issue_number=42, artifacts=[entry])
     mock_provider = MagicMock()
     mock_provider.get_manifest.return_value = mock_manifest
@@ -636,7 +641,7 @@ async def test_artifact_read_falls_back_to_filesystem_when_github_returns_none(t
     Why: Artifacts not stored as comments must still be readable from local disk.
     """
     # Arrange
-    entry = ArtifactEntry(artifact_type=ArtifactType.RESEARCH, path="plan/r.md", status=ArtifactStatus.CURRENT)
+    entry = ArtifactEntry(artifact_type=ArtifactType.RESEARCH, artifact_id="plan/r.md", status=ArtifactStatus.CURRENT)
     mock_manifest = ArtifactManifest(issue_number=42, artifacts=[entry])
     mock_provider = MagicMock()
     mock_provider.get_manifest.return_value = mock_manifest

@@ -939,19 +939,19 @@ def _register_one(provider: GitHubArtifactProvider, rel: str, artifact_type: str
         err_console.print(f":cross_mark: Failed to get manifest for issue #{issue_number}: {exc}")
         return "FAILED"
 
-    existing = next((e for e in manifest.artifacts if e.path == rel), None)
+    existing = next((e for e in manifest.artifacts if e.artifact_id == rel), None)
     if existing is not None and existing.artifact_type == art_type_enum:
         console.print(f"[dim]  SKIP[/dim]  {rel} (already registered on #{issue_number})")
         return "SKIPPED"
 
     new_entry = ArtifactEntry(
         artifact_type=art_type_enum,
-        path=rel,
+        artifact_id=rel,
         status=ArtifactStatus.CURRENT,
         created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         agent="dh_migrate",
     )
-    updated_artifacts = [e for e in manifest.artifacts if e.path != rel]
+    updated_artifacts = [e for e in manifest.artifacts if e.artifact_id != rel]
     updated_artifacts.append(new_entry)
     updated_manifest = ArtifactManifest(
         issue_number=issue_number, artifacts=updated_artifacts, last_updated=manifest.last_updated

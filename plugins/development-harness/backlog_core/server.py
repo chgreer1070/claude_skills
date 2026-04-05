@@ -2205,7 +2205,16 @@ async def artifact_register(
             )
         ),
     ],
-    path: Annotated[str, Field(description="Relative path from repo root, e.g. plan/architect-foo.md")],
+    artifact_id: Annotated[
+        str,
+        Field(
+            description=(
+                "Logical identifier for the artifact. Use a repo-relative path for file artifacts "
+                "(e.g. plan/architect-foo.md) or a logical id for content-only artifacts "
+                "(e.g. T0-baseline-{slug})."
+            )
+        ),
+    ],
     status: Annotated[str, Field(description="Lifecycle status: draft, current, superseded, archived")] = "current",
     agent: Annotated[str, Field(description="Name of the producing agent")] = "",
     content: Annotated[
@@ -2221,9 +2230,9 @@ async def artifact_register(
 ) -> dict:
     """Upsert an artifact entry in the manifest for a GitHub issue.
 
-    Idempotent by (artifact_type, path). If an entry with the same type and
-    path already exists it is updated in-place (status, agent, timestamp).
-    If only the type matches but the path differs, a new row is added.
+    Idempotent by (artifact_type, artifact_id). If an entry with the same type and
+    artifact_id already exists it is updated in-place (status, agent, timestamp).
+    If only the type matches but the artifact_id differs, a new row is added.
 
     Content upload follows three-tier resolution:
 
@@ -2231,8 +2240,8 @@ async def artifact_register(
        directly to a structured GitHub issue comment so it can be retrieved
        via ``artifact_read`` even from worktree-isolated agents.
     2. **Auto-read from local file** — when *content* is ``None`` but a local
-       file exists at *path* (resolved against the root worktree), the file is
-       read automatically and uploaded as in tier 1.
+       file exists at *artifact_id* (resolved against the root worktree), the
+       file is read automatically and uploaded as in tier 1.
     3. **Manifest-only** — when *content* is ``None`` and no local file exists,
        the manifest entry is registered without content storage.  A warning is
        emitted so callers can detect the gap.
@@ -2249,7 +2258,7 @@ async def artifact_register(
         status_enum = ArtifactStatus(status)
         entry = ArtifactEntry(
             artifact_type=artifact_type_enum,
-            path=path,
+            artifact_id=artifact_id,
             status=status_enum,
             created_at=_datetime.now(UTC).isoformat(),
             agent=agent,
@@ -2260,7 +2269,9 @@ async def artifact_register(
             updated_manifest = _artifact_registry.register(manifest, entry)
             provider.set_manifest(issue_number, updated_manifest)
             # Determine action: "updated" if entry pre-existed, "added" otherwise.
-            existed = any(e.artifact_type == artifact_type_enum and e.path == path for e in manifest.artifacts)
+            existed = any(
+                e.artifact_type == artifact_type_enum and e.artifact_id == artifact_id for e in manifest.artifacts
+            )
             action = "updated" if existed else "added"
 
             # Content upload — three-way resolution:
@@ -2269,16 +2280,16 @@ async def artifact_register(
             # 3. Neither → register manifest entry only; emit a warning.
             upload_content: str | None = content
             if upload_content is None:
-                upload_content = provider.read_local_artifact_content(path)
+                upload_content = provider.read_local_artifact_content(artifact_id)
                 if upload_content is None:
                     out.warn(
-                        f"No content provided and no local file found at {path!r}. "
+                        f"No content provided and no local file found at {artifact_id!r}. "
                         "Manifest entry registered without content storage."
                     )
 
             content_stored = False
             if upload_content is not None:
-                provider.store_artifact_content(issue_number, artifact_type, path, upload_content)
+                provider.store_artifact_content(issue_number, artifact_type, artifact_id, upload_content)
                 content_stored = True
 
             return RegisterResult(
@@ -2403,16 +2414,19 @@ async def artifact_read(
             entry = entries[0]
 
             # 1. Try GitHub comment storage first.
-            github_content = provider.read_artifact_content_from_remote(issue_number, artifact_type, entry.path)
+            github_content = provider.read_artifact_content_from_remote(issue_number, artifact_type, entry.artifact_id)
             if github_content is not None:
                 return ArtifactContent(
-                    artifact_type=entry.artifact_type, path=entry.path, content=github_content, status=entry.status
+                    artifact_type=entry.artifact_type,
+                    path=entry.artifact_id,
+                    content=github_content,
+                    status=entry.status,
                 )
 
             # 2. Fall back to local filesystem.
-            content = provider.read_artifact_content(entry.path)
+            content = provider.read_artifact_content(entry.artifact_id)
             return ArtifactContent(
-                artifact_type=entry.artifact_type, path=entry.path, content=content, status=entry.status
+                artifact_type=entry.artifact_type, path=entry.artifact_id, content=content, status=entry.status
             )
 
         result = await asyncio.to_thread(_run)
@@ -2769,7 +2783,7 @@ def _try_register_dispatch_plan_artifact(issue_number: int, plan_path: Path) -> 
         provider = create_artifact_provider(repo=repo, root_worktree=_models.get_repo_root())
         entry = ArtifactEntry(
             artifact_type=ArtifactType.DISPATCH_PLAN,
-            path=str(plan_path),
+            artifact_id=str(plan_path),
             status=ArtifactStatus.CURRENT,
             agent="dispatch_create_plan",
         )
@@ -3439,13 +3453,13 @@ def _migrate_register_one(
     """
     entry = ArtifactEntry(
         artifact_type=artifact_type,
-        path=rel_path,
+        artifact_id=rel_path,
         status=ArtifactStatus.CURRENT,
         created_at=_datetime.now(UTC).isoformat(),
         agent="artifact-migrate",
     )
     manifest = provider.get_manifest(issue_number)
-    existed = any(e.artifact_type == artifact_type and e.path == rel_path for e in manifest.artifacts)
+    existed = any(e.artifact_type == artifact_type and e.artifact_id == rel_path for e in manifest.artifacts)
     updated_manifest = _artifact_registry.register(manifest, entry)
     provider.set_manifest(issue_number, updated_manifest)
 
@@ -3537,13 +3551,13 @@ def _migrate_queue_manifest_only(
         # content upload for entries where no content was stored yet.
         # _migrate_register_one is idempotent (upserts on type+path).
         already_queued = any(
-            rel == entry.path and atype == entry.artifact_type
+            rel == entry.artifact_id and atype == entry.artifact_type
             for rel, atype, _, skip_reason in candidates
             if skip_reason is None
         )
         if not already_queued:
-            result.append((entry.path, entry.artifact_type, issue_number, None))
-            out.warn(f"Queued manifest-only entry for re-registration: {entry.path!r}")
+            result.append((entry.artifact_id, entry.artifact_type, issue_number, None))
+            out.warn(f"Queued manifest-only entry for re-registration: {entry.artifact_id!r}")
     return result
 
 

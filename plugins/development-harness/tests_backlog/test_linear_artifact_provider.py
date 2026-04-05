@@ -157,7 +157,7 @@ class TestAttachmentUpsert:
         # Arrange
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=10)
-        entry = ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect-test.md")
+        entry = ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect-test.md")
         manifest = registry.register(manifest, entry)
 
         # Act
@@ -185,7 +185,7 @@ class TestAttachmentUpsert:
 
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=5)
-        entry = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, path="plan/feature.md")
+        entry = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, artifact_id="plan/feature.md")
         manifest = registry.register(manifest, entry)
         manifest_json = manifest.model_dump_json(by_alias=True)
 

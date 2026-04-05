@@ -389,7 +389,10 @@ def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None
             root_worktree=_backlog_models._REPO_ROOT,  # noqa: SLF001
         )
         entry = ArtifactEntry(
-            artifact_type=ArtifactType.TASK_PLAN, path=str(plan_path), status=ArtifactStatus.CURRENT, agent="sam_create"
+            artifact_type=ArtifactType.TASK_PLAN,
+            artifact_id=str(plan_path),
+            status=ArtifactStatus.CURRENT,
+            agent="sam_create",
         )
         manifest = provider.get_manifest(issue_number)
         updated_manifest = _artifact_registry.register(manifest, entry)

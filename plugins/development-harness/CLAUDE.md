@@ -13,7 +13,7 @@ Language-agnostic development process harness that orchestrates feature developm
 **Design Principles:**
 
 - The harness owns the *process*; language plugins own the *specialists*
-- Every stage produces a file-based artifact (stateless handoff)
+- Every stage produces an MCP-registered artifact (stateless handoff) — stored via `artifact_register` and retrieved via `artifact_read`, never via direct filesystem paths
 - Human escalation follows ARL constraint analysis, not arbitrary checkpoints
 - Without a language manifest, the harness falls back to general-purpose agents
 - Task complexity is context-fit under uncertainty — see [Context-Fit Complexity Model](./docs/sdlc-layers/layer-0/context-fit-complexity.md)
@@ -123,6 +123,14 @@ Plan artifacts are registered in a structured manifest stored in the GitHub Issu
 **Registration:** Producers call `artifact_register` after creation. Auto-registration is built into `sam_create` and `backlog_update(plan=...)`.
 
 **Consumer discovery:** Consumers (including worktree-isolated agents) call `artifact_list` then `artifact_read` instead of filesystem access — plan files are in the root worktree and not visible inside isolated worktrees.
+
+**MCP-native rule for agents:** Agents store system artifacts exclusively via `artifact_register` with `content=` — the content is uploaded to the GitHub issue comment and retrievable from any environment. The `Write` tool is permitted only for repo-relative deliverables (source code, tests, documentation files committed to the repo). Filesystem paths under `~/.dh/` are an implementation detail of the MCP servers, not a stable agent interface.
+
+**Prohibited patterns — do not write these in agent instructions or tool calls:**
+
+- `Write(file_path="~/.dh/...")` for any artifact — use `artifact_register(issue_number, type, content=..., path=logical_id)` instead
+- `Read(file_path="~/.dh/.../T0-baseline-*.yaml")` — use `artifact_read(issue_number, "T0-baseline")` instead
+- `artifact_register(...)` without `content=` — path-only registration stores a pointer to a local file that is unreachable from worktree-isolated agents and CI environments
 
 ## Dispatch Orchestration System
 

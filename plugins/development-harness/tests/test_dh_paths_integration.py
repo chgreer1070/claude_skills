@@ -595,7 +595,7 @@ class TestArtifactRegistryRoundTrip:
         manifest = ArtifactManifest(issue_number=981)
         entry = ArtifactEntry(
             artifact_type=ArtifactType.ARCHITECT,
-            path="plan/architect-consolidate-dh-paths.md",
+            artifact_id="plan/architect-consolidate-dh-paths.md",
             agent="python-cli-design-spec",
         )
 
@@ -605,7 +605,7 @@ class TestArtifactRegistryRoundTrip:
         # Assert
         assert len(updated.artifacts) == 1
         assert updated.artifacts[0].artifact_type == ArtifactType.ARCHITECT
-        assert updated.artifacts[0].path == "plan/architect-consolidate-dh-paths.md"
+        assert updated.artifacts[0].artifact_id == "plan/architect-consolidate-dh-paths.md"
 
     def test_register_is_idempotent_for_same_type_and_path(self) -> None:
         """Verify re-registering same type+path updates in-place, no duplicate.
@@ -619,7 +619,7 @@ class TestArtifactRegistryRoundTrip:
         manifest = ArtifactManifest(issue_number=981)
         entry = ArtifactEntry(
             artifact_type=ArtifactType.FEATURE_CONTEXT,
-            path="plan/feature-context-consolidate.md",
+            artifact_id="plan/feature-context-consolidate.md",
             agent="feature-researcher",
         )
 
@@ -642,11 +642,13 @@ class TestArtifactRegistryRoundTrip:
         manifest = ArtifactManifest(issue_number=981)
         entry_a = ArtifactEntry(
             artifact_type=ArtifactType.CODEBASE_ANALYSIS,
-            path="plan/codebase/backlog-core.md",
+            artifact_id="plan/codebase/backlog-core.md",
             agent="codebase-analyzer",
         )
         entry_b = ArtifactEntry(
-            artifact_type=ArtifactType.CODEBASE_ANALYSIS, path="plan/codebase/sam-schema.md", agent="codebase-analyzer"
+            artifact_type=ArtifactType.CODEBASE_ANALYSIS,
+            artifact_id="plan/codebase/sam-schema.md",
+            agent="codebase-analyzer",
         )
 
         # Act
@@ -667,13 +669,13 @@ class TestArtifactRegistryRoundTrip:
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=981)
         manifest = registry.register(
-            manifest, ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect.md")
+            manifest, ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect.md")
         )
         manifest = registry.register(
-            manifest, ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, path="plan/fc.md")
+            manifest, ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, artifact_id="plan/fc.md")
         )
         manifest = registry.register(
-            manifest, ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, path="plan/P001.yaml")
+            manifest, ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, artifact_id="plan/P001.yaml")
         )
 
         # Act
@@ -681,7 +683,7 @@ class TestArtifactRegistryRoundTrip:
 
         # Assert
         assert len(architect_entries) == 1
-        assert architect_entries[0].path == "plan/architect.md"
+        assert architect_entries[0].artifact_id == "plan/architect.md"
 
     def test_remove_deletes_matching_entry(self) -> None:
         """Verify remove() eliminates the entry matching type and path.
@@ -693,8 +695,8 @@ class TestArtifactRegistryRoundTrip:
         # Arrange
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=981)
-        entry_a = ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, path="plan/architect.md")
-        entry_b = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, path="plan/fc.md")
+        entry_a = ArtifactEntry(artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect.md")
+        entry_b = ArtifactEntry(artifact_type=ArtifactType.FEATURE_CONTEXT, artifact_id="plan/fc.md")
         manifest = registry.register(manifest, entry_a)
         manifest = registry.register(manifest, entry_b)
 
@@ -716,7 +718,7 @@ class TestArtifactRegistryRoundTrip:
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=981)
         entry = ArtifactEntry(
-            artifact_type=ArtifactType.ARCHITECT, path="plan/architect.md", status=ArtifactStatus.CURRENT
+            artifact_type=ArtifactType.ARCHITECT, artifact_id="plan/architect.md", status=ArtifactStatus.CURRENT
         )
         manifest = registry.register(manifest, entry)
 
@@ -738,7 +740,7 @@ class TestArtifactRegistryRoundTrip:
         # Arrange
         registry = ArtifactRegistry()
         manifest = ArtifactManifest(issue_number=981)
-        entry = ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, path="plan/P001-foo.yaml", created_at="")
+        entry = ArtifactEntry(artifact_type=ArtifactType.TASK_PLAN, artifact_id="plan/P001-foo.yaml", created_at="")
 
         # Act
         manifest = registry.register(manifest, entry)
@@ -775,14 +777,14 @@ class TestManifestSectionRoundTrip:
             artifacts=[
                 ArtifactEntry(
                     artifact_type=ArtifactType.FEATURE_CONTEXT,
-                    path="plan/feature-context-consolidate-dh-paths.md",
+                    artifact_id="plan/feature-context-consolidate-dh-paths.md",
                     status=ArtifactStatus.CURRENT,
                     agent="feature-researcher",
                     created_at="2026-03-22T14:00:00Z",
                 ),
                 ArtifactEntry(
                     artifact_type=ArtifactType.ARCHITECT,
-                    path="plan/architect-consolidate-dh-paths.md",
+                    artifact_id="plan/architect-consolidate-dh-paths.md",
                     status=ArtifactStatus.CURRENT,
                     agent="python-cli-design-spec",
                     created_at="2026-03-22T14:05:00Z",
@@ -798,7 +800,7 @@ class TestManifestSectionRoundTrip:
         assert len(parsed.artifacts) == len(manifest.artifacts)
         for original, recovered in zip(manifest.artifacts, parsed.artifacts, strict=False):
             assert recovered.artifact_type == original.artifact_type
-            assert recovered.path == original.path
+            assert recovered.artifact_id == original.artifact_id
             assert recovered.status == original.status
             assert recovered.agent == original.agent
 
@@ -815,7 +817,7 @@ class TestManifestSectionRoundTrip:
             artifacts=[
                 ArtifactEntry(
                     artifact_type=ArtifactType.TASK_PLAN,
-                    path="plan/P981-consolidate-dh-paths.yaml",
+                    artifact_id="plan/P981-consolidate-dh-paths.yaml",
                     status=ArtifactStatus.CURRENT,
                     agent="swarm-task-planner",
                     created_at="2026-03-22T00:00:00Z",
@@ -846,7 +848,7 @@ class TestManifestSectionRoundTrip:
             artifacts=[
                 ArtifactEntry(
                     artifact_type=ArtifactType.FEATURE_CONTEXT,
-                    path="plan/feature-context-old.md",
+                    artifact_id="plan/feature-context-old.md",
                     status=ArtifactStatus.CURRENT,
                     agent="feature-researcher",
                     created_at="2026-03-01T00:00:00Z",
@@ -858,7 +860,7 @@ class TestManifestSectionRoundTrip:
             artifacts=[
                 ArtifactEntry(
                     artifact_type=ArtifactType.FEATURE_CONTEXT,
-                    path="plan/feature-context-new.md",
+                    artifact_id="plan/feature-context-new.md",
                     status=ArtifactStatus.CURRENT,
                     agent="feature-researcher",
                     created_at="2026-03-22T00:00:00Z",
@@ -888,7 +890,7 @@ class TestManifestSectionRoundTrip:
             artifacts=[
                 ArtifactEntry(
                     artifact_type=ArtifactType.ARCHITECT,
-                    path="plan/architect-consolidate-dh-paths.md",
+                    artifact_id="plan/architect-consolidate-dh-paths.md",
                     status=ArtifactStatus.CURRENT,
                     agent="python-cli-design-spec",
                     created_at="2026-03-22T00:00:00Z",
@@ -900,8 +902,8 @@ class TestManifestSectionRoundTrip:
         rendered = render_manifest_section(manifest)
         parsed = parse_manifest_section(rendered, 981)
 
-        # Assert — path is relative (no leading slash)
-        assert not parsed.artifacts[0].path.startswith("/")
+        # Assert — artifact_id is relative (no leading slash)
+        assert not parsed.artifacts[0].artifact_id.startswith("/")
         assert "plan/architect-consolidate-dh-paths.md" in rendered
 
     def test_parse_manifest_section_returns_empty_manifest_when_absent(self) -> None:
@@ -1011,7 +1013,7 @@ class TestManifestSectionRoundTrip:
             artifacts=[
                 ArtifactEntry(
                     artifact_type=ArtifactType.ARCHITECT,
-                    path="plan/new.md",
+                    artifact_id="plan/new.md",
                     status=ArtifactStatus.CURRENT,
                     agent="agent",
                     created_at="2026-03-22T00:00:00Z",
@@ -1063,7 +1065,7 @@ class TestGrepAuditOldPaths:
         # operations.py old docstring examples — stale but in comments only
         "~/.claude/context/sam-tasks",
         # artifact_registry.py docstring code example
-        'path="plan/feature-context-foo.md"',
+        'artifact_id="plan/feature-context-foo.md"',
         # sam_schema/cli.py docstring output example
         '"path": "plan/P001-auth-system.yaml"',
         # operations.py docstring plan path example
