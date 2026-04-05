@@ -553,6 +553,7 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [fleet.md](./agent-infrastructure/fleet.md) | Fleet — open-source device management for 400K+ hosts: Go backend with MySQL/Redis, 9 MDM subsystems (Apple/Windows/Android), osquery-based telemetry, Orbit agent, EnterpriseOverrides extensibility pattern, dual MIT/commercial license (6.2K stars) | 2026-03-28   |
 | [holyclaude.md](./agent-infrastructure/holyclaude.md) | HolyClaude — containerized AI development workstation: Claude Code + web UI + 7 AI CLIs + headless browser + 50+ dev tools in one `docker compose up` (1.1K stars, MIT, v1.1.4) | 2026-03-28   |
 | [cmux.md](./agent-infrastructure/cmux.md) | cmux — Ghostty-based macOS terminal for AI coding agents: sidebar vertical tabs, visual notification rings, in-app browser with scriptable API, CLI socket for pane automation (11.1K stars, AGPL-3.0, v0.63.0) | 2026-03-28   |
+| [empirica.md](./agent-infrastructure/empirica.md) | Empirica v1.7.7 — epistemic measurement and Sentinel gating system for autonomous AI agents: 13-vector assessment, 4-layer memory architecture, noetic-praxic gating enforces understanding before code modification, Claude Code native hooks integration | 2026-04-05   |
 
 **Key Topics**:
 
@@ -1118,6 +1119,7 @@ AI-native observability platforms for monitoring, debugging, and optimizing LLM 
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [logfire.md](./ai-observability/logfire.md) | Pydantic Logfire - full-stack AI observability with OpenTelemetry, MCP server for SQL queries, token/cost tracking | 2026-02-05   |
 | [compression-monitor.md](./ai-observability/compression-monitor.md) | Ghost Lexicon + Behavioral Footprint + Semantic Drift instruments for detecting post-compression behavioral changes in Claude Code sessions | 2026-03-29   |
+| [research-mode.md](./ai-observability/research-mode.md) | research-mode — anti-hallucination Claude Code plugin enforcing explicit uncertainty acknowledgment, universal citation requirements, and quote grounding; pure prompt-based constraint system; source cascade: local → WebSearch → WebFetch | 2026-04-05   |
 
 **Key Topics**:
 
