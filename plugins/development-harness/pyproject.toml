@@ -3,13 +3,16 @@ name = "backlog-core"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "fastmcp>=3.0.2",
+    "fastmcp>=3.2.0",
     "gitpython>=3.1.0",
     "pygithub>=2.8.1",
     "pydantic>=2.12.3",
     "ruamel.yaml>=0.18.0",
     "tiktoken>=0.12.0",
     "typer>=0.21.2",
+    "pygments>=2.20.0",
+    "cryptography>=46.0.6",
+    "requests>=2.33.0",
 ]
 
 [project.scripts]

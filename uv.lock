@@ -246,10 +246,13 @@ name = "backlog-core"
 version = "0.1.0"
 source = { editable = "plugins/development-harness" }
 dependencies = [
+    { name = "cryptography" },
     { name = "fastmcp" },
     { name = "gitpython" },
     { name = "pydantic" },
     { name = "pygithub" },
+    { name = "pygments" },
+    { name = "requests" },
     { name = "ruamel-yaml" },
     { name = "tiktoken" },
     { name = "typer" },
@@ -266,10 +269,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastmcp", specifier = ">=3.0.2" },
+    { name = "cryptography", specifier = ">=46.0.6" },
+    { name = "fastmcp", specifier = ">=3.2.0" },
     { name = "gitpython", specifier = ">=3.1.0" },
     { name = "pydantic", specifier = ">=2.12.3" },
     { name = "pygithub", specifier = ">=2.8.1" },
+    { name = "pygments", specifier = ">=2.20.0" },
+    { name = "requests", specifier = ">=2.33.0" },
     { name = "ruamel-yaml", specifier = ">=0.18.0" },
     { name = "tiktoken", specifier = ">=0.12.0" },
     { name = "typer", specifier = ">=0.21.2" },
