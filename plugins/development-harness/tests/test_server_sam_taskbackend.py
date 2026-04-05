@@ -537,3 +537,47 @@ def test_server_has_no_yaml_writer_import() -> None:
 
     source = inspect.getsource(server_module)
     assert "yaml_writer" not in source
+
+
+# ---------------------------------------------------------------------------
+# Regression: list fields in set_fields_json must reach backend as list[str]
+# ---------------------------------------------------------------------------
+
+
+async def test_sam_update_set_fields_json_list_value_passes_list_to_backend(backend_mock: MagicMock) -> None:
+    """sam_update preserves list values in set_fields_json as list[str] to backend.
+
+    Regression guard for the bug where str(["T01", "T02", "T03"]) produced the
+    Python repr string "['T01', 'T02', 'T03']" instead of a YAML sequence.
+
+    The fix: set_fields_json deserialization must preserve list values, not coerce
+    them with str().
+
+    Arrange: inject mock backend via set_task_config.
+    Act: call sam_update with address='P1/T1' and set_fields_json containing a
+         list-valued field: {"dependencies": ["T01", "T02", "T03"]}.
+    Assert: backend.update_task_fields was called with a dict whose 'dependencies'
+            value is the list ["T01", "T02", "T03"], not a string repr of it.
+    """
+    # Arrange
+    fields_json = '{"dependencies": ["T01", "T02", "T03"]}'
+
+    # Act
+    await _call("sam_update", {"address": "P1/T1", "set_fields_json": fields_json})
+
+    # Assert
+    backend_mock.update_task_fields.assert_called_once()
+    call_args = backend_mock.update_task_fields.call_args
+    # update_task_fields(plan_id, task_id, fields) — fields is 3rd positional arg
+    if call_args.args and len(call_args.args) >= 3:
+        fields_passed = call_args.args[2]
+    else:
+        fields_passed = call_args.kwargs.get("fields", {})
+
+    assert "dependencies" in fields_passed, f"Expected 'dependencies' key in fields_passed, got: {fields_passed}"
+    deps = fields_passed["dependencies"]
+    assert isinstance(deps, list), (
+        f"Expected list for 'dependencies' but got {type(deps).__name__!r}: {deps!r}\n"
+        "This is the str() coercion bug — set_fields_json must preserve list values."
+    )
+    assert deps == ["T01", "T02", "T03"], f"Expected ['T01', 'T02', 'T03'] but got: {deps!r}"

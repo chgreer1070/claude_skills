@@ -480,6 +480,36 @@ def sam_create(
     return result
 
 
+def _parse_set_fields_json(raw_fields: dict[str, Any]) -> dict[str, str | int | list[str]]:
+    """Convert a raw JSON-decoded dict to a typed field mapping.
+
+    Preserves ``str`` and ``int`` values unchanged.  Converts ``list`` values to
+    ``list[str]`` by coercing each element.  Raises ``TypeError`` for any value
+    whose type is not ``str``, ``int``, or ``list``.
+
+    Args:
+        raw_fields: JSON-decoded dict from ``set_fields_json``.
+
+    Returns:
+        Validated mapping of field names to ``str | int | list[str]`` values.
+
+    Raises:
+        TypeError: When a field value is not ``str``, ``int``, or ``list``.
+    """
+    out: dict[str, str | int | list[str]] = {}
+    for k, v in raw_fields.items():
+        key = str(k)
+        if isinstance(v, (str, int)):
+            out[key] = v
+        elif isinstance(v, list):
+            out[key] = [str(item) for item in v]
+        else:
+            raise TypeError(
+                f"set_fields_json field '{key}' has unsupported type {type(v).__name__!r}; expected str, int, or list"
+            )
+    return out
+
+
 @mcp.tool
 def sam_update(
     address: Annotated[str, Field(description="Plan address (e.g., 'P1') or task address (e.g., 'P1/T2')")],
@@ -531,7 +561,7 @@ def sam_update(
         raw_fields: Any = json.loads(set_fields_json)
         if not isinstance(raw_fields, dict):
             raise ValueError("set_fields_json must be a JSON object")
-        set_fields = {str(k): str(v) for k, v in raw_fields.items()}
+        set_fields = _parse_set_fields_json(raw_fields)
 
     if task_id is None:
         # Plan-level operations: context and/or field updates on the plan.
