@@ -11,7 +11,7 @@ node_modules/
 # Runtime context files (created by /start-task, cleaned by SubagentStop hook)
 # DEPRECATED: context files are moving to ~/.dh/projects/{slug}/context-{session}/
 # Kept here for backward compatibility during migration.
-.claude/context/
+**/.claude/context/
 # cc-sessions runtime files
 sessions/sessions-state.json
 sessions/package.json
