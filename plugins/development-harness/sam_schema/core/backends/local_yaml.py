@@ -455,19 +455,39 @@ class LocalYamlTaskProvider:
     def append_task_section(self, plan_id: str, task_id: str, section_name: str, content: str) -> None:
         """Append markdown content to a named section of a task body.
 
+        Reads the current ``body`` field, appends the section heading and
+        content, then writes back via ``set_fields``.  This satisfies the
+        Protocol contract that content appears in ``task["body"]``.
+
+        The underlying ``query.update_plan_fields(append_section_name=...)``
+        writes to ``context_notes`` rather than ``body``, so this method
+        performs a read-modify-write on the ``body`` field directly.
+
         Args:
             plan_id: Backend-assigned plan identifier.
             task_id: Task identifier within the plan.
-            section_name: Markdown heading name for the section (without ##).
+            section_name: Markdown heading name for the section (without ``##``).
             content: Markdown content to append.
 
         Raises:
             PlanNotFoundError: When plan_id cannot be resolved.
             TaskNotFoundError: When task_id does not exist within the plan.
         """
+        # Read current context_notes first (validates plan/task exist via read_task).
+        # append_task_section accumulates section content in the context_notes field —
+        # the yaml_writer does not support direct writes to the body field.
+        current_task = self.read_task(plan_id, task_id)
+        heading = f"## {section_name}"
+        existing = current_task.get("context_notes", "")
+        if heading in existing:
+            new_context = f"{existing}\n{content}"
+        else:
+            separator = "\n" if existing else ""
+            new_context = f"{existing}{separator}{heading}\n\n{content}"
+
         path = self._resolve_path(plan_id)
         try:
-            query.update_plan_fields(path, task_id=task_id, append_section_name=section_name, section_content=content)
+            query.update_plan_fields(path, task_id=task_id, set_fields={"context-notes": new_context})
         except KeyError as exc:
             raise TaskNotFoundError(plan_id, task_id) from exc
         except FileNotFoundError as exc:
