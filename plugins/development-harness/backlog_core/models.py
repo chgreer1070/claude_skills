@@ -1223,6 +1223,7 @@ class ArtifactType(StrEnum):
     CODEBASE_ANALYSIS = "codebase-analysis"
     RESEARCH = "research"
     DISPATCH_PLAN = "dispatch-plan"
+    AUDIT_REPORT = "audit-report"
 
 
 class ArtifactStatus(StrEnum):

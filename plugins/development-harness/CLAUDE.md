@@ -118,7 +118,7 @@ Plan artifacts are registered in a structured manifest stored in the GitHub Issu
 - `artifact_get` — Get metadata for a specific artifact type on an issue
 - `artifact_read` — Read artifact file content from root worktree path (with path safety validation)
 
-**Artifact types:** `feature-context`, `architect`, `task-plan`, `codebase-analysis`, `T0-baseline`, `TN-verification`, `dispatch-plan`
+**Artifact types:** `feature-context`, `architect`, `task-plan`, `codebase-analysis`, `T0-baseline`, `TN-verification`, `dispatch-plan`, `audit-report`
 
 **Registration:** Producers call `artifact_register` after creation. Auto-registration is built into `sam_create` and `backlog_update(plan=...)`.
 
