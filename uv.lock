@@ -5833,7 +5833,7 @@ name = "zvec"
 version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "numpy" },
+    { name = "numpy", marker = "sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f6/8a/07bfee47f4ad0fe959b91d6db26c88d477a482003246516b123874d99c8b/zvec-0.3.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:972297f77446f0b938f91a455acc91858bb7d7ddc2536be6b3394447c1787d4e", size = 27185332, upload-time = "2026-04-03T08:49:06.907Z" },

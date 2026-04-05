@@ -550,7 +550,7 @@ class _InMemoryArtifactBackend:
         """
         return self._files.get(path)
 
-    def read_artifact_content_from_github(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
         """Return None — in-memory backend has no GitHub comment storage.
 
         Args:

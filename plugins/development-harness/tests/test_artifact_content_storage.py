@@ -4,7 +4,7 @@ Covers:
 - _build_artifact_content_comment: structure, truncation
 - _extract_content_from_comment: happy path, malformed input
 - GitHubArtifactProvider.store_artifact_content: create new, update existing
-- GitHubArtifactProvider.read_artifact_content_from_github: found, not found
+- GitHubArtifactProvider.read_artifact_content_from_remote: found, not found
 - artifact_register MCP tool: with content (tier 1), auto-read local file (tier 2), no content/no file (tier 3)
 - artifact_read MCP tool: GitHub-first, filesystem fallback, neither available
 
@@ -359,14 +359,14 @@ def test_store_artifact_content_does_not_update_comment_with_different_path(tmp_
 
 
 # ---------------------------------------------------------------------------
-# GitHubArtifactProvider.read_artifact_content_from_github
+# GitHubArtifactProvider.read_artifact_content_from_remote
 # ---------------------------------------------------------------------------
 
 
-def test_read_artifact_content_from_github_returns_content_when_found(tmp_path: Path) -> None:
+def test_read_artifact_content_from_remote_returns_content_when_found(tmp_path: Path) -> None:
     """Verify stored content is returned when a matching comment is found.
 
-    Tests: GitHubArtifactProvider.read_artifact_content_from_github — found path.
+    Tests: GitHubArtifactProvider.read_artifact_content_from_remote — found path.
     How: Mock _graphql_request with comment list containing a matching comment body.
     Why: The primary read path must recover content stored by store_artifact_content.
     """
@@ -384,7 +384,7 @@ def test_read_artifact_content_from_github_returns_content_when_found(tmp_path: 
         patch("backlog_core.gh_client._graphql_request", side_effect=responses),
     ):
         # Act
-        result = provider.read_artifact_content_from_github(42, "research", "plan/foo.md")
+        result = provider.read_artifact_content_from_remote(42, "research", "plan/foo.md")
 
     # Assert
     assert result is not None
@@ -392,10 +392,10 @@ def test_read_artifact_content_from_github_returns_content_when_found(tmp_path: 
     assert "Important data." in result
 
 
-def test_read_artifact_content_from_github_returns_none_when_not_found(tmp_path: Path) -> None:
+def test_read_artifact_content_from_remote_returns_none_when_not_found(tmp_path: Path) -> None:
     """Verify None is returned when no matching comment exists.
 
-    Tests: GitHubArtifactProvider.read_artifact_content_from_github — not-found path.
+    Tests: GitHubArtifactProvider.read_artifact_content_from_remote — not-found path.
     How: Mock _graphql_request with empty comment list.
     Why: Callers must be able to detect absence and fall back to filesystem.
     """
@@ -410,16 +410,16 @@ def test_read_artifact_content_from_github_returns_none_when_not_found(tmp_path:
         patch("backlog_core.gh_client._graphql_request", side_effect=responses),
     ):
         # Act
-        result = provider.read_artifact_content_from_github(42, "research", "plan/foo.md")
+        result = provider.read_artifact_content_from_remote(42, "research", "plan/foo.md")
 
     # Assert
     assert result is None
 
 
-def test_read_artifact_content_from_github_ignores_wrong_type(tmp_path: Path) -> None:
+def test_read_artifact_content_from_remote_ignores_wrong_type(tmp_path: Path) -> None:
     """Verify a comment with the same path but different type is not returned.
 
-    Tests: GitHubArtifactProvider.read_artifact_content_from_github — type mismatch.
+    Tests: GitHubArtifactProvider.read_artifact_content_from_remote — type mismatch.
     How: Provide comment for artifact_type="architect", request "research".
     Why: Type filtering is required — different artifacts may share paths.
     """
@@ -436,7 +436,7 @@ def test_read_artifact_content_from_github_ignores_wrong_type(tmp_path: Path) ->
         patch("backlog_core.gh_client._graphql_request", side_effect=responses),
     ):
         # Act
-        result = provider.read_artifact_content_from_github(42, "research", "plan/foo.md")
+        result = provider.read_artifact_content_from_remote(42, "research", "plan/foo.md")
 
     # Assert
     assert result is None
@@ -578,7 +578,7 @@ async def test_artifact_read_returns_github_content_when_available() -> None:
     """Verify artifact_read returns content from GitHub when present.
 
     Tests: artifact_read MCP tool — GitHub-first path.
-    How: Mock provider with read_artifact_content_from_github returning content.
+    How: Mock provider with read_artifact_content_from_remote returning content.
     Why: GitHub-stored content takes precedence over filesystem for worktree isolation.
     """
     # Arrange
@@ -586,7 +586,7 @@ async def test_artifact_read_returns_github_content_when_available() -> None:
     mock_manifest = ArtifactManifest(issue_number=42, artifacts=[entry])
     mock_provider = MagicMock()
     mock_provider.get_manifest.return_value = mock_manifest
-    mock_provider.read_artifact_content_from_github.return_value = "# From GitHub"
+    mock_provider.read_artifact_content_from_remote.return_value = "# From GitHub"
 
     with (
         patch("backlog_core.server._get_artifact_provider", return_value=mock_provider),
@@ -606,7 +606,7 @@ async def test_artifact_read_falls_back_to_filesystem_when_github_returns_none(t
     """Verify artifact_read falls back to filesystem when GitHub returns no content.
 
     Tests: artifact_read MCP tool — filesystem fallback.
-    How: Mock read_artifact_content_from_github to return None, read_artifact_content for file.
+    How: Mock read_artifact_content_from_remote to return None, read_artifact_content for file.
     Why: Artifacts not stored as comments must still be readable from local disk.
     """
     # Arrange
@@ -614,7 +614,7 @@ async def test_artifact_read_falls_back_to_filesystem_when_github_returns_none(t
     mock_manifest = ArtifactManifest(issue_number=42, artifacts=[entry])
     mock_provider = MagicMock()
     mock_provider.get_manifest.return_value = mock_manifest
-    mock_provider.read_artifact_content_from_github.return_value = None
+    mock_provider.read_artifact_content_from_remote.return_value = None
     mock_provider.read_artifact_content.return_value = "# From filesystem"
 
     with (

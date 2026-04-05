@@ -37,6 +37,7 @@ from __future__ import annotations
 import re
 import sys
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -63,11 +64,22 @@ if TYPE_CHECKING:
 # Re-export so callers that imported these from artifact_provider continue to work.
 __all__ = [
     "ArtifactBackend",
+    "BackendName",
     "GitHubArtifactProvider",
     "parse_manifest_section",
     "render_manifest_section",
     "replace_manifest_in_body",
 ]
+
+
+class BackendName(StrEnum):
+    """Canonical identifiers for pluggable artifact storage backends."""
+
+    github = "github"
+    linear = "linear"
+    gitlab = "gitlab"
+    sqlite = "sqlite"
+    memory = "memory"
 
 
 # ---------------------------------------------------------------------------
@@ -242,7 +254,7 @@ class ArtifactBackend(Protocol):
         """
         ...
 
-    def read_artifact_content_from_github(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
         """Search issue comments for stored artifact content.
 
         Scans the issue's comments for an artifact content block whose
@@ -437,7 +449,7 @@ class GitHubArtifactProvider:
 
         _add_comment_graphql(repo_obj, issue["id"], comment_body)
 
-    def read_artifact_content_from_github(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
         """Search issue comments for stored artifact content.
 
         Scans the issue's comments via GraphQL for an artifact content block

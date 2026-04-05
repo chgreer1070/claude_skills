@@ -2345,7 +2345,7 @@ async def artifact_read(
             entry = entries[0]
 
             # 1. Try GitHub comment storage first.
-            github_content = provider.read_artifact_content_from_github(issue_number, artifact_type, entry.path)
+            github_content = provider.read_artifact_content_from_remote(issue_number, artifact_type, entry.path)
             if github_content is not None:
                 return ArtifactContent(
                     artifact_type=entry.artifact_type, path=entry.path, content=github_content, status=entry.status
