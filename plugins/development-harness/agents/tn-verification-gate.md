@@ -1,7 +1,7 @@
 ---
 name: tn-verification-gate
-description: Verification gate that runs after all implementation tasks complete. Re-runs acceptance-criteria-structured check commands, compares results against T0 baseline, computes CriterionStatus per criterion, and writes ~/.dh/projects/{slug}/plan/TN-verification-{slug}.yaml with a verdict of PASS or FAIL. FAIL blocks /complete-implementation if any criterion regressed.
-tools: Read, Bash, Write, Glob, mcp__plugin_dh_backlog__artifact_register
+description: Verification gate that runs after all implementation tasks complete. Re-runs acceptance-criteria-structured check commands, compares results against T0 baseline, computes CriterionStatus per criterion, and registers a TN-verification artifact via MCP with a verdict of PASS or FAIL. FAIL blocks /complete-implementation if any criterion regressed.
+tools: Read, Bash, Glob, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register
 model: haiku
 skills:
   - dh:subagent-contract
@@ -19,7 +19,9 @@ You are the TN verification gate agent. You run after all implementation tasks a
 
 **Capture stdout and stderr in full.** No truncation.
 
-**Write to the exact path.** Output must be at `~/.dh/projects/{project-slug}/plan/TN-verification-{slug}.yaml` where `{slug}` in the filename matches the T0 baseline's `feature` field. Use `dh_paths.plan_dir()` to resolve the directory.
+**`issue_number` is required.** It is needed for both reading the T0 baseline via `artifact_read` and registering the TN artifact via `artifact_register`. If not provided in the delegation prompt, return STATUS: BLOCKED immediately.
+
+**Register via MCP, not filesystem.** Assemble TN YAML in memory and pass it as `content=` to `artifact_register`. Do not write to `~/.dh/` paths.
 
 </critical_rules>
 
@@ -27,21 +29,23 @@ You are the TN verification gate agent. You run after all implementation tasks a
 
 ## Step 1: Locate Input Files
 
-You need two files:
+You need two inputs:
 
-1. **T0 baseline**: `~/.dh/projects/{project-slug}/plan/T0-baseline-{slug}.yaml` — written by the T0 agent
+1. **T0 baseline**: Retrieved via `artifact_read(issue_number, "T0-baseline")` — stored by the T0 agent as a GitHub issue comment artifact
 2. **Plan file**: `~/.dh/projects/{project-slug}/plan/tasks-{N}-{slug}.md` — to re-read `acceptance_criteria_structured`
 
-The slug and plan path are provided in your task delegation prompt, or inferred from the T0 baseline's `feature` and `plan_path` fields.
+The `issue_number` and plan path are provided in your task delegation prompt. The slug is inferred from the T0 baseline's `feature` field after retrieval.
 
-Read both files:
+Retrieve T0 baseline and read plan file:
 
 ```bash
-Read(file_path=str(dh_paths.plan_dir() / "T0-baseline-{slug}.yaml"))
+mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, type="T0-baseline")
 Read(file_path=str(dh_paths.plan_dir() / "tasks-{N}-{slug}.md"))
 ```
 
-If the T0 baseline file does not exist, return STATUS: BLOCKED with: "T0 baseline not found at ~/.dh/projects/{project-slug}/plan/T0-baseline-{slug}.yaml — T0 agent must run first."
+Parse the content returned by `artifact_read` as YAML to extract the T0 results.
+
+If `artifact_read` returns an error or empty result for type `T0-baseline`, return STATUS: BLOCKED with: "T0 baseline not found — `artifact_read(issue_number={issue_number}, type='T0-baseline')` returned no content. T0 agent must run first."
 
 ## Step 2: Re-Run Each Check Command
 
@@ -76,15 +80,15 @@ Count:
 - `regressions`: number of criteria with `status: regressed`
 - `newly_passing`: number of criteria with `status: newly-passing`
 
-## Step 4: Write TN Verification YAML
+## Step 4: Assemble TN Verification YAML
 
-Write `~/.dh/projects/{project-slug}/plan/TN-verification-{slug}.yaml` (use `dh_paths.plan_dir()` to resolve the directory) with the following schema:
+Assemble the TN verification result as a YAML string in memory (do not write to disk). Use the following schema:
 
 ```yaml
 feature: "{slug}"
 verified_at: "2026-03-15T14:00:00Z"
 plan_path: "~/.dh/projects/{project-slug}/plan/tasks-5-{slug}.md"
-t0_baseline_path: "~/.dh/projects/{project-slug}/plan/T0-baseline-{slug}.yaml"
+t0_baseline_source: "artifact:T0-baseline:issue={issue_number}"
 verdict: "PASS"  # or "FAIL"
 criteria_count: 2
 regressions: 0
@@ -111,7 +115,7 @@ results:
 | `feature` | str | Feature slug |
 | `verified_at` | str (ISO 8601 UTC) | When TN agent ran |
 | `plan_path` | str | State-relative path to the plan file (under `dh_paths.plan_dir()`) |
-| `t0_baseline_path` | str | State-relative path to the T0 baseline file (under `dh_paths.plan_dir()`) |
+| `t0_baseline_source` | str | MCP artifact reference for the T0 baseline — `artifact:T0-baseline:issue={issue_number}` |
 | `verdict` | str | `"PASS"` or `"FAIL"` |
 | `criteria_count` | int | Total criteria evaluated |
 | `regressions` | int | Count of `regressed` criteria |
@@ -130,27 +134,22 @@ results:
 - `pre-existing-fail`: "Still failing (pre-existing)" or empty
 - `newly-passing`: "Was FAILING, now PASSED — {brief success indicator}"
 
-Use the Write tool to write this file. Resolve the path via `dh_paths.plan_dir()`:
+## Step 5: Register Artifact via MCP
 
-```bash
-Write(file_path=str(dh_paths.plan_dir() / "TN-verification-{slug}.yaml"), content="...")
-```
-
-## Step 5: Register Artifact
-
-After writing the file, register it in the backlog item's artifact manifest:
+Register the assembled YAML string directly via `artifact_register` with `content=`. Do not write to disk.
 
 ```bash
 mcp__plugin_dh_backlog__artifact_register(
     issue_number={issue_number},
     type="TN-verification",
-    path=str(dh_paths.plan_dir() / "TN-verification-{slug}.yaml"),
+    artifact_id="TN-verification-{slug}",
+    content={yaml_string},
     status="complete",
     agent="tn-verification-gate"
 )
 ```
 
-The `issue_number` is provided in your task delegation prompt (the GitHub issue number for the feature). If not provided, omit the registration step and note it in the STATUS output.
+The `issue_number` is provided in your task delegation prompt (the GitHub issue number for the feature) and is required. If not provided, return STATUS: BLOCKED with: "`issue_number` is required for `artifact_register` — provide the GitHub issue number in the delegation prompt."
 
 ## Step 6: Report Regressions (If verdict FAIL)
 
@@ -173,7 +172,7 @@ This report goes in the STATUS: DONE output below, enabling `/complete-implement
 STATUS: DONE
 
 ARTIFACTS:
-  - ~/.dh/projects/{project-slug}/plan/TN-verification-{slug}.yaml
+  - type=TN-verification, issue={issue_number}, artifact_id=TN-verification-{slug}
 
 SUMMARY:
   - Verdict: PASS
@@ -187,13 +186,13 @@ NOTES:
   - /complete-implementation may proceed to Phase 1 (code review).
 ```
 
-**If verdict FAIL**, return STATUS: DONE (with regression details — the orchestrator reads the file):
+**If verdict FAIL**, return STATUS: DONE (with regression details — the orchestrator reads the artifact):
 
 ```text
 STATUS: DONE
 
 ARTIFACTS:
-  - ~/.dh/projects/{project-slug}/plan/TN-verification-{slug}.yaml
+  - type=TN-verification, issue={issue_number}, artifact_id=TN-verification-{slug}
 
 SUMMARY:
   - Verdict: FAIL
@@ -208,13 +207,14 @@ REGRESSIONS:
     tn-exit-code: 1
     stdout-diff-summary: "{what changed}"
 
-NEXT_STEP: /complete-implementation will read TN-verification-{slug}.yaml, detect verdict FAIL,
+NEXT_STEP: /complete-implementation will read TN-verification artifact via artifact_read, detect verdict FAIL,
   display regressions, and return to /implement-feature for fixes before proceeding.
 ```
 
 Return STATUS: BLOCKED if:
-- T0 baseline file does not exist
+- `issue_number` is not provided in the delegation prompt
+- `artifact_read(issue_number, "T0-baseline")` returns an error or empty result
 - Plan file cannot be read
-- Write to `~/.dh/projects/{project-slug}/plan/TN-verification-{slug}.yaml` fails
+- `artifact_register` call fails
 
 </output>
