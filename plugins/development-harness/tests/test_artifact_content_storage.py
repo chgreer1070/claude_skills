@@ -35,12 +35,11 @@ from backlog_core.models import ArtifactEntry, ArtifactManifest, ArtifactStatus,
 from backlog_core.server import mcp
 from fastmcp.client import Client
 from graphql_factories import (
-    make_add_comment_response,
     make_issue_by_number_response,
     make_issue_comment_node,
     make_issue_comments_response,
     make_issue_node,
-    make_update_comment_response,
+    make_update_issue_response,
 )
 
 # ---------------------------------------------------------------------------
@@ -253,109 +252,125 @@ def test_extract_content_from_comment_returns_full_body_when_malformed() -> None
 # ---------------------------------------------------------------------------
 
 
-def test_store_artifact_content_creates_new_comment_when_none_exists(tmp_path: Path) -> None:
-    """Verify a new comment is created via _add_comment_graphql when no match exists.
+def test_store_artifact_content_creates_new_gist_when_none_exists(tmp_path: Path) -> None:
+    """Verify a new Gist is created and linked when no Gist sentinel exists in the issue body.
 
-    Tests: GitHubArtifactProvider.store_artifact_content — create path.
-    How: Mock _graphql_request with issue fetch + empty comments + add-comment responses.
-         Assert _graphql_request is called with the ADD_COMMENT mutation pattern.
-    Why: When no existing comment matches type+path, a new comment must be created.
+    Tests: GitHubGistArtifactProvider.store_artifact_content — create path.
+    How: Mock _graphql_request with issue-fetch (no sentinel in body) + update-issue responses.
+         Mock _make_github_client so create_gist returns a fake Gist.
+         Assert gist.edit() is called with the sanitised filename and content.
+    Why: When no Gist is linked to the issue, a new Gist must be created and its ID
+         written into the issue body as a sentinel comment.
     """
-    # Arrange
+    # Arrange — issue body has no sentinel, so a new Gist will be created.
     mock_repo = _make_mock_repo()
-    issue_node = make_issue_node(number=42, id="I_42")
+    issue_node = make_issue_node(number=42, id="I_42", body="No sentinel here.")
+    mock_gist = MagicMock()
+    mock_gist.id = "abc123deadbeef00"
+    mock_gh_client = MagicMock()
+    mock_gh_client.get_user.return_value.create_gist.return_value = mock_gist
+
     responses = [
         make_issue_by_number_response(issue_node),  # _fetch_issue_graphql
-        make_issue_comments_response([]),  # _fetch_issue_comments_graphql (page 1, no more)
-        make_add_comment_response(),  # _add_comment_graphql
+        make_update_issue_response(),  # _update_issue_graphql (writes sentinel)
     ]
     provider = GitHubArtifactProvider(repo="owner/repo", root_worktree=tmp_path)
 
     with (
         patch("backlog_core.artifact_provider.get_github", return_value=mock_repo),
         patch("backlog_core.gh_client._graphql_request", side_effect=responses) as mock_gql,
+        patch("backlog_core.artifact_provider._make_github_client", return_value=mock_gh_client),
     ):
         # Act
         provider.store_artifact_content(42, "research", "plan/foo.md", "# Content")
 
-    # Assert — third call is the addComment mutation
-    assert mock_gql.call_count == 3
-    last_call_args = mock_gql.call_args_list[2]
-    mutation_str: str = last_call_args[0][1]
-    assert "addComment" in mutation_str
-    variables: dict = last_call_args[0][2]
-    assert "# Content" in variables["body"]
-    assert "artifact-content:type=research:path=plan/foo.md" in variables["body"]
+    # Assert — exactly 2 _graphql_request calls: fetch issue + update issue body with sentinel
+    assert mock_gql.call_count == 2
+    # Gist edit called with sanitised filename (/ → --) and correct content
+    mock_gist.edit.assert_called_once()
+    edit_files_arg: dict = mock_gist.edit.call_args[1].get("files") or mock_gist.edit.call_args[0][0]
+    assert "plan--foo.md" in edit_files_arg
+    assert "# Content" in edit_files_arg["plan--foo.md"]._InputFileContent__content
 
 
-def test_store_artifact_content_updates_existing_comment_in_place(tmp_path: Path) -> None:
-    """Verify an existing matching comment is updated in-place via _update_issue_comment_graphql.
+def test_store_artifact_content_updates_existing_gist_file_in_place(tmp_path: Path) -> None:
+    """Verify an existing Gist file is edited in-place when a Gist sentinel exists.
 
-    Tests: GitHubArtifactProvider.store_artifact_content — update path.
-    How: Mock _graphql_request with issue fetch + comment list containing matching comment.
-         Assert _graphql_request is called with updateIssueComment mutation.
-    Why: Prevents duplicate comments — existing comments must be edited, not duplicated.
+    Tests: GitHubGistArtifactProvider.store_artifact_content — update path.
+    How: Issue body contains a Gist sentinel; mock _make_github_client so get_gist()
+         returns a pre-existing Gist mock. Assert gist.edit() is called with new content.
+    Why: When a Gist is already linked, only one _graphql_request call (fetch) is needed
+         and the Gist file is updated via gist.edit() — no new Gist is created.
     """
-    # Arrange
-    existing_body = _build_artifact_content_comment("research", "plan/foo.md", "old content")
-    existing_comment = make_issue_comment_node(comment_id="IC_existing", body=existing_body)
-    issue_node = make_issue_node(number=42, id="I_42")
+    # Arrange — issue body contains the Gist sentinel.
+    gist_id = "1234abc5def6cafe"
+    issue_body = f"Some existing body.\n\n<!-- artifact-gist:{gist_id} -->"
+    issue_node = make_issue_node(number=42, id="I_42", body=issue_body)
+
+    mock_gist = MagicMock()
+    mock_gist.id = gist_id
+    mock_gh_client = MagicMock()
+    mock_gh_client.get_gist.return_value = mock_gist
+
     responses = [
-        make_issue_by_number_response(issue_node),  # _fetch_issue_graphql
-        make_issue_comments_response([existing_comment]),  # _fetch_issue_comments_graphql
-        make_update_comment_response(comment_id="IC_existing"),  # _update_issue_comment_graphql
+        make_issue_by_number_response(issue_node)  # _fetch_issue_graphql
     ]
     provider = GitHubArtifactProvider(repo="owner/repo", root_worktree=tmp_path)
 
     with (
         patch("backlog_core.artifact_provider.get_github", return_value=_make_mock_repo()),
         patch("backlog_core.gh_client._graphql_request", side_effect=responses) as mock_gql,
+        patch("backlog_core.artifact_provider._make_github_client", return_value=mock_gh_client),
     ):
         # Act
         provider.store_artifact_content(42, "research", "plan/foo.md", "new content")
 
-    # Assert — third call is the updateIssueComment mutation
-    assert mock_gql.call_count == 3
-    last_call_args = mock_gql.call_args_list[2]
-    mutation_str: str = last_call_args[0][1]
-    assert "updateIssueComment" in mutation_str
-    variables: dict = last_call_args[0][2]
-    assert variables["id"] == "IC_existing"
-    assert "new content" in variables["body"]
+    # Assert — exactly 1 _graphql_request call (fetch issue); gist.edit() writes content
+    assert mock_gql.call_count == 1
+    mock_gist.edit.assert_called_once()
+    edit_files_arg: dict = mock_gist.edit.call_args[1].get("files") or mock_gist.edit.call_args[0][0]
+    assert "plan--foo.md" in edit_files_arg
+    assert "new content" in edit_files_arg["plan--foo.md"]._InputFileContent__content
 
 
-def test_store_artifact_content_does_not_update_comment_with_different_path(tmp_path: Path) -> None:
-    """Verify a comment with the same type but different path triggers creation, not update.
+def test_store_artifact_content_writes_only_target_path_not_other_paths(tmp_path: Path) -> None:
+    """Verify that storing to plan/foo.md writes only plan--foo.md, leaving plan--other.md untouched.
 
-    Tests: GitHubArtifactProvider.store_artifact_content — path mismatch.
-    How: Place existing comment for plan/other.md, store for plan/foo.md.
-         Assert addComment is called (not updateIssueComment).
-    Why: Comments are identified by type AND path — partial match must not edit wrong comment.
+    Tests: GitHubGistArtifactProvider.store_artifact_content — path isolation.
+    How: Existing Gist already has plan--other.md; store to plan/foo.md.
+         Assert gist.edit() receives plan--foo.md (not plan--other.md) as the key.
+    Why: Gist filenames are derived from path — each path maps to exactly one Gist file.
+         Writing to plan/foo.md must not overwrite plan--other.md in the same Gist.
     """
-    # Arrange
-    existing_body = _build_artifact_content_comment("research", "plan/other.md", "old content")
-    existing_comment = make_issue_comment_node(comment_id="IC_other", body=existing_body)
-    issue_node = make_issue_node(number=42, id="I_42")
+    # Arrange — Gist sentinel in issue body; Gist has a pre-existing file for another path.
+    gist_id = "dead456beef0cafe"
+    issue_body = f"Description.\n\n<!-- artifact-gist:{gist_id} -->"
+    issue_node = make_issue_node(number=42, id="I_42", body=issue_body)
+
+    mock_gist = MagicMock()
+    mock_gist.id = gist_id
+    mock_gh_client = MagicMock()
+    mock_gh_client.get_gist.return_value = mock_gist
+
     responses = [
-        make_issue_by_number_response(issue_node),
-        make_issue_comments_response([existing_comment]),
-        make_add_comment_response(),  # new comment created, not edit
+        make_issue_by_number_response(issue_node)  # _fetch_issue_graphql
     ]
     provider = GitHubArtifactProvider(repo="owner/repo", root_worktree=tmp_path)
 
     with (
         patch("backlog_core.artifact_provider.get_github", return_value=_make_mock_repo()),
         patch("backlog_core.gh_client._graphql_request", side_effect=responses) as mock_gql,
+        patch("backlog_core.artifact_provider._make_github_client", return_value=mock_gh_client),
     ):
-        # Act
+        # Act — store content for plan/foo.md (not plan/other.md)
         provider.store_artifact_content(42, "research", "plan/foo.md", "new content")
 
-    # Assert — addComment called, not updateIssueComment
-    assert mock_gql.call_count == 3
-    last_call_args = mock_gql.call_args_list[2]
-    mutation_str: str = last_call_args[0][1]
-    assert "addComment" in mutation_str
-    assert "updateIssueComment" not in mutation_str
+    # Assert — gist.edit() received plan--foo.md, not plan--other.md
+    assert mock_gql.call_count == 1
+    mock_gist.edit.assert_called_once()
+    edit_files_arg: dict = mock_gist.edit.call_args[1].get("files") or mock_gist.edit.call_args[0][0]
+    assert "plan--foo.md" in edit_files_arg
+    assert "plan--other.md" not in edit_files_arg
 
 
 # ---------------------------------------------------------------------------
@@ -364,24 +379,35 @@ def test_store_artifact_content_does_not_update_comment_with_different_path(tmp_
 
 
 def test_read_artifact_content_from_remote_returns_content_when_found(tmp_path: Path) -> None:
-    """Verify stored content is returned when a matching comment is found.
+    """Verify stored content is returned when the Gist file matching the path is found.
 
-    Tests: GitHubArtifactProvider.read_artifact_content_from_remote — found path.
-    How: Mock _graphql_request with comment list containing a matching comment body.
+    Tests: GitHubGistArtifactProvider.read_artifact_content_from_remote — found path.
+    How: Issue body contains a Gist sentinel; mock _make_github_client so get_gist()
+         returns a Gist whose files dict contains the sanitised filename.
     Why: The primary read path must recover content stored by store_artifact_content.
     """
-    # Arrange
+    # Arrange — issue body has Gist sentinel; Gist has the content file.
+    gist_id = "f0a1b2c3d4e5f6a7"
     stored_content = "# Research findings\n\nImportant data."
-    comment_body = _build_artifact_content_comment("research", "plan/foo.md", stored_content)
-    matching_comment = make_issue_comment_node(comment_id="IC_match", body=comment_body)
+    issue_body = f"Issue description.\n\n<!-- artifact-gist:{gist_id} -->"
+    issue_node = make_issue_node(number=42, id="I_42", body=issue_body)
+
+    mock_gist_file = MagicMock()
+    mock_gist_file.content = stored_content
+    mock_gist = MagicMock()
+    mock_gist.files = {"plan--foo.md": mock_gist_file}
+    mock_gh_client = MagicMock()
+    mock_gh_client.get_gist.return_value = mock_gist
+
     responses = [
-        make_issue_comments_response([matching_comment])  # _fetch_issue_comments_graphql
+        make_issue_by_number_response(issue_node)  # _fetch_issue_graphql
     ]
     provider = GitHubArtifactProvider(repo="owner/repo", root_worktree=tmp_path)
 
     with (
         patch("backlog_core.artifact_provider.get_github", return_value=_make_mock_repo()),
         patch("backlog_core.gh_client._graphql_request", side_effect=responses),
+        patch("backlog_core.artifact_provider._make_github_client", return_value=mock_gh_client),
     ):
         # Act
         result = provider.read_artifact_content_from_remote(42, "research", "plan/foo.md")
