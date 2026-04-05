@@ -21,6 +21,7 @@ Parse/render helpers for the legacy inline format are in
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sys
@@ -33,6 +34,14 @@ from github import Auth, Github, GithubException, InputFileContent
 
 from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
 from .gh_client import _fetch_issue_graphql, _update_issue_graphql, get_github
+from .gitlab_client import (
+    gitlab_create_issue_note,
+    gitlab_create_snippet,
+    gitlab_get_snippet,
+    gitlab_list_issue_notes,
+    gitlab_update_snippet,
+)
+from .linear_client import linear_create_attachment, linear_get_attachments
 from .models import ArtifactManifest, BacklogError
 
 # dh_paths lives one level above backlog_core (at plugin root).
@@ -41,6 +50,8 @@ if str(_plugin_root) not in sys.path:
     sys.path.insert(0, str(_plugin_root))
 
 import dh_paths as _dh_paths
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from github.AuthenticatedUser import AuthenticatedUser
@@ -52,6 +63,8 @@ __all__ = [
     "BackendName",
     "GitHubArtifactProvider",
     "GitHubGistArtifactProvider",
+    "GitLabArtifactProvider",
+    "LinearArtifactProvider",
     "parse_manifest_section",
     "render_manifest_section",
     "replace_manifest_in_body",
@@ -667,3 +680,564 @@ class GitHubGistArtifactProvider:
 
 
 GitHubArtifactProvider = GitHubGistArtifactProvider  # backward-compat alias
+
+
+# ---------------------------------------------------------------------------
+# LinearArtifactProvider
+# ---------------------------------------------------------------------------
+
+#: Maximum recommended manifest JSON size for Linear attachment metadata.
+_LINEAR_MANIFEST_WARN_CHARS = 10_000
+
+
+class LinearArtifactProvider:
+    """Linear Attachments-backed implementation of :class:`ArtifactBackend`.
+
+    Stores the artifact manifest and artifact file content as Linear
+    Attachments on the issue, using the ``dh://`` URL scheme as an
+    idempotency key.
+
+    **Issue ID vs issue number**: Linear issue IDs are UUIDs.
+    :func:`~backlog_core.linear_client.linear_get_attachments` and
+    :func:`~backlog_core.linear_client.linear_create_attachment` accept
+    ``issue_id: str``.  This provider passes ``str(issue_number)`` as the
+    ``issue_id``.  This works when the ``issue_number`` stored in the backlog
+    matches the Linear UUID for that issue.  Callers must ensure the
+    ``issue_number`` field on their backlog items contains the Linear UUID,
+    not the short human-readable sequence number.
+
+    Args:
+        api_key: Linear personal API key.  Must not be empty.
+        team_id: Linear team identifier (UUID).  Stored for future use by
+            team-scoped queries.
+        root_worktree: Absolute path to the DH state root directory.
+            Defaults to ``dh_paths.state_root()`` when not provided.
+
+    Raises:
+        ValueError: When *api_key* is empty.
+
+    Example::
+
+        provider = LinearArtifactProvider(api_key=os.environ["LINEAR_API_KEY"], team_id="team-uuid")
+        manifest = provider.get_manifest("issue-uuid")
+    """
+
+    def __init__(self, api_key: str, team_id: str, root_worktree: Path | None = None) -> None:
+        """Initialise provider with Linear credentials and state root path.
+
+        Args:
+            api_key: Linear personal API key.  Must not be empty.
+            team_id: Linear team identifier (UUID).
+            root_worktree: Absolute path to the DH state root for this
+                project.  When ``None``, resolved via
+                :func:`dh_paths.state_root`.
+
+        Raises:
+            ValueError: When *api_key* is empty.
+        """
+        if not api_key:
+            raise ValueError("LINEAR_API_KEY must not be empty")
+        self._api_key = api_key
+        self._team_id = team_id
+        self._root_worktree = root_worktree or Path(_dh_paths.state_root())
+
+    # ------------------------------------------------------------------
+    # ArtifactBackend implementation
+    # ------------------------------------------------------------------
+
+    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+        """Retrieve the artifact manifest for *issue_number*.
+
+        Fetches all Linear attachments for the issue and looks for one
+        whose URL matches ``dh://artifact-manifest/{issue_number}``.
+        Parses ``metadata["manifest_json"]`` and returns the result.
+        Returns an empty manifest when no matching attachment exists.
+
+        Args:
+            issue_number: Issue identifier passed as the Linear issue UUID.
+
+        Returns:
+            Parsed ``ArtifactManifest``.  Empty when no manifest attachment
+            is stored.
+
+        Raises:
+            backlog_core.models.BacklogError: On Linear API failures.
+        """
+        target_url = f"dh://artifact-manifest/{issue_number}"
+        nodes = linear_get_attachments(self._api_key, str(issue_number))
+        for node in nodes:
+            if node.get("url") == target_url:
+                raw_metadata = node.get("metadata")
+                if isinstance(raw_metadata, dict):
+                    metadata = cast("dict[str, object]", raw_metadata)
+                    manifest_json = metadata.get("manifest_json")
+                    if isinstance(manifest_json, str):
+                        return ArtifactManifest.model_validate_json(manifest_json)
+        return ArtifactManifest()
+
+    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+        """Persist *manifest* as a Linear attachment on *issue_number*.
+
+        Serialises the manifest to JSON and creates (or upserts) a Linear
+        attachment with URL ``dh://artifact-manifest/{issue_number}``.
+        Linear treats the same URL on the same issue as idempotent — the
+        existing attachment is updated rather than duplicated.
+
+        Logs a warning when the serialised manifest exceeds
+        ``_LINEAR_MANIFEST_WARN_CHARS`` characters, as Linear attachment
+        metadata has undocumented size limits.
+
+        Args:
+            issue_number: Issue identifier passed as the Linear issue UUID.
+            manifest: Updated manifest to persist.
+
+        Raises:
+            backlog_core.models.BacklogError: On Linear API failures.
+        """
+        manifest_json = manifest.model_dump_json(by_alias=True)
+        if len(manifest_json) > _LINEAR_MANIFEST_WARN_CHARS:
+            logger.warning("Linear manifest exceeds 10K chars; truncation risk (size=%d)", len(manifest_json))
+        linear_create_attachment(
+            self._api_key,
+            str(issue_number),
+            url=f"dh://artifact-manifest/{issue_number}",
+            title="DH Artifact Manifest",
+            metadata={"manifest_json": manifest_json},
+        )
+
+    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+        """Store artifact content as a Linear attachment on *issue_number*.
+
+        Creates (or upserts) a Linear attachment using the URL scheme
+        ``dh://artifact-content/{issue_number}/{artifact_type}/{safe_path}``
+        where ``safe_path`` has ``/`` replaced with ``--``.
+
+        Args:
+            issue_number: Issue identifier passed as the Linear issue UUID.
+            artifact_type: Artifact type string, e.g. ``"research"``.
+            path: Repo-relative artifact path, e.g.
+                ``plan/architect-foo.md``.
+            content: Full artifact content to store.
+
+        Raises:
+            backlog_core.models.BacklogError: On Linear API failures.
+        """
+        safe_path = path.replace("/", "--")
+        url = f"dh://artifact-content/{issue_number}/{artifact_type}/{safe_path}"
+        linear_create_attachment(
+            self._api_key,
+            str(issue_number),
+            url=url,
+            title=f"DH Artifact: {artifact_type}/{path}",
+            metadata={"content": content},
+        )
+
+    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+        """Read artifact content from a Linear attachment.
+
+        Sanitises *path* to the ``dh://`` URL form and scans all
+        attachments for the issue looking for a match.  Returns the
+        ``metadata["content"]`` value when found.
+
+        Args:
+            issue_number: Issue identifier passed as the Linear issue UUID.
+            artifact_type: Artifact type string to match.
+            path: Repo-relative artifact path to match.
+
+        Returns:
+            Stored content string, or ``None`` when no matching attachment
+            exists.
+
+        Raises:
+            backlog_core.models.BacklogError: On Linear API failures.
+        """
+        safe_path = path.replace("/", "--")
+        target_url = f"dh://artifact-content/{issue_number}/{artifact_type}/{safe_path}"
+        nodes = linear_get_attachments(self._api_key, str(issue_number))
+        for node in nodes:
+            if node.get("url") == target_url:
+                raw_metadata = node.get("metadata")
+                if isinstance(raw_metadata, dict):
+                    metadata = cast("dict[str, object]", raw_metadata)
+                    content = metadata.get("content")
+                    if isinstance(content, str):
+                        return content
+        return None
+
+    def read_artifact_content(self, path: str) -> str:
+        """Read artifact file content from the root worktree filesystem.
+
+        Validates that *path* resolves to a location inside the repository
+        root (path traversal prevention via ``Path.resolve()``).
+
+        Args:
+            path: Repo-relative path to the artifact file.
+
+        Returns:
+            Raw UTF-8 file content.
+
+        Raises:
+            ValueError: When *path* resolves outside the repository root
+                (path traversal detected).
+            FileNotFoundError: When the resolved file does not exist.
+        """
+        self._validate_artifact_path(path)
+        resolved = (self._root_worktree / path).resolve()
+        return resolved.read_text(encoding="utf-8")
+
+    def read_local_artifact_content(self, path: str) -> str | None:
+        """Read artifact file content from the local filesystem.
+
+        Validates the path for traversal attacks, then returns the file
+        content or ``None`` when the file does not exist.
+
+        Args:
+            path: Repo-relative path to the artifact file.
+
+        Returns:
+            Raw UTF-8 file content, or ``None`` when the file does not
+            exist.
+
+        Raises:
+            ValueError: When *path* contains ``..`` components or resolves
+                outside the repository root.
+        """
+        candidate = (self._root_worktree / path).resolve()
+        try:
+            candidate.relative_to(self._root_worktree.resolve())
+        except ValueError:
+            raise ValueError(f"Path traversal detected: {path!r} resolves outside the repository root.") from None
+        if not candidate.exists():
+            return None
+        return candidate.read_text(encoding="utf-8")
+
+    # ------------------------------------------------------------------
+    # Path safety helpers
+    # ------------------------------------------------------------------
+
+    def _validate_artifact_path(self, path: str) -> None:
+        """Raise ``ValueError`` when *path* fails the path traversal check.
+
+        Args:
+            path: Repo-relative path string as provided by the caller.
+
+        Raises:
+            ValueError: When the resolved path escapes the repository root.
+        """
+        candidate = (self._root_worktree / path).resolve()
+        try:
+            candidate.relative_to(self._root_worktree.resolve())
+        except ValueError:
+            raise ValueError(f"Path traversal detected: {path!r} resolves outside the repository root.") from None
+
+
+# ---------------------------------------------------------------------------
+# GitLabArtifactProvider
+# ---------------------------------------------------------------------------
+
+#: Regex matching the snippet sentinel comment that links an issue to its snippet.
+#: Captures the ``snippet_id`` group (integer).
+_SNIPPET_SENTINEL_RE = re.compile(r"<!-- artifact-snippet:(?P<snippet_id>\d+) -->")
+
+
+class GitLabArtifactProvider:
+    """GitLab Snippets-backed implementation of :class:`ArtifactBackend`.
+
+    Stores the artifact manifest as a JSON file inside a private GitLab project
+    snippet.  The snippet is linked to the issue via a note (comment) containing
+    the sentinel ``<!-- artifact-snippet:{snippet_id} -->``.
+
+    Artifact file content (research, plan documents, etc.) is stored as
+    additional files in the same snippet with ``/`` replaced by ``--`` in the
+    filename and ``.txt`` appended.
+
+    Args:
+        project_id: GitLab project ID (integer).
+        private_token: GitLab personal access token.  Must not be empty.
+        gitlab_url: GitLab instance base URL.  Defaults to ``https://gitlab.com``.
+        root_worktree: Absolute path to the DH state root directory.  Defaults
+            to ``dh_paths.state_root()`` when not provided.
+
+    Raises:
+        ValueError: When *private_token* is empty.
+
+    Example::
+
+        provider = GitLabArtifactProvider(project_id=42, private_token=os.environ["GITLAB_TOKEN"])
+        manifest = provider.get_manifest(965)
+        print(manifest.artifacts)
+    """
+
+    def __init__(
+        self,
+        project_id: int,
+        private_token: str,
+        gitlab_url: str = "https://gitlab.com",
+        root_worktree: Path | None = None,
+    ) -> None:
+        """Initialise provider with GitLab credentials and state root path.
+
+        Args:
+            project_id: GitLab project ID (integer).
+            private_token: GitLab personal access token.  Must not be empty.
+            gitlab_url: GitLab instance base URL.
+            root_worktree: Absolute path to the DH state root for this project.
+                When ``None``, resolved via :func:`dh_paths.state_root`.
+
+        Raises:
+            ValueError: When *private_token* is empty.
+        """
+        if not private_token:
+            raise ValueError("GITLAB_TOKEN must not be empty")
+        self._project_id = project_id
+        self._private_token = private_token
+        self._gitlab_url = gitlab_url.rstrip("/")
+        self._root_worktree = root_worktree or Path(_dh_paths.state_root())
+        self._snippet_cache: dict[int, int] = {}
+
+    # ------------------------------------------------------------------
+    # ArtifactBackend implementation
+    # ------------------------------------------------------------------
+
+    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+        """Retrieve the artifact manifest for *issue_number*.
+
+        Lists issue notes and scans for a snippet sentinel comment.  If found,
+        loads ``manifest.json`` from the linked snippet.  Returns an empty
+        manifest when no manifest data is present.
+
+        Args:
+            issue_number: GitLab issue IID (positive integer).
+
+        Returns:
+            Parsed ``ArtifactManifest``.  Empty when no manifest is stored.
+
+        Raises:
+            backlog_core.models.BacklogError: On GitLab API failures.
+        """
+        snippet_id = self._get_snippet_id_from_notes(issue_number)
+        if snippet_id is None:
+            return ArtifactManifest()
+
+        self._snippet_cache[issue_number] = snippet_id
+        snippet = gitlab_get_snippet(self._project_id, snippet_id, self._private_token, self._gitlab_url)
+        manifest_json = snippet["files_content"].get("manifest.json")
+        if manifest_json is None:
+            return ArtifactManifest()
+        return ArtifactManifest.model_validate_json(manifest_json)
+
+    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+        """Persist *manifest* by writing it to the linked snippet.
+
+        If no snippet exists yet, one is created and a sentinel note is posted
+        on the issue.
+
+        Args:
+            issue_number: GitLab issue IID (positive integer).
+            manifest: Updated manifest to persist.
+
+        Raises:
+            backlog_core.models.BacklogError: On GitLab API failures.
+        """
+        manifest_json = manifest.model_dump_json(by_alias=True)
+        snippet_id = self._get_or_create_snippet(issue_number)
+        gitlab_update_snippet(
+            self._project_id,
+            snippet_id,
+            self._private_token,
+            self._gitlab_url,
+            files=[{"action": "update", "file_path": "manifest.json", "content": manifest_json}],
+        )
+
+    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+        """Store artifact content as a file in the linked snippet.
+
+        The artifact *path* is sanitised for use as a snippet filename by
+        replacing ``/`` with ``--`` and appending ``.txt``.  If no snippet
+        exists yet it is created and linked to the issue before the file is
+        added.
+
+        Args:
+            issue_number: GitLab issue IID (positive integer).
+            artifact_type: Artifact type string (e.g. ``"research"``).
+                Not used in the snippet filename — *path* is the unique key.
+            path: Repo-relative artifact path, e.g. ``plan/architect-foo.md``.
+            content: Full artifact content to store.
+
+        Raises:
+            backlog_core.models.BacklogError: On GitLab API failures.
+        """
+        safe_path = path.replace("/", "--") + ".txt"
+        snippet_id = self._get_or_create_snippet(issue_number)
+        # Attempt update; if the file does not yet exist, create it instead.
+        try:
+            gitlab_update_snippet(
+                self._project_id,
+                snippet_id,
+                self._private_token,
+                self._gitlab_url,
+                files=[{"action": "update", "file_path": safe_path, "content": content}],
+            )
+        except BacklogError:
+            gitlab_update_snippet(
+                self._project_id,
+                snippet_id,
+                self._private_token,
+                self._gitlab_url,
+                files=[{"action": "create", "file_path": safe_path, "content": content}],
+            )
+
+    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+        """Read artifact content from the linked snippet.
+
+        Sanitises *path* to the snippet filename form and looks it up in the
+        snippet file dictionary.  Returns ``None`` when no snippet is linked or
+        the file is absent.
+
+        Args:
+            issue_number: GitLab issue IID (positive integer).
+            artifact_type: Artifact type string (not used for lookup — *path*
+                is the unique key in the snippet).
+            path: Repo-relative artifact path, e.g. ``plan/architect-foo.md``.
+
+        Returns:
+            Stored content string, or ``None`` when not found.
+
+        Raises:
+            backlog_core.models.BacklogError: On GitLab API failures.
+        """
+        safe_path = path.replace("/", "--") + ".txt"
+        snippet_id = self._get_snippet_id_from_notes(issue_number)
+        if snippet_id is None:
+            return None
+        snippet = gitlab_get_snippet(self._project_id, snippet_id, self._private_token, self._gitlab_url)
+        return snippet["files_content"].get(safe_path)
+
+    def read_artifact_content(self, path: str) -> str:
+        """Read artifact file content from the root worktree filesystem.
+
+        Validates that *path* resolves to a location inside the repository
+        root (path traversal prevention via ``Path.resolve()``).
+
+        Args:
+            path: Repo-relative path to the artifact file.
+
+        Returns:
+            Raw UTF-8 file content.
+
+        Raises:
+            ValueError: When *path* resolves outside the repository root
+                (path traversal detected).
+            FileNotFoundError: When the resolved file does not exist.
+        """
+        self._validate_artifact_path(path)
+        resolved = (self._root_worktree / path).resolve()
+        return resolved.read_text(encoding="utf-8")
+
+    def read_local_artifact_content(self, path: str) -> str | None:
+        """Read artifact file content from the local filesystem.
+
+        Validates the path for traversal attacks, then returns the file
+        content or ``None`` when the file does not exist.
+
+        Args:
+            path: Repo-relative path to the artifact file.
+
+        Returns:
+            Raw UTF-8 file content, or ``None`` when the file does not exist.
+
+        Raises:
+            ValueError: When *path* contains ``..`` components or resolves
+                outside the repository root.
+        """
+        candidate = (self._root_worktree / path).resolve()
+        try:
+            candidate.relative_to(self._root_worktree.resolve())
+        except ValueError:
+            raise ValueError(f"Path traversal detected: {path!r} resolves outside the repository root.") from None
+        if not candidate.exists():
+            return None
+        return candidate.read_text(encoding="utf-8")
+
+    # ------------------------------------------------------------------
+    # Path safety helpers
+    # ------------------------------------------------------------------
+
+    def _validate_artifact_path(self, path: str) -> None:
+        """Raise ``ValueError`` when *path* fails the path traversal check.
+
+        Args:
+            path: Repo-relative path string as provided by the caller.
+
+        Raises:
+            ValueError: When the resolved path escapes the repository root.
+        """
+        candidate = (self._root_worktree / path).resolve()
+        try:
+            candidate.relative_to(self._root_worktree.resolve())
+        except ValueError:
+            raise ValueError(f"Path traversal detected: {path!r} resolves outside the repository root.") from None
+
+    # ------------------------------------------------------------------
+    # Snippet linkage helpers
+    # ------------------------------------------------------------------
+
+    def _get_snippet_id_from_notes(self, issue_number: int) -> int | None:
+        """Scan issue notes for the snippet sentinel and return the snippet ID.
+
+        Args:
+            issue_number: GitLab issue IID (positive integer).
+
+        Returns:
+            Integer snippet ID when found, or ``None`` when no sentinel note
+            exists.
+
+        Raises:
+            backlog_core.models.BacklogError: On GitLab API failures.
+        """
+        if issue_number in self._snippet_cache:
+            return self._snippet_cache[issue_number]
+        notes = gitlab_list_issue_notes(self._project_id, issue_number, self._private_token, self._gitlab_url)
+        for note in notes:
+            body = note.get("body") or ""
+            match = _SNIPPET_SENTINEL_RE.search(body)
+            if match:
+                snippet_id = int(match.group("snippet_id"))
+                self._snippet_cache[issue_number] = snippet_id
+                return snippet_id
+        return None
+
+    def _get_or_create_snippet(self, issue_number: int) -> int:
+        """Return the snippet ID for *issue_number*, creating one if absent.
+
+        Checks the in-memory cache first, then scans issue notes.  When no
+        snippet exists, creates a new private snippet with an empty
+        ``manifest.json`` and posts a sentinel note on the issue.
+
+        Args:
+            issue_number: GitLab issue IID (positive integer).
+
+        Returns:
+            Integer snippet ID.
+
+        Raises:
+            backlog_core.models.BacklogError: On GitLab API failures.
+        """
+        cached = self._get_snippet_id_from_notes(issue_number)
+        if cached is not None:
+            return cached
+
+        result = gitlab_create_snippet(
+            self._project_id,
+            self._private_token,
+            self._gitlab_url,
+            title=f"dh-artifact-manifest-issue-{issue_number}",
+            files=[{"file_path": "manifest.json", "content": "{}"}],
+            visibility="private",
+        )
+        snippet_id: int = result["id"]
+        self._snippet_cache[issue_number] = snippet_id
+
+        sentinel = f"<!-- artifact-snippet:{snippet_id} -->"
+        gitlab_create_issue_note(self._project_id, issue_number, self._private_token, self._gitlab_url, body=sentinel)
+        return snippet_id
