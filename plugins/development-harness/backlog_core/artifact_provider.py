@@ -65,6 +65,7 @@ __all__ = [
     "GitHubGistArtifactProvider",
     "GitLabArtifactProvider",
     "LinearArtifactProvider",
+    "create_artifact_provider",
     "parse_manifest_section",
     "render_manifest_section",
     "replace_manifest_in_body",
@@ -1241,3 +1242,50 @@ class GitLabArtifactProvider:
         sentinel = f"<!-- artifact-snippet:{snippet_id} -->"
         gitlab_create_issue_note(self._project_id, issue_number, self._private_token, self._gitlab_url, body=sentinel)
         return snippet_id
+
+
+def create_artifact_provider(
+    backend_name: str | None = None, repo: str | None = None, root_worktree: Path | None = None
+) -> ArtifactBackend:
+    """Create an ArtifactBackend provider based on backend config.
+
+    Args:
+        backend_name: Override backend name. When None, reads BACKLOG_BACKEND env var,
+            then falls back to ``github``.
+        repo: GitHub repo slug (``owner/name``). Required for GitHub backend.
+        root_worktree: Local filesystem root for artifact content reads.
+
+    Returns:
+        Configured ArtifactBackend provider instance.
+
+    Raises:
+        BacklogError: For non-remote backends (sqlite, memory) or missing credentials.
+    """
+    resolved = backend_name or os.environ.get("BACKLOG_BACKEND") or "github"
+    if resolved in {BackendName.github, "github"}:
+        if not repo:
+            raise BacklogError("GitHub artifact backend requires repo (owner/name)")
+        return GitHubGistArtifactProvider(repo=repo, root_worktree=root_worktree)
+    if resolved in {BackendName.linear, "linear"}:
+        api_key = os.environ.get("LINEAR_API_KEY", "")
+        team_id = os.environ.get("LINEAR_TEAM_ID", "")
+        if not api_key:
+            raise BacklogError("LINEAR_API_KEY env var is required for Linear backend")
+        return LinearArtifactProvider(api_key=api_key, team_id=team_id, root_worktree=root_worktree)
+    if resolved in {BackendName.gitlab, "gitlab"}:
+        private_token = os.environ.get("GITLAB_TOKEN", "")
+        project_id_str = os.environ.get("GITLAB_PROJECT_ID", "")
+        gitlab_url = os.environ.get("GITLAB_URL", "https://gitlab.com")
+        if not private_token:
+            raise BacklogError("GITLAB_TOKEN env var is required for GitLab backend")
+        if not project_id_str:
+            raise BacklogError("GITLAB_PROJECT_ID env var is required for GitLab backend")
+        return GitLabArtifactProvider(
+            project_id=int(project_id_str),
+            private_token=private_token,
+            gitlab_url=gitlab_url,
+            root_worktree=root_worktree,
+        )
+    if resolved in {BackendName.sqlite, BackendName.memory, "sqlite", "memory"}:
+        raise BacklogError(f"Backend '{resolved}' does not support artifact storage. Use github, linear, or gitlab.")
+    raise BacklogError(f"Unknown artifact backend: '{resolved}'")

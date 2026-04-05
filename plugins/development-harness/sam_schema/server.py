@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import backlog_core.models as _backlog_models
 import tiktoken
-from backlog_core.artifact_provider import GitHubArtifactProvider
+from backlog_core.artifact_provider import create_artifact_provider
 from backlog_core.artifact_registry import ArtifactRegistry as _ArtifactRegistry
 from backlog_core.models import ArtifactEntry, ArtifactStatus, ArtifactType, BacklogError
 from fastmcp import FastMCP
@@ -384,7 +384,7 @@ def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None
         if not repo:
             _log.warning("sam_create: skipping artifact registration — DEFAULT_REPO not set")
             return
-        provider = GitHubArtifactProvider(
+        provider = create_artifact_provider(
             repo=repo,
             root_worktree=_backlog_models._REPO_ROOT,  # noqa: SLF001
         )

@@ -27,7 +27,7 @@ from pydantic import Field, ValidationError as _ValidationError
 from ruamel.yaml import YAML as _YAML, YAMLError as _YAMLError
 
 from . import models as _models, operations
-from .artifact_provider import GitHubArtifactProvider
+from .artifact_provider import ArtifactBackend, create_artifact_provider
 from .artifact_registry import ArtifactRegistry
 from .backend_protocol import IssueNode as _IssueNode, get_config as _get_config
 from .dispatch_state import DispatchStateManager as _DispatchStateManager
@@ -2097,7 +2097,7 @@ async def backlog_update_sam_task_status(
 
 _artifact_registry = ArtifactRegistry()
 # TODO(H05): Move to FastMCP lifespan context — eliminate module-level singleton.
-_artifact_provider: GitHubArtifactProvider | None = None
+_artifact_provider: ArtifactBackend | None = None
 
 
 def _require_artifact_entries(entries: list, label: str) -> None:
@@ -2114,14 +2114,14 @@ def _require_artifact_entries(entries: list, label: str) -> None:
         raise BacklogError(label)
 
 
-def _get_artifact_provider() -> GitHubArtifactProvider:
-    """Return (or lazily create) the GitHubArtifactProvider singleton.
+def _get_artifact_provider() -> ArtifactBackend:
+    """Return (or lazily create) the ArtifactBackend singleton.
 
     Deferred so the provider is created after ``_init_models()`` has resolved
     the repo slug and project root from the ``--project-dir`` argument.
 
     Returns:
-        Initialised ``GitHubArtifactProvider`` instance.
+        Initialised ``ArtifactBackend`` instance.
 
     Raises:
         GitHubUnavailableError: When GitHub credentials or repo slug are missing.
@@ -2131,7 +2131,7 @@ def _get_artifact_provider() -> GitHubArtifactProvider:
         repo = _models.get_default_repo()
         if not repo:
             raise GitHubUnavailableError("DEFAULT_REPO not set — GitHub credentials or repo slug missing")
-        _artifact_provider = GitHubArtifactProvider(repo=repo, root_worktree=_models.get_repo_root())
+        _artifact_provider = create_artifact_provider(repo=repo, root_worktree=_models.get_repo_root())
     return _artifact_provider
 
 
@@ -2708,7 +2708,7 @@ def _try_register_dispatch_plan_artifact(issue_number: int, plan_path: Path) -> 
         if not repo:
             log.warning("dispatch_create_plan: skipping artifact registration — DEFAULT_REPO not set")
             return
-        provider = GitHubArtifactProvider(repo=repo, root_worktree=_models.get_repo_root())
+        provider = create_artifact_provider(repo=repo, root_worktree=_models.get_repo_root())
         entry = ArtifactEntry(
             artifact_type=ArtifactType.DISPATCH_PLAN,
             path=str(plan_path),
@@ -3364,14 +3364,14 @@ def _migrate_discover_candidates(
 
 
 def _migrate_register_one(
-    provider: GitHubArtifactProvider, rel_path: str, artifact_type: ArtifactType, issue_number: int
+    provider: ArtifactBackend, rel_path: str, artifact_type: ArtifactType, issue_number: int
 ) -> tuple[bool, str]:
     """Register a single artifact, uploading content when available.
 
     Idempotent — the registry upserts on (artifact_type, path).
 
     Args:
-        provider: Initialised ``GitHubArtifactProvider`` instance.
+        provider: Initialised ``ArtifactBackend`` instance.
         rel_path: Repo-relative path string.
         artifact_type: Resolved artifact type.
         issue_number: GitHub issue number (must be positive).
@@ -3451,7 +3451,7 @@ def _migrate_dry_run(issue_number: int | None) -> dict:
 
 
 def _migrate_queue_manifest_only(
-    provider: GitHubArtifactProvider, issue_number: int, candidates: list[_MigrateCandidate], out: Output
+    provider: ArtifactBackend, issue_number: int, candidates: list[_MigrateCandidate], out: Output
 ) -> list[_MigrateCandidate]:
     """Append manifest-only entries (content_stored=False) to the candidate list.
 
