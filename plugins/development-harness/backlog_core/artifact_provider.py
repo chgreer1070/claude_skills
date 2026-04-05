@@ -1,55 +1,39 @@
 """Backend abstraction for artifact manifest storage.
 
-Defines the ``ArtifactBackend`` protocol and the ``GitHubArtifactProvider``
-implementation that stores manifest data in GitHub Issue bodies.
+Defines the ``ArtifactBackend`` protocol and the ``GitHubGistArtifactProvider``
+implementation that stores manifest data in GitHub Gists linked from Issue bodies.
 
-The manifest is stored as a markdown table delimited by HTML comment markers
-inside the issue body, making it human-readable when browsing GitHub and
-machine-parseable by the MCP tools.
+The manifest is stored as a JSON file (``manifest.json``) in a private Gist.
+The Gist is linked to the issue body via an HTML comment sentinel::
 
-Manifest section format in issue body::
+    <!-- artifact-gist:{gist_id} -->
 
-    ## Artifact Manifest
+Legacy issues using the inline markdown table format are lazily migrated to
+Gist storage on first read — the old section is replaced with the sentinel.
 
-    <!-- artifact-manifest:begin -->
-    | Type | Path | Status | Agent | Created |
-    |------|------|--------|-------|---------|
-    | feature-context | plan/feature-context-foo.md | current | feature-researcher | 2026-03-21T10:00:00Z |
-    <!-- artifact-manifest:end -->
+Artifact file content (research, plan documents, etc.) is stored as additional
+files in the same Gist, with ``/`` in the path replaced by ``--`` to form a
+valid Gist filename.
 
-Artifact content comments in issue comments::
-
-    <!-- artifact-content:type=research:path=research/artifact.md -->
-    <details>
-    <summary>Artifact: research — research/artifact.md</summary>
-
-    {content here}
-
-    </details>
-    <!-- /artifact-content -->
-
-Parse/render helpers are consolidated in :mod:`backlog_core.artifact_registry`.
-This module imports them from there.
+Parse/render helpers for the legacy inline format are in
+:mod:`backlog_core.artifact_registry`.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
+
+from github import Auth, Github, GithubException, InputFileContent
 
 from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
-from .gh_client import (
-    _add_comment_graphql,
-    _fetch_issue_comments_graphql,
-    _fetch_issue_graphql,
-    _update_issue_comment_graphql,
-    _update_issue_graphql,
-    get_github,
-)
+from .gh_client import _fetch_issue_graphql, _update_issue_graphql, get_github
+from .models import ArtifactManifest, BacklogError
 
 # dh_paths lives one level above backlog_core (at plugin root).
 _plugin_root = Path(__file__).parent.parent
@@ -59,13 +43,15 @@ if str(_plugin_root) not in sys.path:
 import dh_paths as _dh_paths
 
 if TYPE_CHECKING:
-    from .models import ArtifactManifest
+    from github.AuthenticatedUser import AuthenticatedUser
+    from github.Gist import Gist
 
 # Re-export so callers that imported these from artifact_provider continue to work.
 __all__ = [
     "ArtifactBackend",
     "BackendName",
     "GitHubArtifactProvider",
+    "GitHubGistArtifactProvider",
     "parse_manifest_section",
     "render_manifest_section",
     "replace_manifest_in_body",
@@ -100,6 +86,25 @@ _ARTIFACT_CONTENT_END_TAG = "<!-- /artifact-content -->"
 _ARTIFACT_CONTENT_BLOCK_RE = re.compile(
     r"<!-- artifact-content:type=[^:]+:path=[^ >]+ -->.*?<!-- /artifact-content -->", re.DOTALL
 )
+
+#: Regex matching the Gist sentinel comment that links an issue to its Gist.
+#: Captures the ``gist_id`` group (hex string).
+_GIST_SENTINEL_RE = re.compile(r"<!-- artifact-gist:(?P<gist_id>[0-9a-f]+) -->")
+
+#: HTTP status code returned by the GitHub Gist API when the token lacks the
+#: ``gist`` OAuth scope.
+_GIST_FORBIDDEN_STATUS = 403
+
+
+def _make_github_client() -> Github:
+    """Create a PyGithub :class:`~github.Github` client from ``GITHUB_TOKEN``.
+
+    Returns:
+        Authenticated ``Github`` client instance.
+    """
+    token = os.environ.get("GITHUB_TOKEN", "")
+    return Github(auth=Auth.Token(token))
+
 
 # ---------------------------------------------------------------------------
 # Artifact content comment helpers
@@ -171,6 +176,40 @@ def _extract_content_from_comment(comment_body: str) -> str:
     # Skip the </summary> tag and surrounding blank lines.
     raw = comment_body[summary_end + len("</summary>") : details_end]
     return raw.strip()
+
+
+def _sanitize_gist_filename(path: str) -> str:
+    """Convert a repo-relative artifact path to a valid Gist filename.
+
+    Gist filenames may not contain ``/``.  Slashes are replaced with ``--``
+    so the path can be reconstructed unambiguously.
+
+    Args:
+        path: Repo-relative path such as ``plan/architect-foo.md``.
+
+    Returns:
+        Gist-safe filename such as ``plan--architect-foo.md``.
+    """
+    return path.replace("/", "--")
+
+
+def _replace_old_manifest_with_sentinel(body: str, sentinel: str) -> str:
+    """Replace an inline manifest block with a Gist sentinel comment.
+
+    When the legacy ``<!-- artifact-manifest:begin/end -->`` block is found it
+    is replaced in-place.  When absent the sentinel is appended to the body.
+
+    Args:
+        body: Current GitHub Issue body text.
+        sentinel: Sentinel string, e.g. ``<!-- artifact-gist:abc123 -->``.
+
+    Returns:
+        Updated body with the sentinel inserted.
+    """
+    old_match = re.search(r"<!-- artifact-manifest:begin -->.*?<!-- artifact-manifest:end -->", body, re.DOTALL)
+    if old_match:
+        return body[: old_match.start()] + sentinel + body[old_match.end() :]
+    return body.rstrip() + f"\n\n{sentinel}"
 
 
 # ---------------------------------------------------------------------------
@@ -297,28 +336,34 @@ class ArtifactBackend(Protocol):
 # ---------------------------------------------------------------------------
 
 
-class GitHubArtifactProvider:
-    """GitHub-backed implementation of :class:`ArtifactBackend`.
+class GitHubGistArtifactProvider:
+    """GitHub Gist-backed implementation of :class:`ArtifactBackend`.
 
-    Reads and writes the artifact manifest section inside GitHub Issue bodies
-    using the existing PyGithub + GraphQL helpers from ``backlog_core.gh_client``.
-    No new credentials are required — the same ``GITHUB_TOKEN`` used by other
-    backlog operations is reused.
+    Stores the artifact manifest as a JSON file inside a private GitHub Gist.
+    The Gist is linked to the issue body via an HTML comment sentinel
+    ``<!-- artifact-gist:{gist_id} -->``.
 
-    Artifact file content is served from the DH state root
-    (``~/.dh/projects/{slug}/``).  Artifact paths stored in the manifest are
-    relative to this state root rather than the git project root.  Worktree-
-    isolated agents access content via the ``artifact_read`` MCP tool rather
-    than the filesystem.
+    Artifact file content (research, plan documents, etc.) is stored as
+    additional files in the same Gist with ``/`` replaced by ``--`` in the
+    filename.
+
+    No new credentials are required beyond ``GITHUB_TOKEN``.  The token must
+    have the ``gist`` OAuth scope; a 403 response from ``create_gist`` raises
+    :class:`~backlog_core.models.BacklogError` with a link to the settings
+    page where the scope can be granted.
+
+    Legacy issues using the inline ``<!-- artifact-manifest:begin/end -->``
+    format are lazily migrated to Gist storage on first :meth:`get_manifest`
+    call.
 
     Args:
         repo: GitHub repository slug in ``owner/name`` format.
-        root_worktree: Absolute path to the state root directory.  Defaults
+        root_worktree: Absolute path to the DH state root directory.  Defaults
             to ``dh_paths.state_root()`` when not provided.
 
     Example::
 
-        provider = GitHubArtifactProvider(repo="owner/myrepo")
+        provider = GitHubGistArtifactProvider(repo="owner/myrepo")
         manifest = provider.get_manifest(965)
         print(manifest.artifacts)
     """
@@ -334,42 +379,62 @@ class GitHubArtifactProvider:
         """
         self._repo = repo
         self._root_worktree = root_worktree if root_worktree is not None else _dh_paths.state_root()
+        self._gist_cache: dict[int, Gist] = {}
 
     # ------------------------------------------------------------------
     # ArtifactBackend implementation
     # ------------------------------------------------------------------
 
     def get_manifest(self, issue_number: int) -> ArtifactManifest:
-        """Retrieve the artifact manifest from the GitHub Issue body.
+        """Retrieve the artifact manifest for *issue_number*.
 
-        Fetches the issue body via GraphQL, then extracts and parses
-        the ``<!-- artifact-manifest:begin/end -->`` section.  Returns an
-        empty manifest when the section is absent.
+        Fetches the issue body via GraphQL and checks for a Gist sentinel
+        comment.  If found, loads ``manifest.json`` from the Gist.  Legacy
+        issues with an inline manifest section are lazily migrated — the
+        inline block is replaced with a Gist sentinel on first access.
+        Returns an empty manifest when no manifest data is present.
 
         Args:
             issue_number: GitHub Issue number (positive integer).
 
         Returns:
-            Parsed ``ArtifactManifest``.  Empty (no artifacts) when the
-            issue body contains no manifest section.
+            Parsed ``ArtifactManifest``.  Empty when no manifest is stored.
 
         Raises:
             backlog_core.models.GitHubUnavailableError: When ``GITHUB_TOKEN``
                 is not set.
-            backlog_core.models.BacklogError: On GraphQL API failures.
+            backlog_core.models.BacklogError: On GraphQL API or gist-scope
+                failures.
         """
-        repo_obj = get_github(self._repo)
+        repo = get_github(self._repo)
         owner, repo_name = self._repo.split("/", 1)
-        issue = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_number)
+        issue = _fetch_issue_graphql(repo, owner, repo_name, issue_number)
         body = issue.get("body") or ""
-        return parse_manifest_section(body, issue_number)
+
+        # Current format: Gist-backed manifest.
+        gist = self._get_gist(issue_number, body)
+        if gist is not None:
+            gist_file = gist.files.get("manifest.json")
+            if gist_file is not None:
+                return ArtifactManifest.model_validate_json(gist_file.content)
+            return ArtifactManifest()
+
+        # Legacy inline manifest — lazy migration to Gist storage.
+        if "<!-- artifact-manifest:begin -->" in body:
+            manifest = parse_manifest_section(body, issue_number)
+            manifest_json = manifest.model_dump_json(by_alias=True)
+            self._create_and_link_gist(
+                issue_number, issue["id"], body, {"manifest.json": InputFileContent(manifest_json)}
+            )
+            return manifest
+
+        return ArtifactManifest()
 
     def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
-        """Persist the manifest by updating the GitHub Issue body.
+        """Persist *manifest* by writing it to the linked Gist.
 
-        Renders the manifest as a markdown table, then replaces the existing
-        manifest section in the issue body (or appends it if absent) via a
-        GraphQL ``updateIssue`` mutation.
+        If no Gist exists yet, one is created and the issue body is updated
+        with a sentinel comment ``<!-- artifact-gist:{gist_id} -->``.
 
         Args:
             issue_number: GitHub Issue number (positive integer).
@@ -378,20 +443,24 @@ class GitHubArtifactProvider:
         Raises:
             backlog_core.models.GitHubUnavailableError: When ``GITHUB_TOKEN``
                 is not set.
-            backlog_core.models.BacklogError: On GraphQL API failures.
+            backlog_core.models.BacklogError: On GraphQL API or gist-scope
+                failures.
         """
-        repo_obj = get_github(self._repo)
+        repo = get_github(self._repo)
         owner, repo_name = self._repo.split("/", 1)
-        issue = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_number)
-        current_body = issue.get("body") or ""
+        issue = _fetch_issue_graphql(repo, owner, repo_name, issue_number)
+        body = issue.get("body") or ""
 
-        # Stamp last_updated before rendering
+        # Stamp last_updated before serialising.
         manifest = manifest.model_copy(update={"last_updated": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")})
-        rendered = render_manifest_section(manifest)
-        new_body = replace_manifest_in_body(current_body, rendered)
+        manifest_json = manifest.model_dump_json(by_alias=True)
 
-        if new_body != current_body:
-            _update_issue_graphql(repo_obj, issue["id"], body=new_body)
+        gist = self._get_gist(issue_number, body)
+        if gist is not None:
+            gist.edit(files={"manifest.json": InputFileContent(manifest_json)})
+            return
+
+        self._create_and_link_gist(issue_number, issue["id"], body, {"manifest.json": InputFileContent(manifest_json)})
 
     def read_artifact_content(self, path: str) -> str:
         """Read artifact file content from the root worktree filesystem.
@@ -418,63 +487,63 @@ class GitHubArtifactProvider:
         return resolved.read_text(encoding="utf-8")
 
     def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
-        """Store artifact content as a GitHub issue comment.
+        """Store artifact content as a file in the linked Gist.
 
-        Creates or updates a collapsible comment identified by the
-        ``<!-- artifact-content:type=...:path=... -->`` markers.  If a
-        matching comment already exists it is edited in-place via GraphQL
-        ``updateIssueComment`` mutation.
-
-        Content exceeding ``_GITHUB_COMMENT_MAX_CHARS`` is truncated with a
-        warning notice appended so the comment stays within GitHub's limit.
+        The artifact *path* is sanitised for use as a Gist filename by
+        replacing ``/`` with ``--``.  If no Gist exists yet it is created and
+        linked to the issue body before the file is added.
 
         Args:
             issue_number: GitHub Issue number (positive integer).
-            artifact_type: Artifact type string, e.g. ``"research"``.
-            path: Repo-relative path used as the comment identifier.
+            artifact_type: Artifact type string (e.g. ``"research"``).
+                Not used in the Gist filename — *path* is the unique key.
+            path: Repo-relative artifact path, e.g. ``plan/architect-foo.md``.
             content: Full artifact content to store.
         """
-        repo_obj = get_github(self._repo)
+        repo = get_github(self._repo)
         owner, repo_name = self._repo.split("/", 1)
-        issue = _fetch_issue_graphql(repo_obj, owner, repo_name, issue_number)
-        comment_body = _build_artifact_content_comment(artifact_type, path, content)
+        issue = _fetch_issue_graphql(repo, owner, repo_name, issue_number)
+        body = issue.get("body") or ""
 
-        # Search for an existing comment to update in-place via GraphQL.
-        comments = _fetch_issue_comments_graphql(repo_obj, owner, repo_name, issue_number)
-        for comment in comments:
-            tag_match = _ARTIFACT_CONTENT_TAG_RE.match(comment.get("body") or "")
-            if tag_match and tag_match.group("type") == artifact_type and tag_match.group("path") == path:
-                _update_issue_comment_graphql(repo_obj, comment["id"], comment_body)
-                return
+        gist = self._get_gist(issue_number, body)
+        if gist is None:
+            gist = self._create_and_link_gist(
+                issue_number, issue["id"], body, {"manifest.json": InputFileContent("{}")}
+            )
 
-        _add_comment_graphql(repo_obj, issue["id"], comment_body)
+        filename = _sanitize_gist_filename(path)
+        gist.edit(files={filename: InputFileContent(content)})
 
     def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
-        """Search issue comments for stored artifact content.
+        """Read artifact content from the linked Gist.
 
-        Scans the issue's comments via GraphQL for an artifact content block
-        whose ``type`` and ``path`` match the given arguments.
+        Sanitises *path* to a Gist filename and looks it up in the Gist file
+        dictionary.  Returns ``None`` when no Gist is linked or the file is
+        absent.
 
         Args:
             issue_number: GitHub Issue number (positive integer).
-            artifact_type: Artifact type string to match.
-            path: Repo-relative path to match.
+            artifact_type: Artifact type string (not used for lookup — *path*
+                is the unique key in the Gist).
+            path: Repo-relative artifact path, e.g. ``plan/architect-foo.md``.
 
         Returns:
-            The stored content string when found, or ``None`` when no
-            matching comment exists.
+            Stored content string, or ``None`` when not found.
         """
-        repo_obj = get_github(self._repo)
+        repo = get_github(self._repo)
         owner, repo_name = self._repo.split("/", 1)
-        comments = _fetch_issue_comments_graphql(repo_obj, owner, repo_name, issue_number)
+        issue = _fetch_issue_graphql(repo, owner, repo_name, issue_number)
+        body = issue.get("body") or ""
 
-        for comment in comments:
-            body = comment.get("body") or ""
-            tag_match = _ARTIFACT_CONTENT_TAG_RE.match(body)
-            if tag_match and tag_match.group("type") == artifact_type and tag_match.group("path") == path:
-                return _extract_content_from_comment(body)
+        gist = self._get_gist(issue_number, body)
+        if gist is None:
+            return None
 
-        return None
+        filename = _sanitize_gist_filename(path)
+        gist_file = gist.files.get(filename)
+        if gist_file is None:
+            return None
+        return gist_file.content
 
     def read_local_artifact_content(self, path: str) -> str | None:
         """Read artifact file content from the local filesystem.
@@ -529,3 +598,72 @@ class GitHubArtifactProvider:
             candidate.relative_to(self._root_worktree.resolve())
         except ValueError:
             raise ValueError(f"Path traversal detected: {path!r} resolves outside the repository root.") from None
+
+    def _get_gist(self, issue_number: int, body: str) -> Gist | None:
+        """Load the Gist for *issue_number* from the cache or sentinel in *body*.
+
+        Args:
+            issue_number: GitHub Issue number (positive integer).
+            body: Current GitHub Issue body text to search for the sentinel.
+
+        Returns:
+            The Gist object, or ``None`` when no Gist is linked to this issue.
+        """
+        if issue_number in self._gist_cache:
+            return self._gist_cache[issue_number]
+        match = _GIST_SENTINEL_RE.search(body)
+        if match:
+            gh = _make_github_client()
+            gist = gh.get_gist(match.group("gist_id"))
+            self._gist_cache[issue_number] = gist
+            return gist
+        return None
+
+    def _create_and_link_gist(
+        self, issue_number: int, issue_id: str, body: str, initial_files: dict[str, InputFileContent]
+    ) -> Gist:
+        """Create a new private Gist, cache it, and write the sentinel to the issue.
+
+        The sentinel ``<!-- artifact-gist:{gist_id} -->`` is written into the
+        issue body — replacing the legacy inline manifest block when present or
+        appending otherwise — via a GraphQL ``updateIssue`` mutation.
+
+        Args:
+            issue_number: GitHub Issue number (used for the Gist description
+                and instance cache key).
+            issue_id: GitHub GraphQL node ID for the issue (used by
+                :func:`_update_issue_graphql`).
+            body: Current issue body text (used to detect legacy manifest
+                blocks and build the updated body).
+            initial_files: Initial Gist file set passed directly to
+                ``create_gist``.
+
+        Returns:
+            The created Gist object.
+
+        Raises:
+            backlog_core.models.BacklogError: When the token is missing the
+                ``gist`` OAuth scope (HTTP 403 from the Gist API).
+            github.GithubException: On other GitHub API failures.
+        """
+        gh = _make_github_client()
+        user = cast("AuthenticatedUser", gh.get_user())
+        try:
+            gist = user.create_gist(
+                public=False, files=initial_files, description=f"artifact-manifest-issue-{issue_number}"
+            )
+        except GithubException as exc:
+            if exc.status == _GIST_FORBIDDEN_STATUS:
+                raise BacklogError(
+                    "GitHub token missing 'gist' scope — grant it at https://github.com/settings/tokens"
+                ) from exc
+            raise
+        self._gist_cache[issue_number] = gist
+        sentinel = f"<!-- artifact-gist:{gist.id} -->"
+        new_body = _replace_old_manifest_with_sentinel(body, sentinel)
+        repo = get_github(self._repo)
+        _update_issue_graphql(repo, issue_id, body=new_body)
+        return gist
+
+
+GitHubArtifactProvider = GitHubGistArtifactProvider  # backward-compat alias
