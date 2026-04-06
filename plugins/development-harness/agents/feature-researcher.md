@@ -2,7 +2,7 @@
 name: feature-researcher
 description: Researches feature requests and existing architecture documents to produce discovery context. Explores codebase patterns, identifies ambiguities, documents use scenarios, and surfaces questions for orchestrator resolution. Does NOT make technical implementation decisions.
 model: opus
-tools: Read, Grep, Glob, Write, Edit, Skill, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_list, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_ready, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_status, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+tools: Read, Grep, Glob, Write, Edit, Skill, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
 skills:
   - dh:subagent-contract
   - ccc
@@ -265,13 +265,13 @@ def generate_slug(input_text: str) -> str:
 Create the document using the SAM MCP tool:
 
 ```text
-mcp__plugin_dh_sam__sam_create(slug="{slug}", goal="Feature context for {feature name}", tasks_yaml="")
+mcp__plugin_dh_sam__sam_plan(config={"action": "create", "slug": "{slug}", "goal": "Feature context for {feature name}", "tasks_yaml": ""})
 ```
 
 Then append the document content as a markdown section using:
 
 ```text
-mcp__plugin_dh_sam__sam_update(plan_slug="{slug}", task_id=None, section="Feature Context", content="{document body}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "{slug}", "task_id": null, "section": "Feature Context", "content": "{document body}"})
 ```
 
 `sam_create` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path.

@@ -1,7 +1,7 @@
 ---
 name: codebase-analyzer
 description: Explores codebase patterns and writes structured analysis documents. Spawned before planning to understand existing conventions, architecture, and testing patterns. Writes documents directly to reduce orchestrator context load.
-tools: Read, Bash, Grep, Glob, Write, Skill, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_list, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_ready, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_status, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+tools: Read, Bash, Grep, Glob, Write, Skill, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
 model: haiku
 skills:
   - dh:subagent-contract
@@ -640,13 +640,13 @@ For each finding, record:
 Create the codebase analysis document using the SAM MCP tool. Use the focus-area name (e.g., `codebase-patterns`, `codebase-architecture`) as the slug:
 
 ```text
-mcp__plugin_dh_sam__sam_create(slug="codebase-{focus}", goal="Codebase {focus} analysis", tasks_yaml="")
+mcp__plugin_dh_sam__sam_plan(config={"action": "create", "slug": "codebase-{focus}", "goal": "Codebase {focus} analysis", "tasks_yaml": ""})
 ```
 
 Then append the document content as a markdown section:
 
 ```text
-mcp__plugin_dh_sam__sam_update(plan_slug="codebase-{focus}", task_id=None, section="{DOCUMENT}", content="{document body}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "codebase-{focus}", "task_id": null, "section": "{DOCUMENT}", "content": "{document body}"})
 ```
 
 `sam_create` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path. The document is stored under `plan/codebase/` via the SAM plan directory conventions.
@@ -672,9 +672,9 @@ If a single focus area document is large (e.g., a comprehensive PATTERNS.md with
 
 ```text
 # Example: large PATTERNS.md written in three appends
-mcp__plugin_dh_sam__sam_update(plan_slug="codebase-patterns", task_id=None, section="PATTERNS", content="## Command Structure\n\n{first section content}")
-mcp__plugin_dh_sam__sam_update(plan_slug="codebase-patterns", task_id=None, section="PATTERNS", content="## Shared Options\n\n{second section content}")
-mcp__plugin_dh_sam__sam_update(plan_slug="codebase-patterns", task_id=None, section="PATTERNS", content="## Callback Patterns\n\n{third section content}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "codebase-patterns", "task_id": null, "section": "PATTERNS", "content": "## Command Structure\n\n{first section content}"})
+mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "codebase-patterns", "task_id": null, "section": "PATTERNS", "content": "## Shared Options\n\n{second section content}"})
+mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "codebase-patterns", "task_id": null, "section": "PATTERNS", "content": "## Callback Patterns\n\n{third section content}"})
 ```
 
 Do not use `Write` or `Edit` for codebase analysis documents -- all content goes through `sam_update`.
@@ -755,7 +755,7 @@ SUGGESTED_NEXT_STEP: {what orchestrator should do}
 - [ ] Focus area identified from input
 - [ ] `issue_number` received from input
 - [ ] Target document determined (PATTERNS.md, ARCHITECTURE.md, TESTING.md, CONVENTIONS.md, or CONCERNS.md)
-- [ ] Document created via `mcp__plugin_dh_sam__sam_create` + `mcp__plugin_dh_sam__sam_update` (stored under `~/.dh/projects/{project-slug}/plan/codebase/`)
+- [ ] Document created via `mcp__plugin_dh_sam__sam_plan` (create action) + `mcp__plugin_dh_sam__sam_plan` (update action) (stored under `~/.dh/projects/{project-slug}/plan/codebase/`)
 - [ ] `artifact_register` called with `type="codebase-analysis"`, `artifact_id="codebase-{focus}-{slug}"`, `status="complete"`, `agent="codebase-analyzer"`
 
 **Level 2: Substantive**

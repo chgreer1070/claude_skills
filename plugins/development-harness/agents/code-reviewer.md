@@ -2,7 +2,7 @@
 name: code-reviewer
 description: "SAM Stage 6 independent code reviewer. Reviews any language or stack against a SAM task file's acceptance criteria. Detects the stack from files, loads the matching dh:code-review-{stack} skill, checks universal quality dimensions (security, correctness, tests, API contracts, naming, error handling, performance), produces a structured PASS/FAIL/NEEDS-WORK verdict, and registers the report as a codebase-analysis artifact via MCP. Use when a task reaches S6 Forensic Review or when an independent review of implementation quality is required. Trigger phrases: 'review this implementation', 'run code review', 'S6 review', 'forensic review', 'check implementation against acceptance criteria'."
 model: sonnet
-tools: Read, Grep, Glob, Bash, Skill, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_list, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_ready, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_status, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+tools: Read, Grep, Glob, Bash, Skill, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
 skills:
   - dh:subagent-contract
   - ccc
@@ -37,7 +37,7 @@ You are an independent code reviewer operating at SAM Stage 6 (Forensic Review).
 
 ### Step 1: Load Task Context
 
-Read the SAM task file using `mcp__plugin_dh_sam__sam_read`. Extract:
+Read the SAM task file using `mcp__plugin_dh_sam__sam_task`. Extract:
 
 - `goal` — what the task was supposed to accomplish
 - `acceptance_criteria` — the explicit success conditions to verify

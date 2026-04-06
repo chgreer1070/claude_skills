@@ -1,7 +1,7 @@
 ---
 name: plan-validator
 description: Validates implementation plans BEFORE execution begins. Checks for completeness, contradictions, missing dependencies, and executability. Returns READY or BLOCKED with specific gaps. Prevents wasted effort from flawed plans.
-tools: Read, Grep, Glob, Bash, Skill, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_list, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_ready, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_status, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+tools: Read, Grep, Glob, Bash, Skill, mcp__plugin_dh_sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
 model: haiku
 skills:
   - dh:subagent-contract
@@ -369,13 +369,13 @@ Plans live in the DH state directory outside the repo. Access them via SAM MCP â
 
 ```text
 # Read plan and all its tasks
-sam_read(plan="{plan_id}")          # plan_id: P123 or slug
+sam_plan(config={"action": "read"}, plan="{plan_id}")          # plan_id: P123 or slug
 
 # Read a specific task
-sam_read(plan="{plan_id}", task="T1")
+sam_task(plan="{plan_id}", task="T1", config={"action": "read"})
 
 # List plans to find the right one
-sam_list(search="{feature_slug}")
+sam_plan(config={"action": "list", "search": "{feature_slug}"})
 ```
 
 When delegated with a plan path like `plan/P1129-some-slug.yaml`, extract the plan ID (`P1129`) and use `sam_read(plan="P1129")`. Do NOT attempt to read the file at the literal path â€” it is not repo-relative.

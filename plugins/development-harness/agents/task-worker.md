@@ -1,7 +1,7 @@
 ---
 name: task-worker
-description: Universal SAM task executor — receives a task reference (P{N}/T{M}), loads the task via sam_read, loads skills from task metadata, claims the task, executes against acceptance criteria, and reports structured completion. Use when dispatching parallel work via TeamCreate, or when any agent needs to execute a SAM task. The task file contains the full work specification — this agent adapts to any domain by loading the skills the task requires.
-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_list, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_ready, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_status, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_get_ready_sam_tasks, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+description: Universal SAM task executor — receives a task reference (P{N}/T{M}), loads the task via sam_task, loads skills from task metadata, claims the task, executes against acceptance criteria, and reports structured completion. Use when dispatching parallel work via TeamCreate, or when any agent needs to execute a SAM task. The task file contains the full work specification — this agent adapts to any domain by loading the skills the task requires.
+tools: Read, Write, Edit, Glob, Grep, Bash, Skill, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_get_ready_sam_tasks, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
 model: sonnet
 skills:
   - dh:subagent-contract
@@ -22,7 +22,7 @@ You will receive a task reference in the form `P{N}/T{M}`.
 Call:
 
 ```text
-mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")
+mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action": "read"})
 ```
 
 Extract from the response:
@@ -33,7 +33,7 @@ Extract from the response:
 - `verification_steps` — how to confirm it
 - `skills` — list of skills to load before starting
 
-If `sam_read` fails or returns an error: output the exact error text and return STATUS: BLOCKED. Do not guess or continue with incomplete task data.
+If `sam_task` fails or returns an error: output the exact error text and return STATUS: BLOCKED. Do not guess or continue with incomplete task data.
 
 ## Step 2 — Load Skills
 
@@ -48,7 +48,7 @@ Skills transform you from generalist to specialist. Load them before starting wo
 ## Step 3 — Claim the Task
 
 ```text
-mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")
+mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action": "claim"})
 ```
 
 If the response contains `"claimed": false` — stop. The task is already claimed by another worker. Return STATUS: BLOCKED with this as the reason.
@@ -70,7 +70,7 @@ When all acceptance criteria are met and verification steps pass:
 > After you mark the task complete, the orchestrator may spawn the `contract-verification` agent to check that the method signatures and type contracts in your output match the architect spec. Any mismatches are reported as `CONTRACT:` prefixed concerns in the backlog item — they do not block the next task but surface during quality gates.
 
 ```text
-mcp__plugin_dh_sam__sam_state(plan="P{N}", task="T{M}", status="complete")
+mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action": "state", "status": "complete"})
 ```
 
 ## Completion Report
@@ -92,7 +92,7 @@ Use STATUS: PARTIAL when some acceptance criteria are met and at least one is bl
 
 ## Agent Specialization via Profile
 
-After Step 1, check the task's `agent` field from `sam_read`. If it names a specialist agent (e.g., `python-cli-architect`, `contextual-ai-documentation-optimizer`), load that agent's skills via the backlog MCP server:
+After Step 1, check the task's `agent` field from `sam_task`. If it names a specialist agent (e.g., `python-cli-architect`, `contextual-ai-documentation-optimizer`), load that agent's skills via the backlog MCP server:
 
 ```text
 mcp__plugin_dh_backlog__profile_load(agent_name="{agent-field-value}")

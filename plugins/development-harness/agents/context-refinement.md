@@ -1,7 +1,7 @@
 ---
 name: context-refinement
 description: Updates task context manifest with discoveries from current work session. Analyzes implementation code and task file to understand what was learned. Only updates if drift or new discoveries found. Provide the task file path.
-tools: Read, Grep, Glob, Write, Edit, Skill, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_list, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_ready, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_status, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+tools: Read, Grep, Glob, Write, Edit, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
 model: sonnet
 color: purple
 skills:
@@ -26,7 +26,7 @@ You've been called at the end of a work session (typically after `/dh:implement-
 1. READ the task data via the SAM MCP tool:
 
    ```text
-   mcp__plugin_dh_sam__sam_read(plan="P{N}")
+   mcp__plugin_dh_sam__sam_plan(config={"action": "read"}, plan="P{N}")
    ```
 
    Replace `P{N}` with the plan address. The JSON response includes the plan goal, context (which contains the Context Manifest added by context-gathering), and all task fields.
@@ -65,7 +65,7 @@ Look for:
 Append the discoveries to the plan's context via the SAM MCP tool:
 
 ```text
-mcp__plugin_dh_sam__sam_update(plan="P{N}", section="Discovered During Implementation", content="...")
+mcp__plugin_dh_sam__sam_plan(config={"action": "update", "section": "Discovered During Implementation", "content": "..."}, plan="P{N}")
 ```
 
 Do NOT use the Edit or Write tool on the task file. The section content to append follows this structure:
@@ -132,7 +132,7 @@ For each divergence found:
 If divergences were found, append a `## Post-Implementation Annotations` section to the feature-context file and architect spec file using the SAM MCP tool:
 
 ```text
-mcp__plugin_dh_sam__sam_update(plan="P{N}", section="Post-Implementation Annotations", content="...")
+mcp__plugin_dh_sam__sam_plan(config={"action": "update", "section": "Post-Implementation Annotations", "content": "..."}, plan="P{N}")
 ```
 
 Do NOT use the Edit or Write tool on the plan artifact files. The section content follows this format:
