@@ -24,14 +24,7 @@ $ARGUMENTS
 
 ---
 
-> **SAM API Migration notice (P1601 — 2026-Q1)**: The 8-tool SAM MCP API used throughout
-> this skill has been consolidated into 3 distributed-safe tools. Deprecated tools remain
-> as compatibility shims but new code must use the consolidated API.
->
-> | Deprecated | Replacement |
-> |---|---|
-> | `sam_list`, `sam_status`, `sam_ready`, `sam_read` (plan), `sam_create`, `sam_update` | `sam_plan` |
-> | `sam_read` (task), `sam_claim`, `sam_state` | `sam_task` |
+> **SAM API Migration (P1601)**: `sam_list`/`sam_status`/`sam_ready`/`sam_read`(plan)/`sam_create`/`sam_update` → `sam_plan`. `sam_read`(task)/`sam_claim`/`sam_state` → `sam_task`. Deprecated shims remain.
 
 ---
 
@@ -508,7 +501,7 @@ After each dispatched phase completes, run the phase-specific processing before 
 ```mermaid
 flowchart TD
     Done{Which task<br>just completed?}
-    Done -->|T1 Code Review| T1Post["Call artifact_read(issue_number, 'codebase-analysis')<br>Check verdict field: PASS proceeds.<br>NEEDS-WORK or FAIL: extract blocking findings<br>from 'Required changes (blocking)' section<br>to drive Recursive Follow-up Handling."]
+    Done -->|T1 Code Review| T1Post["Read codebase-analysis artifact.<br>Verdict drives Recursive Follow-up Handling<br>(Step 1 — fix loop or backlog routing)."]
     Done -->|T4 Drift Audit| T4Post{Drift found<br>in T4 output?}
     T4Post -->|No drift| SkipT5["sam_state(plan='{QG}', task='T5', status='skipped')"]
     T4Post -->|Drift found| T5Ready["T5 remains NOT_STARTED — will be<br>dispatched on next loop iteration"]
@@ -520,7 +513,7 @@ flowchart TD
     T6Post --> Continue
 ```
 
-**Detecting drift in T4 output**: The doc-drift-auditor agent output contains a `## Findings` section. No drift found is indicated by a statement such as "No documentation drift detected" or an empty findings list. Presence of drift items (file paths, outdated sections) means drift was found.
+**Detecting drift in T4 output**: No drift = "No documentation drift detected" or empty `## Findings`. Drift = any file paths or outdated sections listed.
 
 ---
 
@@ -616,8 +609,14 @@ mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, artifact_type
 Check the `verdict` field in the report:
 
 - `PASS` — no blocking findings; skip the entire routing section (no follow-ups to route)
-- `NEEDS-WORK` or `FAIL` — extract the "Required changes (blocking)" section from the report;
-  each blocking item becomes a follow-up task to route
+- `NEEDS-WORK` or `FAIL` — extract the "Required changes (blocking)" section; each blocking
+  item becomes a follow-up to route. **When "Required changes (blocking)" is non-empty, run the
+  fix loop first (max 3 cycles, `{fix_cycle}`=0):** `sam_create(slug="fix-{slug}-blocking-N")`
+  one task per entry (`agent: dh:task-worker`); dispatch via `subagent_type="dh:task-worker"`;
+  reset T1 to `not-started`; re-dispatch T1; if verdict is `PASS` or blocking entries empty →
+  proceed to Step 2; else `fix_cycle += 1`, repeat or BLOCKED at 3. **On BLOCKED** (exhausted
+  or fix task `blocked`): report `COMPLETION BLOCKED — Blocking Code Review Findings Not
+  Resolved`, do NOT route to backlog, stop, do not apply `status:verified`.
 
 If `artifact_read` returns an error or the artifact is absent, fall back to the SAM MCP search:
 
@@ -783,12 +782,7 @@ If `{recursion_depth}` < 5: continue to Guard 2.
 
 ### Guard 2: RT-ICA BLOCKED check
 
-Check whether the follow-up's underlying planner-rt-ica output contains the BLOCKED signal.
-The signal is the string `BLOCKED-FOR-PLANNING` in the planner-rt-ica output artifact
-(NOT in implement-feature's direct output — implement-feature emits no BLOCKED signal).
-
-To check: read the plan artifact linked to the follow-up's backlog item and search for
-`BLOCKED-FOR-PLANNING`.
+Read the plan artifact linked to the follow-up's backlog item and search for `BLOCKED-FOR-PLANNING` (present only in the planner-rt-ica artifact, not in implement-feature output).
 
 ```text
 If the planner-rt-ica artifact for this follow-up contains BLOCKED-FOR-PLANNING:
