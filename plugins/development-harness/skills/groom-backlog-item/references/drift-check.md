@@ -8,7 +8,7 @@ Detailed procedures and output format templates for Step 2.5 drift checks.
 
 **Purpose**: Detect what changed in the codebase since the plan was written, so tasks reflect current reality before execution.
 
-Spawn a haiku-model agent (`subagent_type="general-purpose"`, model=haiku) with this task:
+Spawn a haiku-model agent (`subagent_type="dh:task-worker"`, model=haiku) with this task:
 
 1. Read the plan file at the `plan` path
 2. Extract all file paths mentioned in the plan (task descriptions, files-to-modify sections, context manifest)
@@ -67,7 +67,7 @@ Review {specific task IDs} against this change during execution.
 
 **Purpose**: Detect what changed in the codebase since the item was groomed, so the groomed content reflects current reality before planning begins.
 
-Spawn a haiku-model agent (`subagent_type="general-purpose"`, model=haiku) with this task:
+Spawn a haiku-model agent (`subagent_type="dh:task-worker"`, model=haiku) with this task:
 
 1. Call `mcp__plugin_dh_backlog__backlog_view(selector="{title}")` to retrieve the full item
 2. Extract file paths from the groomed sections:

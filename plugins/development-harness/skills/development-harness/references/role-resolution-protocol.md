@@ -143,7 +143,7 @@ After resolving roles and gates, check if the manifest declares a Process Flow O
 
 **Manifest parse failure:** If a manifest exists but cannot be parsed (malformed markdown, missing sections), log the specific parse error, fall back to general-purpose for all roles, and note the parse failure in the S1 discovery artifact.
 
-**Agent not found:** If a manifest references an agent that is not installed, log a warning, fall back to general-purpose for that specific role, and note the resolution failure in the S1 discovery artifact.
+**Agent not found:** If a manifest references an agent that is not installed, log a warning, fall back to dh:task-worker for that specific role, and note the resolution failure in the S1 discovery artifact.
 
 ---
 

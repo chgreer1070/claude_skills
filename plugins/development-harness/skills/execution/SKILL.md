@@ -59,7 +59,7 @@ language manifest or configuration:
 - `code-reviewer` resolves to the project's review agent
 - `docs-writer` resolves to the project's documentation agent
 
-If no language manifest exists, use a general-purpose agent with appropriate tools.
+If no language manifest exists, dispatch dh:task-worker. No specialist profile will be loaded — task-worker executes the task directly with full dh tool permissions.
 
 ### Step 3 — Dispatch to Fresh Session
 

@@ -117,7 +117,7 @@ Then stop.
 
    Parse each `-` line as a separate criterion.
 
-5. Spawn a verification agent with subagent_type="general-purpose". Prompt must include: item title, plan file path, checklist status (100%), and each criterion listed individually as "Criterion N: {text}". Instruct the agent to: read the plan file, search `git log --oneline -20`, check relevant files for each criterion, and return per-criterion PASS/FAIL with file:line evidence. Required return format:
+5. Spawn a verification agent with subagent_type="dh:task-worker". Prompt must include: item title, plan file path, checklist status (100%), and each criterion listed individually as "Criterion N: {text}". Instruct the agent to: read the plan file, search `git log --oneline -20`, check relevant files for each criterion, and return per-criterion PASS/FAIL with file:line evidence. Required return format:
 
    <eg>
    [PASS] {criterion} — verified at {file}:{line} (or commit {sha})
