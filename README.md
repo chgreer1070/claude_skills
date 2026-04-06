@@ -22,9 +22,7 @@
 
 # Claude Skills Collection
 
-> AI reflects what's expressed, not what's true.
-
-Professional development workflow extensions for Claude Code. Make Claude more thorough, accurate, and productive across Python, shell, Perl, CI/CD, and AI tooling.
+Professional workflow plugins for Claude Code — make Claude apply your project's actual linting rules, commit conventions, and testing standards, not generic defaults. Covers Python, shell, Perl, CI/CD, and AI tooling.
 
 ## What Problem Does This Solve?
 
@@ -41,7 +39,7 @@ Professional development workflow extensions for Claude Code. Make Claude more t
 ## Quick Start
 
 ```bash
-# Add the marketplace (one-time setup)
+# Add the marketplace (one-time setup, ~10 seconds, no restart required)
 /plugin marketplace add Jamie-BitFlight/claude_skills
 
 # Install a plugin
@@ -50,7 +48,7 @@ Professional development workflow extensions for Claude Code. Make Claude more t
 
 ### Verify Installation
 
-Start a new session and ask Claude to perform a task the plugin handles (for example, write a Python function after installing `python3-development`). Claude should automatically apply the plugin's conventions rather than generic defaults.
+Start a new session and ask Claude to perform a task the plugin handles (for example, build a CLI with Typer after installing `python3-development`). Claude will apply the plugin's conventions rather than generic defaults.
 
 ## Available Plugins
 
@@ -67,7 +65,7 @@ Comprehensive frameworks with multiple skills, commands, and specialized agents.
 | [python-engineering](./plugins/python-engineering) | Opinionated Python 3.11+ engineering system with 19 skills and 5 agents. Establishes strong defaults (SOLID, typing policy, testing standards, code smell detection) and routes to specialist skills for TDD, CLI (Typer/Rich), web, data/science, and constrained environments. |
 | [plugin-creator](./plugins/plugin-creator) | Complete toolkit for creating, refactoring, and validating Claude Code plugins with 40 skills, 8 specialized agents, automated version bumping, and `skilllint` integration |
 | [uv](./plugins/uv) | Expert guidance for Astral's uv — the fast Python package manager that replaces pip, poetry, pyenv, and virtualenv with modern lockfiles |
-| [clang-format](./plugins/clang-format) | Configure clang-format to match your existing C/C++ code style by analyzing patterns and showing impact before changes (install name: `clang-format-configuration`) |
+| [clang-format](./plugins/clang-format) | Stop clang-format from reformatting your existing C/C++ style — analyzes your code's patterns first and shows the impact before applying any changes (install name: `clang-format-configuration`) |
 | [holistic-linting](./plugins/holistic-linting) | Automatic code quality enforcement — Claude won't say "done" until code passes all configured linters with root-cause fixing. Covers ruff, mypy, and bandit. |
 | [summarizer](./plugins/summarizer) | Faithful information summarization with anti-hallucination methodology, structured output templates, and autonomous agents for file, URL, and image summarization |
 | [agentskill-kaizen](./plugins/agentskill-kaizen) | Analyze Claude Code session transcripts to find inefficiencies, anti-patterns, and repeated mistakes with DuckDB process-mining and live sentiment dashboard. Two MCP servers included. |
@@ -87,14 +85,14 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 | --- | --- |
 | [litellm](./plugins/litellm) | Call any LLM API (OpenAI/Anthropic/local) from Python with unified interface and retry logic |
 | [llamafile](./plugins/llamafile) | Run local GGUF models with OpenAI-compatible API for offline/air-gapped inference |
-| [xdg-base-directory](./plugins/xdg-base-directory) | Store config and data files in correct XDG-compliant directories using platformdirs |
+| [xdg-base-directory](./plugins/xdg-base-directory) | Store config and data files in XDG-compliant directories using platformdirs — so your tool works on Linux, macOS, and Windows without hardcoded paths breaking on other systems |
 
 #### Git and CI/CD
 
 | Plugin | What It Does |
 | --- | --- |
 | [conventional-commits](./plugins/conventional-commits) | Write consistent commit messages (feat/fix/chore) for semantic versioning and changelog generation |
-| [commitlint](./plugins/commitlint) | Configure and validate commit messages against commitlint rules for CI/CD enforcement |
+| [commitlint](./plugins/commitlint) | Configure and validate commit messages against commitlint rules — CI rejects non-conforming commits before they merge |
 | [gitlab-skill](./plugins/gitlab-skill) | Write GitLab CI pipelines and GLFM documentation with local testing via gitlab-ci-local before pushing |
 
 #### Better Claude Behavior
@@ -113,7 +111,7 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 
 | Plugin | What It Does |
 | --- | --- |
-| [twelve-factor-app](./plugins/twelve-factor-app) | Apply twelve-factor app methodology (15 principles including 3 modern extensions) to your projects for portable, scalable, cloud-native architecture (not yet in marketplace — use `--plugin-dir ./plugins/twelve-factor-app` for local use) |
+| [twelve-factor-app](./plugins/twelve-factor-app) ⚠️ local only | Apply twelve-factor app methodology (15 principles including 3 modern extensions) to your projects for portable, scalable, cloud-native architecture — use `--plugin-dir ./plugins/twelve-factor-app` (not yet in marketplace) |
 
 ## Plugin Details
 
@@ -121,7 +119,7 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 
 The SAM (Stateless Agent Methodology) pipeline in a single plugin. Every feature request moves through seven stages that each produce a file artifact: Discovery, Planning (with RT-ICA information completeness analysis), Context Integration, Task Decomposition, Execution, Forensic Review, and Final Verification.
 
-Language plugins (like `python3-development`) compose with the harness by providing a manifest that maps abstract roles to concrete agents. Without a language plugin, the harness falls back to general-purpose agents.
+Language plugins like `python3-development` plug into the harness by telling it which specialist agents to use for each task. Without a language plugin, the harness falls back to general-purpose agents.
 
 **Skills include:** `/dh:add-new-feature`, `/dh:implement-feature`, `/dh:complete-implementation`, `/dh:groom-milestone`, `/dh:work-milestone`, `/dh:dispatch`, `/dh:backlog`, and 26 more.
 
@@ -313,6 +311,15 @@ Reinstall the specific plugin:
 ```bash
 /plugin install plugin-name@jamie-bitflight-skills
 ```
+
+## Get Started Now
+
+```bash
+/plugin marketplace add Jamie-BitFlight/claude_skills
+/plugin install development-harness@jamie-bitflight-skills
+```
+
+Every plugin works immediately after install — no restart, no configuration.
 
 ## Contributing
 

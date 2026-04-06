@@ -10,6 +10,11 @@
       "source": "cocoindex-io/cocoindex-code",
       "sourceType": "github",
       "computedHash": "f86615a26c3909396f15690cb3dcf6044818a7e29e442cf106ee2e1a4dd81c01"
+    },
+    "copy-editing": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "computedHash": "3c6241215420e69b36814270a47413b2de9593b5516f5942b7481092f6c63382"
     }
   }
 }
