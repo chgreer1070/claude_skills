@@ -24,6 +24,17 @@ $ARGUMENTS
 
 ---
 
+> **SAM API Migration notice (P1601 — 2026-Q1)**: The 8-tool SAM MCP API used throughout
+> this skill has been consolidated into 3 distributed-safe tools. Deprecated tools remain
+> as compatibility shims but new code must use the consolidated API.
+>
+> | Deprecated | Replacement |
+> |---|---|
+> | `sam_list`, `sam_status`, `sam_ready`, `sam_read` (plan), `sam_create`, `sam_update` | `sam_plan` |
+> | `sam_read` (task), `sam_claim`, `sam_state` | `sam_task` |
+
+---
+
 ## Input Format Detection
 
 Parse `$ARGUMENTS` to determine the input type before proceeding:

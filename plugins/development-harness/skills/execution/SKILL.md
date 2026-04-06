@@ -44,7 +44,7 @@ flowchart TD
 
 ### Step 1 — Read Task File
 
-Read the task via `sam_read(plan="{plan_address}", task="T{NNN}")`. The returned
+Read the task via `sam_task` (deprecated: `sam_read(plan="{plan_address}", task="T{NNN}")`). The returned
 `TaskAssignment` dict contains both plan-level context (`plan_goal`, `plan_context`,
 `plan_acceptance_criteria`) and the task body with YAML frontmatter.
 
@@ -100,11 +100,13 @@ collecting results.
 
 ## Input
 
-- Single `ARTIFACT:TASK` via `sam_read(plan="{plan_address}", task="T{NNN}")`
+- Single `ARTIFACT:TASK` via `sam_task` (deprecated: `sam_read(plan="{plan_address}", task="T{NNN}")`)
 
 ## Output
 
 Execution results stored via SAM:
+
+> **Migration note**: `sam_update` is deprecated. Use `sam_plan` instead.
 
 ```text
 sam_update(
