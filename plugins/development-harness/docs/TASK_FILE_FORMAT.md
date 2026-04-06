@@ -13,18 +13,83 @@ All task file I/O routes through the SAM MCP server (`mcp__plugin_dh_sam__*`) or
 
 ### SAM MCP Tools (Primary)
 
+Three consolidated tools replace the previous 8-tool interface. Each tool uses a
+discriminated union `config` parameter where `action` selects the operation.
+
+**sam_task** — task-scoped operations (requires `plan` and `task`):
+
 ```text
-mcp__plugin_dh_sam__sam_list()                                    -- List all plans
-mcp__plugin_dh_sam__sam_list(search="text")                       -- List with search filter
-mcp__plugin_dh_sam__sam_create(slug="...", goal="...", tasks_yaml="...")  -- Create a new plan
-mcp__plugin_dh_sam__sam_read(plan="P{N}")                         -- Read plan summary
-mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")            -- Read task (returns TaskAssignment)
-mcp__plugin_dh_sam__sam_update(plan="P{N}", context="...")         -- Update plan context
-mcp__plugin_dh_sam__sam_state(plan="P{N}", task="T{M}", status="complete")  -- Transition task status
-mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")           -- Claim a task (mark in-progress)
-mcp__plugin_dh_sam__sam_ready(plan="P{N}")                        -- List ready tasks
-mcp__plugin_dh_sam__sam_status(plan="P{N}")                       -- Plan progress summary
+mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action":"read"})
+    -- Read task (returns TaskAssignment with plan context + task fields)
+mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action":"claim"})
+    -- Claim task (transition from not-started to in-progress)
+mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action":"state","status":"complete"})
+    -- Transition task status (complete | blocked | deferred | skipped)
+mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action":"update","set_fields_json":"{...}"})
+    -- Patch task fields (JSON object {"field": "value", ...})
+mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action":"update","append_section":"Heading","section_content":"..."})
+    -- Append a markdown section to the task body
 ```
+
+**sam_plan** — plan-scoped operations (`plan` required for read/status/ready/update; omit for list/create):
+
+```text
+mcp__plugin_dh_sam__sam_plan(config={"action":"list"})
+    -- List all plans
+mcp__plugin_dh_sam__sam_plan(config={"action":"list","search":"text"})
+    -- List plans with case-insensitive substring filter
+mcp__plugin_dh_sam__sam_plan(config={"action":"create","slug":"...","goal":"...","tasks_yaml":"..."})
+    -- Create a new plan from YAML task definitions
+mcp__plugin_dh_sam__sam_plan(plan="P{N}", config={"action":"read"})
+    -- Read plan summary (Plan fields)
+mcp__plugin_dh_sam__sam_plan(plan="P{N}", config={"action":"status"})
+    -- Plan progress summary (task counts, completion %)
+mcp__plugin_dh_sam__sam_plan(plan="P{N}", config={"action":"ready"})
+    -- List tasks ready for dispatch (not-started, all deps resolved)
+mcp__plugin_dh_sam__sam_plan(plan="P{N}", config={"action":"update","context":"..."})
+    -- Update plan context field
+mcp__plugin_dh_sam__sam_plan(plan="P{N}", config={"action":"update","set_fields_json":"{...}"})
+    -- Patch plan-level fields
+```
+
+**sam_active_task** — session-scoped active task context:
+
+```text
+mcp__plugin_dh_sam__sam_active_task(config={"action":"set","plan":"P{N}","task":"T{M}"})
+    -- Register active task for current session (replaces direct active-task-{sid}.json writes)
+mcp__plugin_dh_sam__sam_active_task(config={"action":"get"})
+    -- Retrieve active task context for current session
+mcp__plugin_dh_sam__sam_active_task(config={"action":"update","set_fields_json":"{...}"})
+    -- Update fields on the active task without repeating its address
+mcp__plugin_dh_sam__sam_active_task(config={"action":"clear"})
+    -- Clear active task context for current session
+```
+
+> **Note — readonly annotation loss (`sam_task`)**: The legacy `sam_read` tool was
+> annotated `readonly=True` in FastMCP, so Claude Code did not prompt for confirmation
+> on read operations. `sam_task` cannot be readonly because it also includes write
+> actions (`claim`, `state`, `update`). Consequence: Claude Code will show a
+> confirmation prompt for `sam_task(action="read")` calls that previously did not
+> require one. This is a known, accepted trade-off — a clean 3-tool interface
+> outweighs the read UX regression. If read-without-prompt becomes required, a
+> separate readonly `sam_task_read` tool can be extracted in a future iteration.
+
+#### Deprecated Tools (migration reference only)
+
+The following 8 tools are replaced by the 3-tool interface above. They return a
+`ToolError` when called and must not appear in new agent code or skill files.
+
+| Deprecated tool | Replaced by |
+|---|---|
+| `sam_read(plan, task)` | `sam_task(plan, task, config={"action":"read"})` |
+| `sam_claim(plan, task)` | `sam_task(plan, task, config={"action":"claim"})` |
+| `sam_state(plan, task, status)` | `sam_task(plan, task, config={"action":"state","status":...})` |
+| `sam_update(plan, context)` | `sam_plan(plan, config={"action":"update","context":...})` |
+| `sam_update(plan, task, ...)` | `sam_task(plan, task, config={"action":"update",...})` |
+| `sam_ready(plan)` | `sam_plan(plan, config={"action":"ready"})` |
+| `sam_status(plan)` | `sam_plan(plan, config={"action":"status"})` |
+| `sam_list(...)` | `sam_plan(config={"action":"list",...})` |
+| `sam_create(...)` | `sam_plan(config={"action":"create",...})` |
 
 ### CLI Fallback
 

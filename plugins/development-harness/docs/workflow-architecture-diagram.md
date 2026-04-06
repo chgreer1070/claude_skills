@@ -35,7 +35,7 @@ flowchart TD
         M2["backlog_list"]
         M3["backlog_view"]
         M4["backlog_update(selector, plan)"]
-        C1["sam create"]
+        C1["sam_plan create"]
         S1 --> A1
         S1 --> A2
         A1 --> A3
@@ -43,7 +43,7 @@ flowchart TD
         A3 --> A4
         A4 --> A5
         A5 --> A6
-        A4 -->|"§2.1 sam create"| C1
+        A4 -->|"§2.1 sam_plan create"| C1
         M1 -->|"§2.5 BacklogItem"| M4
         M2 --> M3
     end
@@ -54,10 +54,10 @@ flowchart TD
         A7["t0-baseline-capture"]
         A8["tn-verification-gate"]
         M5["backlog_get_ready_sam_tasks(parent_issue_number)"]
-        C2["sam ready"]
-        C3["sam status"]
-        C4["sam claim"]
-        C5["sam read"]
+        C2["sam_plan ready"]
+        C3["sam_plan status"]
+        C4["sam_task claim"]
+        C5["sam_task read"]
         H1["task_status_hook.py SubagentStop"]
         H2["task_status_hook.py PostToolUse"]
         S2 -->|"§2.1"| M5
@@ -75,9 +75,9 @@ flowchart TD
 
     subgraph QualityGates [Phase 3 — Quality Gates]
         S4["/complete-implementation"]
-        QGC["build_quality_gate_plan<br>sam_create QG{N} plan"]
+        QGC["build_quality_gate_plan<br>sam_plan create QG{N} plan"]
         QGF["plan/QG{NNN}-qg-{slug}.yaml"]
-        QGL["SAM dispatch loop<br>sam_ready / sam_claim / start-task"]
+        QGL["SAM dispatch loop<br>sam_plan ready / sam_task claim / start-task"]
         A9["T1 code-reviewer"]
         A10["T2 feature-verifier"]
         A11["T3 integration-checker"]
@@ -124,9 +124,9 @@ flowchart TD
 
 ## 2. Data Structure Shapes
 
-### 2.1 sam_ready output (ReadyTasksResult)
+### 2.1 sam_plan ready output (ReadyTasksResult)
 
-Output of `mcp__plugin_dh_sam__sam_ready(plan="P{N}")` and `backlog_get_ready_sam_tasks(parent_issue_number)`. CLI fallback: `uv run sam ready P{N} --format json`.
+Output of `mcp__plugin_dh_sam__sam_plan(plan="P{N}", config={"action":"ready"})` and `backlog_get_ready_sam_tasks(parent_issue_number)`. CLI fallback: `uv run sam ready P{N} --format json`.
 
 ```json
 {
@@ -146,9 +146,9 @@ Output of `mcp__plugin_dh_sam__sam_ready(plan="P{N}")` and `backlog_get_ready_sa
 }
 ```
 
-### 2.2 TaskAssignment (sam_read P{N}/T{M})
+### 2.2 TaskAssignment (sam_task read P{N}/T{M})
 
-Output of `mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")`. CLI fallback: `uv run sam read P{N}/T{M} --format json`.
+Output of `mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action":"read"})`. CLI fallback: `uv run sam read P{N}/T{M} --format json`.
 
 ```json
 {
@@ -222,7 +222,8 @@ Relevant fields for the pipeline:
 
 ### 2.6 Active-task context file (~/.dh/projects/{slug}/context/active-task-{CLAUDE_SESSION_ID}.json)
 
-Written by `/start-task` skill. Read by `task_status_hook.py` PostToolUse handler.
+Written by `/start-task` skill via `mcp__plugin_dh_sam__sam_active_task(config={"action":"set","plan":"P{N}","task":"T{M}"})`.
+Read by `task_status_hook.py` PostToolUse handler.
 
 ```json
 {
@@ -234,9 +235,14 @@ Written by `/start-task` skill. Read by `task_status_hook.py` PostToolUse handle
 
 `parent_issue_number` is omitted when the story issue number is unknown. The hook treats absence as `None` and skips GitHub sync.
 
-### 2.7 sam_claim output
+> **Migration note**: Direct filesystem writes of `active-task-{session_id}.json` via inline
+> Python or Bash are deprecated. Use `sam_active_task(action="set")` instead. The hook
+> still reads from the filesystem path as a compatibility bridge — this path is not
+> migrated to MCP in this iteration.
 
-Output of `mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")`. CLI fallback: `uv run sam claim P{N}/T{M} --format json`.
+### 2.7 sam_task claim output
+
+Output of `mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action":"claim"})`. CLI fallback: `uv run sam claim P{N}/T{M} --format json`.
 
 ```json
 {
@@ -257,14 +263,14 @@ Exit code 1 when: already claimed, task not found, or `status != not-started`.
 | `~/.dh/projects/{slug}/plan/feature-context-{slug}.md` | `feature-researcher` | `python-cli-design-spec`, `swarm-task-planner` |
 | `~/.dh/projects/{slug}/plan/codebase/{FOCUS}.md` | `codebase-analyzer` | `swarm-task-planner` |
 | `~/.dh/projects/{slug}/plan/architect-{slug}.md` | `python-cli-design-spec` | `swarm-task-planner`, executing agents via `/start-task` |
-| `~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml` | `swarm-task-planner` via `sam create` | `/implement-feature`, `sam ready`, `sam status`, all execution agents |
+| `~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml` | `swarm-task-planner` via `sam_plan create` | `/implement-feature`, `sam_plan ready`, `sam_plan status`, all execution agents |
 | `~/.dh/projects/{slug}/plan/T0-baseline-{slug}.yaml` | `t0-baseline-capture` | `tn-verification-gate` |
 | `~/.dh/projects/{slug}/plan/TN-verification-{slug}.yaml` | `tn-verification-gate` | `/complete-implementation` Pre-Phase 1 check |
 | `~/.dh/projects/{slug}/plan/QG{NNN}-qg-{slug}.yaml` | `/complete-implementation` via `build_quality_gate_plan` + `sam_create` | SAM dispatch loop (T1–T6 quality gate tasks) |
 | `~/.dh/projects/{slug}/context/active-task-{sid}.json` | `/start-task` skill | `task_status_hook.py` PostToolUse handler |
 | `last-activity` field in task | `task_status_hook.py` PostToolUse handler | progress reporting |
 | `status: complete`, `completed` field | `task_status_hook.py` SubagentStop handler | `sam ready` readiness evaluation |
-| `status: in-progress`, `started` field | `sam claim` via `/start-task` | `sam status`, `sam ready` exclusion |
+| `status: in-progress`, `started` field | `sam_task claim` via `/start-task` | `sam_plan status`, `sam_plan ready` exclusion |
 | Follow-up task files | `code-reviewer` | `/complete-implementation` recursion gate |
 | Context Manifest in task file | `context-gathering`, `context-refinement` | executing agents, future sessions |
 | Artifact manifest (GitHub Issue body) | Producer agents via `artifact_register` | Consumer agents via `artifact_list`, worktree agents via `artifact_read` |
@@ -276,7 +282,7 @@ Exit code 1 when: already claimed, task not found, or `status != not-started`.
 ```mermaid
 flowchart TD
     Created([Task created]) -->|"swarm-task-planner via sam create"| NS[not-started]
-    NS -->|"start-task skill via sam claim<br>Guard: exit code 0 only<br>Fails if already claimed"| IP[in-progress]
+    NS -->|"start-task skill via sam_task claim<br>Guard: exit code 0 only<br>Fails if already claimed"| IP[in-progress]
     IP -->|"task_status_hook.py SubagentStop<br>via sam state P{N}/T{M} complete"| CO[complete]
     IP -->|"agent or human operator<br>via sam state P{N}/T{M} blocked"| BL[blocked]
     NS -->|"orchestrator<br>via sam state P{N}/T{M} deferred"| DE[deferred]
@@ -370,22 +376,22 @@ flowchart TD
     Start(["/complete-implementation<br>invoked"]) --> PrePhase["Pre-phases<br>TN verification, artifact discovery,<br>concern processing"]
     PrePhase --> CheckQG{QG plan<br>exists?}
     CheckQG -->|"No — first run"| GenYAML["build_quality_gate_plan<br>produces 6-task YAML"]
-    GenYAML --> CreatePlan["sam_create(slug='qg-{slug}',<br>tasks_yaml=..., issue=N)<br>→ QG{NNN}-qg-{slug}.yaml"]
-    CheckQG -->|"Yes — resume"| ResetBlocked["Reset BLOCKED tasks<br>to NOT_STARTED via sam_state"]
+    GenYAML --> CreatePlan["sam_plan(config={action:create,slug:'qg-{slug}',<br>tasks_yaml:...,issue:N})<br>→ QG{NNN}-qg-{slug}.yaml"]
+    CheckQG -->|"Yes — resume"| ResetBlocked["Reset BLOCKED tasks<br>to NOT_STARTED via sam_task state"]
     CreatePlan --> DispatchLoop
     ResetBlocked --> DispatchLoop
 
     subgraph DispatchLoop [SAM Dispatch Loop]
-        Ready["sam_ready(plan='QG{N}')"] --> AnyReady{Ready tasks?}
+        Ready["sam_plan(plan='QG{N}', config={action:ready})"] --> AnyReady{Ready tasks?}
         AnyReady -->|No| ExitLoop([Exit loop])
-        AnyReady -->|Yes| Claim["sam_claim(plan='QG{N}', task=T{M})"]
+        AnyReady -->|Yes| Claim["sam_task(plan='QG{N}', task='T{M}', config={action:claim})"]
         Claim --> ClaimedOK{claimed?}
         ClaimedOK -->|No| Ready
         ClaimedOK -->|Yes| Dispatch["Skill(skill='start-task',<br>args='plan/QG{NNN}-qg-{slug}.yaml --task T{M}')"]
-        Dispatch --> Hook["SubagentStop hook<br>sam_state → status: complete"]
+        Dispatch --> Hook["SubagentStop hook<br>sam_task state → status: complete"]
         Hook --> PostDispatch{Which task<br>completed?}
         PostDispatch -->|T1| StoreFollowups["Store follow-up file paths<br>from ARTIFACTS output"]
-        PostDispatch -->|"T4 — no drift"| SkipT5["sam_state T5 → skipped"]
+        PostDispatch -->|"T4 — no drift"| SkipT5["sam_task T5 state → skipped"]
         PostDispatch -->|"T4 — drift found"| T5Ready["T5 stays NOT_STARTED,<br>dispatched on next iteration"]
         PostDispatch -->|T6| StoreDiv["Store DIVERGENCE_REQUIRING_REVIEW<br>if present in agent output"]
         PostDispatch -->|T2, T3, T5| NextIter["Continue loop"]
@@ -396,7 +402,7 @@ flowchart TD
         NextIter --> Ready
     end
 
-    ExitLoop --> VGate["Completion Verification Gate<br>sam_status(plan='QG{N}')"]
+    ExitLoop --> VGate["Completion Verification Gate<br>sam_plan(plan='QG{N}', config={action:status})"]
     VGate --> VerifyAll{All 6 tasks<br>terminal?}
     VerifyAll -->|"Any task not-started,<br>in-progress, or blocked"| BlockFail["STOP<br>COMPLETION BLOCKED —<br>Quality Gate Incomplete"]
     VerifyAll -->|"Non-T5 task skipped"| BlockUnauth["STOP<br>Unauthorized skip detected"]
@@ -409,7 +415,7 @@ Only T5 (Documentation Update) may have `status: skipped`. Skipping is triggered
 
 ### QG Plan File Location
 
-The QG plan file is written by `sam_create` to `plan/QG{NNN}-qg-{slug}.yaml` (in the project plan directory). The `QG{N}` address is used in all subsequent `sam_ready`, `sam_claim`, `sam_state`, and `sam_status` calls for this quality gate run. The `QG{NNN}` number is auto-assigned by SAM (sequential, separate from implementation plan numbering `P{NNN}`).
+The QG plan file is written by `sam_plan(action="create")` to `plan/QG{NNN}-qg-{slug}.yaml` (in the project plan directory). The `QG{N}` address is used in all subsequent `sam_plan(action="ready")`, `sam_task(action="claim")`, `sam_task(action="state")`, and `sam_plan(action="status")` calls for this quality gate run. The `QG{NNN}` number is auto-assigned by SAM (sequential, separate from implementation plan numbering `P{NNN}`).
 
 ---
 
