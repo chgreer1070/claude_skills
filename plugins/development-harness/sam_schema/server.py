@@ -154,33 +154,14 @@ def sam_read(
         task: Task ID component (e.g., ``T3``). Optional.
         plan_dir: Path to the directory containing plan files.
 
-    Returns:
-        ``TaskAssignment`` fields as a JSON-serializable dict when ``task`` is
-        provided, or ``Plan`` fields when ``task`` is omitted.
+    Deprecated:
+        Use ``sam_task(action='read', ...)`` or ``sam_plan(action='read', ...)``.
     """
-    backend = _get_backend(plan_dir)
-    plan_id = plan
-    plan_data = backend.read_plan(plan_id)
-
-    if task is not None:
-        task_data = backend.read_task(plan_id, task)
-        task_model = Task.model_validate(task_data)
-        assignment = TaskAssignment(
-            plan_number=plan_data.get("plan_id", plan_id),
-            plan_slug=plan_data.get("feature") or None,
-            plan_goal=plan_data.get("goal") or None,
-            plan_context=plan_data.get("context") or None,
-            plan_acceptance_criteria=plan_data.get("acceptance_criteria")
-            or plan_data.get("acceptance-criteria")
-            or None,
-            task=task_model,
-        )
-        return assignment.model_dump(mode="json", by_alias=True, exclude_none=True)
-
-    # Plan-only read: rebuild through Plan model for exact serialization shape.
-    plan_dict = {k: v for k, v in plan_data.items() if k != "plan_id"}
-    plan_model = Plan.model_validate(plan_dict)
-    return plan_model.model_dump(mode="json", by_alias=True, exclude_none=True)
+    raise ToolError(
+        "sam_read is deprecated. "
+        "Use sam_task(action='read', plan=..., task=...) for task reads, "
+        "or sam_plan(action='read', plan=...) for plan-only reads."
+    )
 
 
 @mcp.tool
@@ -198,15 +179,10 @@ def sam_state(
         status: New status string (e.g., ``complete``, ``in-progress``).
         plan_dir: Path to the directory containing plan files.
 
-    Returns:
-        Updated task fields as a JSON-serializable dict.
+    Deprecated:
+        Use ``sam_task(action='state', ...)``.
     """
-    backend = _get_backend(plan_dir)
-    plan_id = plan
-    backend.update_task_status(plan_id, task, status)
-    # Avoid a second full plan read: return the known fields rather than re-reading.
-    # update_task_status raises on invalid status before reaching here.
-    return {"id": task, "status": status}
+    raise ToolError("sam_state is deprecated. Use sam_task(action='state', plan=..., task=..., ...) instead.")
 
 
 @mcp.tool
@@ -227,36 +203,10 @@ def sam_ready(
         plan_dir: Path to the directory containing plan files.
         full: When True, return full Task model dump instead of routing manifest.
 
-    Returns:
-        Dict with ``ready_tasks`` list, ``count``, ``feature``, ``source_path``,
-        and ``issue`` envelope fields.
+    Deprecated:
+        Use ``sam_plan(action='ready', ...)``.
     """
-    backend = _get_backend(plan_dir)
-    plan_id = plan
-    plan_data = backend.read_plan(plan_id)
-    tasks_data = backend.get_ready_tasks(plan_id)
-    if full:
-        ready_tasks: list[dict[str, Any]] = [Task.model_validate(t).model_dump(mode="json") for t in tasks_data]
-    else:
-        ready_tasks = [
-            {
-                "id": t["id"],
-                "task": t["title"],
-                "agent": t["agent"],
-                "skills": t["skills"] or [],
-                "dependencies": t["dependencies"] or [],
-                "status": t["status"],
-                "priority": int(t["priority"]),
-            }
-            for t in tasks_data
-        ]
-    return {
-        "ready_tasks": ready_tasks,
-        "count": len(tasks_data),
-        "feature": plan_data["feature"],
-        "source_path": str(plan_data["source_path"] or plan_id),
-        "issue": plan_data["issue"],
-    }
+    raise ToolError("sam_ready is deprecated. Use sam_plan(action='ready', plan=...) instead.")
 
 
 @mcp.tool
@@ -270,14 +220,10 @@ def sam_status(
         plan: Plan address component.
         plan_dir: Path to the directory containing plan files.
 
-    Returns:
-        ``PlanStatus`` fields as a JSON-serializable dict including
-        ``total_tasks``, ``by_status``, ``ready_tasks``, ``blocked_tasks``,
-        ``completion_pct``, and ``has_cycles``.
+    Deprecated:
+        Use ``sam_plan(action='status', ...)``.
     """
-    backend = _get_backend(plan_dir)
-    plan_id = plan
-    return dict(backend.get_plan_status(plan_id))
+    raise ToolError("sam_status is deprecated. Use sam_plan(action='status', plan=...) instead.")
 
 
 def _paginate_results(
@@ -359,39 +305,10 @@ def sam_list(
         offset: Zero-based start index into the (filtered) result list.
         limit: Maximum items to return. Defaults to a budget-based calculation.
 
-    Returns:
-        Dict with keys:
-
-        - ``items``: list of plan summary dicts (``feature``, ``goal``,
-          ``description``, ``task_count``, ``path``).
-        - ``count``: number of items in this page.
-        - ``pagination``: ``{"offset": N, "limit": N, "total": N, "has_more": bool}``.
-        - ``next_call``: hint string when ``has_more`` is true.
-        - ``messages``: list of informational strings.
-        - ``warnings``: list of non-fatal warning strings.
-        - ``errors``: list of error strings (e.g. unreadable files).
+    Deprecated:
+        Use ``sam_plan(action='list', ...)``.
     """
-    warnings: list[str] = []
-    errors: list[str] = []
-    messages: list[str] = []
-
-    backend = _get_backend(plan_dir)
-    summaries = backend.list_plans(search=search)
-
-    all_items: list[dict[str, Any]] = [
-        {
-            "feature": s["feature"],
-            "goal": s["goal"],
-            "description": s["description"],
-            "task_count": s["task_count"],
-            "path": str(s["source_path"] or s["plan_id"]),
-        }
-        for s in summaries
-    ]
-
-    return _paginate_results(
-        all_items, offset=offset, limit=limit, messages=messages, warnings=warnings, errors=errors, tool_name="sam_list"
-    )
+    raise ToolError("sam_list is deprecated. Use sam_plan(action='list') instead.")
 
 
 def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None:
@@ -477,36 +394,10 @@ def sam_create(
         context: Optional plan-level context string.
         issue: Optional GitHub issue number.
 
-    Returns:
-        ``{"path": str, "plan_number": int, "task_count": int}`` on success.
+    Deprecated:
+        Use ``sam_plan(action='create', ...)``.
     """
-    yaml_parser: Any = YAML()
-    parsed: dict[str, Any] = yaml_parser.load(tasks_yaml)
-    if not isinstance(parsed, dict) or "tasks" not in parsed:
-        raise ValueError("tasks_yaml must be a YAML string with a top-level 'tasks' key")
-    task_defs = cast("list[TaskDefinition]", parsed["tasks"])
-    backend = _get_backend(plan_dir)
-    plan_data = backend.create_plan(slug=slug, goal=goal, tasks=task_defs, context=context, issue=issue)
-
-    # Derive plan_number from plan_id (e.g., "P912" → 912).
-    plan_number: int | None = None
-    plan_id_str = plan_data["plan_id"]
-    if plan_id_str.startswith("P"):
-        with contextlib.suppress(ValueError):
-            plan_number = int(plan_id_str[1:])
-
-    result = {
-        "path": str(plan_data["source_path"] or ""),
-        "plan_number": plan_number,
-        "task_count": len(plan_data["tasks"]),
-    }
-
-    # Auto-register the new plan file as a task-plan artifact when the plan
-    # is linked to a GitHub issue.  Best-effort: failure does not block creation.
-    if issue is not None and plan_data["source_path"]:
-        _try_register_task_plan_artifact(issue, Path(plan_data["source_path"]))
-
-    return result
+    raise ToolError("sam_create is deprecated. Use sam_plan(action='create', ...) instead.")
 
 
 def _validated_task_patch(backend: TaskBackend, plan_id: str, task_id: str, raw_fields: dict[str, Any]) -> Task:
@@ -569,42 +460,14 @@ def sam_update(
         append_section: Section heading to append to the task body.
         section_content: Body text for the appended section.
 
-    Returns:
-        ``{"updated": true, "address": str}`` on success.
+    Deprecated:
+        Use ``sam_task(action='update', ...)`` or ``sam_plan(action='update', ...)``.
     """
-    # Split address into plan and optional task components.
-    if "/" in address:
-        plan_part, task_id = address.split("/", 1)
-    else:
-        plan_part = address
-        task_id = None
-
-    plan_id = plan_part
-    backend = _get_backend(plan_dir)
-
-    if task_id is None:
-        # Plan-level operations: context and/or field updates on the plan.
-        plan_fields: dict[str, str | int | list[str]] | None = None
-        if set_fields_json is not None:
-            raw_fields: Any = json.loads(set_fields_json)
-            if not isinstance(raw_fields, dict):
-                raise ValueError("set_fields_json must be a JSON object")
-            plan_fields = cast("dict[str, str | int | list[str]]", raw_fields)
-        backend.update_plan_fields(plan_id, context=context, set_fields=plan_fields)
-    else:
-        # Task-level operations.
-        # context is plan-level per the tool description; apply it separately.
-        if context is not None:
-            backend.update_plan_fields(plan_id, context=context)
-        if set_fields_json is not None:
-            raw_fields = json.loads(set_fields_json)
-            if not isinstance(raw_fields, dict):
-                raise ValueError("set_fields_json must be a JSON object")
-            validated_task = _validated_task_patch(backend, plan_id, task_id, raw_fields)
-            backend.update_task(plan_id, validated_task)
-        if append_section is not None:
-            backend.append_task_section(plan_id, task_id, append_section, section_content or "")
-    return {"updated": True, "address": address}
+    raise ToolError(
+        "sam_update is deprecated. "
+        "Use sam_task(action='update', plan=..., task=...) for task-level updates, "
+        "or sam_plan(action='update', plan=...) for plan-level updates."
+    )
 
 
 @mcp.tool
@@ -624,30 +487,10 @@ def sam_claim(
         task: Task ID to claim (e.g., ``T3``).
         plan_dir: Path to the directory containing plan files.
 
-    Returns:
-        ``{"claimed": true, "task_id": str, "started": str}`` on success, or
-        ``{"claimed": false, "error": str}`` if the task is not in a claimable state.
+    Deprecated:
+        Use ``sam_task(action='claim', ...)``.
     """
-    backend = _get_backend(plan_dir)
-    plan_id = plan
-    claimed = backend.claim_task(plan_id, task)
-
-    if not claimed:
-        # Read current status to provide a meaningful error message.
-        try:
-            task_data = backend.read_task(plan_id, task)
-            current_status = task_data["status"]
-        except (PlanNotFoundError, TaskNotFoundError, SamError):
-            return {"claimed": False, "error": f"Cannot claim task '{task}': task is not available for claiming."}
-        else:
-            return {
-                "claimed": False,
-                "error": f"Cannot claim task '{task}': expected status 'not-started' but found '{current_status}'.",
-            }
-
-    # Option (b): avoid a second full plan read — task_id is the argument already,
-    # and started is set by claim_task at the moment of transition.
-    return {"claimed": True, "task_id": task, "started": datetime.now(UTC).isoformat()}
+    raise ToolError("sam_claim is deprecated. Use sam_task(action='claim', plan=..., task=...) instead.")
 
 
 # Actions that require the ``plan`` parameter to be supplied.

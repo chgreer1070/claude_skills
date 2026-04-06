@@ -6,6 +6,10 @@ and tool dispatch rather than calling tool functions directly.
 
 Uses Client(mcp) per FastMCP v3 testing.md primary test pattern.
 asyncio_mode = "auto" is set in pyproject.toml — no @pytest.mark.asyncio needed.
+
+T07: Rewrites all sam_read/sam_state/sam_ready/sam_status/sam_create/sam_update/sam_claim
+MCP tests to call sam_task/sam_plan with the new consolidated config dicts.
+Old tools are deprecation shims — 8 new shim tests verify each raises ToolError via MCP.
 """
 
 from __future__ import annotations
@@ -111,15 +115,15 @@ def test_server_instructions_are_set() -> None:
 
 
 # ---------------------------------------------------------------------------
-# sam_read via MCP protocol
+# sam_task read via MCP protocol (replaces sam_read tests)
 # ---------------------------------------------------------------------------
 
 
 async def test_mcp_sam_read_existing_task_returns_task_assignment(plan_dir: Path) -> None:
-    """sam_read called via MCP returns TaskAssignment dict for existing task.
+    """sam_task read called via MCP returns TaskAssignment dict for existing task.
 
-    Tests: sam_read MCP protocol happy path.
-    How: Call via Client.call_tool with serialized string arguments.
+    Tests: sam_task read MCP protocol happy path.
+    How: Call via Client.call_tool with config={"action": "read"}.
     Why: Verifies MCP schema validation and JSON round-trip — not just direct function call.
     """
     # Arrange
@@ -127,7 +131,9 @@ async def test_mcp_sam_read_existing_task_returns_task_assignment(plan_dir: Path
 
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_read", {"plan": "P1", "task": "T1", "plan_dir": plan_dir_str})
+        result = await client.call_tool(
+            "sam_task", {"plan": "P1", "task": "T1", "config": {"action": "read"}, "plan_dir": plan_dir_str}
+        )
 
     # Assert
     data = result.data
@@ -139,15 +145,17 @@ async def test_mcp_sam_read_existing_task_returns_task_assignment(plan_dir: Path
 
 
 async def test_mcp_sam_read_plan_only_returns_plan_fields(plan_dir: Path) -> None:
-    """sam_read without task param returns Plan fields via MCP protocol.
+    """sam_plan read without task param returns Plan fields via MCP protocol.
 
-    Tests: sam_read plan-only path through MCP.
-    How: Omit task parameter in call_tool arguments.
+    Tests: sam_plan read plan-only path through MCP.
+    How: Call sam_plan with config={"action": "read"} and plan param.
     Why: Validates optional parameter handling through the protocol layer.
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_read", {"plan": "P1", "plan_dir": str(plan_dir)})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "read"}, "plan": "P1", "plan_dir": str(plan_dir)}
+        )
 
     # Assert
     data = result.data
@@ -158,9 +166,9 @@ async def test_mcp_sam_read_plan_only_returns_plan_fields(plan_dir: Path) -> Non
 
 
 async def test_mcp_sam_read_missing_task_returns_error_dict(plan_dir: Path) -> None:
-    """sam_read raises ToolError for a non-existent task via MCP protocol.
+    """sam_task read raises ToolError for a non-existent task via MCP protocol.
 
-    Tests: sam_read MCP error path.
+    Tests: sam_task read MCP error path.
     How: Request T99 which does not exist.
     Why: FastMCP converts unhandled TaskNotFoundError to isError=true, which
          the client surfaces as ToolError. The error message includes the task ID.
@@ -168,25 +176,33 @@ async def test_mcp_sam_read_missing_task_returns_error_dict(plan_dir: Path) -> N
     # Act / Assert
     with pytest.raises(ToolError, match="T99"):
         async with Client(mcp) as client:
-            await client.call_tool("sam_read", {"plan": "P1", "task": "T99", "plan_dir": str(plan_dir)})
+            await client.call_tool(
+                "sam_task", {"plan": "P1", "task": "T99", "config": {"action": "read"}, "plan_dir": str(plan_dir)}
+            )
 
 
 # ---------------------------------------------------------------------------
-# sam_state via MCP protocol
+# sam_task state via MCP protocol (replaces sam_state tests)
 # ---------------------------------------------------------------------------
 
 
 async def test_mcp_sam_state_transitions_task_status(plan_dir: Path) -> None:
-    """sam_state updates task status and returns updated fields via MCP.
+    """sam_task state updates task status and returns updated fields via MCP.
 
-    Tests: sam_state MCP protocol happy path.
-    How: Transition T2 to in-progress via call_tool.
+    Tests: sam_task state MCP protocol happy path.
+    How: Transition T2 to in-progress via call_tool with config={"action": "state", ...}.
     Why: Status mutation is the primary write operation in the workflow.
     """
     # Act
     async with Client(mcp) as client:
         result = await client.call_tool(
-            "sam_state", {"plan": "P1", "task": "T2", "status": "in-progress", "plan_dir": str(plan_dir)}
+            "sam_task",
+            {
+                "plan": "P1",
+                "task": "T2",
+                "config": {"action": "state", "status": "in-progress"},
+                "plan_dir": str(plan_dir),
+            },
         )
 
     # Assert
@@ -197,9 +213,9 @@ async def test_mcp_sam_state_transitions_task_status(plan_dir: Path) -> None:
 
 
 async def test_mcp_sam_state_invalid_status_returns_error_dict(plan_dir: Path) -> None:
-    """sam_state raises ToolError for unrecognized status via MCP protocol.
+    """sam_task state raises ToolError for unrecognized status via MCP protocol.
 
-    Tests: sam_state input validation through MCP.
+    Tests: sam_task state input validation through MCP.
     How: Pass 'garbage-status' as the status value.
     Why: FastMCP converts unhandled TaskValidationError to isError=true, which
          the client surfaces as ToolError.
@@ -208,25 +224,33 @@ async def test_mcp_sam_state_invalid_status_returns_error_dict(plan_dir: Path) -
     with pytest.raises(ToolError):
         async with Client(mcp) as client:
             await client.call_tool(
-                "sam_state", {"plan": "P1", "task": "T2", "status": "garbage-status", "plan_dir": str(plan_dir)}
+                "sam_task",
+                {
+                    "plan": "P1",
+                    "task": "T2",
+                    "config": {"action": "state", "status": "garbage-status"},
+                    "plan_dir": str(plan_dir),
+                },
             )
 
 
 # ---------------------------------------------------------------------------
-# sam_ready via MCP protocol
+# sam_plan ready via MCP protocol (replaces sam_ready tests)
 # ---------------------------------------------------------------------------
 
 
 async def test_mcp_sam_ready_returns_ready_tasks(plan_dir: Path) -> None:
-    """sam_ready returns ready task list via MCP protocol.
+    """sam_plan ready returns ready task list via MCP protocol.
 
-    Tests: sam_ready MCP protocol happy path.
+    Tests: sam_plan ready MCP protocol happy path.
     How: T1 is complete, T2 depends on T1 — T2 should be ready.
-    Why: Agents call sam_ready to find the next task to dispatch.
+    Why: Agents call sam_plan ready to find the next task to dispatch.
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_ready", {"plan": "P1", "plan_dir": str(plan_dir)})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "ready"}, "plan": "P1", "plan_dir": str(plan_dir)}
+        )
 
     # Assert
     data = result.data
@@ -237,20 +261,22 @@ async def test_mcp_sam_ready_returns_ready_tasks(plan_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# sam_status via MCP protocol
+# sam_plan status via MCP protocol (replaces sam_status tests)
 # ---------------------------------------------------------------------------
 
 
 async def test_mcp_sam_status_returns_plan_summary(plan_dir: Path) -> None:
-    """sam_status returns plan summary dict via MCP protocol.
+    """sam_plan status returns plan summary dict via MCP protocol.
 
-    Tests: sam_status MCP protocol happy path.
-    How: Call sam_status on two-task plan (T1 complete, T2 not-started).
+    Tests: sam_plan status MCP protocol happy path.
+    How: Call sam_plan status on two-task plan (T1 complete, T2 not-started).
     Why: Verifies all required summary fields survive JSON serialization.
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_status", {"plan": "P1", "plan_dir": str(plan_dir)})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "status"}, "plan": "P1", "plan_dir": str(plan_dir)}
+        )
 
     # Assert
     data = result.data
@@ -264,15 +290,15 @@ async def test_mcp_sam_status_returns_plan_summary(plan_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# sam_create via MCP protocol
+# sam_plan create via MCP protocol (replaces sam_create tests)
 # ---------------------------------------------------------------------------
 
 
 async def test_mcp_sam_create_creates_plan_file(tmp_path: Path) -> None:
-    """sam_create creates a plan file and returns metadata via MCP protocol.
+    """sam_plan create creates a plan file and returns metadata via MCP protocol.
 
-    Tests: sam_create MCP protocol happy path.
-    How: Pass valid tasks_yaml string via call_tool.
+    Tests: sam_plan create MCP protocol happy path.
+    How: Pass valid tasks_yaml string via call_tool with config={"action": "create", ...}.
     Why: Verifies YAML string argument passes MCP serialization unchanged.
     """
     # Arrange
@@ -292,8 +318,16 @@ async def test_mcp_sam_create_creates_plan_file(tmp_path: Path) -> None:
     # Act
     async with Client(mcp) as client:
         result = await client.call_tool(
-            "sam_create",
-            {"slug": "mcp-create", "goal": "MCP create goal", "tasks_yaml": tasks_yaml, "plan_dir": str(p_dir)},
+            "sam_plan",
+            {
+                "config": {
+                    "action": "create",
+                    "slug": "mcp-create",
+                    "goal": "MCP create goal",
+                    "tasks_yaml": tasks_yaml,
+                },
+                "plan_dir": str(p_dir),
+            },
         )
 
     # Assert
@@ -305,15 +339,15 @@ async def test_mcp_sam_create_creates_plan_file(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# sam_claim via MCP protocol
+# sam_task claim via MCP protocol (replaces sam_claim tests)
 # ---------------------------------------------------------------------------
 
 
 async def test_mcp_sam_claim_returns_claimed_true(tmp_path: Path) -> None:
-    """sam_claim transitions a not-started task to in-progress via MCP protocol.
+    """sam_task claim transitions a not-started task to in-progress via MCP protocol.
 
-    Tests: sam_claim MCP protocol happy path.
-    How: Create plan via sam_create, then sam_claim T01 via call_tool.
+    Tests: sam_task claim MCP protocol happy path.
+    How: Create plan via sam_plan create, then sam_task claim T01 via call_tool.
     Why: Verifies claim guard and return shape through the full protocol path.
     """
     # Arrange
@@ -332,12 +366,19 @@ async def test_mcp_sam_claim_returns_claimed_true(tmp_path: Path) -> None:
 
     async with Client(mcp) as client:
         create_result = await client.call_tool(
-            "sam_create", {"slug": "claim-mcp", "goal": "Claim goal", "tasks_yaml": tasks_yaml, "plan_dir": str(p_dir)}
+            "sam_plan",
+            {
+                "config": {"action": "create", "slug": "claim-mcp", "goal": "Claim goal", "tasks_yaml": tasks_yaml},
+                "plan_dir": str(p_dir),
+            },
         )
         plan_number = create_result.data["plan_number"]
 
         # Act
-        result = await client.call_tool("sam_claim", {"plan": f"P{plan_number}", "task": "T01", "plan_dir": str(p_dir)})
+        result = await client.call_tool(
+            "sam_task",
+            {"plan": f"P{plan_number}", "task": "T01", "config": {"action": "claim"}, "plan_dir": str(p_dir)},
+        )
 
     # Assert
     data = result.data
@@ -348,9 +389,9 @@ async def test_mcp_sam_claim_returns_claimed_true(tmp_path: Path) -> None:
 
 
 async def test_mcp_sam_claim_double_claim_returns_claimed_false(tmp_path: Path) -> None:
-    """sam_claim second call on in-progress task returns claimed=false via MCP.
+    """sam_task claim second call on in-progress task returns claimed=false via MCP.
 
-    Tests: sam_claim double-claim guard through MCP protocol.
+    Tests: sam_task claim double-claim guard through MCP protocol.
     How: Claim T01 twice; second call must return claimed=false without raising.
     Why: Duplicate dispatch prevention must work through the real protocol path.
     """
@@ -370,16 +411,24 @@ async def test_mcp_sam_claim_double_claim_returns_claimed_false(tmp_path: Path) 
 
     async with Client(mcp) as client:
         create_result = await client.call_tool(
-            "sam_create", {"slug": "double-claim-mcp", "goal": "Goal", "tasks_yaml": tasks_yaml, "plan_dir": str(p_dir)}
+            "sam_plan",
+            {
+                "config": {"action": "create", "slug": "double-claim-mcp", "goal": "Goal", "tasks_yaml": tasks_yaml},
+                "plan_dir": str(p_dir),
+            },
         )
         plan_number = create_result.data["plan_number"]
         plan_addr = f"P{plan_number}"
 
-        first = await client.call_tool("sam_claim", {"plan": plan_addr, "task": "T01", "plan_dir": str(p_dir)})
+        first = await client.call_tool(
+            "sam_task", {"plan": plan_addr, "task": "T01", "config": {"action": "claim"}, "plan_dir": str(p_dir)}
+        )
         assert first.data.get("claimed") is True
 
         # Act
-        second = await client.call_tool("sam_claim", {"plan": plan_addr, "task": "T01", "plan_dir": str(p_dir)})
+        second = await client.call_tool(
+            "sam_task", {"plan": plan_addr, "task": "T01", "config": {"action": "claim"}, "plan_dir": str(p_dir)}
+        )
 
     # Assert
     assert second.data.get("claimed") is False
@@ -387,15 +436,15 @@ async def test_mcp_sam_claim_double_claim_returns_claimed_false(tmp_path: Path) 
 
 
 # ---------------------------------------------------------------------------
-# sam_update via MCP protocol
+# sam_plan update / sam_task update via MCP protocol (replaces sam_update tests)
 # ---------------------------------------------------------------------------
 
 
 async def test_mcp_sam_update_sets_context(tmp_path: Path) -> None:
-    """sam_update sets plan context field via MCP protocol.
+    """sam_plan update sets plan context field via MCP protocol.
 
-    Tests: sam_update context path through MCP.
-    How: Create plan, call sam_update with context, verify via sam_read.
+    Tests: sam_plan update context path through MCP.
+    How: Create plan, call sam_plan update with context, verify via sam_task read.
     Why: Confirms string fields survive MCP JSON round-trip intact.
     """
     # Arrange
@@ -414,19 +463,25 @@ async def test_mcp_sam_update_sets_context(tmp_path: Path) -> None:
 
     async with Client(mcp) as client:
         create_result = await client.call_tool(
-            "sam_create",
-            {"slug": "update-mcp", "goal": "Update goal", "tasks_yaml": tasks_yaml, "plan_dir": str(p_dir)},
+            "sam_plan",
+            {
+                "config": {"action": "create", "slug": "update-mcp", "goal": "Update goal", "tasks_yaml": tasks_yaml},
+                "plan_dir": str(p_dir),
+            },
         )
         plan_number = create_result.data["plan_number"]
         plan_addr = f"P{plan_number}"
 
         # Act
         update_result = await client.call_tool(
-            "sam_update", {"address": plan_addr, "plan_dir": str(p_dir), "context": "MCP context text."}
+            "sam_plan",
+            {"config": {"action": "update", "context": "MCP context text."}, "plan": plan_addr, "plan_dir": str(p_dir)},
         )
 
-        # Verify via sam_read
-        read_result = await client.call_tool("sam_read", {"plan": plan_addr, "task": "T01", "plan_dir": str(p_dir)})
+        # Verify via sam_task read
+        read_result = await client.call_tool(
+            "sam_task", {"plan": plan_addr, "task": "T01", "config": {"action": "read"}, "plan_dir": str(p_dir)}
+        )
 
     # Assert
     assert update_result.data.get("updated") is True
@@ -434,7 +489,7 @@ async def test_mcp_sam_update_sets_context(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# sam_list via MCP protocol
+# sam_plan list via MCP protocol (replaces sam_list tests)
 # ---------------------------------------------------------------------------
 
 
@@ -469,15 +524,15 @@ def multi_plan_dir(tmp_path: Path) -> Path:
 
 
 async def test_sam_list_returns_all_plans_with_response_shape(multi_plan_dir: Path) -> None:
-    """sam_list returns all plans with expected response keys via MCP protocol.
+    """sam_plan list returns all plans with expected response keys via MCP protocol.
 
-    Tests: sam_list happy path — no filters, no explicit limit.
-    How: Call sam_list with only plan_dir; verify shape and count.
+    Tests: sam_plan list happy path — no filters, no explicit limit.
+    How: Call sam_plan with config={"action": "list"}; verify shape and count.
     Why: Confirms tool registration, return shape, and pagination object presence.
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir)})
+        result = await client.call_tool("sam_plan", {"config": {"action": "list"}, "plan_dir": str(multi_plan_dir)})
 
     # Assert
     data = result.data
@@ -495,7 +550,7 @@ async def test_sam_list_returns_all_plans_with_response_shape(multi_plan_dir: Pa
 
 
 async def test_sam_list_search_filters_by_feature_substring(multi_plan_dir: Path) -> None:
-    """sam_list search parameter filters plans by feature name substring.
+    """sam_plan list search parameter filters plans by feature name substring.
 
     Tests: search across feature field (case-insensitive).
     How: Pass search="alpha"; only alpha-feature plan should match.
@@ -503,7 +558,9 @@ async def test_sam_list_search_filters_by_feature_substring(multi_plan_dir: Path
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "search": "alpha"})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "list", "search": "alpha"}, "plan_dir": str(multi_plan_dir)}
+        )
 
     # Assert
     data = result.data
@@ -513,7 +570,7 @@ async def test_sam_list_search_filters_by_feature_substring(multi_plan_dir: Path
 
 
 async def test_sam_list_search_filters_by_goal_substring(multi_plan_dir: Path) -> None:
-    """sam_list search parameter filters plans by goal substring.
+    """sam_plan list search parameter filters plans by goal substring.
 
     Tests: search across goal field (case-insensitive).
     How: Pass search="search"; only gamma-search plan (goal="Search integration") matches.
@@ -521,7 +578,9 @@ async def test_sam_list_search_filters_by_goal_substring(multi_plan_dir: Path) -
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "search": "search"})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "list", "search": "search"}, "plan_dir": str(multi_plan_dir)}
+        )
 
     # Assert
     data = result.data
@@ -530,7 +589,7 @@ async def test_sam_list_search_filters_by_goal_substring(multi_plan_dir: Path) -
 
 
 async def test_sam_list_search_case_insensitive(multi_plan_dir: Path) -> None:
-    """sam_list search is case-insensitive.
+    """sam_plan list search is case-insensitive.
 
     Tests: uppercase search term matches lowercase field values.
     How: Pass search="BETA"; beta-feature plan should match.
@@ -538,7 +597,9 @@ async def test_sam_list_search_case_insensitive(multi_plan_dir: Path) -> None:
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "search": "BETA"})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "list", "search": "BETA"}, "plan_dir": str(multi_plan_dir)}
+        )
 
     # Assert
     data = result.data
@@ -547,15 +608,17 @@ async def test_sam_list_search_case_insensitive(multi_plan_dir: Path) -> None:
 
 
 async def test_sam_list_search_no_match_returns_empty_items(multi_plan_dir: Path) -> None:
-    """sam_list search with no matches returns empty items list with total=0.
+    """sam_plan list search with no matches returns empty items list with total=0.
 
-    Tests: sam_list search zero-results path.
+    Tests: sam_plan list search zero-results path.
     How: Pass search="zzznotfound"; no plan should match.
     Why: Callers must handle empty results without errors.
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "search": "zzznotfound"})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "list", "search": "zzznotfound"}, "plan_dir": str(multi_plan_dir)}
+        )
 
     # Assert
     data = result.data
@@ -566,7 +629,7 @@ async def test_sam_list_search_no_match_returns_empty_items(multi_plan_dir: Path
 
 
 async def test_sam_list_offset_and_limit_returns_correct_page(multi_plan_dir: Path) -> None:
-    """sam_list offset and limit return the requested page of results.
+    """sam_plan list offset and limit return the requested page of results.
 
     Tests: explicit pagination — offset=1, limit=1 returns second item only.
     How: Call with offset=1, limit=1 on three-plan directory.
@@ -574,11 +637,13 @@ async def test_sam_list_offset_and_limit_returns_correct_page(multi_plan_dir: Pa
     """
     # Arrange — get all items first to know sort order
     async with Client(mcp) as client:
-        all_result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir)})
+        all_result = await client.call_tool("sam_plan", {"config": {"action": "list"}, "plan_dir": str(multi_plan_dir)})
         all_features = [item["feature"] for item in all_result.data["items"]]
 
         # Act — page 2 (offset=1, limit=1)
-        page_result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "offset": 1, "limit": 1})
+        page_result = await client.call_tool(
+            "sam_plan", {"config": {"action": "list", "offset": 1, "limit": 1}, "plan_dir": str(multi_plan_dir)}
+        )
 
     # Assert
     data = page_result.data
@@ -592,7 +657,7 @@ async def test_sam_list_offset_and_limit_returns_correct_page(multi_plan_dir: Pa
 
 
 async def test_sam_list_has_more_true_includes_next_call_hint(multi_plan_dir: Path) -> None:
-    """sam_list includes next_call hint when has_more is true.
+    """sam_plan list includes next_call hint when has_more is true.
 
     Tests: next_call field present and non-empty when pagination continues.
     How: Request limit=1 on three-plan directory — must have more.
@@ -600,28 +665,32 @@ async def test_sam_list_has_more_true_includes_next_call_hint(multi_plan_dir: Pa
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "limit": 1})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "list", "limit": 1}, "plan_dir": str(multi_plan_dir)}
+        )
 
     # Assert
     data = result.data
     assert data["pagination"]["has_more"] is True
     assert "next_call" in data
-    assert "sam_list" in data["next_call"]
+    assert "sam_plan" in data["next_call"]
     assert "offset=1" in data["next_call"]
 
 
 async def test_sam_list_nonexistent_plan_dir_returns_error(tmp_path: Path) -> None:
-    """sam_list with non-existent plan_dir returns an empty result, not a raise.
+    """sam_plan list with non-existent plan_dir returns an empty result, not a raise.
 
-    Tests: sam_list error path for missing directory.
+    Tests: sam_plan list error path for missing directory.
     How: Pass plan_dir pointing to a path that does not exist.
     Why: LocalYamlTaskProvider.list_plans returns [] when plan_dir does not exist.
-         sam_list wraps this as an empty paginated response with count=0.
+         sam_plan list wraps this as an empty paginated response with count=0.
          No errors are added because the backend treats a missing dir as empty.
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_list", {"plan_dir": str(tmp_path / "nonexistent")})
+        result = await client.call_tool(
+            "sam_plan", {"config": {"action": "list"}, "plan_dir": str(tmp_path / "nonexistent")}
+        )
 
     # Assert
     data = result.data
@@ -633,15 +702,15 @@ async def test_sam_list_nonexistent_plan_dir_returns_error(tmp_path: Path) -> No
 
 
 async def test_sam_list_items_include_required_summary_fields(multi_plan_dir: Path) -> None:
-    """sam_list items contain feature, goal, description, task_count, and path.
+    """sam_plan list items contain feature, goal, description, task_count, and path.
 
     Tests: item shape completeness.
-    How: Call sam_list with no args, inspect first item keys.
+    How: Call sam_plan list with no filters, inspect first item keys.
     Why: Callers depend on these fields to route plan selection decisions.
     """
     # Act
     async with Client(mcp) as client:
-        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir)})
+        result = await client.call_tool("sam_plan", {"config": {"action": "list"}, "plan_dir": str(multi_plan_dir)})
 
     # Assert
     item = result.data["items"][0]
@@ -651,3 +720,118 @@ async def test_sam_list_items_include_required_summary_fields(multi_plan_dir: Pa
     assert "task_count" in item
     assert "path" in item
     assert item["task_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Deprecation shim MCP tests — all old tools must raise ToolError via MCP
+# ---------------------------------------------------------------------------
+
+
+async def test_mcp_sam_read_shim_raises_tool_error(plan_dir: Path) -> None:
+    """sam_read shim raises ToolError via MCP protocol with migration message.
+
+    Tests: sam_read deprecation shim through MCP.
+    How: Call sam_read with minimal args; expect ToolError matching "deprecated".
+    Why: Old MCP callers must receive ToolError, not a result dict.
+    """
+    with pytest.raises(ToolError, match="deprecated"):
+        async with Client(mcp) as client:
+            await client.call_tool("sam_read", {"plan": "P1", "plan_dir": str(plan_dir)})
+
+
+async def test_mcp_sam_state_shim_raises_tool_error(plan_dir: Path) -> None:
+    """sam_state shim raises ToolError via MCP protocol with migration message.
+
+    Tests: sam_state deprecation shim through MCP.
+    How: Call sam_state with plan+task+status; expect ToolError matching "deprecated".
+    Why: Old MCP callers must receive ToolError, not a result dict.
+    """
+    with pytest.raises(ToolError, match="deprecated"):
+        async with Client(mcp) as client:
+            await client.call_tool(
+                "sam_state", {"plan": "P1", "task": "T1", "status": "in-progress", "plan_dir": str(plan_dir)}
+            )
+
+
+async def test_mcp_sam_ready_shim_raises_tool_error(plan_dir: Path) -> None:
+    """sam_ready shim raises ToolError via MCP protocol with migration message.
+
+    Tests: sam_ready deprecation shim through MCP.
+    How: Call sam_ready with plan+plan_dir; expect ToolError matching "deprecated".
+    Why: Old MCP callers must receive ToolError, not a result dict.
+    """
+    with pytest.raises(ToolError, match="deprecated"):
+        async with Client(mcp) as client:
+            await client.call_tool("sam_ready", {"plan": "P1", "plan_dir": str(plan_dir)})
+
+
+async def test_mcp_sam_status_shim_raises_tool_error(plan_dir: Path) -> None:
+    """sam_status shim raises ToolError via MCP protocol with migration message.
+
+    Tests: sam_status deprecation shim through MCP.
+    How: Call sam_status with plan+plan_dir; expect ToolError matching "deprecated".
+    Why: Old MCP callers must receive ToolError, not a result dict.
+    """
+    with pytest.raises(ToolError, match="deprecated"):
+        async with Client(mcp) as client:
+            await client.call_tool("sam_status", {"plan": "P1", "plan_dir": str(plan_dir)})
+
+
+async def test_mcp_sam_list_shim_raises_tool_error(tmp_path: Path) -> None:
+    """sam_list shim raises ToolError via MCP protocol with migration message.
+
+    Tests: sam_list deprecation shim through MCP.
+    How: Call sam_list with plan_dir; expect ToolError matching "deprecated".
+    Why: Old MCP callers must receive ToolError, not a result dict.
+    """
+    with pytest.raises(ToolError, match="deprecated"):
+        async with Client(mcp) as client:
+            await client.call_tool("sam_list", {"plan_dir": str(tmp_path)})
+
+
+async def test_mcp_sam_create_shim_raises_tool_error(tmp_path: Path) -> None:
+    """sam_create shim raises ToolError via MCP protocol with migration message.
+
+    Tests: sam_create deprecation shim through MCP.
+    How: Call sam_create with slug+goal+tasks_yaml; expect ToolError matching "deprecated".
+    Why: Old MCP callers must receive ToolError, not a result dict.
+    """
+    tasks_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    with pytest.raises(ToolError, match="deprecated"):
+        async with Client(mcp) as client:
+            await client.call_tool(
+                "sam_create", {"slug": "shim-test", "goal": "Goal", "tasks_yaml": tasks_yaml, "plan_dir": str(tmp_path)}
+            )
+
+
+async def test_mcp_sam_update_shim_raises_tool_error(tmp_path: Path) -> None:
+    """sam_update shim raises ToolError via MCP protocol with migration message.
+
+    Tests: sam_update deprecation shim through MCP.
+    How: Call sam_update with address+plan_dir; expect ToolError matching "deprecated".
+    Why: Old MCP callers must receive ToolError, not a result dict.
+    """
+    with pytest.raises(ToolError, match="deprecated"):
+        async with Client(mcp) as client:
+            await client.call_tool("sam_update", {"address": "P1", "plan_dir": str(tmp_path)})
+
+
+async def test_mcp_sam_claim_shim_raises_tool_error(plan_dir: Path) -> None:
+    """sam_claim shim raises ToolError via MCP protocol with migration message.
+
+    Tests: sam_claim deprecation shim through MCP.
+    How: Call sam_claim with plan+task+plan_dir; expect ToolError matching "deprecated".
+    Why: Old MCP callers must receive ToolError, not a result dict.
+    """
+    with pytest.raises(ToolError, match="deprecated"):
+        async with Client(mcp) as client:
+            await client.call_tool("sam_claim", {"plan": "P1", "task": "T01", "plan_dir": str(plan_dir)})

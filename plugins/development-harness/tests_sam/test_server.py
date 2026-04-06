@@ -1,22 +1,35 @@
 """Tests for sam_schema.server — MCP tool functions.
 
-Tests: All four MCP tools (sam_read, sam_state, sam_ready, sam_status).
+Tests: sam_task and sam_plan (new consolidated tools) plus deprecation shims.
 How: Write real plan files to tmp_path, create a plan directory with
      tasks-{N}-{slug}.yaml naming so resolve_plan_address can find them,
      then call each MCP tool function directly and assert on returned dicts.
 Why: server.py has zero test coverage; the tools are the primary interface
      used by Claude Code agents to query and mutate SAM plans.
 """
-# T02: sam_read now returns TaskAssignment when task param is provided.
+# T07: sam_read/sam_state/sam_ready/sam_status/sam_create/sam_update/sam_claim replaced
+# with sam_task/sam_plan consolidated tools. Old tools are deprecation shims.
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import pytest
+from fastmcp.exceptions import ToolError
+from sam_schema.core.action_models import (
+    ClaimTaskConfig,
+    CreatePlanConfig,
+    ReadPlanConfig,
+    ReadTaskConfig,
+    ReadyPlanConfig,
+    StateTaskConfig,
+    StatusPlanConfig,
+    UpdatePlanConfig,
+    UpdateTaskConfig,
+)
 from sam_schema.core.exceptions import PlanNotFoundError, TaskNotFoundError, TaskValidationError
 from sam_schema.core.models import Complexity, Plan, Priority, Task, TaskStatus
-from sam_schema.server import sam_read, sam_ready, sam_state, sam_status
+from sam_schema.server import sam_plan, sam_task
 from sam_schema.writers.yaml_writer import write_plan
 
 if TYPE_CHECKING:
@@ -80,23 +93,23 @@ def plan_dir_str(plan_dir: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
-# sam_read
+# sam_task — read action (replaces sam_read with task)
 # ---------------------------------------------------------------------------
 
 
 def test_sam_read_existing_task_returns_task_fields(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_read returns task fields dict for an existing task.
+    """sam_task(read) returns task fields dict for an existing task.
 
-    Tests: sam_read happy path.
+    Tests: sam_task read happy path.
     How: Address 'P1', task 'T1' on a plan dir with tasks-1-test-feature.yaml.
-    Why: sam_read is the primary read tool used by agents to inspect task state.
+    Why: sam_task read is the primary read tool used by agents to inspect task state.
     """
     # Arrange — plan_dir fixture provides tasks-1-test-feature.yaml
 
     # Act
-    result = sam_read(plan="P1", task="T1", plan_dir=plan_dir_str)
+    result = sam_task(plan="P1", task="T1", config=ReadTaskConfig(), plan_dir=plan_dir_str)
 
-    # Assert — sam_read now returns TaskAssignment; task fields are under "task" key.
+    # Assert — returns TaskAssignment; task fields are under "task" key.
     assert "error" not in result
     assert "task" in result
     assert result["task"]["id"] == "T1"
@@ -104,14 +117,14 @@ def test_sam_read_existing_task_returns_task_fields(plan_dir: Path, plan_dir_str
 
 
 def test_sam_read_returns_dict_with_all_required_fields(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_read result contains nested task with 'id', 'title', and 'status' keys.
+    """sam_task(read) result contains nested task with 'id', 'title', and 'status' keys.
 
-    Tests: Return structure of sam_read TaskAssignment shape.
-    How: Call sam_read for T2 and check task key presence.
+    Tests: Return structure of sam_task read TaskAssignment shape.
+    How: Call sam_task read for T2 and check task key presence.
     Why: Agents rely on these keys being present to make routing decisions.
     """
     # Act
-    result = sam_read(plan="P1", task="T2", plan_dir=plan_dir_str)
+    result = sam_task(plan="P1", task="T2", config=ReadTaskConfig(), plan_dir=plan_dir_str)
 
     # Assert — task fields are nested under "task" in the TaskAssignment shape.
     assert "error" not in result
@@ -122,58 +135,58 @@ def test_sam_read_returns_dict_with_all_required_fields(plan_dir: Path, plan_dir
 
 
 def test_sam_read_missing_task_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_read raises TaskNotFoundError for a task ID that does not exist.
+    """sam_task(read) raises TaskNotFoundError for a task ID that does not exist.
 
-    Tests: sam_read error handling for missing task.
+    Tests: sam_task read error handling for missing task.
     How: Request task 'T99' which is not in the plan.
     Why: Exceptions propagate from the tool function; FastMCP converts them to
          isError=true MCP responses. Direct callers must handle TaskNotFoundError.
     """
     # Act / Assert
     with pytest.raises(TaskNotFoundError, match="T99"):
-        sam_read(plan="P1", task="T99", plan_dir=plan_dir_str)
+        sam_task(plan="P1", task="T99", config=ReadTaskConfig(), plan_dir=plan_dir_str)
 
 
 def test_sam_read_invalid_plan_address_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_read raises PlanNotFoundError for an unresolvable plan address.
+    """sam_task(read) raises PlanNotFoundError for an unresolvable plan address.
 
-    Tests: sam_read error handling for invalid plan address.
+    Tests: sam_task read error handling for invalid plan address.
     How: Request plan 'P999' which has no matching file in the directory.
     Why: Exceptions propagate from the tool function; direct callers must handle
          PlanNotFoundError. MCP clients receive ToolError via FastMCP conversion.
     """
     # Act / Assert
     with pytest.raises(PlanNotFoundError):
-        sam_read(plan="P999", task="T1", plan_dir=plan_dir_str)
+        sam_task(plan="P999", task="T1", config=ReadTaskConfig(), plan_dir=plan_dir_str)
 
 
 def test_sam_read_nonexistent_plan_dir_returns_error_dict(tmp_path: Path) -> None:
-    """sam_read raises PlanNotFoundError when plan_dir does not exist.
+    """sam_task(read) raises PlanNotFoundError when plan_dir does not exist.
 
-    Tests: sam_read error handling for missing plan directory.
+    Tests: sam_task read error handling for missing plan directory.
     How: Pass a path that does not exist.
     Why: The backend converts FileNotFoundError to PlanNotFoundError. Direct
          callers must handle it; MCP clients receive ToolError.
     """
     # Act / Assert
     with pytest.raises(PlanNotFoundError):
-        sam_read(plan="P1", task="T1", plan_dir=str(tmp_path / "missing"))
+        sam_task(plan="P1", task="T1", config=ReadTaskConfig(), plan_dir=str(tmp_path / "missing"))
 
 
 # ---------------------------------------------------------------------------
-# sam_state
+# sam_task — state action (replaces sam_state)
 # ---------------------------------------------------------------------------
 
 
 def test_sam_state_updates_task_status(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_state writes new status and returns updated task.
+    """sam_task(state) writes new status and returns updated task.
 
-    Tests: sam_state happy path for status update.
+    Tests: sam_task state happy path for status update.
     How: Transition T2 from not-started to in-progress.
-    Why: sam_state is the mutation tool agents use to advance task lifecycle.
+    Why: sam_task state is the mutation tool agents use to advance task lifecycle.
     """
     # Act
-    result = sam_state(plan="P1", task="T2", status="in-progress", plan_dir=plan_dir_str)
+    result = sam_task(plan="P1", task="T2", config=StateTaskConfig(status="in-progress"), plan_dir=plan_dir_str)
 
     # Assert
     assert "error" not in result
@@ -182,71 +195,71 @@ def test_sam_state_updates_task_status(plan_dir: Path, plan_dir_str: str) -> Non
 
 
 def test_sam_state_accepts_all_valid_status_values(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_state accepts every value from the TaskStatus enum.
+    """sam_task(state) accepts every value from the TaskStatus enum.
 
-    Tests: sam_state with each canonical status string.
+    Tests: sam_task state with each canonical status string.
     How: Cycle through valid statuses on T2.
     Why: Agents use all status values during the task lifecycle.
     """
     for status_str in ("in-progress", "blocked", "complete", "deferred", "skipped", "not-started"):
-        result = sam_state(plan="P1", task="T2", status=status_str, plan_dir=plan_dir_str)
+        result = sam_task(plan="P1", task="T2", config=StateTaskConfig(status=status_str), plan_dir=plan_dir_str)
         assert "error" not in result, f"Unexpected error for status '{status_str}': {result}"
         assert result["status"] == status_str
 
 
 def test_sam_state_invalid_status_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_state raises TaskValidationError for an unrecognized status string.
+    """sam_task(state) raises TaskValidationError for an unrecognized status string.
 
-    Tests: sam_state error handling for invalid status values.
+    Tests: sam_task state error handling for invalid status values.
     How: Pass 'typo-status' which is not in TaskStatus.
     Why: Invalid status raises TaskValidationError. FastMCP converts it to
          isError=true; direct callers must handle it.
     """
     # Act / Assert
     with pytest.raises(TaskValidationError):
-        sam_state(plan="P1", task="T2", status="typo-status", plan_dir=plan_dir_str)
+        sam_task(plan="P1", task="T2", config=StateTaskConfig(status="typo-status"), plan_dir=plan_dir_str)
 
 
 def test_sam_state_missing_task_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_state raises TaskNotFoundError when the task ID is not found.
+    """sam_task(state) raises TaskNotFoundError when the task ID is not found.
 
-    Tests: sam_state error handling for missing task.
+    Tests: sam_task state error handling for missing task.
     How: Attempt to update status on 'T99' which does not exist.
     Why: Exceptions propagate from the tool function. Direct callers must handle
          TaskNotFoundError; MCP clients receive ToolError.
     """
     # Act / Assert
     with pytest.raises(TaskNotFoundError, match="T99"):
-        sam_state(plan="P1", task="T99", status="complete", plan_dir=plan_dir_str)
+        sam_task(plan="P1", task="T99", config=StateTaskConfig(status="complete"), plan_dir=plan_dir_str)
 
 
 def test_sam_state_invalid_plan_address_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_state raises PlanNotFoundError for an unresolvable plan address.
+    """sam_task(state) raises PlanNotFoundError for an unresolvable plan address.
 
-    Tests: sam_state error handling for invalid plan address.
+    Tests: sam_task state error handling for invalid plan address.
     How: Address 'P999' does not match any file in the plan directory.
     Why: Exceptions propagate from the tool function. Direct callers must handle
          PlanNotFoundError; MCP clients receive ToolError.
     """
     # Act / Assert
     with pytest.raises(PlanNotFoundError):
-        sam_state(plan="P999", task="T1", status="complete", plan_dir=plan_dir_str)
+        sam_task(plan="P999", task="T1", config=StateTaskConfig(status="complete"), plan_dir=plan_dir_str)
 
 
 # ---------------------------------------------------------------------------
-# sam_ready
+# sam_plan — ready action (replaces sam_ready)
 # ---------------------------------------------------------------------------
 
 
 def test_sam_ready_returns_ready_tasks_list(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_ready returns tasks whose dependencies are all complete.
+    """sam_plan(ready) returns tasks whose dependencies are all complete.
 
-    Tests: sam_ready happy path.
+    Tests: sam_plan ready happy path.
     How: T1 is complete, T2 depends on T1 — T2 is the only ready task.
-    Why: sam_ready is the tool agents poll to find their next task to execute.
+    Why: sam_plan ready is the tool agents poll to find their next task to execute.
     """
     # Act
-    result = sam_ready(plan="P1", plan_dir=plan_dir_str)
+    result = sam_plan(config=ReadyPlanConfig(), plan="P1", plan_dir=plan_dir_str)
 
     # Assert
     assert "error" not in result
@@ -257,36 +270,36 @@ def test_sam_ready_returns_ready_tasks_list(plan_dir: Path, plan_dir_str: str) -
 
 
 def test_sam_ready_count_matches_ready_tasks_length(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_ready 'count' field matches len(ready_tasks).
+    """sam_plan(ready) 'count' field matches len(ready_tasks).
 
-    Tests: sam_ready return value consistency.
+    Tests: sam_plan ready return value consistency.
     How: Check count == len(ready_tasks).
     Why: Callers may use count for quick checks before iterating the list.
     """
     # Act
-    result = sam_ready(plan="P1", plan_dir=plan_dir_str)
+    result = sam_plan(config=ReadyPlanConfig(), plan="P1", plan_dir=plan_dir_str)
 
     # Assert
     assert result["count"] == len(result["ready_tasks"])
 
 
 def test_sam_ready_invalid_plan_address_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_ready raises PlanNotFoundError for an unresolvable plan address.
+    """sam_plan(ready) raises PlanNotFoundError for an unresolvable plan address.
 
-    Tests: sam_ready error handling.
+    Tests: sam_plan ready error handling.
     How: Pass 'P999' which does not match any file.
     Why: Exceptions propagate from the tool function. Direct callers must handle
          PlanNotFoundError; MCP clients receive ToolError.
     """
     # Act / Assert
     with pytest.raises(PlanNotFoundError):
-        sam_ready(plan="P999", plan_dir=plan_dir_str)
+        sam_plan(config=ReadyPlanConfig(), plan="P999", plan_dir=plan_dir_str)
 
 
 def test_sam_ready_all_complete_plan_returns_empty_list(tmp_path: Path) -> None:
-    """sam_ready returns empty ready_tasks when all tasks are complete.
+    """sam_plan(ready) returns empty ready_tasks when all tasks are complete.
 
-    Tests: sam_ready with no ready tasks.
+    Tests: sam_plan ready with no ready tasks.
     How: Create a plan where all tasks are COMPLETE.
     Why: Agents must handle the empty case to know the plan is finished.
     """
@@ -302,7 +315,7 @@ def test_sam_ready_all_complete_plan_returns_empty_list(tmp_path: Path) -> None:
     write_plan(plan, p_dir / "tasks-1-done-feature.yaml", force_single=True)
 
     # Act
-    result = sam_ready(plan="P1", plan_dir=str(p_dir))
+    result = sam_plan(config=ReadyPlanConfig(), plan="P1", plan_dir=str(p_dir))
 
     # Assert
     assert "error" not in result
@@ -311,19 +324,19 @@ def test_sam_ready_all_complete_plan_returns_empty_list(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# sam_status
+# sam_plan — status action (replaces sam_status)
 # ---------------------------------------------------------------------------
 
 
 def test_sam_status_returns_plan_summary(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_status returns a plan-level progress summary dict.
+    """sam_plan(status) returns a plan-level progress summary dict.
 
-    Tests: sam_status happy path.
-    How: Call sam_status on a two-task plan (T1 complete, T2 not-started).
-    Why: sam_status gives agents and orchestrators an overview of plan progress.
+    Tests: sam_plan status happy path.
+    How: Call sam_plan status on a two-task plan (T1 complete, T2 not-started).
+    Why: sam_plan status gives agents and orchestrators an overview of plan progress.
     """
     # Act
-    result = sam_status(plan="P1", plan_dir=plan_dir_str)
+    result = sam_plan(config=StatusPlanConfig(), plan="P1", plan_dir=plan_dir_str)
 
     # Assert
     assert "error" not in result
@@ -335,28 +348,28 @@ def test_sam_status_returns_plan_summary(plan_dir: Path, plan_dir_str: str) -> N
 
 
 def test_sam_status_completion_pct_reflects_completed_tasks(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_status completion_pct equals completed/total * 100.
+    """sam_plan(status) completion_pct equals completed/total * 100.
 
-    Tests: sam_status completion percentage calculation.
+    Tests: sam_plan status completion percentage calculation.
     How: T1 is complete out of 2 tasks — expected 50.0%.
     Why: Callers use completion_pct to report plan progress.
     """
     # Act
-    result = sam_status(plan="P1", plan_dir=plan_dir_str)
+    result = sam_plan(config=StatusPlanConfig(), plan="P1", plan_dir=plan_dir_str)
 
     # Assert
     assert result["completion_pct"] == pytest.approx(50.0)
 
 
 def test_sam_status_by_status_contains_complete_and_not_started(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_status by_status dict reflects actual task statuses.
+    """sam_plan(status) by_status dict reflects actual task statuses.
 
-    Tests: sam_status by_status aggregation.
+    Tests: sam_plan status by_status aggregation.
     How: Verify complete=1, not-started=1 for the two-task fixture plan.
     Why: Agents and dashboards rely on by_status for per-state counts.
     """
     # Act
-    result = sam_status(plan="P1", plan_dir=plan_dir_str)
+    result = sam_plan(config=StatusPlanConfig(), plan="P1", plan_dir=plan_dir_str)
 
     # Assert
     by_status = result["by_status"]
@@ -365,37 +378,37 @@ def test_sam_status_by_status_contains_complete_and_not_started(plan_dir: Path, 
 
 
 def test_sam_status_invalid_plan_address_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_status raises PlanNotFoundError for an unresolvable plan address.
+    """sam_plan(status) raises PlanNotFoundError for an unresolvable plan address.
 
-    Tests: sam_status error handling.
+    Tests: sam_plan status error handling.
     How: Pass 'P999' which does not match any file.
     Why: Exceptions propagate from the tool function. Direct callers must handle
          PlanNotFoundError; MCP clients receive ToolError.
     """
     # Act / Assert
     with pytest.raises(PlanNotFoundError):
-        sam_status(plan="P999", plan_dir=plan_dir_str)
+        sam_plan(config=StatusPlanConfig(), plan="P999", plan_dir=plan_dir_str)
 
 
 def test_sam_status_has_cycles_false_for_acyclic_plan(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_status has_cycles is False for an acyclic dependency graph.
+    """sam_plan(status) has_cycles is False for an acyclic dependency graph.
 
-    Tests: sam_status cycle detection reporting.
+    Tests: sam_plan status cycle detection reporting.
     How: The fixture plan (T1 <- T2) has no cycles.
     Why: has_cycles must be accurate so agents do not treat valid plans as broken.
     """
     # Act
-    result = sam_status(plan="P1", plan_dir=plan_dir_str)
+    result = sam_plan(config=StatusPlanConfig(), plan="P1", plan_dir=plan_dir_str)
 
     # Assert
     assert result["has_cycles"] is False
 
 
 def test_sam_status_has_cycles_true_for_cyclic_plan(tmp_path: Path) -> None:
-    """sam_status has_cycles is True when the dependency graph contains a cycle.
+    """sam_plan(status) has_cycles is True when the dependency graph contains a cycle.
 
-    Tests: sam_status cycle detection with a real cyclic plan.
-    How: Create T1 -> T2 -> T1 (cycle), write to tmp dir, call sam_status.
+    Tests: sam_plan status cycle detection with a real cyclic plan.
+    How: Create T1 -> T2 -> T1 (cycle), write to tmp dir, call sam_plan status.
     Why: Agents must detect cycles to avoid infinite dispatch loops.
     """
     # Arrange
@@ -425,7 +438,7 @@ def test_sam_status_has_cycles_true_for_cyclic_plan(tmp_path: Path) -> None:
     write_plan(plan, p_dir / "tasks-1-cyclic-feature.yaml", force_single=True)
 
     # Act
-    result = sam_status(plan="P1", plan_dir=str(p_dir))
+    result = sam_plan(config=StatusPlanConfig(), plan="P1", plan_dir=str(p_dir))
 
     # Assert
     assert "error" not in result
@@ -433,14 +446,14 @@ def test_sam_status_has_cycles_true_for_cyclic_plan(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# sam_read — TaskAssignment (T02)
+# sam_task — read action (TaskAssignment shape, T02)
 # ---------------------------------------------------------------------------
 
 
 def test_sam_read_with_task_returns_task_assignment_shape(plan_dir_str: str) -> None:
-    """sam_read with task param returns dict with nested 'task' key (TaskAssignment)."""
+    """sam_task(read) with task param returns dict with nested 'task' key (TaskAssignment)."""
     # Act
-    result = sam_read(plan="P1", task="T1", plan_dir=plan_dir_str)
+    result = sam_task(plan="P1", task="T1", config=ReadTaskConfig(), plan_dir=plan_dir_str)
 
     # Assert
     assert "error" not in result
@@ -449,7 +462,7 @@ def test_sam_read_with_task_returns_task_assignment_shape(plan_dir_str: str) -> 
 
 
 def test_sam_read_with_task_includes_plan_goal(tmp_path: Path) -> None:
-    """sam_read with task param surfaces plan_goal from the plan in TaskAssignment."""
+    """sam_task(read) with task param surfaces plan_goal from the plan in TaskAssignment."""
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
@@ -458,7 +471,7 @@ def test_sam_read_with_task_includes_plan_goal(tmp_path: Path) -> None:
     write_plan(plan, p_dir / "tasks-1-goal-feature.yaml", force_single=True)
 
     # Act
-    result = sam_read(plan="P1", task="T1", plan_dir=str(p_dir))
+    result = sam_task(plan="P1", task="T1", config=ReadTaskConfig(), plan_dir=str(p_dir))
 
     # Assert
     assert "error" not in result
@@ -466,7 +479,7 @@ def test_sam_read_with_task_includes_plan_goal(tmp_path: Path) -> None:
 
 
 def test_sam_read_with_task_includes_plan_context(tmp_path: Path) -> None:
-    """sam_read with task param surfaces plan_context in TaskAssignment."""
+    """sam_task(read) with task param surfaces plan_context in TaskAssignment."""
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
@@ -475,7 +488,7 @@ def test_sam_read_with_task_includes_plan_context(tmp_path: Path) -> None:
     write_plan(plan, p_dir / "tasks-1-ctx-feature.yaml", force_single=True)
 
     # Act
-    result = sam_read(plan="P1", task="T1", plan_dir=str(p_dir))
+    result = sam_task(plan="P1", task="T1", config=ReadTaskConfig(), plan_dir=str(p_dir))
 
     # Assert
     assert "error" not in result
@@ -483,9 +496,9 @@ def test_sam_read_with_task_includes_plan_context(tmp_path: Path) -> None:
 
 
 def test_sam_read_without_task_returns_plan_fields(plan_dir_str: str) -> None:
-    """sam_read without task param returns Plan fields with no TaskAssignment wrapper."""
+    """sam_plan(read) without task param returns Plan fields with no TaskAssignment wrapper."""
     # Act
-    result = sam_read(plan="P1", plan_dir=plan_dir_str)
+    result = sam_plan(config=ReadPlanConfig(), plan="P1", plan_dir=plan_dir_str)
 
     # Assert
     assert "error" not in result
@@ -494,34 +507,34 @@ def test_sam_read_without_task_returns_plan_fields(plan_dir_str: str) -> None:
 
 
 def test_sam_read_with_missing_task_returns_error(plan_dir_str: str) -> None:
-    """sam_read with a task ID not in the plan raises TaskNotFoundError."""
+    """sam_task(read) with a task ID not in the plan raises TaskNotFoundError."""
     # Act / Assert
     with pytest.raises(TaskNotFoundError, match="T99"):
-        sam_read(plan="P1", task="T99", plan_dir=plan_dir_str)
+        sam_task(plan="P1", task="T99", config=ReadTaskConfig(), plan_dir=plan_dir_str)
 
 
 def test_sam_read_with_missing_plan_returns_error(tmp_path: Path) -> None:
-    """sam_read with a plan address not found raises PlanNotFoundError."""
+    """sam_task(read) with a plan address not found raises PlanNotFoundError."""
     # Arrange
     empty_dir = tmp_path / "plan"
     empty_dir.mkdir()
 
     # Act / Assert
     with pytest.raises(PlanNotFoundError):
-        sam_read(plan="P99", task="T1", plan_dir=str(empty_dir))
+        sam_task(plan="P99", task="T1", config=ReadTaskConfig(), plan_dir=str(empty_dir))
 
 
 # ---------------------------------------------------------------------------
-# sam_create
+# sam_plan — create action (replaces sam_create)
 # ---------------------------------------------------------------------------
 
 
 def test_sam_create_valid_tasks_yaml_returns_path_and_counts(tmp_path: Path) -> None:
-    """sam_create with valid tasks_yaml creates a plan file and returns metadata.
+    """sam_plan(create) with valid tasks_yaml creates a plan file and returns metadata.
 
-    Tests: sam_create happy path.
+    Tests: sam_plan create happy path.
     How: Pass a minimal tasks_yaml string; verify returned dict has path, plan_number, task_count.
-    Why: sam_create is the MCP entry point for swarm-task-planner to persist new plans.
+    Why: sam_plan create is the MCP entry point for swarm-task-planner to persist new plans.
     """
     # Arrange
     p_dir = tmp_path / "plan"
@@ -538,9 +551,9 @@ def test_sam_create_valid_tasks_yaml_returns_path_and_counts(tmp_path: Path) -> 
     )
 
     # Act
-    from sam_schema.server import sam_create
-
-    result = sam_create(slug="test-create", goal="Test goal", tasks_yaml=tasks_yaml, plan_dir=str(p_dir))
+    result = sam_plan(
+        config=CreatePlanConfig(slug="test-create", goal="Test goal", tasks_yaml=tasks_yaml), plan_dir=str(p_dir)
+    )
 
     # Assert
     assert "error" not in result
@@ -549,11 +562,11 @@ def test_sam_create_valid_tasks_yaml_returns_path_and_counts(tmp_path: Path) -> 
     assert result["plan_number"] == 1
 
 
-def test_sam_create_file_is_readable_by_sam_read(tmp_path: Path) -> None:
-    """sam_create round-trip: created file is readable by sam_read.
+def test_sam_create_file_is_readable_by_sam_task(tmp_path: Path) -> None:
+    """sam_plan(create) round-trip: created file is readable by sam_task(read).
 
     Tests: AC4 round-trip (create then read produces identical data).
-    How: sam_create then sam_read the T01 task; compare title.
+    How: sam_plan create then sam_task read the T01 task; compare title.
     Why: Validates write→read consistency through the full pipeline.
     """
     # Arrange
@@ -569,14 +582,15 @@ def test_sam_create_file_is_readable_by_sam_read(tmp_path: Path) -> None:
         "    priority: 1\n"
         "    complexity: low\n"
     )
-    from sam_schema.server import sam_create
 
-    create_result = sam_create(slug="round-trip", goal="Round-trip goal", tasks_yaml=tasks_yaml, plan_dir=str(p_dir))
+    create_result = sam_plan(
+        config=CreatePlanConfig(slug="round-trip", goal="Round-trip goal", tasks_yaml=tasks_yaml), plan_dir=str(p_dir)
+    )
     assert "error" not in create_result
 
-    # Act — read back the task through sam_read using plan_number from create result
+    # Act — read back the task through sam_task using plan_number from create result
     plan_number = create_result["plan_number"]
-    read_result = sam_read(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+    read_result = sam_task(plan=f"P{plan_number}", task="T01", config=ReadTaskConfig(), plan_dir=str(p_dir))
 
     # Assert
     assert "error" not in read_result
@@ -585,9 +599,9 @@ def test_sam_create_file_is_readable_by_sam_read(tmp_path: Path) -> None:
 
 
 def test_sam_create_invalid_tasks_yaml_returns_error(tmp_path: Path) -> None:
-    """sam_create raises ValueError when tasks_yaml lacks 'tasks' key.
+    """sam_plan(create) raises ValueError when tasks_yaml lacks 'tasks' key.
 
-    Tests: sam_create input validation.
+    Tests: sam_plan create input validation.
     How: Pass YAML without 'tasks' key.
     Why: Invalid input raises ValueError. FastMCP converts it to isError=true;
          direct callers must handle it.
@@ -595,17 +609,16 @@ def test_sam_create_invalid_tasks_yaml_returns_error(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    from sam_schema.server import sam_create
 
     # Act / Assert
     with pytest.raises(ValueError, match="tasks"):
-        sam_create(slug="bad", goal="Bad goal", tasks_yaml="not_tasks: []", plan_dir=str(p_dir))
+        sam_plan(config=CreatePlanConfig(slug="bad", goal="Bad goal", tasks_yaml="not_tasks: []"), plan_dir=str(p_dir))
 
 
 def test_sam_create_assigns_incrementing_plan_numbers(tmp_path: Path) -> None:
-    """sam_create assigns monotonically increasing plan numbers.
+    """sam_plan(create) assigns monotonically increasing plan numbers.
 
-    Tests: sam_create plan number assignment.
+    Tests: sam_plan create plan number assignment.
     How: Create two plans; second should have plan_number = 2.
     Why: Correct numbering is required for address resolution to work.
     """
@@ -622,11 +635,10 @@ def test_sam_create_assigns_incrementing_plan_numbers(tmp_path: Path) -> None:
         "    priority: 1\n"
         "    complexity: low\n"
     )
-    from sam_schema.server import sam_create
 
     # Act
-    r1 = sam_create(slug="first", goal="First", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
-    r2 = sam_create(slug="second", goal="Second", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    r1 = sam_plan(config=CreatePlanConfig(slug="first", goal="First", tasks_yaml=minimal_yaml), plan_dir=str(p_dir))
+    r2 = sam_plan(config=CreatePlanConfig(slug="second", goal="Second", tasks_yaml=minimal_yaml), plan_dir=str(p_dir))
 
     # Assert
     assert "error" not in r1
@@ -635,15 +647,15 @@ def test_sam_create_assigns_incrementing_plan_numbers(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# sam_update
+# sam_plan / sam_task — update actions (replaces sam_update)
 # ---------------------------------------------------------------------------
 
 
 def test_sam_update_context_sets_plan_context(tmp_path: Path) -> None:
-    """sam_update with context param updates the plan-level context field.
+    """sam_plan(update) with context param updates the plan-level context field.
 
     Tests: AC6 — sam update sets context on plan.
-    How: Create a plan via sam_create, then sam_update its context; read back to verify.
+    How: Create a plan via sam_plan create, then sam_plan update its context; read back to verify.
     Why: context-gathering agent uses this to persist shared context to the plan.
     """
     # Arrange
@@ -659,30 +671,33 @@ def test_sam_update_context_sets_plan_context(tmp_path: Path) -> None:
         "    priority: 1\n"
         "    complexity: low\n"
     )
-    from sam_schema.server import sam_create, sam_update
 
-    create_result = sam_create(slug="update-ctx", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    create_result = sam_plan(
+        config=CreatePlanConfig(slug="update-ctx", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+    )
     assert "error" not in create_result
     plan_number = create_result["plan_number"]
 
     # Act
-    update_result = sam_update(address=f"P{plan_number}", plan_dir=str(p_dir), context="Shared context narrative.")
+    update_result = sam_plan(
+        config=UpdatePlanConfig(context="Shared context narrative."), plan=f"P{plan_number}", plan_dir=str(p_dir)
+    )
 
     # Assert
     assert "error" not in update_result
     assert update_result.get("updated") is True
 
-    # Verify via sam_read that context is persisted
-    read_result = sam_read(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+    # Verify via sam_task that context is persisted
+    read_result = sam_task(plan=f"P{plan_number}", task="T01", config=ReadTaskConfig(), plan_dir=str(p_dir))
     assert "error" not in read_result
     assert read_result.get("plan-context") == "Shared context narrative."
 
 
 def test_sam_update_append_section_adds_to_task_body(tmp_path: Path) -> None:
-    """sam_update with append_section appends a markdown section to the task body.
+    """sam_task(update) with append_section appends a markdown section to the task body.
 
-    Tests: sam_update append-section functionality.
-    How: Create plan, call sam_update with append_section + section_content; read file to verify.
+    Tests: sam_task update append-section functionality.
+    How: Create plan, call sam_task update with append_section + section_content; read file to verify.
     Why: context-gathering agent appends Context Manifest via this path.
     """
     # Arrange
@@ -698,19 +713,20 @@ def test_sam_update_append_section_adds_to_task_body(tmp_path: Path) -> None:
         "    priority: 1\n"
         "    complexity: low\n"
     )
-    from sam_schema.server import sam_create, sam_update
 
-    create_result = sam_create(slug="append-sec", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    create_result = sam_plan(
+        config=CreatePlanConfig(slug="append-sec", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+    )
     assert "error" not in create_result
     plan_number = create_result["plan_number"]
     plan_path = create_result["path"]
 
     # Act
-    update_result = sam_update(
-        address=f"P{plan_number}/T01",
+    update_result = sam_task(
+        plan=f"P{plan_number}",
+        task="T01",
+        config=UpdateTaskConfig(append_section="Divergence Notes", section_content="No divergence observed."),
         plan_dir=str(p_dir),
-        append_section="Divergence Notes",
-        section_content="No divergence observed.",
     )
 
     # Assert
@@ -726,9 +742,9 @@ def test_sam_update_append_section_adds_to_task_body(tmp_path: Path) -> None:
 
 
 def test_sam_update_invalid_address_returns_error(tmp_path: Path) -> None:
-    """sam_update with non-existent plan address raises PlanNotFoundError.
+    """sam_plan(update) with non-existent plan address raises PlanNotFoundError.
 
-    Tests: sam_update error handling.
+    Tests: sam_plan update error handling.
     How: Update non-existent plan P99.
     Why: Exceptions propagate from the tool function. Direct callers must handle
          PlanNotFoundError; MCP clients receive ToolError.
@@ -736,24 +752,23 @@ def test_sam_update_invalid_address_returns_error(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    from sam_schema.server import sam_update
 
     # Act / Assert
     with pytest.raises(PlanNotFoundError):
-        sam_update(address="P99", plan_dir=str(p_dir), context="test")
+        sam_plan(config=UpdatePlanConfig(context="test"), plan="P99", plan_dir=str(p_dir))
 
 
 # ---------------------------------------------------------------------------
-# sam_claim
+# sam_task — claim action (replaces sam_claim)
 # ---------------------------------------------------------------------------
 
 
 def test_sam_claim_not_started_task_returns_claimed_true(tmp_path: Path) -> None:
-    """sam_claim transitions a not-started task to in-progress and returns claimed=true.
+    """sam_task(claim) transitions a not-started task to in-progress and returns claimed=true.
 
-    Tests: sam_claim happy path (AC per T05).
-    How: Create a plan with a not-started task; call sam_claim.
-    Why: start-task skill uses sam_claim as the sole task-claiming mechanism.
+    Tests: sam_task claim happy path (AC per T05).
+    How: Create a plan with a not-started task; call sam_task claim.
+    Why: start-task skill uses sam_task claim as the sole task-claiming mechanism.
     """
     # Arrange
     p_dir = tmp_path / "plan"
@@ -768,14 +783,15 @@ def test_sam_claim_not_started_task_returns_claimed_true(tmp_path: Path) -> None
         "    priority: 1\n"
         "    complexity: low\n"
     )
-    from sam_schema.server import sam_claim, sam_create
 
-    create_result = sam_create(slug="claim-test", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    create_result = sam_plan(
+        config=CreatePlanConfig(slug="claim-test", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+    )
     assert "error" not in create_result
     plan_number = create_result["plan_number"]
 
     # Act
-    result = sam_claim(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+    result = sam_task(plan=f"P{plan_number}", task="T01", config=ClaimTaskConfig(), plan_dir=str(p_dir))
 
     # Assert
     assert result.get("claimed") is True
@@ -784,9 +800,9 @@ def test_sam_claim_not_started_task_returns_claimed_true(tmp_path: Path) -> None
 
 
 def test_sam_claim_already_claimed_returns_claimed_false(tmp_path: Path) -> None:
-    """sam_claim on an already in-progress task returns claimed=false (not an exception).
+    """sam_task(claim) on an already in-progress task returns claimed=false (not an exception).
 
-    Tests: sam_claim double-claim guard.
+    Tests: sam_task claim double-claim guard.
     How: Claim a task twice; second call returns claimed=false with error message.
     Why: Prevents duplicate agent dispatch in the implement-feature loop.
     """
@@ -803,17 +819,18 @@ def test_sam_claim_already_claimed_returns_claimed_false(tmp_path: Path) -> None
         "    priority: 1\n"
         "    complexity: low\n"
     )
-    from sam_schema.server import sam_claim, sam_create
 
-    create_result = sam_create(slug="double-claim", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    create_result = sam_plan(
+        config=CreatePlanConfig(slug="double-claim", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+    )
     assert "error" not in create_result
     plan_number = create_result["plan_number"]
 
-    first = sam_claim(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+    first = sam_task(plan=f"P{plan_number}", task="T01", config=ClaimTaskConfig(), plan_dir=str(p_dir))
     assert first.get("claimed") is True
 
     # Act — second claim
-    second = sam_claim(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+    second = sam_task(plan=f"P{plan_number}", task="T01", config=ClaimTaskConfig(), plan_dir=str(p_dir))
 
     # Assert
     assert second.get("claimed") is False
@@ -821,10 +838,10 @@ def test_sam_claim_already_claimed_returns_claimed_false(tmp_path: Path) -> None
 
 
 def test_sam_claim_missing_task_returns_claimed_false(tmp_path: Path) -> None:
-    """sam_claim with a non-existent task ID raises TaskNotFoundError.
+    """sam_task(claim) with a non-existent task ID raises TaskNotFoundError.
 
-    Tests: sam_claim error handling for unknown task ID.
-    How: Call sam_claim for T99 which does not exist in the plan.
+    Tests: sam_task claim error handling for unknown task ID.
+    How: Call sam_task claim for T99 which does not exist in the plan.
     Why: backend.claim_task raises TaskNotFoundError when the task is absent.
          FastMCP converts it to isError=true; direct callers must handle it.
     """
@@ -841,30 +858,175 @@ def test_sam_claim_missing_task_returns_claimed_false(tmp_path: Path) -> None:
         "    priority: 1\n"
         "    complexity: low\n"
     )
-    from sam_schema.server import sam_claim, sam_create
 
-    create_result = sam_create(slug="missing-task", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    create_result = sam_plan(
+        config=CreatePlanConfig(slug="missing-task", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+    )
     assert "error" not in create_result
     plan_number = create_result["plan_number"]
 
     # Act / Assert
     with pytest.raises(TaskNotFoundError, match="T99"):
-        sam_claim(plan=f"P{plan_number}", task="T99", plan_dir=str(p_dir))
+        sam_task(plan=f"P{plan_number}", task="T99", config=ClaimTaskConfig(), plan_dir=str(p_dir))
 
 
 def test_sam_claim_invalid_plan_returns_error(tmp_path: Path) -> None:
-    """sam_claim with non-existent plan address raises PlanNotFoundError.
+    """sam_task(claim) with non-existent plan address raises PlanNotFoundError.
 
-    Tests: sam_claim address resolution error path.
-    How: Call sam_claim on empty plan dir.
+    Tests: sam_task claim address resolution error path.
+    How: Call sam_task claim on empty plan dir.
     Why: Exceptions propagate from the tool function. Direct callers must handle
          PlanNotFoundError; MCP clients receive ToolError.
     """
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    from sam_schema.server import sam_claim
 
     # Act / Assert
     with pytest.raises(PlanNotFoundError):
-        sam_claim(plan="P99", task="T01", plan_dir=str(p_dir))
+        sam_task(plan="P99", task="T01", config=ClaimTaskConfig(), plan_dir=str(p_dir))
+
+
+# ---------------------------------------------------------------------------
+# Deprecation shims — all old tools must raise ToolError
+# ---------------------------------------------------------------------------
+
+from sam_schema.server import sam_claim, sam_create, sam_list, sam_read, sam_ready, sam_state, sam_status, sam_update
+
+
+def test_sam_read_shim_raises_tool_error_with_migration_message(tmp_path: Path) -> None:
+    """sam_read deprecation shim raises ToolError with migration message.
+
+    Tests: sam_read shim raises on any call.
+    How: Call sam_read with minimal valid args.
+    Why: Old callers must see ToolError with migration hint pointing to sam_task/sam_plan.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+
+    # Act / Assert
+    with pytest.raises(ToolError, match="deprecated"):
+        sam_read(plan="P1", task="T1", plan_dir=str(p_dir))
+
+
+def test_sam_state_shim_raises_tool_error_with_migration_message(tmp_path: Path) -> None:
+    """sam_state deprecation shim raises ToolError with migration message.
+
+    Tests: sam_state shim raises on any call.
+    How: Call sam_state with minimal valid args.
+    Why: Old callers must see ToolError with migration hint.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+
+    # Act / Assert
+    with pytest.raises(ToolError, match="deprecated"):
+        sam_state(plan="P1", task="T1", status="in-progress", plan_dir=str(p_dir))
+
+
+def test_sam_ready_shim_raises_tool_error_with_migration_message(tmp_path: Path) -> None:
+    """sam_ready deprecation shim raises ToolError with migration message.
+
+    Tests: sam_ready shim raises on any call.
+    How: Call sam_ready with minimal valid args.
+    Why: Old callers must see ToolError with migration hint.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+
+    # Act / Assert
+    with pytest.raises(ToolError, match="deprecated"):
+        sam_ready(plan="P1", plan_dir=str(p_dir))
+
+
+def test_sam_status_shim_raises_tool_error_with_migration_message(tmp_path: Path) -> None:
+    """sam_status deprecation shim raises ToolError with migration message.
+
+    Tests: sam_status shim raises on any call.
+    How: Call sam_status with minimal valid args.
+    Why: Old callers must see ToolError with migration hint.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+
+    # Act / Assert
+    with pytest.raises(ToolError, match="deprecated"):
+        sam_status(plan="P1", plan_dir=str(p_dir))
+
+
+def test_sam_list_shim_raises_tool_error_with_migration_message(tmp_path: Path) -> None:
+    """sam_list deprecation shim raises ToolError with migration message.
+
+    Tests: sam_list shim raises on any call.
+    How: Call sam_list with minimal valid args.
+    Why: Old callers must see ToolError with migration hint.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+
+    # Act / Assert
+    with pytest.raises(ToolError, match="deprecated"):
+        sam_list(plan_dir=str(p_dir))
+
+
+def test_sam_create_shim_raises_tool_error_with_migration_message(tmp_path: Path) -> None:
+    """sam_create deprecation shim raises ToolError with migration message.
+
+    Tests: sam_create shim raises on any call.
+    How: Call sam_create with minimal valid args.
+    Why: Old callers must see ToolError with migration hint.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    tasks_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+
+    # Act / Assert
+    with pytest.raises(ToolError, match="deprecated"):
+        sam_create(slug="shim-test", goal="Goal", tasks_yaml=tasks_yaml, plan_dir=str(p_dir))
+
+
+def test_sam_update_shim_raises_tool_error_with_migration_message(tmp_path: Path) -> None:
+    """sam_update deprecation shim raises ToolError with migration message.
+
+    Tests: sam_update shim raises on any call.
+    How: Call sam_update with minimal valid args.
+    Why: Old callers must see ToolError with migration hint.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+
+    # Act / Assert
+    with pytest.raises(ToolError, match="deprecated"):
+        sam_update(address="P1", plan_dir=str(p_dir), context="test")
+
+
+def test_sam_claim_shim_raises_tool_error_with_migration_message(tmp_path: Path) -> None:
+    """sam_claim deprecation shim raises ToolError with migration message.
+
+    Tests: sam_claim shim raises on any call.
+    How: Call sam_claim with minimal valid args.
+    Why: Old callers must see ToolError with migration hint.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+
+    # Act / Assert
+    with pytest.raises(ToolError, match="deprecated"):
+        sam_claim(plan="P1", task="T01", plan_dir=str(p_dir))
