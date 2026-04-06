@@ -510,6 +510,31 @@ class PlanStatus(BaseModel):
     has_cycles: bool
 
 
+class ActiveTaskContext(BaseModel):
+    """Session-to-task binding stored in context_dir() as active-task-{session_id}.json.
+
+    The SubagentStop hook reads this file directly from the filesystem.
+    The MCP server writes it via ContextBackend.
+
+    Schema note: new fields (session_id, feature_slug, started_at) are additive.
+    Existing files without these fields remain valid — all new fields default to None.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    task_file_path: str = Field(description="Absolute path to the plan YAML file containing this task.")
+    task_id: str = Field(description="Task identifier within the plan (e.g., 'T3').")
+    parent_issue_number: int | None = Field(
+        default=None, description="GitHub issue number for the parent story/feature."
+    )
+    session_id: str | None = Field(
+        default=None,
+        description="Claude Code session identifier. Additive field — existing files without this field are valid.",
+    )
+    feature_slug: str | None = Field(default=None, description="Feature slug from the plan filename.")
+    started_at: str | None = Field(default=None, description="ISO 8601 timestamp when the task was started.")
+
+
 # Rebuild models that reference TYPE_CHECKING-guarded types (datetime, Path).
 # `from __future__ import annotations` defers annotation evaluation; Pydantic needs
 # to resolve these types at model-build time. Pass the types explicitly so Pydantic
