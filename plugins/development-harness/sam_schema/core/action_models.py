@@ -1,0 +1,307 @@
+"""Pydantic discriminated union config models for the 3 consolidated SAM MCP tools.
+
+Each tool (sam_task, sam_plan, sam_active_task) accepts a single ``config`` parameter
+typed as a discriminated union. The ``action`` literal field on each model acts as the
+discriminator, routing to the correct operation at runtime.
+
+Naming rationale
+----------------
+The union type aliases are intentionally named ``TaskActionConfig``, ``PlanActionConfig``,
+and ``ActiveTaskActionConfig`` — NOT ``TaskConfig`` / ``PlanConfig`` / ``ActiveTaskConfig``.
+``TaskConfig`` is already a dataclass in ``sam_schema.core.task_config`` (dependency
+injection container for the active backend). Using the same name would cause import
+collisions and silent shadowing.
+"""
+
+from __future__ import annotations
+
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+__all__ = [
+    "ActiveTaskActionConfig",
+    "ClaimTaskConfig",
+    "ClearActiveTaskConfig",
+    "CreatePlanConfig",
+    # Active-task action models
+    "GetActiveTaskConfig",
+    "ListPlansConfig",
+    "PlanActionConfig",
+    # Plan action models
+    "ReadPlanConfig",
+    # Task action models
+    "ReadTaskConfig",
+    "ReadyPlanConfig",
+    "SetActiveTaskConfig",
+    "StateTaskConfig",
+    "StatusPlanConfig",
+    # Discriminated union type aliases
+    "TaskActionConfig",
+    "UpdateActiveTaskConfig",
+    "UpdatePlanConfig",
+    "UpdateTaskConfig",
+]
+
+# ---------------------------------------------------------------------------
+# Tool 1 — sam_task: single-task operations
+# ---------------------------------------------------------------------------
+
+
+class ReadTaskConfig(BaseModel):
+    """Read a task and return a TaskAssignment (plan context + task fields)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["read"] = "read"
+
+
+class ClaimTaskConfig(BaseModel):
+    """Claim a task (transition from not-started to in-progress)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["claim"] = "claim"
+
+
+class StateTaskConfig(BaseModel):
+    """Update a task's status field."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["state"] = "state"
+    status: str = Field(
+        ...,
+        description=(
+            "New status value. Canonical values: not-started, in-progress, complete, "
+            "blocked, deferred, skipped. STATUS_MAP in models.py accepts additional "
+            "aliases (e.g. 'done', 'pending', ':white_check_mark:')."
+        ),
+    )
+
+
+class UpdateTaskConfig(BaseModel):
+    """Update task fields or append a markdown section to the task body.
+
+    All three sub-operations are non-exclusive and may be combined in one call.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["update"] = "update"
+    set_fields_json: str | None = Field(
+        default=None,
+        description=(
+            'JSON object {"field": "value", ...} of task fields to patch. '
+            "Fields are validated through the Task Pydantic model before writing. "
+            'Example: \'{"priority": 1, "agent": "python-cli-architect"}\''
+        ),
+    )
+    append_section: str | None = Field(
+        default=None,
+        description=(
+            "Heading of the markdown section to append to the task body. "
+            "Requires section_content. Task address (task param on the tool) is required."
+        ),
+    )
+    section_content: str | None = Field(
+        default=None, description="Body text for the appended section. Used with append_section."
+    )
+
+
+# Discriminated union for sam_task — discriminator is the ``action`` field.
+TaskActionConfig = Annotated[
+    ReadTaskConfig | ClaimTaskConfig | StateTaskConfig | UpdateTaskConfig, Field(discriminator="action")
+]
+
+# ---------------------------------------------------------------------------
+# Tool 2 — sam_plan: plan-level operations
+# ---------------------------------------------------------------------------
+
+
+class ReadPlanConfig(BaseModel):
+    """Read a plan and return its Plan fields."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["read"] = "read"
+
+
+class CreatePlanConfig(BaseModel):
+    """Create a new plan from YAML task definitions."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["create"] = "create"
+    slug: str = Field(
+        ...,
+        description=(
+            "Short identifier for the plan (e.g., 'auth-system'). "
+            "Used to compose the plan filename: P{NNN}-{slug}.yaml."
+        ),
+    )
+    goal: str = Field(..., description="Human-readable goal statement for the plan.")
+    tasks_yaml: str = Field(
+        ...,
+        description=(
+            "YAML string with a top-level 'tasks' key containing a list of task dicts. "
+            "Required task fields per Task model: id, title, status, agent, dependencies, "
+            "priority, complexity. All other Task fields are optional."
+        ),
+    )
+    context: str | None = Field(
+        default=None, description="Optional plan-level context (markdown prose). Stored as Plan.context."
+    )
+    issue: int | None = Field(
+        default=None,
+        description=(
+            "Optional GitHub issue number. When provided, auto-registers the created plan "
+            "file as a task-plan artifact on the issue."
+        ),
+    )
+
+
+class ListPlansConfig(BaseModel):
+    """List all plans with optional search and auto-pagination."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["list"] = "list"
+    search: str | None = Field(
+        default=None,
+        description=(
+            "Case-insensitive substring filter applied across feature, description, and goal fields simultaneously."
+        ),
+    )
+    offset: int = Field(default=0, ge=0, description="Zero-based index of the first item to return.")
+    limit: int | None = Field(
+        default=None,
+        description=(
+            "Maximum number of items to return. When None, auto-calculates a limit "
+            "that keeps the response within the 4400-token budget (cl100k_base encoding)."
+        ),
+    )
+
+
+class StatusPlanConfig(BaseModel):
+    """Get plan-level progress summary."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["status"] = "status"
+
+
+class ReadyPlanConfig(BaseModel):
+    """List tasks ready for dispatch (status=not-started, all dependencies terminal)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["ready"] = "ready"
+    full: bool = Field(
+        default=False,
+        description=(
+            "When False (default), return a compact 7-field routing manifest per task: "
+            "id, task, agent, skills, dependencies, status, priority. "
+            "When True, return the full Task model dump (all 30+ fields). "
+            "Use False for orchestrator dispatch decisions; True for agents needing full context."
+        ),
+    )
+
+
+class UpdatePlanConfig(BaseModel):
+    """Update plan-level fields.
+
+    Applies field patches and/or sets the plan context field.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["update"] = "update"
+    context: str | None = Field(
+        default=None,
+        description=('Set the plan-level context field. Shorthand equivalent to set_fields_json={"context": "..."}.'),
+    )
+    set_fields_json: str | None = Field(
+        default=None,
+        description=(
+            'JSON object {"field": "value", ...} of plan-level fields to set. '
+            "Applied via backend.update_plan_fields. "
+            'Example: \'{"goal": "New goal statement", "issue": 42}\''
+        ),
+    )
+
+
+# Discriminated union for sam_plan — discriminator is the ``action`` field.
+PlanActionConfig = Annotated[
+    ReadPlanConfig | CreatePlanConfig | ListPlansConfig | StatusPlanConfig | ReadyPlanConfig | UpdatePlanConfig,
+    Field(discriminator="action"),
+]
+
+# ---------------------------------------------------------------------------
+# Tool 3 — sam_active_task: session execution context (NEW)
+# ---------------------------------------------------------------------------
+
+
+class GetActiveTaskConfig(BaseModel):
+    """Retrieve the active task context for a session."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["get"] = "get"
+
+
+class SetActiveTaskConfig(BaseModel):
+    """Store a task address as the active task for a session."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["set"] = "set"
+    plan: str = Field(..., description="Plan address to register as the active task's plan (e.g., 'P1').")
+    task: str = Field(..., description="Task ID to register as the active task (e.g., 'T3').")
+    plan_dir: str = Field(
+        default="plan",
+        description=(
+            "Plan directory path for the active task's backend. "
+            "Stored alongside plan/task so retrieval uses the same backend."
+        ),
+    )
+
+
+class UpdateActiveTaskConfig(BaseModel):
+    """Update fields on the currently active task without repeating the address.
+
+    Delegates to the same backend write path as sam_task(action='update').
+    Raises if no active task has been set for this session.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["update"] = "update"
+    set_fields_json: str | None = Field(
+        default=None,
+        description=(
+            'JSON object {"field": "value", ...} of task fields to patch. '
+            "Applied to the task stored by the most recent set action."
+        ),
+    )
+    append_section: str | None = Field(
+        default=None, description="Heading of the markdown section to append to the active task body."
+    )
+    section_content: str | None = Field(
+        default=None, description="Body text for the appended section. Used with append_section."
+    )
+
+
+class ClearActiveTaskConfig(BaseModel):
+    """Clear the active task context for a session."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    action: Literal["clear"] = "clear"
+
+
+# Discriminated union for sam_active_task — discriminator is the ``action`` field.
+ActiveTaskActionConfig = Annotated[
+    GetActiveTaskConfig | SetActiveTaskConfig | UpdateActiveTaskConfig | ClearActiveTaskConfig,
+    Field(discriminator="action"),
+]
