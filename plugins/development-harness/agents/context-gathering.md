@@ -1,7 +1,7 @@
 ---
 name: context-gathering
 description: Use when creating a new task OR when starting/switching to a task that lacks a context manifest. ALWAYS provide the task file path so the agent can read it and update it directly with the context manifest. Skip if task file already contains "Context Manifest" section.
-tools: Read, Grep, Glob, Bash, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_update
+tools: Read, Grep, Glob, Bash, Write, Skill, mcp__plugin_dh_sam__sam_claim, mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_list, mcp__plugin_dh_sam__sam_read, mcp__plugin_dh_sam__sam_ready, mcp__plugin_dh_sam__sam_state, mcp__plugin_dh_sam__sam_status, mcp__plugin_dh_sam__sam_update, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
 model: haiku
 color: cyan
 skills:
