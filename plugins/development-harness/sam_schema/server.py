@@ -29,9 +29,24 @@ from backlog_core.artifact_provider import create_artifact_provider
 from backlog_core.artifact_registry import ArtifactRegistry as _ArtifactRegistry
 from backlog_core.models import ArtifactEntry, ArtifactStatus, ArtifactType, BacklogError
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from pydantic import Field
 from ruamel.yaml import YAML
 
+from sam_schema.core.action_models import (
+    ActiveTaskActionConfig,
+    CreatePlanConfig,
+    ListPlansConfig,
+    PlanActionConfig,
+    ReadyPlanConfig,
+    SetActiveTaskConfig,
+    StateTaskConfig,
+    TaskActionConfig,
+    UpdateActiveTaskConfig,
+    UpdatePlanConfig,
+    UpdateTaskConfig,
+)
+from sam_schema.core.context_config import ContextConfig, create_context_backend, get_context_config, set_context_config
 from sam_schema.core.exceptions import PlanNotFoundError, SamError, TaskNotFoundError
 from sam_schema.core.models import Plan, Task, TaskAssignment
 from sam_schema.core.task_config import TaskConfig, create_task_backend, get_task_config, set_task_config
@@ -45,6 +60,10 @@ _artifact_registry = _ArtifactRegistry()
 
 _PLAN_DIR_SENTINEL = "plan"
 
+# Sentinel session key used when session_id is omitted from sam_active_task calls.
+# Single-agent scenarios do not require explicit session isolation.
+_DEFAULT_SESSION_ID = "_default"
+
 # Stem parsing thresholds used in _build_task_assignment.
 _STEM_MIN_PARTS_FOR_NUMBER: int = 2
 _STEM_MIN_PARTS_FOR_SLUG: int = 3
@@ -55,6 +74,13 @@ try:
     get_task_config()
 except RuntimeError:
     set_task_config(TaskConfig(backend=create_task_backend()))
+
+# Initialize the context backend at module import time.
+# Tests may call set_context_config() before importing this module to inject a custom backend.
+try:
+    get_context_config()
+except RuntimeError:
+    set_context_config(ContextConfig(backend=create_context_backend()))
 
 
 def _get_backend(plan_dir_str: str) -> TaskBackend:
@@ -91,14 +117,14 @@ mcp: FastMCP = FastMCP(
     "sam",
     instructions=(
         "SAM (Structured Agent-Managed) task plan server. "
-        "Use sam_read to inspect a plan or task. "
-        "Use sam_claim to take ownership of a task before starting work. "
-        "Use sam_state to update task status. "
-        "Use sam_ready to list tasks ready for dispatch. "
-        "Use sam_status for a plan-level progress summary. "
-        "Use sam_list to enumerate all plans with optional search and pagination. "
-        "Use sam_create to create a new plan from YAML task definitions. "
-        "Use sam_update to set fields or append a markdown section to a task body."
+        "Use sam_task to read, claim, update state, or update fields of a specific task — "
+        "set config.action to: read | claim | state | update. "
+        "Use sam_plan to read a plan, create a plan, list all plans, get progress status, "
+        "or list ready-to-dispatch tasks — "
+        "set config.action to: read | create | list | status | ready | update. "
+        "Use sam_active_task to park and retrieve the task currently being worked on "
+        "within an agent session — "
+        "set config.action to: get | set | update | clear."
     ),
 )
 
@@ -622,3 +648,375 @@ def sam_claim(
     # Option (b): avoid a second full plan read — task_id is the argument already,
     # and started is set by claim_task at the moment of transition.
     return {"claimed": True, "task_id": task, "started": datetime.now(UTC).isoformat()}
+
+
+# Actions that require the ``plan`` parameter to be supplied.
+_SAM_PLAN_REQUIRED_ACTIONS: frozenset[str] = frozenset({"read", "status", "ready", "update"})
+
+
+def _sam_plan_read(plan: str, plan_dir: str) -> dict:
+    """Return Plan fields for the given plan address."""
+    backend = _get_backend(plan_dir)
+    plan_data = backend.read_plan(plan)
+    plan_dict = {k: v for k, v in plan_data.items() if k != "plan_id"}
+    plan_model = Plan.model_validate(plan_dict)
+    return plan_model.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+
+def _sam_plan_create(config: CreatePlanConfig, plan_dir: str) -> dict:
+    """Create a new plan from YAML task definitions.
+
+    Returns:
+        Dict with ``path``, ``plan_number``, and ``task_count`` keys.
+    """
+    yaml_parser: Any = YAML()
+    parsed: dict[str, Any] = yaml_parser.load(config.tasks_yaml)
+    if not isinstance(parsed, dict) or "tasks" not in parsed:
+        raise ValueError("tasks_yaml must be a YAML string with a top-level 'tasks' key")
+    task_defs = cast("list[TaskDefinition]", parsed["tasks"])
+    backend = _get_backend(plan_dir)
+    plan_data = backend.create_plan(
+        slug=config.slug, goal=config.goal, tasks=task_defs, context=config.context, issue=config.issue
+    )
+    plan_number: int | None = None
+    plan_id_str = plan_data["plan_id"]
+    if plan_id_str.startswith("P"):
+        with contextlib.suppress(ValueError):
+            plan_number = int(plan_id_str[1:])
+    result: dict[str, Any] = {
+        "path": str(plan_data["source_path"] or ""),
+        "plan_number": plan_number,
+        "task_count": len(plan_data["tasks"]),
+    }
+    if config.issue is not None and plan_data["source_path"]:
+        _try_register_task_plan_artifact(config.issue, Path(plan_data["source_path"]))
+    return result
+
+
+def _sam_plan_list(config: ListPlansConfig, plan_dir: str) -> dict:
+    """List all plans with optional search and auto-pagination.
+
+    Returns:
+        Paginated dict with ``items``, ``total``, ``offset``, and ``limit`` keys.
+    """
+    backend = _get_backend(plan_dir)
+    summaries = backend.list_plans(search=config.search)
+    all_items: list[dict[str, Any]] = [
+        {
+            "feature": s["feature"],
+            "goal": s["goal"],
+            "description": s["description"],
+            "task_count": s["task_count"],
+            "path": str(s["source_path"] or s["plan_id"]),
+        }
+        for s in summaries
+    ]
+    return _paginate_results(
+        all_items, offset=config.offset, limit=config.limit, messages=[], warnings=[], errors=[], tool_name="sam_plan"
+    )
+
+
+def _sam_plan_status(plan: str, plan_dir: str) -> dict:
+    """Return plan-level progress summary."""
+    backend = _get_backend(plan_dir)
+    return dict(backend.get_plan_status(plan))
+
+
+def _sam_plan_ready(plan: str, config: ReadyPlanConfig, plan_dir: str) -> dict:
+    """List tasks ready for dispatch.
+
+    Returns:
+        Dict with ``ready_tasks``, ``count``, ``feature``, ``source_path``, and ``issue`` keys.
+    """
+    backend = _get_backend(plan_dir)
+    plan_data = backend.read_plan(plan)
+    tasks_data = backend.get_ready_tasks(plan)
+    if config.full:
+        ready_tasks: list[dict[str, Any]] = [Task.model_validate(t).model_dump(mode="json") for t in tasks_data]
+    else:
+        ready_tasks = [
+            {
+                "id": t["id"],
+                "task": t["title"],
+                "agent": t["agent"],
+                "skills": t["skills"] or [],
+                "dependencies": t["dependencies"] or [],
+                "status": t["status"],
+                "priority": int(t["priority"]),
+            }
+            for t in tasks_data
+        ]
+    return {
+        "ready_tasks": ready_tasks,
+        "count": len(tasks_data),
+        "feature": plan_data["feature"],
+        "source_path": str(plan_data["source_path"] or plan),
+        "issue": plan_data["issue"],
+    }
+
+
+def _sam_plan_update(plan: str, config: UpdatePlanConfig, plan_dir: str) -> dict:
+    """Update plan-level context and/or fields.
+
+    Returns:
+        Dict with ``updated`` (bool) and ``address`` (plan identifier) keys.
+    """
+    backend = _get_backend(plan_dir)
+    plan_fields: dict[str, str | int | list[str]] | None = None
+    if config.set_fields_json is not None:
+        raw_fields: Any = json.loads(config.set_fields_json)
+        if not isinstance(raw_fields, dict):
+            raise ValueError("set_fields_json must be a JSON object")
+        plan_fields = cast("dict[str, str | int | list[str]]", raw_fields)
+    backend.update_plan_fields(plan, context=config.context, set_fields=plan_fields)
+    return {"updated": True, "address": plan}
+
+
+@mcp.tool
+def sam_plan(
+    config: Annotated[
+        PlanActionConfig,
+        Field(description="Action config. Set 'action' to: read | create | list | status | ready | update"),
+    ],
+    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
+    plan: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Plan address (e.g., 'P1' or slug). "
+                "Required for: read, status, ready, update. "
+                "Not used for: list, create."
+            )
+        ),
+    ] = None,
+) -> dict:
+    """Consolidated plan-level operations for SAM.
+
+    Delegates to the appropriate plan operation based on ``config.action``.
+
+    Actions requiring the ``plan`` parameter:
+
+    - ``read``: Return Plan fields for the given plan address.
+    - ``status``: Return plan-level progress summary (task counts, completion %).
+    - ``ready``: List tasks ready for dispatch (not-started, all deps resolved).
+    - ``update``: Set plan-level context and/or patch plan fields.
+
+    Actions that do not use ``plan``:
+
+    - ``create``: Create a new plan from YAML task definitions.
+    - ``list``: List all plans with optional search and auto-pagination.
+
+    Args:
+        config: Discriminated union config. The ``action`` field selects the operation.
+        plan_dir: Path to the directory containing plan files.
+        plan: Plan address component. Required for read, status, ready, update actions.
+
+    Returns:
+        Response dict whose shape depends on the action (see individual action docs).
+
+    Raises:
+        ToolError: When ``plan`` is None for an action that requires it.
+    """
+    if config.action in _SAM_PLAN_REQUIRED_ACTIONS and plan is None:
+        raise ToolError(
+            f"sam_plan: action='{config.action}' requires the 'plan' parameter "
+            f"(e.g., plan='P1'). Actions that do not need 'plan': list, create."
+        )
+
+    match config.action:
+        case "read":
+            return _sam_plan_read(cast("str", plan), plan_dir)
+        case "create":
+            return _sam_plan_create(cast("CreatePlanConfig", config), plan_dir)
+        case "list":
+            return _sam_plan_list(cast("ListPlansConfig", config), plan_dir)
+        case "status":
+            return _sam_plan_status(cast("str", plan), plan_dir)
+        case "ready":
+            return _sam_plan_ready(cast("str", plan), cast("ReadyPlanConfig", config), plan_dir)
+        case "update":
+            return _sam_plan_update(cast("str", plan), cast("UpdatePlanConfig", config), plan_dir)
+        case _:  # pragma: no cover
+            raise ValueError(f"sam_plan: unhandled action '{config.action}'")
+
+
+@mcp.tool
+def sam_task(
+    plan: Annotated[str, Field(description="Plan address (e.g., 'P1' or slug)")],
+    task: Annotated[str, Field(description="Task ID within the plan (e.g., 'T3')")],
+    config: Annotated[
+        TaskActionConfig, Field(description="Action config. Set 'action' to: read | claim | state | update")
+    ],
+    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
+) -> dict:
+    """Read, claim, update state, or update fields for a specific task.
+
+    # TRADE-OFF: readonly annotation loss
+    # sam_read (replaced by action="read") was annotated readonly=True in FastMCP,
+    # meaning it did not require a confirmation prompt from Claude Code.
+    # sam_task cannot be readonly because it includes write actions (claim, state,
+    # update). Consequence: Claude Code will show a confirmation prompt for read
+    # operations that previously did not require one. This is a known, accepted
+    # trade-off — a clean 3-tool interface outweighs the read UX regression.
+    # If read-without-prompt becomes required, extract a separate readonly
+    # sam_task_read tool in a future iteration.
+
+    Args:
+        plan: Plan address component (numeric index or slug).
+        task: Task ID component (e.g., ``T3``).
+        config: Discriminated union selecting the action and its parameters.
+        plan_dir: Path to the directory containing plan files.
+
+    Returns:
+        Action-specific dict. See individual action descriptions.
+    """
+    backend = _get_backend(plan_dir)
+    plan_id = plan
+
+    match config.action:
+        case "read":
+            plan_data = backend.read_plan(plan_id)
+            task_data = backend.read_task(plan_id, task)
+            task_model = Task.model_validate(task_data)
+            assignment = TaskAssignment(
+                plan_number=plan_data.get("plan_id", plan_id),
+                plan_slug=plan_data.get("feature") or None,
+                plan_goal=plan_data.get("goal") or None,
+                plan_context=plan_data.get("context") or None,
+                plan_acceptance_criteria=plan_data.get("acceptance_criteria")
+                or plan_data.get("acceptance-criteria")
+                or None,
+                task=task_model,
+            )
+            return assignment.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+        case "claim":
+            claimed = backend.claim_task(plan_id, task)
+            if not claimed:
+                try:
+                    task_data = backend.read_task(plan_id, task)
+                    current_status = task_data["status"]
+                except (PlanNotFoundError, TaskNotFoundError, SamError):
+                    return {
+                        "claimed": False,
+                        "error": f"Cannot claim task '{task}': task is not available for claiming.",
+                    }
+                else:
+                    return {
+                        "claimed": False,
+                        "error": f"Cannot claim task '{task}': expected status 'not-started' but found '{current_status}'.",
+                    }
+            return {"claimed": True, "task_id": task, "started": datetime.now(UTC).isoformat()}
+
+        case "state":
+            state_config = cast("StateTaskConfig", config)
+            backend.update_task_status(plan_id, task, state_config.status)
+            return {"id": task, "status": state_config.status}
+
+        case "update":
+            update_config = cast("UpdateTaskConfig", config)
+            if update_config.set_fields_json is not None:
+                raw_fields: Any = json.loads(update_config.set_fields_json)
+                if not isinstance(raw_fields, dict):
+                    raise ToolError("set_fields_json must be a JSON object")
+                validated_task = _validated_task_patch(backend, plan_id, task, raw_fields)
+                backend.update_task(plan_id, validated_task)
+            if update_config.append_section is not None:
+                backend.append_task_section(
+                    plan_id, task, update_config.append_section, update_config.section_content or ""
+                )
+            return {"updated": True, "address": f"{plan}/{task}"}
+
+        case _:  # pragma: no cover
+            raise ValueError(f"sam_task: unhandled action '{config.action}'")
+
+
+@mcp.tool
+def sam_active_task(
+    config: Annotated[
+        ActiveTaskActionConfig, Field(description="Action config. Set 'action' to: get | set | update | clear")
+    ],
+    session_id: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Session identifier for scoping the active task context. "
+                "When None, uses the '_default' sentinel for single-agent scenarios."
+            )
+        ),
+    ] = None,
+) -> dict:
+    """Session-scoped active task context management.
+
+    Parks a task address in session-scoped storage so subsequent operations
+    can omit the plan/task parameters. Useful in single-agent workflows where
+    repeatedly passing the same address is noise.
+
+    Actions:
+
+    - ``get``: Return the active task context, or ``{"active_task": null}`` if not set.
+    - ``set``: Store a plan/task address as the active task for this session.
+    - ``update``: Update fields on the active task without repeating its address.
+    - ``clear``: Remove the active task context for this session.
+
+    Args:
+        config: Discriminated union selecting the action and its parameters.
+        session_id: Claude Code session identifier. When ``None``, uses the
+            ``"_default"`` sentinel (suitable for single-agent scenarios that
+            do not need explicit session isolation).
+
+    Returns:
+        Action-specific dict. See individual action descriptions.
+
+    Raises:
+        ToolError: When ``action="update"`` and no active task has been set.
+    """
+    resolved_session = session_id if session_id is not None else _DEFAULT_SESSION_ID
+    ctx_backend = get_context_config().backend
+
+    match config.action:
+        case "get":
+            active = ctx_backend.get_active_task(resolved_session)
+            if active is None:
+                return {"active_task": None}
+            return {"active_task": active.model_dump(mode="json")}
+
+        case "set":
+            set_config = cast("SetActiveTaskConfig", config)
+            active = ctx_backend.set_active_task(
+                resolved_session, set_config.plan, set_config.task, set_config.plan_dir
+            )
+            return {"active_task": active.model_dump(mode="json")}
+
+        case "update":
+            active = ctx_backend.get_active_task(resolved_session)
+            if active is None:
+                raise ToolError(
+                    "sam_active_task: no active task set for this session. "
+                    "Call sam_active_task(action='set', plan=..., task=...) first."
+                )
+            update_config = cast("UpdateActiveTaskConfig", config)
+            # ActiveTaskContext stores task_file_path and task_id.
+            # Derive plan_id and plan_dir from the path rather than storing them separately.
+            active_plan_dir = str(Path(active.task_file_path).parent)
+            active_plan_id = Path(active.task_file_path).stem.split("-")[0]
+            active_task_id = active.task_id
+            task_backend = _get_backend(active_plan_dir)
+            if update_config.set_fields_json is not None:
+                raw_fields: Any = json.loads(update_config.set_fields_json)
+                if not isinstance(raw_fields, dict):
+                    raise ToolError("set_fields_json must be a JSON object")
+                validated_task = _validated_task_patch(task_backend, active_plan_id, active_task_id, raw_fields)
+                task_backend.update_task(active_plan_id, validated_task)
+            if update_config.append_section is not None:
+                task_backend.append_task_section(
+                    active_plan_id, active_task_id, update_config.append_section, update_config.section_content or ""
+                )
+            return {"updated": True, "address": f"{active_plan_id}/{active_task_id}"}
+
+        case "clear":
+            removed = ctx_backend.clear_active_task(resolved_session)
+            return {"cleared": removed}
+
+        case _:  # pragma: no cover
+            raise ValueError(f"sam_active_task: unhandled action '{config.action}'")

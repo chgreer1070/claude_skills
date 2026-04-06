@@ -72,7 +72,7 @@ def plan_dir(tmp_path: Path) -> Path:
 
 
 async def test_server_lists_expected_tools() -> None:
-    """Server exposes exactly the eight documented tools via the MCP protocol.
+    """Server exposes exactly the eleven documented tools via the MCP protocol.
 
     Tests: tool registration completeness through the MCP protocol.
     How: Call list_tools() via in-memory Client.
@@ -93,6 +93,9 @@ async def test_server_lists_expected_tools() -> None:
         "sam_create",
         "sam_update",
         "sam_claim",
+        "sam_plan",
+        "sam_task",
+        "sam_active_task",
     }
 
 
