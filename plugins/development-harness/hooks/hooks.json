@@ -1,5 +1,5 @@
 {
-  "description": "Development-harness plugin hooks — task completion reminders and session hygiene",
+  "description": "Development-harness plugin hooks — task completion reminders, session hygiene, and context write enforcement",
   "hooks": {
     "SessionStart": [
       {
@@ -8,6 +8,18 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start-session-id.cjs\"",
             "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/block-context-direct-writes.cjs\"",
+            "timeout": 5
           }
         ]
       }
