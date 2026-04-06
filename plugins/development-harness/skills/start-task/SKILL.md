@@ -104,26 +104,21 @@ $ARGUMENTS
    - The task is claimed. `status: in-progress` and `started:` are written on disk.
    - Proceed to step 4 (write context file) and step 5 (implement).
 
-4. Write the active-task context file (required for hook-driven updates). The context directory is resolved via `dh_paths.context_dir(session_id)`:
+4. Register the active-task context via the SAM MCP tool (required for hook-driven updates):
 
-```bash
-# Python (preferred — uses dh_paths):
-import json
-from dh_paths import context_dir
-ctx = context_dir(session_id="${CLAUDE_SESSION_ID}")
-ctx.mkdir(parents=True, exist_ok=True)
-(ctx / f"active-task-${CLAUDE_SESSION_ID}.json").write_text(
-    json.dumps({"task_file_path": "{task_file_path}", "task_id": "{task_id}", "parent_issue_number": N})
-)
+   ```text
+   mcp__plugin_dh_sam__sam_active_task(
+       config={"action": "set", "plan": "P{N}", "task": "T{M}", "parent_issue_number": N},
+       session_id="$CLAUDE_SESSION_ID"
+   )
+   ```
 
-# Shell fallback (when Python not available):
-mkdir -p "$(python3 -c 'from dh_paths import context_dir; print(context_dir("${CLAUDE_SESSION_ID}"))')"
-printf '%s' '{"task_file_path": "{task_file_path}", "task_id": "{task_id}", "parent_issue_number": N}' \
-    > "$(python3 -c 'from dh_paths import context_dir; print(context_dir("${CLAUDE_SESSION_ID}") / "active-task-${CLAUDE_SESSION_ID}.json")')"
-```
+   Omit `parent_issue_number` from the config if the story issue number is not known. The hook
+   treats absence as `None` and skips GitHub sync.
 
-Omit `parent_issue_number` if the story issue number is not known. The hook treats absence as
-`None` and skips GitHub sync.
+   > **Migration note**: This step previously wrote `active-task-{session_id}.json` directly to
+   > the filesystem via inline Python (`dh_paths.context_dir()` + `write_text`). That approach is
+   > deprecated. Use `sam_active_task(action="set")` instead.
 
 If `parent_issue_number` is known and `github_issue` field is set in the task YAML, call
 `backlog_core.gh_client.update_task_status(repo, github_issue, "in-progress")` after the

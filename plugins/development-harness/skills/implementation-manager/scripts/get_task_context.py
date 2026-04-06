@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Get task context for implementation manager dynamic injection."""
+"""Get task context for implementation manager dynamic injection.
+
+DEPRECATED: Use sam_active_task(action='get') MCP tool instead.
+This script reads active-task files directly from the filesystem. The MCP
+tool provides distributed-safe access and works across all context backends.
+This script remains functional as a fallback but will be removed in a future release.
+"""
 
 from __future__ import annotations
 
