@@ -111,7 +111,7 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 
 | Plugin | What It Does |
 | --- | --- |
-| [twelve-factor-app](./plugins/twelve-factor-app) ⚠️ local only | Apply twelve-factor app methodology (15 principles including 3 modern extensions) to your projects for portable, scalable, cloud-native architecture — use `--plugin-dir ./plugins/twelve-factor-app` (not yet in marketplace) |
+| [twelve-factor-app](./plugins/twelve-factor-app) | Apply twelve-factor app methodology (15 principles including 3 modern extensions) to your projects for portable, scalable, cloud-native architecture |
 
 ## Plugin Details
 
