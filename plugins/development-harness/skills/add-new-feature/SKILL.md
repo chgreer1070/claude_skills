@@ -440,7 +440,7 @@ If the validator returns `BLOCKED`, do not proceed to Phase 6. Fix the identifie
 
 ---
 
-## Phase 6: Context Manifest (@dh:context-gathering)
+## Phase 6: Context Manifest (@dh:dh-context-gathering)
 
 Delegation prompt template:
 

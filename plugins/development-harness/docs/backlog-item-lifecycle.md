@@ -385,7 +385,7 @@ flowchart TD
     P4_VAL_RESULT -->|"BLOCKED — specific gaps listed"| P4_FIX["Re-invoke swarm-task-planner<br>with validator gap list as context<br>Fix identified gaps before retry"]
     P4_FIX -->|"gaps addressed — retry validation"| P4_VALIDATE
 
-    P4_CONTEXT["Phase 6: Context Manifest<br>Agent: @dh:context-gathering<br>Writes context manifest INTO the plan<br>via sam_update (not a separate file)<br>Maps each task to files, artifacts,<br>external context it needs"]
+    P4_CONTEXT["Phase 6: Context Manifest<br>Agent: @dh:dh-context-gathering<br>Writes context manifest INTO the plan<br>via sam_update (not a separate file)<br>Maps each task to files, artifacts,<br>external context it needs"]
 
     P4_CONTEXT --> P4_LINK["work-backlog-item Step 7:<br>backlog_update(selector='{title}',<br>plan='plan/P{NNN}-{slug}.yaml')<br>Links plan to backlog item"]
     P4_LINK --> P4_DONE(["add-new-feature complete<br>Report slug + task file path<br>Next: /dh:implement-feature"])
@@ -403,7 +403,7 @@ flowchart TD
 | P4_VALIDATE | `@dh:plan-validator` | plan YAML | READY or BLOCKED with specific gap list | always → P4_VAL_RESULT |
 | P4_VAL_RESULT | orchestrator | validator output | routing decision | READY → P4_CONTEXT, BLOCKED → P4_FIX |
 | P4_FIX | orchestrator | validator BLOCKED output with gap list | re-invoke `swarm-task-planner` with gap context | loops back to P4_DECOMPOSE |
-| P4_CONTEXT | `@dh:context-gathering` | plan YAML, codebase state, artifact manifest | context manifest written into plan via `sam_update` | always → P4_LINK |
+| P4_CONTEXT | `@dh:dh-context-gathering` | plan YAML, codebase state, artifact manifest | context manifest written into plan via `sam_update` | always → P4_LINK |
 | P4_LINK | `backlog_update` MCP | item selector (title), plan path | `plan` field linked on backlog item, `status` → `in-progress` | always → P4_DONE |
 | P4_DONE | orchestrator | slug, task file path | completion report, next-step instruction (`/dh:implement-feature`) | terminal |
 

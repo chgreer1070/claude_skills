@@ -269,7 +269,7 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 **Context management:**
 
-- `@dh:context-gathering` - Gather context from codebase and documentation
+- `@dh:dh-context-gathering` - Gather context from codebase and documentation
 - `@dh:context-refinement` - Refine and validate gathered context
 
 **Documentation:**
