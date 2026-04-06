@@ -217,23 +217,33 @@ class TaskBackend(Protocol):
         ...
 
     def append_task_section(self, plan_id: str, task_id: str, section_name: str, content: str) -> None:
-        """Append markdown content under a heading in the task's ``context_notes`` field.
+        """Append markdown content under a named heading in the task record.
 
         ``section_name`` is used as the markdown heading text (``## {section_name}``).
-        It is **not** routed as a YAML field name — all content is accumulated in
-        the ``context_notes`` field regardless of the value passed for ``section_name``.
-        Callers may pass any string (e.g. ``"Findings"``, ``"Work Log"``) and the
-        content will be stored and retrievable via ``read_task`` under ``context_notes``.
+        It is **not** routed as a YAML field name — callers may pass any string
+        (e.g. ``"Findings"``, ``"Work Log"``) and the content will be preserved
+        without error.  The specific storage field (e.g. ``context_notes`` or
+        ``body``) is an implementation detail of each backend; callers must not
+        assume a particular field.  Content is always retrievable via
+        :meth:`read_task` regardless of the field used.
 
-        If a heading with ``section_name`` already exists in ``context_notes``, the
-        new content is appended below it. If no such heading exists, the heading is
-        created followed by the content.
+        .. note::
+            The ``LocalYamlTaskProvider`` and ``InMemoryTaskProvider`` accumulate
+            all sections in ``context_notes``.  The ``GitHubTaskProvider`` appends
+            to the task ``body`` field.  A future Protocol revision may define a
+            canonical target field; until then, use :meth:`read_task` to retrieve
+            content rather than inspecting a specific field directly.
+
+        If a heading with ``section_name`` already exists in the storage field,
+        the new content is appended below it.  If no such heading exists, the
+        heading is created followed by the content.
 
         Args:
             plan_id: Backend-assigned plan identifier.
             task_id: Task identifier within the plan.
-            section_name: Heading label for the section (without ``##``). Any string
-                is accepted; the value is used as markdown heading text only.
+            section_name: Heading label for the section (without ``##``). Any
+                string is accepted; the value is used as markdown heading text
+                only, not as a YAML field name.
             content: Markdown content to append under the section heading.
 
         Raises:
