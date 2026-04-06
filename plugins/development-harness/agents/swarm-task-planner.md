@@ -409,17 +409,17 @@ Add to the Phase 5 Plan Validation checklist (check 11):
 
 Map task types to appropriate specialist agents:
 
-| Task Type                                      | Agent                       |
-| ---------------------------------------------- | --------------------------- |
-| Python implementation (cli/, core/, services/) | python-cli-architect        |
-| Test files (tests/\*_/_.py)                    | python-pytest-architect     |
-| Linting/type fixing                            | linting-root-cause-resolver |
-| Documentation (.md files)                      | service-docs-maintainer       |
-| Skill creation                                 | agent-creator               |
-| Agent creation                                 | subagent-refactorer         |
-| Orchestration/coordination                     | orchestrator                |
-| Bookend baseline capture (is-bookend: t0-baseline) | t0-baseline-capture     |
-| Bookend verification gate (is-bookend: tn-verification) | tn-verification-gate |
+| Task Type                                      | Agent                                    |
+| ---------------------------------------------- | ---------------------------------------- |
+| Python implementation (cli/, core/, services/) | python3-development:python-cli-architect |
+| Test files (tests/\*_/_.py)                    | python3-development:python-pytest-architect |
+| Linting/type fixing                            | holistic-linting:linting-root-cause-resolver |
+| Documentation (.md files)                      | dh:service-docs-maintainer               |
+| Skill creation                                 | plugin-creator:agent-creator             |
+| Agent creation                                 | plugin-creator:subagent-refactorer       |
+| Orchestration/coordination                     | orchestrator — FLAG: no agent file exists in any plugin; remove or create dh:orchestrator |
+| Bookend baseline capture (is-bookend: t0-baseline) | dh:t0-baseline-capture              |
+| Bookend verification gate (is-bookend: tn-verification) | dh:tn-verification-gate        |
 
 If architecture spec specifies an agent, use that. Otherwise infer from file paths and task type.
 
@@ -489,15 +489,15 @@ Before merging (three candidate tasks):
 ```text
 Candidate Task A: "Add inline comment to SKILL.md line 155"
   Expected Outputs: .claude/skills/agent-browser/SKILL.md
-  Agent: general-purpose
+  Agent: dh:service-docs-maintainer
 
 Candidate Task B: "Add Prerequisites section to SKILL.md"
   Expected Outputs: .claude/skills/agent-browser/SKILL.md
-  Agent: general-purpose
+  Agent: dh:service-docs-maintainer
 
 Candidate Task C: "Add Error Recovery and Validation Status to SKILL.md"
   Expected Outputs: .claude/skills/agent-browser/SKILL.md
-  Agent: general-purpose
+  Agent: dh:service-docs-maintainer
 ```
 
 After merging (one task):
@@ -505,7 +505,7 @@ After merging (one task):
 ```text
 Task 2: "Update SKILL.md: prerequisites, error recovery, validation status, and syntax annotation"
   Expected Outputs: .claude/skills/agent-browser/SKILL.md
-  Agent: general-purpose
+  Agent: dh:service-docs-maintainer
   Requirements:
     ### Syntax annotation
     1. Add inline comment to line 155 clarifying body is a CSS selector

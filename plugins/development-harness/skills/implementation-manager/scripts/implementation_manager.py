@@ -65,6 +65,13 @@ from sam_schema.core.models import STATUS_MAP
 from sam_schema.core.query import claim_task as sam_claim_task, load_plan as sam_load_plan
 from sam_schema.readers.detect import FormatDetectionError
 
+# dh_paths is in plugins/development-harness/ (parents[3] from this script).
+_DH_PKG_DIR = str(_REPO_ROOT / "plugins" / "development-harness")
+if _DH_PKG_DIR not in sys.path:
+    sys.path.insert(0, _DH_PKG_DIR)
+
+import dh_paths
+
 if TYPE_CHECKING:
     from sam_schema.core.models import Task as SamTask
 
@@ -1021,7 +1028,7 @@ def status(
     task_file: Path | None = None
 
     if github and parent_issue is not None:
-        cache_path = project_path / ".claude" / "context" / f"sam-tasks-{feature_slug}.json"
+        cache_path = dh_paths.context_dir(project_path) / f"sam-tasks-{feature_slug}.json"
         tasks = fetch_tasks_from_github(parent_issue, feature_slug, cache_path)
         if tasks is None:
             sys.stderr.write(
@@ -1086,7 +1093,7 @@ def ready_tasks(
     tasks: list[Task] | None = None
 
     if github and parent_issue is not None:
-        cache_path = project_path / ".claude" / "context" / f"sam-tasks-{feature_slug}.json"
+        cache_path = dh_paths.context_dir(project_path) / f"sam-tasks-{feature_slug}.json"
         tasks = fetch_tasks_from_github(parent_issue, feature_slug, cache_path)
         if tasks is None:
             sys.stderr.write(

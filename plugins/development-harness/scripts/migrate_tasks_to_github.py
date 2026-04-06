@@ -45,6 +45,7 @@ if isinstance(sys.stdout, TextIOWrapper):
 if isinstance(sys.stderr, TextIOWrapper):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+import dh_paths
 import typer
 from rich.console import Console
 from ruamel.yaml import YAML, YAMLError
@@ -512,7 +513,7 @@ def _write_cache(slug: str, parent_issue: int, created: list[tuple[TaskRecord, i
     Returns:
         Path to the written cache file.
     """
-    cache_dir = Path(".claude") / "context"
+    cache_dir = dh_paths.context_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path = cache_dir / f"sam-tasks-{slug}.json"
 

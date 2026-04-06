@@ -706,7 +706,7 @@ flowchart TD
         P7_CHECKLIST_GATE -->|"Incomplete"| P7_STOP_UNCHECKED(["STOP — list unchecked tasks"])
         P7_CHECKLIST_GATE -->|"100% or no plan"| P7_AC_GATE
 
-        P7_AC_GATE{"9d: AC verification<br>Spawn general-purpose agent<br>Verify each criterion with<br>file:line evidence<br>Return [PASS]/[FAIL] per criterion"}
+        P7_AC_GATE{"9d: AC verification<br>Spawn dh:task-worker<br>Verify each criterion with<br>file:line evidence<br>Return [PASS]/[FAIL] per criterion"}
         P7_AC_GATE -->|"Overall FAIL"| P7_STOP_AC_FAIL(["STOP — report gaps"])
         P7_AC_GATE -->|"Overall PASS"| P7_PR_CHECK
 
@@ -738,7 +738,7 @@ flowchart TD
 | P7_STOP_UNVERIFIED | orchestrator | — | 3-option report (run QG, force, or close) | terminal |
 | P7_CHECKLIST_GATE | orchestrator | plan YAML, task completion counts | checklist completeness check | incomplete → P7_STOP_UNCHECKED, 100% or no plan → P7_AC_GATE |
 | P7_STOP_UNCHECKED | orchestrator | unchecked task list | unchecked tasks report | terminal |
-| P7_AC_GATE | general-purpose agent | acceptance criteria, codebase state | per-criterion `[PASS]`/`[FAIL]` with file:line evidence | overall PASS → P7_PR_CHECK, overall FAIL → P7_STOP_AC_FAIL |
+| P7_AC_GATE | `dh:task-worker` | acceptance criteria, codebase state | per-criterion `[PASS]`/`[FAIL]` with file:line evidence | overall PASS → P7_PR_CHECK, overall FAIL → P7_STOP_AC_FAIL |
 | P7_STOP_AC_FAIL | orchestrator | per-criterion gap report | AC failure report | terminal |
 | P7_PR_CHECK | orchestrator | `git log --grep='Fixes #N\|Closes #N'` | open PR presence check | PR found → P7_STOP_PR_WAIT, no PR → P7_RESOLVE_CALL |
 | P7_STOP_PR_WAIT | orchestrator | open PR reference | local status update only, wait for PR merge | terminal |

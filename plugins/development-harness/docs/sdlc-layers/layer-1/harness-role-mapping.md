@@ -21,13 +21,13 @@ Explicit mapping from abstract roles to agent archetypes used by the development
 | Role | Archetype | Typical Capabilities |
 |------|-----------|----------------------|
 | architect | Plan/Explore | Codebase analysis, architecture patterns, interface design |
-| test-designer | generalPurpose/Explore | Test strategy, pytest/vitest/jest patterns |
+| test-designer | dh:task-worker (specialist via profile_load) | Test strategy, pytest/vitest/jest patterns |
 | code-reviewer | code-review | Security, performance, pattern compliance |
-| design-spec | generalPurpose | ADR format, spec document structure |
+| design-spec | dh:task-worker (specialist via profile_load) | ADR format, spec document structure |
 | linting | Skill (not agent) | Ruff, ESLint, Prettier, etc. — invoked as commands |
 
 ---
 
 ## Fallback
 
-When a role is not declared in the manifest, the harness uses the **general-purpose** agent for that role.
+When a role is not declared in the manifest, the harness dispatches `dh:task-worker` for that role with no specialist profile loaded. `task-worker` executes the task directly using full dh tool permissions (SAM MCP, backlog MCP). `general-purpose` is never dispatched from any dh skill — it lacks the SAM and backlog MCP access required to execute the SAM lifecycle.

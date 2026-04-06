@@ -42,7 +42,7 @@ Maps the harness's abstract roles to plugin-provided agents or skills.
 
 - Agents use `@plugin:agent-name` syntax
 - Skills use `/plugin:skill-name` syntax
-- Omitted roles fall back to general-purpose agent
+- Omitted roles fall back to `dh:task-worker` (no specialist profile loaded)
 - All five roles should be declared for full specialization
 - Roles can point to the same agent if one agent covers multiple responsibilities
 
@@ -367,7 +367,7 @@ When the harness loads a manifest, it validates:
 4. **Markers** — At least one detection marker is declared
 5. **Flow override** — If present, is valid mermaid syntax (parsed but not executed during validation)
 
-Validation failures produce warnings but do not block the pipeline. The harness falls back to general-purpose for any section that fails validation.
+Validation failures produce warnings but do not block the pipeline. The harness falls back to `dh:task-worker` (no specialist profile) for any section that fails validation.
 
 ---
 

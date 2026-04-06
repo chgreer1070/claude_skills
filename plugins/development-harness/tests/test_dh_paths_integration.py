@@ -1062,7 +1062,7 @@ class TestGrepAuditOldPaths:
 
     # Patterns that are acceptable in docstrings and doc-examples (not path construction)
     DOCSTRING_EXAMPLE_WHITELIST: tuple[str, ...] = (
-        # operations.py old docstring examples — stale but in comments only
+        # operations.py docstrings (lines 3856, 3963) — stale docstring text only, not path construction
         "~/.claude/context/sam-tasks",
         # artifact_registry.py docstring code example
         'artifact_id="plan/feature-context-foo.md"',

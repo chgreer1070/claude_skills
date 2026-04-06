@@ -23,7 +23,7 @@ flowchart TD
     Markers -->|Cargo.toml| Rust[Language = Rust]
     Markers -->|go.mod| Go[Language = Go]
     Markers -->|Multiple languages| Disambiguate[Count source files per language]
-    Markers -->|No recognized markers| Fallback[Use general-purpose for all roles]
+    Markers -->|No recognized markers| Fallback[Use dh:task-worker for all roles]
     Disambiguate --> Primary[Select language with most source files]
     Python --> FindManifest[Search language plugin for manifest]
     TypeScript --> FindManifest
@@ -35,8 +35,8 @@ flowchart TD
     ManifestExists -->|No| Fallback
     ParseManifest --> ValidateRoles{All 5 roles declared?}
     ValidateRoles -->|Yes| FullResolve[All roles resolved to specialist agents]
-    ValidateRoles -->|Partial| MixedResolve[Declared roles use specialists; missing roles use general-purpose]
-    Fallback --> DefaultResolve[All roles use general-purpose agent]
+    ValidateRoles -->|Partial| MixedResolve[Declared roles use specialists; missing roles use dh:task-worker]
+    Fallback --> DefaultResolve[All roles use dh:task-worker]
     FullResolve --> LoadGates[Load Quality Gates from manifest]
     MixedResolve --> LoadGates
     DefaultResolve --> InferGates[Infer quality gates from file types]
@@ -94,8 +94,12 @@ Parse the manifest's Role Fulfillment section and map each abstract role to a co
 **Resolution rules:**
 
 - If the manifest declares a role, use the declared agent/skill
-- If the manifest omits a role, fall back to the general-purpose agent for that role
-- If no manifest exists at all, use general-purpose for every role
+- If the manifest omits a role, fall back to `dh:task-worker` for that role (no specialist profile loaded)
+- If no manifest exists at all, use `dh:task-worker` for every role
+
+**Dispatch routing rule:**
+
+Regardless of what role resolves to, the orchestrator always dispatches `subagent_type="dh:task-worker"`. The resolved agent name is recorded in the task's `agent:` field. `task-worker` reads this field via SAM MCP and calls `profile_load(agent_name=...)` to load specialist behavior internally. The orchestrator passes only the task reference — never the agent name directly as a `subagent_type`. `general-purpose` must never be dispatched from any dh skill.
 
 **Agent reference format in manifests:**
 
@@ -139,9 +143,9 @@ After resolving roles and gates, check if the manifest declares a Process Flow O
 
 ## Error Handling
 
-**Language detection failure:** If no language markers are found at all, log a warning and proceed with general-purpose fallback. The harness does not block on detection failure.
+**Language detection failure:** If no language markers are found at all, log a warning and dispatch `dh:task-worker` for all roles (no specialist profile loaded). The harness does not block on detection failure.
 
-**Manifest parse failure:** If a manifest exists but cannot be parsed (malformed markdown, missing sections), log the specific parse error, fall back to general-purpose for all roles, and note the parse failure in the S1 discovery artifact.
+**Manifest parse failure:** If a manifest exists but cannot be parsed (malformed markdown, missing sections), log the specific parse error, dispatch `dh:task-worker` for all roles, and note the parse failure in the S1 discovery artifact.
 
 **Agent not found:** If a manifest references an agent that is not installed, log a warning, fall back to dh:task-worker for that specific role, and note the resolution failure in the S1 discovery artifact.
 
