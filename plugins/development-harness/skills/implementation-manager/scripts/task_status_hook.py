@@ -38,6 +38,7 @@ import enum
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -50,6 +51,9 @@ from typing import Any
 _DH_PLUGIN_DIR = Path(__file__).resolve().parents[3]
 if str(_DH_PLUGIN_DIR) not in sys.path:
     sys.path.insert(0, str(_DH_PLUGIN_DIR))
+
+# Path to the SAM MCP server runner script for fastmcp CLI calls.
+_SAM_RUN_SERVER_PATH = _DH_PLUGIN_DIR / "scripts" / "run_sam_server.py"
 
 import dh_paths as _dh_paths
 
@@ -362,6 +366,152 @@ def delete_task_context(cwd: Path, session_id: str) -> None:
         context_file.unlink()
 
 
+def _call_sam_active_task_get(session_id: str, timeout: int = 10) -> tuple[Path | None, str | None, int | None]:
+    """Retrieve active task context via fastmcp CLI call to sam_active_task(action='get').
+
+    Primary retrieval path for SubagentStop. Returns parsed fields from the
+    ``ActiveTaskContext`` on success, or ``(None, None, None)`` if the call fails
+    or no active task is stored for the session.
+
+    Args:
+        session_id: Sub-agent session identifier. Empty string is normalised to
+            ``"_default"`` sentinel.
+        timeout: Subprocess timeout in seconds.
+
+    Returns:
+        Tuple of ``(task_file_path, task_id, parent_issue_number)``.
+        All ``None`` when the call fails or active task is not set.
+    """
+    uv = shutil.which("uv")
+    if uv is None or not _SAM_RUN_SERVER_PATH.exists():
+        return None, None, None
+
+    resolved = session_id or "_default"
+    input_data = json.dumps({"config": {"action": "get"}, "session_id": resolved})
+    env = os.environ.copy()
+    env["FASTMCP_SHOW_SERVER_BANNER"] = "false"
+    env["FASTMCP_LOG_ENABLED"] = "false"
+
+    try:
+        result = subprocess.run(
+            [
+                uv,
+                "run",
+                "fastmcp",
+                "call",
+                "--command",
+                f"uv run --script {_SAM_RUN_SERVER_PATH}",
+                "--target",
+                "sam_active_task",
+                "--input-json",
+                input_data,
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
+        return None, None, None
+
+    if result.returncode != 0:
+        return None, None, None
+
+    try:
+        outer = json.loads(result.stdout)
+        text = outer["content"][0]["text"]
+        data: dict[str, Any] = json.loads(text)
+        active = data.get("active_task")
+        if not active:
+            return None, None, None
+        task_file_raw = active.get("task_file_path")
+        task_id = active.get("task_id")
+        if task_file_raw and task_id:
+            parent_issue: int | None = None
+            with contextlib.suppress(TypeError, ValueError):
+                raw_issue = active.get("parent_issue_number")
+                if raw_issue is not None:
+                    parent_issue = int(raw_issue)
+            return Path(task_file_raw), task_id, parent_issue
+    except (json.JSONDecodeError, KeyError, IndexError):
+        pass
+
+    return None, None, None
+
+
+def _call_sam_active_task_clear(session_id: str, timeout: int = 10) -> bool:
+    """Clear active task context via fastmcp CLI call to sam_active_task(action='clear').
+
+    Best-effort cleanup after SubagentStop completes. Never raises.
+
+    Args:
+        session_id: Sub-agent session identifier. Empty string is normalised to
+            ``"_default"`` sentinel.
+        timeout: Subprocess timeout in seconds.
+
+    Returns:
+        ``True`` if the active task was successfully cleared, ``False`` otherwise.
+    """
+    uv = shutil.which("uv")
+    if uv is None or not _SAM_RUN_SERVER_PATH.exists():
+        return False
+
+    resolved = session_id or "_default"
+    input_data = json.dumps({"config": {"action": "clear"}, "session_id": resolved})
+    env = os.environ.copy()
+    env["FASTMCP_SHOW_SERVER_BANNER"] = "false"
+    env["FASTMCP_LOG_ENABLED"] = "false"
+
+    try:
+        result = subprocess.run(
+            [
+                uv,
+                "run",
+                "fastmcp",
+                "call",
+                "--command",
+                f"uv run --script {_SAM_RUN_SERVER_PATH}",
+                "--target",
+                "sam_active_task",
+                "--input-json",
+                input_data,
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
+        return False
+    else:
+        return result.returncode == 0
+
+
+def _cleanup_active_task_context(session_id: str | None, fallback_context_file: Path | None) -> None:
+    """Clean up active task context after SubagentStop completes.
+
+    Primary path: call sam_active_task(action='clear') via fastmcp CLI.
+    Fallback: delete the filesystem context file if MCP clear fails or is unavailable.
+
+    Args:
+        session_id: Sub-agent session identifier for MCP clear. ``None`` skips
+            the MCP path entirely.
+        fallback_context_file: Filesystem context file to delete if MCP clear
+            fails or session_id is ``None``.
+    """
+    mcp_cleared = False
+    if session_id:
+        mcp_cleared = _call_sam_active_task_clear(session_id)
+
+    if not mcp_cleared and fallback_context_file is not None:
+        with contextlib.suppress(OSError):
+            fallback_context_file.unlink()
+
+
 def get_iso_timestamp() -> str:
     """Get current UTC timestamp in ISO format.
 
@@ -588,20 +738,57 @@ def _resolve_context_file_from_transcript(hook_input: dict[str, Any]) -> Path | 
     return context_file
 
 
+def _resolve_active_task_context(
+    hook_input: dict[str, Any],
+) -> tuple[str | None, Path | None, str | None, int | None, Path | None] | None:
+    """Resolve the active task context for the agent that just stopped.
+
+    Primary path: sam_active_task(action='get') via fastmcp CLI using the
+    sub-agent's session_id extracted from the transcript.
+    Fallback: filesystem context file via ``_resolve_context_file_from_transcript``.
+
+    Args:
+        hook_input: Parsed SubagentStop hook input from stdin.
+
+    Returns:
+        ``(sub_agent_session_id, task_file_path, task_id, parent_issue_number, context_file)``
+        when a task is found, or ``None`` when no active task exists (caller should exit 0).
+    """
+    transcript_path_raw = hook_input.get("agent_transcript_path", "")
+    sub_agent_session_id: str | None = None
+    if transcript_path_raw:
+        sub_agent_session_id = _extract_session_id_from_transcript(Path(transcript_path_raw))
+
+    task_file_path: Path | None = None
+    task_id: str | None = None
+    parent_issue_number: int | None = None
+    context_file: Path | None = None
+
+    if sub_agent_session_id:
+        task_file_path, task_id, parent_issue_number = _call_sam_active_task_get(sub_agent_session_id)
+
+    if task_file_path is None or task_id is None:
+        context_file = _resolve_context_file_from_transcript(hook_input)
+        if context_file is None:
+            return None
+        task_file_path, task_id, parent_issue_number = _read_context_file(context_file)
+
+    return sub_agent_session_id, task_file_path, task_id, parent_issue_number, context_file
+
+
 def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = HookProfile.STANDARD) -> None:
     """Handle SubagentStop event - mark task COMPLETE with timestamp.
 
-    Discovers the active task by extracting the sub-agent's session_id from
-    ``agent_transcript_path`` in the hook input, then looking up the single
-    context file ``active-task-{session_id}.json``. This ensures only the task
-    belonging to the finished agent is marked complete — not all in-progress
-    tasks — which is critical for correct behaviour with parallel agents.
+    Discovers the active task via sam_active_task MCP tool (primary) or the
+    ``active-task-{session_id}.json`` context file (fallback). This ensures only
+    the task belonging to the finished agent is marked complete — not all
+    in-progress tasks — which is critical for correct behaviour with parallel agents.
 
     Discovery steps:
-    1. Read ``agent_transcript_path`` from hook input.
-    2. Extract the sub-agent's session_id from the first parseable JSONL line.
-    3. Look up ``active-task-{session_id}.json`` directly (no glob).
-    4. If not found: log warning and exit 0 (not a /start-task sub-agent).
+    1. Extract sub-agent's session_id from ``agent_transcript_path``.
+    2. Call sam_active_task(action='get') via fastmcp CLI (primary path).
+    3. Fall back to ``active-task-{session_id}.json`` on disk if MCP call fails.
+    4. After status update, call sam_active_task(action='clear') or delete file.
 
     Delegates all file writes to sam_schema.core.query.update_status
     (handles both .yaml and .md formats).
@@ -615,62 +802,49 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
     """
     cwd = Path(hook_input.get("cwd", "."))
 
-    context_file = _resolve_context_file_from_transcript(hook_input)
-    if context_file is None:
+    resolved = _resolve_active_task_context(hook_input)
+    if resolved is None:
         sys.exit(0)
 
-    task_file_path, task_id, parent_issue_number = _read_context_file(context_file)
+    sub_agent_session_id, task_file_path, task_id, parent_issue_number, context_file = resolved
 
     if task_file_path is None or task_id is None:
-        # Unreadable or malformed context file — clean up.
-        print(f"[hook] SubagentStop: malformed context file {context_file} — cleaning up", file=sys.stderr)
-        with contextlib.suppress(OSError):
-            context_file.unlink()
+        if context_file is not None:
+            print(f"[hook] SubagentStop: malformed context file {context_file} — cleaning up", file=sys.stderr)
+        _cleanup_active_task_context(sub_agent_session_id, context_file)
         sys.exit(0)
 
-    # Resolve task file path relative to cwd.
     full_path = cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
 
     if not full_path.exists():
-        # Task file gone — delete stale context file.
         print(f"[hook] SubagentStop: task file {full_path} not found — cleaning up context", file=sys.stderr)
-        with contextlib.suppress(OSError):
-            context_file.unlink()
+        _cleanup_active_task_context(sub_agent_session_id, context_file)
         sys.exit(0)
 
-    # Check current task status before marking complete.
     try:
         current_task = sam_get_task(full_path, task_id)
     except ValueError as e:
         print(f"[hook] SubagentStop: schema violation in task file {full_path} — {e}", file=sys.stderr)
         sys.exit(2)
     except (KeyError, FileNotFoundError, OSError):
-        # Task not found in file — delete stale context file.
-        with contextlib.suppress(OSError):
-            context_file.unlink()
+        _cleanup_active_task_context(sub_agent_session_id, context_file)
         sys.exit(0)
 
     if current_task.status == SamTaskStatus.COMPLETE:
-        # Already complete — just clean up the stale context file.
-        with contextlib.suppress(OSError):
-            context_file.unlink()
+        _cleanup_active_task_context(sub_agent_session_id, context_file)
         sys.exit(0)
 
-    # Strict mode: run pre-completion checks and emit warnings. Never blocks completion.
     if profile == HookProfile.STRICT:
         for warning in run_strict_pre_completion_checks(full_path, task_id, hook_input):
             print(warning, file=sys.stderr)
 
     try:
-        # Single code path for all formats: sam_schema handles .yaml and .md uniformly.
         sam_update_status(full_path, task_id, SamTaskStatus.COMPLETE, timestamp_field="completed")
     except (ValueError, KeyError, FileNotFoundError) as e:
         print(str(e), file=sys.stderr)
         sys.exit(2)
 
-    # Delete the context file now that the task is marked complete.
-    with contextlib.suppress(OSError):
-        context_file.unlink()
+    _cleanup_active_task_context(sub_agent_session_id, context_file)
 
     # Sync completion to GitHub — best-effort, never changes exit code.
     sync_completion_to_github(full_path, task_id, parent_issue_number)
