@@ -1,8 +1,8 @@
 <p align="center">
   <a href="#available-plugins"><img src="https://img.shields.io/badge/Claude_Code-Plugin_Marketplace-6B4FBB?style=for-the-badge&logo=anthropic&logoColor=white" alt="Claude Code Plugin Marketplace"></a>
-  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Plugins-29-blue?style=for-the-badge" alt="29 Plugins"></a>
-  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Agents-61-orange?style=for-the-badge" alt="61 Agents"></a>
-  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Skills-190-green?style=for-the-badge" alt="190 Skills"></a>
+  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Plugins-30-blue?style=for-the-badge" alt="30 Plugins"></a>
+  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Agents-64-orange?style=for-the-badge" alt="64 Agents"></a>
+  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Skills-218-green?style=for-the-badge" alt="218 Skills"></a>
 </p>
 
 <p align="center">
@@ -58,11 +58,11 @@ Comprehensive frameworks with multiple skills, commands, and specialized agents.
 
 | Plugin | What It Does |
 | --- | --- |
-| [development-harness](./plugins/development-harness) | Language-agnostic SAM 7-stage pipeline (Discovery → Planning → Context → Decomposition → Execution → Review → Verification) with backlog management, milestone dispatch, and kage-bunshin parallel sessions. 33 skills, 18 agents, MCP backlog server. |
+| [development-harness](./plugins/development-harness) | Language-agnostic SAM 7-stage pipeline (Discovery → Planning → Context → Decomposition → Execution → Review → Verification) with backlog management, milestone dispatch, and kage-bunshin parallel sessions. 40 skills, 19 agents, MCP backlog server. |
 | [python3-development](./plugins/python3-development) | Python 3.11+ specialist with 34 skills, 5 agents, and TDD workflows. Covers Typer/Rich CLI development, pytest test suites, code review, type checking, and PEP 723 inline script metadata. MCP semantic code search included. |
 | [bash-development](./plugins/bash-development) | Write robust Bash 5.1+ scripts with modern patterns, error handling, POSIX portability, and specialized agents for development and auditing |
 | [perl-development](./plugins/perl-development) | Build production-quality Perl 5.30+ scripts with modern practices, CPAN ecosystem integration, comprehensive testing, and CLI architecture |
-| [python-engineering](./plugins/python-engineering) | Opinionated Python 3.11+ engineering system with 19 skills and 5 agents. Establishes strong defaults (SOLID, typing policy, testing standards, code smell detection) and routes to specialist skills for TDD, CLI (Typer/Rich), web, data/science, and constrained environments. |
+| [python-engineering](./plugins/python-engineering) | Opinionated Python 3.11+ engineering system with 39 skills and 5 agents. Establishes strong defaults (SOLID, typing policy, testing standards, code smell detection) and routes to specialist skills for TDD, CLI (Typer/Rich), web, data/science, and constrained environments. |
 | [plugin-creator](./plugins/plugin-creator) | Complete toolkit for creating, refactoring, and validating Claude Code plugins with 40 skills, 8 specialized agents, automated version bumping, and `skilllint` integration |
 | [uv](./plugins/uv) | Expert guidance for Astral's uv — the fast Python package manager that replaces pip, poetry, pyenv, and virtualenv with modern lockfiles |
 | [clang-format](./plugins/clang-format) | Stop clang-format from reformatting your existing C/C++ style — analyzes your code's patterns first and shows the impact before applying any changes (install name: `clang-format-configuration`) |
@@ -121,9 +121,9 @@ The SAM (Stateless Agent Methodology) pipeline in a single plugin. Every feature
 
 Language plugins like `python3-development` plug into the harness by telling it which specialist agents to use for each task. Without a language plugin, the harness falls back to general-purpose agents.
 
-**Skills include:** `/dh:add-new-feature`, `/dh:implement-feature`, `/dh:complete-implementation`, `/dh:groom-milestone`, `/dh:work-milestone`, `/dh:dispatch`, `/dh:backlog`, and 26 more.
+**Skills include:** `/dh:add-new-feature`, `/dh:implement-feature`, `/dh:complete-implementation`, `/dh:groom-milestone`, `/dh:work-milestone`, `/dh:dispatch`, `/dh:backlog`, and 33 more.
 
-**Agents include:** `@dh:swarm-task-planner`, `@dh:feature-researcher`, `@dh:codebase-analyzer`, `@dh:feature-verifier`, `@dh:doc-drift-auditor`, and 13 more.
+**Agents include:** `@dh:swarm-task-planner`, `@dh:feature-researcher`, `@dh:codebase-analyzer`, `@dh:feature-verifier`, `@dh:doc-drift-auditor`, and 14 more.
 
 **MCP servers:** Backlog server (GitHub Issues sync, artifact management, dispatch orchestration), sequential-thinking server.
 
