@@ -75,7 +75,7 @@ Spawn one teammate per ready task. When only one task is ready, a single Agent c
 
 For each task being dispatched:
 
-- Route to the agent named in the task's `agent` field (or resolved from `role`).
+- Always dispatch `dh:task-worker` as the `subagent_type`. The `agent:` field in the task YAML is NOT a routing directive for the orchestrator — it is read internally by `task-worker` via the SAM MCP (`sam_task` action) and passed to `profile_load` to specialize `task-worker`'s behavior. The orchestrator passes only the task reference (plan address + task ID).
 - Check the task's `skills` list from the ready-tasks JSON output.
 - If `skills` is non-empty, include skill-loading instructions in the delegation prompt:
 
@@ -85,7 +85,7 @@ For each skill, call: Skill(skill="{skill-name}")
 ```
 
 - If `skills` is empty or missing, do not add skill-loading instructions (backward compatible).
-- Launch the agent with a prompt that invokes `start-task`:
+- Launch `dh:task-worker` with a prompt that invokes `start-task`:
 
 ```text
 Skill(skill="start-task", args="{task_file_path} --task {task_id}")
