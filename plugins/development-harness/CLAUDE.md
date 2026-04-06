@@ -15,7 +15,7 @@ Language-agnostic development process harness that orchestrates feature developm
 - The harness owns the *process*; language plugins own the *specialists*
 - Every stage produces an MCP-registered artifact (stateless handoff) — stored via `artifact_register` and retrieved via `artifact_read`, never via direct filesystem paths
 - Human escalation follows ARL constraint analysis, not arbitrary checkpoints
-- Without a language manifest, the harness falls back to general-purpose agents
+- Without a language manifest, the harness falls back to `dh:task-worker` (specialist profile not loaded — task-worker executes directly)
 - Task complexity is context-fit under uncertainty — see [Context-Fit Complexity Model](./docs/sdlc-layers/layer-0/context-fit-complexity.md)
 
 ---
@@ -56,7 +56,7 @@ flowchart TD
     Detect -->|pyproject.toml| Python[Python plugin]
     Detect -->|package.json| TypeScript[TypeScript plugin]
     Detect -->|Cargo.toml| Rust[Rust plugin]
-    Detect -->|None found| Fallback[General-purpose agents]
+    Detect -->|None found| Fallback[dh:task-worker fallback]
     Python --> Manifest[Read language manifest]
     TypeScript --> Manifest
     Rust --> Manifest
@@ -183,6 +183,41 @@ flowchart TD
 Language plugin authors should use the template at [./templates/language-manifest-template.md](./templates/language-manifest-template.md).
 
 The manifest schema is documented in [./skills/development-harness/references/language-manifest-schema.md](./skills/development-harness/references/language-manifest-schema.md).
+
+---
+
+## Dispatch Pattern (Extension Rules)
+
+**`dh:task-worker` is the universal dispatch agent for all dh workflows. It must be used for every agent dispatch — no exceptions.**
+
+**`general-purpose` must never be dispatched from any dh skill or extension point.**
+
+### Why
+
+`dh:task-worker` carries full dh tool permissions (SAM MCP, backlog MCP). When a task's `agent:` field is set, `task-worker` reads it via SAM MCP and passes it to `profile_load` to load specialist behavior internally. This ensures the SAM lifecycle (claim → execute → sam_state) is always owned by an agent that has the tools to execute it.
+
+A `general-purpose` agent dispatched from a dh skill does not have SAM or backlog MCP access and cannot execute the SAM lifecycle. It will silently fail to update task state.
+
+### The `agent:` field in SAM task YAML is not an orchestrator routing directive
+
+The `agent:` field is read by `task-worker` — not by the orchestrator. The orchestrator always passes only the task reference (plan address + task ID). `task-worker` internally calls `profile_load(agent_name=...)` to specialize its behavior for that task.
+
+```mermaid
+flowchart TD
+    Orchestrator([Orchestrator]) -->|"subagent_type='dh:task-worker'"| Worker[dh:task-worker]
+    Worker -->|"sam_read(plan, task)"| SAM[SAM MCP]
+    SAM -->|"agent: field value"| Worker
+    Worker -->|"profile_load(agent_name=...)"| Profile[Specialist behavior loaded]
+    Profile --> Execute[Execute task with full dh tool permissions]
+```
+
+### Extension rule
+
+When adding a new dispatch step to any dh skill, reference file, or workflow document:
+
+- Dispatch `subagent_type="dh:task-worker"` — always
+- Never substitute `subagent_type="general-purpose"` regardless of task complexity
+- The `agent:` field in the task YAML selects the specialist; the orchestrator does not
 
 ---
 
