@@ -320,7 +320,10 @@ function buildAgentList() {
   // ── Project agents (shadow user agents with same key) ───────────────────────
   /** @type {Array<{ key: string, file: string }>} */
   const projectAgents = [
-    { key: 'backlog-item-groomer', file: 'backlog-item-groomer.md' },
+    {
+      key: 'backlog-item-groomer',
+      file: 'plugins/development-harness/agents/backlog-item-groomer.md',
+    },
     { key: 'c-systems-programmer', file: 'c-systems-programmer.md' },
     { key: 'code-review', file: 'code-review.md' },
     { key: 'context-gathering', file: 'context-gathering.md' },

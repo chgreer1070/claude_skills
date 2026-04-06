@@ -36,7 +36,7 @@ The sole interface for all backlog and GitHub Issue CRUD:
 
 | Agent | Path | Purpose |
 |-------|------|---------|
-| `backlog-item-groomer` | `.claude/agents/backlog-item-groomer.md` | Autonomous grooming: resource/dependency mapping |
+| `dh:backlog-item-groomer` | `plugins/development-harness/agents/backlog-item-groomer.md` | Autonomous grooming: resource/dependency mapping |
 
 ## Skill References
 

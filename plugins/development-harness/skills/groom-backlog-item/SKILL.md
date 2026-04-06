@@ -1,6 +1,6 @@
 ---
 name: groom-backlog-item
-description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — fact-checks item claims against primary sources, runs RT-ICA per item, then spawns @backlog-item-groomer agents. Writes groomed content via backlog MCP tools (backlog_groom, backlog_update). Use when preparing backlog items for planning or execution.
+description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — fact-checks item claims against primary sources, runs RT-ICA per item, then spawns @dh:backlog-item-groomer agents. Writes groomed content via backlog MCP tools (backlog_groom, backlog_update). Use when preparing backlog items for planning or execution.
 argument-hint: <item-title-or-section-or-all>
 user-invocable: true
 ---
