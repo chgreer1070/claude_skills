@@ -122,6 +122,13 @@ function main() {
     process.exit(0);
   }
 
+  // Skip enforcement for subagent sessions — subagents SHOULD use Bash for diagnostics.
+  // When running inside a subagent, the hook input includes agent_id and agent_type
+  // fields that are absent in the orchestrator session. Verified 2026-03-23.
+  if (event.agent_id) {
+    process.exit(0);
+  }
+
   const toolName = event.tool_name ?? '';
   if (toolName !== 'Bash') {
     process.exit(0);
