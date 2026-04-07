@@ -61,16 +61,12 @@ if _SAM_PACKAGES_DIR not in sys.path:
 
 # Import directly from submodules so static type checkers resolve concrete types
 # instead of the lazy ``object`` returned by sam_schema.__getattr__.
+# dh_paths is in plugins/development-harness/ — resolvable via the uv workspace
+# (root pyproject.toml pythonpath includes the plugin directory).
+import dh_paths
 from sam_schema.core.models import STATUS_MAP
 from sam_schema.core.query import claim_task as sam_claim_task, load_plan as sam_load_plan
 from sam_schema.readers.detect import FormatDetectionError
-
-# dh_paths is in plugins/development-harness/ (parents[3] from this script).
-_DH_PKG_DIR = str(_REPO_ROOT / "plugins" / "development-harness")
-if _DH_PKG_DIR not in sys.path:
-    sys.path.insert(0, _DH_PKG_DIR)
-
-import dh_paths
 
 if TYPE_CHECKING:
     from sam_schema.core.models import Task as SamTask

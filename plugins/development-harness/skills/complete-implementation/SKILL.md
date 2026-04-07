@@ -24,8 +24,6 @@ $ARGUMENTS
 
 ---
 
-> **SAM API Migration (P1601)**: `sam_list`/`sam_status`/`sam_ready`/`sam_read`(plan)/`sam_create`/`sam_update` → `sam_plan`. `sam_read`(task)/`sam_claim`/`sam_state` → `sam_task`. Deprecated shims remain.
-
 ---
 
 ## Input Format Detection

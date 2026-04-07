@@ -58,24 +58,7 @@ _SINGLE_TASK_YAML = (
 )
 
 
-def _task_def(
-    task_id: str = "T01",
-    title: str = "Test task",
-    status: str = "not-started",
-    deps: list[str] | None = None,
-    agent: str = "test-agent",
-) -> dict[str, object]:
-    """Return a minimal task definition dict suitable for InMemoryTaskProvider.create_plan."""
-    return {
-        "id": task_id,
-        "title": title,
-        "status": status,
-        "agent": agent,
-        "dependencies": deps if deps is not None else [],
-        "priority": 1,
-        "complexity": "low",
-    }
-
+from tests_sam.conftest import make_task_def as _task_def
 
 # ---------------------------------------------------------------------------
 # Fixtures

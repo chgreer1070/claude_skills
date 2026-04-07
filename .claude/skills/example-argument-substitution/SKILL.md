@@ -221,3 +221,9 @@ arg_by_index_2    = <arg_by_index_2>
 All substitution variables, pitfall table, and verified escape evidence:
 
 [./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
+
+
+<input>
+!`node /home/ubuntulinuxqa2/repos/claude_skills/plugins/development-harness/skills/work-backlog-item/scripts/parser/parse.mjs "$ARGUMENTS"`
+</input>
+<user_text/>

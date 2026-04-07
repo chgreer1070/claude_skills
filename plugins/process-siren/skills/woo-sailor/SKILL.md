@@ -1,11 +1,11 @@
 ---
 name: woo-sailor
-description: Optimize processes in a file or directory by converting prose/bullet workflows to Mermaid diagrams — delegates to the process-siren agent. Use when given a single SKILL.md, agent file, CLAUDE.md, or rules file to convert, or a directory containing any of those. Supports --dry-run or --report for read-only planning mode.
+description: Optimize processes in a file or directory by converting prose/bullet workflows to Mermaid diagrams — delegates to the process-siren:process-siren agent. Use when given a single SKILL.md, agent file, CLAUDE.md, or rules file to convert, or a directory containing any of those. Supports --dry-run or --report for read-only planning mode.
 argument-hint: <file-or-directory> [--dry-run|--report]
 disable-model-invocation: true
 user-invocable: true
 context: fork
-agent: process-siren
+agent: process-siren:process-siren
 ---
 
 You are about to optimize a set of files.
@@ -26,12 +26,12 @@ flowchart TD
     Q1 -->|"No results — path does not exist"| Stop(["Output exactly: 'A file or directory to process must be provided.'<br>Stop."])
     Q1 -->|"One result equal to <path> — single file"| Q2File{"Is DRY_RUN true?"}
     Q1 -->|"Results are children of <path> — directory"| Q2Dir{"Is DRY_RUN true?"}
-    Q2File -->|"Yes"| DryFile["Spawn Agent(subagent_type='process-siren',<br>prompt='Read-only mode. Report every section you would<br>optimize and how. Make NO edits. Target file: <path>')"]
-    Q2File -->|"No"| LiveFile["Spawn Agent(subagent_type='process-siren',<br>prompt='Optimize all processes in this file in-place.<br>Target file: <path>')"]
+    Q2File -->|"Yes"| DryFile["Spawn Agent(subagent_type='process-siren:process-siren',<br>prompt='Read-only mode. Report every section you would<br>optimize and how. Make NO edits. Target file: <path>')"]
+    Q2File -->|"No"| LiveFile["Spawn Agent(subagent_type='process-siren:process-siren',<br>prompt='Optimize all processes in this file in-place.<br>Target file: <path>')"]
     Q2Dir -->|"Yes"| DryFilter["Glob <path> using eligible patterns:<br>SKILL.md, CLAUDE.md, AGENT.md, agents/*.md, rules/*.md"]
     Q2Dir -->|"No"| LiveFilter["Glob <path> using eligible patterns:<br>SKILL.md, CLAUDE.md, AGENT.md, agents/*.md, rules/*.md"]
-    DryFilter --> DryDir["For each eligible file:<br>Spawn Agent(subagent_type='process-siren',<br>prompt='Read-only mode. Report every section you would<br>optimize and how. Make NO edits. Target file: {file path}')"]
-    LiveFilter --> LiveDir["For each eligible file:<br>Spawn Agent(subagent_type='process-siren',<br>prompt='Optimize all processes in this file in-place.<br>Target file: {file path}')"]
+    DryFilter --> DryDir["For each eligible file:<br>Spawn Agent(subagent_type='process-siren:process-siren',<br>prompt='Read-only mode. Report every section you would<br>optimize and how. Make NO edits. Target file: {file path}')"]
+    LiveFilter --> LiveDir["For each eligible file:<br>Spawn Agent(subagent_type='process-siren:process-siren',<br>prompt='Optimize all processes in this file in-place.<br>Target file: {file path}')"]
     DryFile --> QBlockedFile{"Agent returned BLOCKED?"}
     LiveFile --> QBlockedFile
     DryDir --> QBlockedDir{"Any agent returned BLOCKED?"}

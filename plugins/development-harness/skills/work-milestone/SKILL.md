@@ -156,7 +156,7 @@ done
 
 - Groomed description and acceptance criteria — via `backlog_view(selector="#{issue}")`
 - Plan artifacts — via `artifact_list(issue_number={issue})` then `artifact_read(...)`
-- SAM task plan — via `sam_plan` (deprecated: `sam_read(plan="P{N}")`) if a plan exists
+- SAM task plan — via `sam_plan` if a plan exists
 - Skills to load — from `skills` field in SAM task metadata
 
 ### Monitoring and Result Collection
@@ -247,8 +247,8 @@ Conflict resolution agent receives both branches' diffs and resolves in-place on
 | `backlog_view` | Read item description, AC, design decisions (used by spawned sessions) |
 | `artifact_list` | Discover plan artifacts registered for an issue (used by spawned sessions) |
 | `artifact_read` | Read plan artifact content from root worktree via MCP (used by spawned sessions) |
-| `sam_plan` (deprecated: `sam_read`) | Read SAM task plan for an item (used by spawned sessions) |
-| `sam_plan` (deprecated: `sam_status` / `sam_list`) | Check whether item has a SAM plan (used by spawned sessions) |
+| `sam_plan` | Read SAM task plan for an item (used by spawned sessions) |
+| `sam_plan` | Check whether item has a SAM plan (used by spawned sessions) |
 | `github_branches create` | Create integration branch |
 | `github_branches merge` | Merge worktree branch into integration branch |
 | `github_branches delete` | Delete integration branch after landing |

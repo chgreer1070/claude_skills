@@ -22,6 +22,55 @@ FIXTURES_DIR: Path = Path(__file__).parent / "fixtures"
 
 
 # ---------------------------------------------------------------------------
+# Reusable test helpers (not fixtures — called directly with arguments)
+# ---------------------------------------------------------------------------
+
+
+def make_task(
+    task_id: str,
+    status: TaskStatus = TaskStatus.NOT_STARTED,
+    dependencies: list[str] | None = None,
+    priority: Priority = Priority.MEDIUM,
+) -> Task:
+    """Return a minimal Task for test use.
+
+    This is the shared helper used across test_server, test_server_mcp,
+    test_dependencies, and test_query.  Centralised here to eliminate
+    duplication.
+    """
+    return Task(
+        id=task_id,
+        title=f"Task {task_id}",
+        status=status,
+        dependencies=dependencies or [],
+        priority=priority,
+        complexity=Complexity.MEDIUM,
+    )
+
+
+def make_task_def(
+    task_id: str = "T01",
+    title: str = "Test task",
+    status: str = "not-started",
+    deps: list[str] | None = None,
+    agent: str = "test-agent",
+) -> dict[str, object]:
+    """Return a minimal task definition dict suitable for InMemoryTaskProvider.create_plan.
+
+    Used by test_consolidated_tools.  Centralised here to eliminate duplication.
+    """
+    return {
+        "id": task_id,
+        "title": title,
+        "status": status,
+        "agent": agent,
+        "dependencies": deps if deps is not None else [],
+        "priority": 1,
+        "complexity": "low",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Temporary plan directory
 # ---------------------------------------------------------------------------
 

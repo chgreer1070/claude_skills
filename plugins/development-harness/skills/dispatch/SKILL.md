@@ -18,7 +18,7 @@ flowchart TD
     Start(["Work to dispatch"]) --> Q{"Is there a SAM task file<br>for this work?"}
     Q -->|"Yes — SAM plan exists"| SAM["SAM Dispatch<br>Minimal prompt — task file has everything"]
     Q -->|"No — ad-hoc work"| AdHoc["Ad-Hoc Dispatch<br>Use delegation template from<br>/agent-orchestration:agent-orchestration"]
-    SAM --> SAMPrompt["Agent prompt:<br>'You are working on P{N}/T{M}'<br>Agent loads task via sam_task (deprecated: sam_read) —<br>acceptance criteria, context, verification steps all there"]
+    SAM --> SAMPrompt["Agent prompt:<br>'You are working on P{N}/T{M}'<br>Agent loads task via sam_task —<br>acceptance criteria, context, verification steps all there"]
     AdHoc --> AdHocPrompt["Write OBSERVATIONS + DEFINITION OF SUCCESS +<br>CONTEXT per agent-orchestration template"]
     SAMPrompt --> Team["TeamCreate and spawn workers"]
     AdHocPrompt --> Team
@@ -50,7 +50,7 @@ Agent(
 )
 ```
 
-The agent calls `sam_task` (deprecated: `sam_read`) to load the task. All acceptance criteria, verification steps, and context live in the task file.
+The agent calls `sam_task` to load the task. All acceptance criteria, verification steps, and context live in the task file.
 
 **Ad-hoc dispatch:** follow the delegation template from `/agent-orchestration:agent-orchestration` — OBSERVATIONS, DEFINITION OF SUCCESS, CONTEXT.
 
@@ -79,7 +79,7 @@ flowchart TD
     Blocker(["Worker sends blocker"]) --> Classify{"What is blocking them?"}
     Classify -->|"Missing information the orchestrator has"| Relay["SendMessage with the missing context<br>Worker resumes"]
     Classify -->|"Conflict with another worker's changes"| Resolve["Read both workers' summaries<br>Decide which approach wins<br>SendMessage resolution to affected workers"]
-    Classify -->|"Scope question — out of task boundaries"| Bound["Confirm scope in task file via sam_task (deprecated: sam_read)<br>SendMessage: stay within T{M} boundaries or<br>create a new task for the discovered work"]
+    Classify -->|"Scope question — out of task boundaries"| Bound["Confirm scope in task file via sam_task<br>SendMessage: stay within T{M} boundaries or<br>create a new task for the discovered work"]
     Classify -->|"Hard blocker — cannot proceed"| Escalate["SendMessage shutdown<br>Capture blocker as backlog item<br>Adjust wave plan"]
 ```
 
@@ -108,7 +108,7 @@ Shut workers down via SendMessage before deleting the team.
 
 - 2+ tasks that can run without waiting on each other
 - Parallel reviews (security, performance, coverage)
-- Multiple SAM tasks in the same wave (check `sam_plan` — deprecated: `sam_ready`)
+- Multiple SAM tasks in the same wave (check `sam_plan`)
 - Research tracks that don't depend on each other
 
 **Explore first, then dispatch when:**

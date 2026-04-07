@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import pytest
 from fastmcp.client import Client
 from fastmcp.exceptions import ToolError
-from sam_schema.core.models import Complexity, Plan, Priority, Task, TaskStatus
+from sam_schema.core.models import Plan, TaskStatus
 from sam_schema.server import mcp
 from sam_schema.writers.yaml_writer import write_plan
 
@@ -28,21 +28,10 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Helpers (shared — see conftest.py)
 # ---------------------------------------------------------------------------
 
-
-def make_task(task_id: str, status: TaskStatus = TaskStatus.NOT_STARTED, dependencies: list[str] | None = None) -> Task:
-    """Return a minimal Task for test use."""
-    return Task(
-        id=task_id,
-        title=f"Task {task_id}",
-        status=status,
-        dependencies=dependencies or [],
-        priority=Priority.MEDIUM,
-        complexity=Complexity.MEDIUM,
-    )
-
+from tests_sam.conftest import make_task
 
 # ---------------------------------------------------------------------------
 # Fixtures

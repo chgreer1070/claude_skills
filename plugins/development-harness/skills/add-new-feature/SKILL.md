@@ -369,7 +369,7 @@ Decompose #{issue}: "{title}" into executable tasks.
 Read the architecture spec via artifact_read(issue_number={issue}, artifact_type="architect").
 Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context").
 Goal: {goal_from_feature_request}
-Create the plan via sam_plan (deprecated: sam_create) with CLEAR+CoVe task definitions.
+Create the plan via sam_plan with CLEAR+CoVe task definitions.
 
 REQUIRED — skills field propagation:
 The domain skills identified in Phase 3 are:
@@ -397,7 +397,7 @@ back to the backlog item:
 mcp__plugin_dh_backlog__artifact_register(
     issue_number={issue},
     artifact_type="task-plan",
-    path="plan/P{NNN}-{slug}.yaml",  # state-relative path; auto-registered by sam_plan (deprecated: sam_create) when issue is set
+    path="plan/P{NNN}-{slug}.yaml",  # state-relative path; auto-registered by sam_plan when issue is set
     agent="swarm-task-planner"
 )
 
@@ -457,7 +457,7 @@ statements of fact without citation, code smells, missing documentation.
 </quality_vigilance>
 
 Add context manifest to plan P{N} for #{issue}: "{title}".
-Read the plan via sam_plan (deprecated: sam_read). Write the context manifest via sam_plan (deprecated: sam_update).
+Read the plan via sam_plan. Write the context manifest via sam_plan.
 ```
 
 ---
@@ -476,7 +476,7 @@ Fill these values before constructing each delegation prompt. All values come fr
 | `{focus_area}` | One of: `patterns`, `architecture`, `testing`, `conventions` (Phase 2 only) |
 | `{goal_from_feature_request}` | The one-sentence goal extracted from the feature context doc (Phase 4 only) |
 | `{domain_skills}` | Pre-formatted YAML list lines (e.g., `- plugin-creator:hook-creator`) collected by the Phase 3 domain signal scan; empty string if no signals matched; passed verbatim into Phase 4 delegation prompt |
-| `{N}` | SAM plan number returned by `sam_plan` (deprecated: `sam_create`) after Phase 4 completes |
+| `{N}` | SAM plan number returned by `sam_plan` after Phase 4 completes |
 
 ---
 

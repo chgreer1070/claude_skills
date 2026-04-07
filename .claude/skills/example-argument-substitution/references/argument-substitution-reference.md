@@ -159,3 +159,5 @@ Before applying any new escape pattern to multiple files, test it using this ski
 2. Invoke: `/example-argument-substitution CANARY_TESTWORD`
 3. Verify the canary does NOT appear in the rendered output where it shouldn't
 4. Only then apply the pattern to other skills
+
+<item_ref/>

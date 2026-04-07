@@ -1,379 +1,352 @@
 ---
 title: "Backlog Item Lifecycle — Canonical Reference"
-purpose: "Authoritative state machine, handoff protocol, and data architecture for the backlog item lifecycle"
+purpose: "Authoritative state machine, stage transitions, and data architecture for the backlog item lifecycle"
 related:
-  - skills/backlog/references/state-machine.md
-  - skills/work-backlog-item/references/feasibility-gate.md
-  - skills/groom-backlog-item/references/groomer-output-validation.md
+  - skills/work-backlog-item/references/workflows/create/start.md
+  - skills/work-backlog-item/references/workflows/groom/groom.md
+  - skills/work-backlog-item/references/workflows/groom/finalize.md
 created: 2026-03-30
-source: "Derived from verified sources: state-machine.md (Phase 2 analysis), architect spec Issue #398 Sections 2 and 8, codebase architecture analysis Section 2"
+updated: 2026-04-06
+source: "Derived from verified sources: state-machine.md (Phase 2 analysis), architect spec Issue #398 Sections 2 and 8, codebase architecture analysis Section 2. Updated 2026-04-06 for skill consolidation and backend-agnostic model."
 ---
 
 # Backlog Item Lifecycle — Canonical Reference
 
-This document is the authoritative reference for the backlog item lifecycle state machine, handoff
-protocol, state persistence, and data architecture. All skills that modify item state MUST
-enforce only the transitions defined here.
-
-The draft document (`backlog-lifecycle.draft.md`) remains as a historical reference. Do not edit
-the draft — update this canonical document instead.
+This document is the authoritative reference for the backlog item lifecycle state machine,
+stage transitions, state persistence, and data architecture. All routes within
+`work-backlog-item` that modify item state MUST enforce only the transitions defined here.
 
 ---
 
 ## 1. State Machine
 
-Canonical stateDiagram-v2 derived from `skills/backlog/references/state-machine.md` (verified
-in Phase 2 codebase analysis — all claims confirmed against live source files), with two
-additions per architect spec Issue #398 Section 8:
-
-1. `in-progress → needs-grooming` transition for re-queue after discovery that grooming was incomplete
-2. Observable signal note for the `status:verified` gate in `complete-implementation → resolve` path
+**Naming convention**: State names use hyphens (`needs-grooming`). Mermaid `stateDiagram-v2`
+requires underscores for node IDs — those are rendering aliases, not separate states.
+`needs_grooming` in a diagram and `needs-grooming` in a status field refer to the same state.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> needs_grooming : create-backlog-item
+    [*] --> needs_grooming : work-backlog-item create
 
-    needs_grooming --> groomed : groom-backlog-item (RT-ICA APPROVED)
-    needs_grooming --> blocked : groom-backlog-item (RT-ICA BLOCKED)
+    needs_grooming --> groomed : work-backlog-item groom (RT-ICA APPROVED)
+    needs_grooming --> blocked_grooming : work-backlog-item groom (RT-ICA BLOCKED)
 
-    blocked --> needs_grooming : user provides missing info
-    blocked --> resolved : user cancels item
+    blocked_grooming --> needs_grooming : user provides missing info
+    blocked_grooming --> resolved : user cancels item
 
     groomed --> in_milestone : group-items-to-milestone
 
-    in_milestone --> in_progress : work-backlog-item (RT-ICA APPROVED + planning started)
-    in_milestone --> groomed : work-backlog-item (RT-ICA BLOCKED — item pulled back)
+    in_milestone --> in_progress : work-backlog-item work (RT-ICA APPROVED + planning started)
+    in_milestone --> groomed : work-backlog-item work (RT-ICA BLOCKED — item pulled back)
 
     in_progress --> done : work-backlog-item close (checklist 100% + AC verified PASS)
     in_progress --> resolved : work-backlog-item resolve (status:verified present)
-    in_progress --> blocked : work-backlog-item (AC verification FAIL)
-    in_progress --> needs_grooming : work-backlog-item (grooming incomplete discovered)
+    in_progress --> blocked_work : work-backlog-item work (AC verification FAIL)
+    in_progress --> needs_grooming : work-backlog-item work (grooming incomplete discovered)
+
+    blocked_work --> in_progress : issue resolved, work resumes
 
     done --> closed : complete-milestone (milestone archived)
     resolved --> closed : complete-milestone (milestone archived)
 
-    needs_grooming --> resolved : any skill (item invalid or obsolete)
-    groomed --> resolved : any skill (item invalid or obsolete)
-    in_milestone --> resolved : any skill (item invalid or obsolete)
+    needs_grooming --> resolved : any route (item invalid or obsolete)
+    groomed --> resolved : any route (item invalid or obsolete)
+    in_milestone --> resolved : any route (item invalid or obsolete)
 
     closed --> [*]
 ```
 
 ### State Definitions
 
-| State | Description | GitHub label |
+| State | Status value | Description |
 |---|---|---|
-| `needs-grooming` | Item created, not yet fact-checked or groomed | `status:needs-grooming` |
-| `groomed` | All 7 canonical sections present, RT-ICA APPROVED | `status:groomed` |
-| `blocked` | RT-ICA BLOCKED — missing information prevents grooming or work | `status:blocked` |
-| `in-milestone` | Assigned to a GitHub milestone, awaiting work | `status:in-milestone` |
-| `in-progress` | Work started, plan file created, implementation underway | `status:in-progress` |
-| `done` | Implementation complete, AC verified PASS, checklist 100% | `status:done` |
-| `resolved` | Item closed without full implementation (obsolete, invalid, superseded) | `status:resolved` |
-| `closed` | Terminal state — milestone archived, item no longer active | `status:closed` |
+| `needs-grooming` | `needs-grooming` | Item created, not yet fact-checked or groomed |
+| `groomed` | `groomed` | All 7 canonical sections present, RT-ICA APPROVED |
+| `blocked-grooming` | `blocked` | RT-ICA BLOCKED during grooming — missing information prevents grooming |
+| `blocked-work` | `blocked` | AC verification FAIL during work — implementation issue prevents completion |
+| `in-milestone` | `in-milestone` | Assigned to a milestone, awaiting work |
+| `in-progress` | `in-progress` | Work started, plan file created, implementation underway |
+| `done` | `done` | Implementation complete, AC verified PASS, checklist 100% |
+| `resolved` | `resolved` | Item closed without full implementation (obsolete, invalid, superseded) |
+| `closed` | `closed` | Terminal state — milestone archived, item no longer active |
+
+**`blocked` disambiguation**: Both `blocked-grooming` and `blocked-work` use the same status
+value `blocked` in the backend. The distinction is contextual — the route that set the blocked
+status determines which resolution path applies:
+
+- `blocked` set during `groom` → resolution: user provides missing info → re-enters `needs-grooming`
+- `blocked` set during `work` → resolution: implementation issue fixed → re-enters `in-progress`
 
 ### Critical State Constraints
 
-**`status:in-progress` timing**: The in-progress label MUST be set only after the RT-ICA gate
-returns APPROVED and the SAM plan file is created. Setting it during grooming or RT-ICA checking
-is incorrect.
+- **`in-progress` timing**: Set only after the RT-ICA gate returns APPROVED and the SAM plan
+  file is created. Not during grooming or RT-ICA checking.
+- **`groomed` timing**: Set only when ALL 7 canonical sections are present with minimum content.
+  Partial grooming is not groomed.
+- **`blocked` and `in-progress` are exclusive**: If AC verification fails during close, set
+  `blocked` — do not close.
+- **`closed` entry**: The only transition into `closed` is from `complete-milestone`. No other
+  route sets this status.
+- **`status:verified` signal**: `complete-implementation` applies a `verified` status marker
+  after all quality gates pass. `work-backlog-item` resolve gates on this marker:
+  `backlog_view(selector='{item_ref}').labels` must contain the verified marker. This is a
+  cross-route signal, not a lifecycle state.
 
-**`metadata.groomed` timing**: Only set when ALL 7 canonical sections are present in the item
-file. Partial grooming is not groomed.
+### Ideas Items Exception
 
-**`blocked` and `in-progress` are exclusive**: If AC verification fails during close, revert to
-`blocked` — do not close.
+Items with priority `Ideas` may not have a backend issue linked (`issue_number` absent).
+When no backend issue exists:
 
-**`closed` entry**: The only transition into `closed` is from `complete-milestone`. No other skill
-sets this status.
+- State transitions still apply via local metadata only
+- Discovery gate is skipped (requires `issue_number`)
+- Artifact tools (`artifact_list`, `artifact_read`) are unavailable
+- `backlog_comment_issue` is unavailable
+- The item can still be groomed, but with reduced scope (MINIMAL or NARROW sizing)
 
-**`status:verified` observable signal**: `complete-implementation` applies `status:verified` to
-the GitHub Issue after all quality gates pass. `work-backlog-item` Step 5.4 gates the resolve
-call on this label: `backlog_view(selector="#N").labels` must contain `status:verified`. This
-label is not a lifecycle state — it is a cross-skill signal.
+To promote an Ideas item into the standard lifecycle, assign it a priority of P0/P1/P2.
+The backend creates an issue at that point via `backlog_sync`.
 
 ### Transition Detail: in-progress → needs-grooming
 
 ```text
-Trigger:    work-backlog-item discovers during Phase 3 that a required groomed section is missing
-            or the RT-ICA result is stale and cannot be re-run (depends on user input)
+Trigger:    work-backlog-item discovers during planning that a required groomed section
+            is missing or the RT-ICA result is stale and cannot be re-run
 Precondition: grooming incomplete — at least one of the 7 required sections absent
-Action:     backlog_update(status="needs-grooming")
-             GitHub label: remove status:in-progress, add status:needs-grooming
-             Report reason to user — which sections are missing
-             User re-runs /groom-backlog-item before item can re-enter in-progress
+Action:     backlog_update(selector='{item_ref}', status='needs-grooming')
+            Report reason to user — which sections are missing
+            User re-runs /dh:work-backlog-item groom {item_ref} before item can
+            re-enter in-progress
 ```
 
 SOURCE: `backlog/references/state-machine.md` (base diagram, accessed 2026-03-30).
-Addition verified against architect spec Issue #398, Section 8 (accessed 2026-03-30).
+Additions verified against architect spec Issue #398, Section 8 (accessed 2026-03-30).
+Updated 2026-04-06 for skill consolidation, blocked disambiguation, and Ideas exception.
 
 ---
 
-## 2. Handoff Protocol
+## 2. Pipeline Stages
 
-Six handoffs connect lifecycle stages. Each completing skill emits a `NEXT:` token; the
-orchestrator reads it and invokes the next skill. Skills are NOT tightly coupled — they do
-not directly call each other.
+The `work-backlog-item` skill is the single entry point for all backlog lifecycle operations.
+A parser (`parse.mjs`) normalizes user input into structured JSON with a `route` field. The
+skill's SKILL.md routes execution to stage-specific workflow files.
 
-**Token format:**
+Pipeline order: `create` → `groom` → `work`
 
-```text
-NEXT: skill="<skill-name>" args="<args>" condition="<observable check>"
+Before running a target stage, the skill checks whether earlier stages have completed. If a
+prerequisite stage's output is missing, it runs that stage first. This replaces the previous
+NEXT-token handoff model where separate skills passed control to each other.
+
+### Stage Definitions
+
+| Stage | Route | Workflow file | Produces | Status on completion |
+|---|---|---|---|---|
+| Create | `create` | `workflows/create/start.md` | `item_ref` (`#N`), backend issue | `needs-grooming` |
+| Groom | `groom` | `workflows/groom/start.md` | DEEP item with 7 required sections | `groomed` |
+| Work | `work` | (remaining SKILL.md logic) | SAM plan, implementation | `in-progress` → `done` |
+
+### Stage Transitions
+
+```mermaid
+flowchart TD
+    Entry(["work-backlog-item {args}"]) --> Parser["parse.mjs normalizes input"]
+    Parser --> Route{"route?"}
+
+    Route -->|create| CreateCheck{"Existing item_ref?"}
+    CreateCheck -->|Yes| Stop1(["Skip create — item exists"])
+    CreateCheck -->|No| Create["Create stage<br>workflows/create/start.md"]
+    Create --> CreateDone(["item_ref produced — stop"])
+
+    Route -->|groom| GroomCheck{"item_ref available?"}
+    GroomCheck -->|No| RunCreate["Run create stage first"]
+    RunCreate --> Groom
+    GroomCheck -->|Yes| GroomReady{"Already groomed?"}
+    GroomReady -->|Yes| DriftCheck["Drift check<br>workflows/groom/groom-drift.md"]
+    GroomReady -->|No| Groom["Groom stage<br>workflows/groom/start.md"]
+    Groom --> GroomDone(["groomed — stop"])
+
+    Route -->|work| WorkCheck{"item_ref + groomed?"}
+    WorkCheck -->|"No item_ref"| RunCreate2["Run create first"]
+    RunCreate2 --> RunGroom
+    WorkCheck -->|"Not groomed"| RunGroom["Run groom first"]
+    RunGroom --> Work
+    WorkCheck -->|"Yes"| Work["Work stage<br>planning, execution"]
+    Work --> WorkDone(["in-progress / done"])
 ```
 
-The condition field must be a machine-evaluable expression. The orchestrator checks the
-condition before invoking the next skill.
+### Prerequisite Checks
 
-### Handoff A: create-backlog-item → groom-backlog-item
+Each stage checks its prerequisites before executing:
 
-**Location**: `create-backlog-item/SKILL.md` completion section.
+- **Create**: No prerequisite. Runs only when no `item_ref` is available.
+- **Groom**: Requires `item_ref`. If absent, runs `create` first. Checks `status` — if already
+  `groomed` and groomed today, routes to drift check instead.
+- **Work**: Requires `item_ref` and `groomed` status. If `item_ref` absent, runs `create`.
+  If not groomed, runs `groom`. If groomed but RT-ICA stale (older than 7 days or
+  `metadata.updated_at` newer than RT-ICA date), re-runs groom.
 
-**NEXT token:**
+### Blocking Gates
 
-```text
-NEXT: skill="groom-backlog-item" args="{item title}" condition="item created successfully AND metadata.status=needs-grooming"
-```
+A gate blocks progression when a later stage's required prerequisites are missing or a
+workflow rule explicitly marks the item `blocked`.
 
-**Required fields before this handoff fires:**
+| Gate | Location | Blocks | Resolution |
+|---|---|---|---|
+| RT-ICA BLOCKED | Groom stage (finalize.md) | groom → work | User provides missing info |
+| Output validation | Groom stage (finalize.md) | groom → work | Retry model (haiku → sonnet → blocked) |
+| RT-ICA stale | Work stage entry | work execution | Re-run groom |
+| AC verification FAIL | Work stage close | work → done | Fix implementation |
+| `verified` marker absent | Work stage resolve | work → resolved | Run `/dh:complete-implementation` or use `--force` |
 
-- `title` — non-empty string
-- `description` — non-empty string
-- `metadata.status` — needs-grooming
-- `metadata.priority` — one of P0, P1, P2, Ideas
+### Quality Gates for `verified` Marker
 
-**Receiving skill input contract** (groom-backlog-item Step 1):
+The `verified` marker (applied by `complete-implementation`) requires these gates to pass:
 
-- Expects selector resolvable via `backlog_list(title=<arg>)`
-- Zero matches: BLOCKED — do not assume item was created
-- `metadata.status != needs-grooming`: skip (already groomed or in later state)
+1. All SAM plan tasks in COMPLETE state
+2. All acceptance criteria verified PASS
+3. Linting passes (`ruff check`, `ty check`)
+4. Tests pass (`pytest`)
+5. No unresolved code review findings
 
----
-
-### Handoff B: groom-backlog-item → group-items-to-milestone
-
-**Location**: `groom-backlog-item/SKILL.md` Step 9 completion section.
-
-**NEXT token:**
-
-```text
-NEXT: skill="group-items-to-milestone" args="" condition="mark_groomed=True applied AND metadata.status=groomed"
-```
-
-**Observable trigger condition**: `backlog_view.sections["RT-ICA"]` contains
-`Decision: APPROVED` AND `backlog_list` shows `groomed: true` for the item.
-
-This handoff is advisory — grooming does not auto-invoke `group-items-to-milestone`. The NEXT
-token signals to a human operator or `--auto` orchestrator that the item is milestone-ready.
-
----
-
-### Handoff C: group-items-to-milestone → start-milestone
-
-**Location**: `group-items-to-milestone/SKILL.md` completion section.
-
-**NEXT token:**
-
-```text
-NEXT: skill="start-milestone" args="{milestone number}" condition="all target items assigned AND milestone open_issues > 0"
-```
-
-**Observable trigger condition**: `backlog_list_milestones` shows milestone with assigned items
-and state `open`.
-
----
-
-### Handoff D: complete-implementation → work-backlog-item resolve
-
-**Location**: `complete-implementation` final step.
-
-**NEXT token:**
-
-```text
-NEXT: skill="work-backlog-item" args="resolve {item title}" condition="status:verified label applied to GitHub Issue #N"
-```
-
-**Observable input contract** (work-backlog-item Step 5.4):
-
-- Gate check: `backlog_view(selector="#N").labels` contains `status:verified`
-- If absent and `--force` not set: BLOCKED with message
-  `"status:verified not found on #N — run /complete-implementation or use resolve --force"`
-
----
-
-### Handoff E: work-backlog-item resolve → complete-milestone
-
-**Location**: `close-resolve-procedure.md` Step 5.7 (after `backlog_resolve` succeeds).
-
-**NEXT token (conditional — only emit when `open_issues == 0` after resolve):**
-
-```text
-NEXT: skill="complete-milestone" args="{milestone number}" condition="all milestone issues status:done OR status:resolved AND open_issues == 0"
-```
-
-**Observable trigger condition**: Query `backlog_list_milestones(milestone=N)` — emit NEXT
-token only if `open_issues == 0`. If `open_issues > 0`, do not emit (milestone still has work).
-
----
-
-### Handoff F: fact-checker → groom-backlog-item
-
-**Type**: Return artifact contract (not a routing handoff — `fact-checker` returns to
-`groom-backlog-item` as the calling skill).
-
-The `fact-checker` agent does not commit, push, or write to backlog files. It returns a
-structured verdict. The orchestrator (`groom-backlog-item`) writes the verdict.
-
-**Fact-checker output contract — required fields:**
-
-```text
-verdict: VERIFIED | REFUTED | INCONCLUSIVE
-claim: {exact claim from item}
-evidence: {tool result citation — WebFetch, WebSearch, Bash, or Read output}
-source: {URL or file path with line numbers}
-```
-
-**groom-backlog-item validation before writing to `section="Fact-Check"`:**
-
-- `verdict` field absent: reject, log `"fact-checker output missing verdict field"`, do not write
-- `evidence` field absent: mark claim INCONCLUSIVE, write with note `"evidence field missing"`
-- Verdict to RT-ICA mapping: REFUTED maps to MISSING condition, INCONCLUSIVE maps to DERIVABLE
-
-SOURCE: Architect spec Issue #398, Section 2 (accessed 2026-03-30).
+SOURCE: Architect spec Issue #398, Section 8 (accessed 2026-03-30).
+Updated 2026-04-06 for pipeline model replacing NEXT-token handoffs.
 
 ---
 
 ## 3. State Persistence
 
-State is persisted in four layers. Each layer has a distinct role.
+State is persisted through the `BacklogBackend` Protocol (`backlog_core/backend_protocol.py`).
+The active backend is the source of truth. When local cache and the backend disagree, the
+backend wins.
 
-### Layer 1 — GitHub Issues (canonical source of truth)
+All state mutations go through MCP tools (`backlog_update`, `backlog_groom`, `backlog_close`,
+`backlog_resolve`). Direct edits to local cache files or backend-native APIs bypass sync
+logic and are prohibited.
 
-GitHub labels are the canonical lifecycle state. When a local file and its linked issue
-disagree, the GitHub issue wins.
+### Persistence Layers
 
-- `status:*` labels — one per item at any time; managed by `state_handler.apply_github_transition()`
-- `priority:*` labels — orthogonal to status; set at creation, changed only by explicit re-prioritization
-- Issue body — mirrors the local item file body after each sync
-- Milestone field — mirrors `metadata.milestone`
+| Layer | Purpose | Access method |
+|---|---|---|
+| Backend | Source of truth for status, priority, sections, comments | MCP tools (`mcp__plugin_dh_backlog__*`) |
+| Local cache | Read-optimized derived copy of backend state | Written only by MCP tools; never edited directly |
+| SAM plans | Task decomposition and execution state | SAM MCP tools (`mcp__plugin_dh_sam__*`) |
+| Active-task context | Ephemeral session state for task execution | Written by `/dh:start-task`, deleted after completion |
 
-Skills interact with GitHub exclusively through MCP tools (`backlog_update` with `status`
-parameter). Direct `gh label` calls are prohibited.
+### Backend Selection
 
-### Layer 2 — Local per-item files (read cache for agent consumption)
+Resolution order:
 
-Path: `~/.dh/projects/{slug}/backlog/{priority}-{slug}.md`
+1. `BACKLOG_BACKEND` environment variable
+2. `[backend] name` in `backend.toml` (project root, then `~/.dh/`)
+3. Default: `github`
 
-Written only by MCP tools (`backlog_add`, `backlog_groom`, `backlog_update`, `backlog_close`,
-`backlog_resolve`, `backlog_pull`). Direct edits bypass sync logic and are prohibited.
+Available backends: `github` (default), `sqlite` (local, no credentials), `memory` (test double).
 
-Fields stored locally:
+See [Backend Providers](./backend-providers.md) for full Protocol reference, method groups,
+and configuration.
+
+### Fields Stored Per Item
 
 | Field | Set by | Description |
 |---|---|---|
-| `metadata.status` | MCP tools | Mirrors the GitHub `status:*` label |
-| `metadata.priority` | `backlog_add` | Mirrors the GitHub `priority:*` label |
-| `metadata.groomed` | `backlog_groom` | Date when grooming completed (set after all 7 sections present) |
-| `metadata.plan` | `backlog_update(plan=...)` | SAM plan address (`P{NNN}`) — backend signal, not a file path |
-| `metadata.issue` | `backlog_add`, `backlog_sync` | GitHub issue number |
-| `metadata.milestone` | `group-items-to-milestone` | GitHub milestone number |
+| `status` | MCP tools | Current lifecycle state (`needs-grooming`, `groomed`, `blocked`, etc.) |
+| `priority` | `backlog_add` | P0, P1, P2, or Ideas |
+| `groomed` | `backlog_groom` | Date when grooming completed (set after all 7 sections present) |
+| `plan` | `backlog_update(plan=...)` | SAM plan address (`P{NNN}`) — a backend reference, not a file path |
+| `issue` | `backlog_add` | Backend issue identifier (`#N` format) |
+| `milestone` | `group-items-to-milestone` | Milestone identifier |
 | Groomed sections | `backlog_groom` | RT-ICA, Impact Radius, Fact-Check, and other groomed subsections |
 
-### Layer 3 — SAM plan files
+### SAM Plan Files
 
-Path: `~/.dh/projects/{slug}/plan/P{NNN}-{slug}.yaml`
+Created by `add-new-feature` Phase 4 via `sam_create`. Managed by the SAM MCP server.
+Access via `sam_read(plan="P{NNN}")` and `sam_list(search="{slug}")` — not via filesystem path.
 
-Created by `add-new-feature` Phase 4 via `sam_create`. Managed by the SAM MCP server — not
-accessed via filesystem path directly. Access via `sam_read(plan="P{NNN}")` and
-`sam_list(search="{slug}")`.
-
-The plan address is written back to the backlog item via
-`backlog_update(selector="{title}", plan="P{NNN}")`. The `metadata.plan` field is a
-backend signal — it records the plan address so the MCP can resolve it, not a filesystem
-path. Do not write or read it as a file path.
-
-### Layer 4 — Active-task context files (ephemeral)
-
-Path: `~/.dh/projects/{slug}/context/active-task-{session-id}.json`
-
-Written by `/dh:start-task` at execution start. Contains `task_file_path`, `task_id`, and
-`parent_issue_number`. Read by `task_status_hook.py` to correlate agent completions to tasks.
-Deleted after SubagentStop fires.
+The plan address is written to the backlog item via
+`backlog_update(selector='{item_ref}', plan='P{NNN}')`. The `plan` field is a backend
+reference, not a filesystem path.
 
 SOURCE: Codebase architecture analysis Issue #398 (accessed 2026-03-30), Section 2.
+Updated 2026-04-06 for backend-agnostic model.
 
 ---
 
-## 4. Skill Routing Reference
+## 4. Route Reference
 
-Flat lookup table: for each state transition, which skill initiates it and the observable
+Flat lookup table: for each state transition, which route initiates it and the observable
 condition that triggers it.
 
-| From State | To State | Initiating Skill | Observable Trigger Condition |
+### Routes That Modify Item State
+
+These are the bounded set of routes that perform state transitions. No other route or skill
+may modify lifecycle state without being added to this table.
+
+| From State | To State | Initiating Route | Observable Trigger Condition |
 |---|---|---|---|
-| `[*]` | `needs-grooming` | `create-backlog-item` | Item created, `metadata.status=needs-grooming` |
-| `needs-grooming` | `groomed` | `groom-backlog-item` | RT-ICA APPROVED AND all 7 canonical sections present |
-| `needs-grooming` | `blocked` | `groom-backlog-item` | RT-ICA BLOCKED — one or more MISSING conditions |
-| `blocked` | `needs-grooming` | (user re-queues) | User provides missing info; operator runs `groom-backlog-item` again |
-| `blocked` | `resolved` | any skill | User cancels item; explicit reason provided |
-| `groomed` | `in-milestone` | `group-items-to-milestone` | Item assigned to open milestone; `metadata.milestone` set |
-| `in-milestone` | `in-progress` | `work-backlog-item` | RT-ICA APPROVED AND SAM plan file created |
-| `in-milestone` | `groomed` | `work-backlog-item` | RT-ICA BLOCKED — item pulled back for re-grooming |
-| `in-progress` | `done` | `work-backlog-item` (close) | Plan checklist 100% AND AC verified PASS AND `--checklist-pass` flag |
-| `in-progress` | `resolved` | `work-backlog-item` (resolve) | `status:verified` label present on GitHub Issue AND explicit reason |
-| `in-progress` | `blocked` | `work-backlog-item` | AC verification FAIL |
-| `in-progress` | `needs-grooming` | `work-backlog-item` | Required groomed section absent during work |
+| `[*]` | `needs-grooming` | `work-backlog-item create` | `backlog_add` returns success with `item_ref` |
+| `needs-grooming` | `groomed` | `work-backlog-item groom` | RT-ICA APPROVED AND all 7 canonical sections present |
+| `needs-grooming` | `blocked` | `work-backlog-item groom` | RT-ICA BLOCKED — one or more MISSING conditions |
+| `blocked` | `needs-grooming` | (user re-queues) | User provides missing info; operator runs `groom` again |
+| `blocked` | `resolved` | any route | User cancels item; explicit reason provided |
+| `groomed` | `in-milestone` | `group-items-to-milestone` | Item assigned to open milestone |
+| `in-milestone` | `in-progress` | `work-backlog-item work` | RT-ICA APPROVED AND SAM plan file created |
+| `in-milestone` | `groomed` | `work-backlog-item work` | RT-ICA BLOCKED — item pulled back for re-grooming |
+| `in-progress` | `done` | `work-backlog-item close` | Plan checklist 100% AND AC verified PASS |
+| `in-progress` | `resolved` | `work-backlog-item resolve` | `verified` marker present AND explicit summary |
+| `in-progress` | `blocked` | `work-backlog-item work` | AC verification FAIL |
+| `in-progress` | `needs-grooming` | `work-backlog-item work` | Required groomed section absent during work |
 | `done` | `closed` | `complete-milestone` | Milestone archived; all items done or resolved |
-| `resolved` | `closed` | `complete-milestone` | Milestone archived; `open_issues == 0` |
-| any | `resolved` | any skill | Item detected invalid, obsolete, or superseded |
+| `resolved` | `closed` | `complete-milestone` | Milestone archived |
+| any | `resolved` | any route | Item detected invalid, obsolete, or superseded |
 
-### GitHub Label Taxonomy
+### Status Values
 
-Labels are managed exclusively by `state_handler.apply_github_transition()` via `backlog_update`.
-Do not set labels with `gh label` directly.
+Status values are managed through MCP tools (`backlog_update` with `status` parameter).
+The active backend handles the storage representation (labels, columns, fields, etc.)
+according to its own implementation.
 
 ```text
-status:needs-grooming   — item created, awaiting grooming
-status:groomed          — grooming complete, RT-ICA APPROVED
-status:blocked          — RT-ICA BLOCKED or AC verification FAIL
-status:in-milestone     — assigned to active milestone
-status:in-progress      — implementation started
-status:done             — implementation complete, AC verified
-status:resolved         — closed without full implementation
-status:closed           — terminal: milestone archived by complete-milestone
+needs-grooming   — item created, awaiting grooming
+groomed          — grooming complete, RT-ICA APPROVED
+blocked          — RT-ICA BLOCKED or AC verification FAIL (see disambiguation in Section 1)
+in-milestone     — assigned to active milestone
+in-progress      — implementation started
+done             — implementation complete, AC verified
+resolved         — closed without full implementation
+closed           — terminal: milestone archived by complete-milestone
 ```
 
-`status:needs-review` exists in the label taxonomy but is NOT a backlog lifecycle state. It has
-no defined entry or exit transitions. Backlog commands MUST NOT set it during state transitions.
-It is retained for backwards compatibility with PR code review workflows only.
+`verified` exists as a cross-route signal applied by `complete-implementation` after quality
+gates pass. It is NOT a lifecycle state and has no entry/exit transitions in the state machine.
 
-SOURCE: `backlog/references/state-machine.md`, GitHub Label Taxonomy section (accessed 2026-03-30).
+SOURCE: `backlog/references/state-machine.md` (accessed 2026-03-30).
+Updated 2026-04-06 for route-based naming.
 
 ---
 
-## 5. Priority Labels and Auto-Mode Defaults
+## 5. Priority and Auto-Mode Defaults
 
-Priority is orthogonal to status. Priority labels are set at creation and do not change unless
+Priority is orthogonal to status. Priority is set at creation and does not change unless
 the item is explicitly re-prioritized.
 
-| Priority | GitHub Label | Local file naming | Description |
-|---|---|---|---|
-| P0 | `priority:P0` | `p0-{slug}.md` | Critical — blocks other work; manual assignment only |
-| P1 | `priority:P1` | `p1-{slug}.md` | High — urgency keyword matched or explicit flag |
-| P2 | `priority:P2` | `p2-{slug}.md` | Normal — default when no urgency keyword present |
-| Ideas | `priority:Ideas` | `ideas-{slug}.md` | Speculative — no GitHub issue created |
+| Priority | Description | Backend issue created? |
+|---|---|---|
+| P0 | Critical — blocks other work; manual assignment only | Yes |
+| P1 | High — urgency keyword matched or explicit flag | Yes |
+| P2 | Normal — default when no urgency keyword present | Yes |
+| Ideas | Speculative — exploratory items | No (see Ideas exception in Section 1) |
 
-### Auto-Mode Priority Derivation (F7 Fix)
+### Auto-Mode Priority Derivation
 
-In `--auto` mode, `create-backlog-item` derives priority from description urgency keywords:
+In `auto` mode, `work-backlog-item create` derives priority from description urgency keywords:
 
 ```text
-Priority: infer from description urgency keywords
-  - "critical", "required", "must" to P1
-  - "nice to have", "optional" to P2
+Priority derivation:
+  - "critical", "required", "must" → P1
+  - "nice to have", "optional" → P2
   - default: P2
 
-P1 requires either a matched urgency keyword or explicit --priority=P1 flag.
-P0 is never assigned by auto-mode — P0 must be set manually.
+P1 requires either a matched urgency keyword or explicit priority flag.
+P0 is never assigned by auto mode — P0 must be set manually.
 ```
 
 Auto-mode log message (default case):
@@ -392,7 +365,7 @@ SOURCE: Architect spec Issue #398, Section 8 and Section 9 (AC8, F7) (accessed 2
 
 ## 6. Data Architecture — Groomed Item Schema
 
-### Required Frontmatter Fields
+### Required Item Fields
 
 ```yaml
 title: {string}
@@ -401,8 +374,8 @@ metadata:
   status: needs-grooming | groomed | in-milestone | in-progress | done | resolved | closed | blocked
   priority: P0 | P1 | P2 | Ideas
   groomed: {YYYY-MM-DD} | null
-  issue: {GitHub issue number} | null
-  milestone: {milestone number} | null
+  issue: {item_ref #N} | null
+  milestone: {milestone identifier} | null
   plan: {plan address P{NNN}} | null
   updated_at: {ISO timestamp}
 ```
@@ -418,12 +391,32 @@ An item is considered fully groomed only when ALL 7 sections are present with mi
 | `Impact Radius` | Required | Contains at least one entry under `Systems Inventory` |
 | `Fact-Check` | Required | Contains at least one claim with `verdict:` field |
 | `Acceptance Criteria` | Required | Non-empty — at least one criterion listed |
-| `Reproducibility` | Required | Non-empty — may be "N/A for feature items" but must be present |
-| `Issue Classification` | Required | Contains `Type:` field with valid type value |
-| `Priority` | Required | Contains `Effort:` field |
+| `Reproducibility` | Required | Non-empty — "N/A for feature items" is acceptable but must be present |
+| `Issue Classification` | Required | Contains `Type:` field with a valid type value (see below) |
+| `Priority` | Required | Contains `Effort:` field with a valid effort value (see below) |
 
 Optional sections (not validated for presence): `Root-Cause Analysis`, `Impact`, `Benefits`,
 `Expected Behavior`, `Files`, `Resources`, `Dependencies`, `Scope`, `Decision`.
+
+### Valid Issue Classification Types
+
+| Type | Description |
+|---|---|
+| `procedural` | Typo, naming, formatting, or surface fix — no analysis required |
+| `recurring-pattern` | Same problem class appeared 2+ times — 6-sigma analysis |
+| `defect` | Traceable failure with identifiable cause chain — 5-whys analysis |
+| `missing-guardrail` | System allowed bad outcome a gate should have prevented — no analysis |
+| `unbounded-design` | No traceable failure, no pattern — design-framing analysis |
+
+### Valid Effort Values
+
+| Value | Description |
+|---|---|
+| `trivial` | < 1 hour, single file, no dependencies |
+| `small` | 1–4 hours, few files, minimal dependencies |
+| `medium` | 4–16 hours, multiple files, some dependencies |
+| `large` | 16+ hours, cross-system, significant dependencies |
+| `unknown` | Insufficient information to estimate — flag for research |
 
 ### RT-ICA Section Format
 
@@ -440,20 +433,20 @@ Decision: APPROVED | BLOCKED
 Missing: {list of MISSING conditions, or "None"}
 ```
 
-The `Date:` header is mandatory. It is used by `work-backlog-item` staleness policy (Step 3.2):
-an RT-ICA result is stale if the date is older than 7 calendar days OR the item's
-`metadata.updated_at` is newer than the RT-ICA date.
+The `Date:` header is mandatory. It is used by the work stage staleness policy: an RT-ICA
+result is stale if the date is older than 7 calendar days OR the item's `metadata.updated_at`
+is newer than the RT-ICA date. Date comparisons use UTC calendar dates.
 
 ### Groomer Output Validation
 
-Before writing groomed sections to the canonical item file, `groom-backlog-item` Step 8.7 runs
-a pre-write validation gate. Full procedure:
-[Groomer Output Validation](../skills/groom-backlog-item/references/groomer-output-validation.md).
+Before writing groomed sections, the groom stage runs a pre-write validation gate. Full
+procedure: [Groom Finalize](../skills/work-backlog-item/references/workflows/groom/finalize.md).
 
-Retry model: haiku groomer (first attempt) → haiku groomer with targeted prompt (retry) → sonnet
-groomer (escalation) → `status:blocked` with explicit error. No silent failures.
+Retry model: haiku groomer (first attempt) → haiku groomer with targeted prompt (retry) →
+sonnet groomer (escalation) → `status:blocked` with explicit error. No silent failures.
 
 SOURCE: Architect spec Issue #398, Section 7 (AC3 validation schema) (accessed 2026-03-30).
+Updated 2026-04-06 with valid type and effort value enumerations.
 
 ---
 
@@ -500,14 +493,15 @@ LOW:     3   ← WRONG — collapses LOW-MEDIUM without annotation
 ```
 
 SOURCE: Architect spec Issue #398, Section 9 (AC7 severity policy decision) (accessed 2026-03-30).
-Decision: "treat severity-count ambiguity as a documentation/policy deliverable during implementation" (RT-ICA 2026-03-03).
 
 ---
 
 ## References
 
+- [Create Workflow](../skills/work-backlog-item/references/workflows/create/start.md) — create stage procedure
+- [Groom Workflow](../skills/work-backlog-item/references/workflows/groom/groom.md) — groom stage index
+- [Groom Finalize](../skills/work-backlog-item/references/workflows/groom/finalize.md) — output validation and write procedure
+- [Backend Providers](./backend-providers.md) — BacklogBackend Protocol, available backends, configuration
 - [State Machine](../skills/backlog/references/state-machine.md) — canonical state DAG source
-- [Feasibility Gate](../skills/work-backlog-item/references/feasibility-gate.md) — Step 3.4 procedure
-- [Groomer Output Validation](../skills/groom-backlog-item/references/groomer-output-validation.md) — Step 8.7 procedure
+- [Feasibility Gate](../skills/work-backlog-item/references/feasibility-gate.md) — work stage feasibility check
 - Architect Spec — access via `artifact_read(issue_number=398, artifact_type="architect")` — authoritative design decisions
-- Codebase Architecture Analysis — access via `artifact_read(issue_number=398, artifact_type="codebase-analysis")` — Phase 2 analysis

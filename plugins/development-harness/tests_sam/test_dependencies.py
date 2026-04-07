@@ -6,26 +6,9 @@ from sam_schema.core.dependencies import BookendValidator, DependencyGraph, _tas
 from sam_schema.core.models import AcceptanceCriterion, BookendType, Complexity, Plan, Priority, Task, TaskStatus
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Helpers (shared — see conftest.py)
 # ---------------------------------------------------------------------------
-
-
-def make_task(
-    task_id: str,
-    status: TaskStatus = TaskStatus.NOT_STARTED,
-    dependencies: list[str] | None = None,
-    priority: Priority = Priority.MEDIUM,
-) -> Task:
-    """Return a minimal Task with the given ID and optional dependencies."""
-    return Task(
-        id=task_id,
-        title=f"Task {task_id}",
-        status=status,
-        dependencies=dependencies or [],
-        priority=priority,
-        complexity=Complexity.MEDIUM,
-    )
-
+from tests_sam.conftest import make_task
 
 # ---------------------------------------------------------------------------
 # _task_id_sort_key unit tests

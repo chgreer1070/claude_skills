@@ -253,6 +253,37 @@ class TestAddItemCreatesLocalFile:
 
         assert result["issue_num"] == 99
 
+    def test_add_item_returns_item_ref_in_hash_n_format(self, mocker: MockerFixture) -> None:
+        """Verify add_item return dict includes item_ref in '#N' string format.
+
+        Tests: add_item item_ref field — canonical backlog identifier format.
+        How: Mock create_issue_for_item to return 1632; assert item_ref == '#1632'.
+        Why: Workflow docs and tool selectors use '#N' format; backlog_add must
+             expose item_ref so callers have a ready-to-use selector string without
+             manual formatting.
+        """
+        mock_repo = mocker.Mock()
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.create_issue_for_item", return_value=1632)
+
+        result = add_item(title="Item Ref Format Check", description="desc", priority="P1")
+
+        assert result["item_ref"] == "#1632"
+
+    def test_add_item_item_ref_absent_when_no_github_issue(self, mocker: MockerFixture) -> None:
+        """Verify item_ref is absent from result when GitHub issue creation fails.
+
+        Tests: add_item item_ref absent on no-issue path.
+        How: Mock try_get_github to return None (no GitHub available).
+        Why: item_ref must not be present with a falsy value — absence is the
+             correct signal that no issue was created.
+        """
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        result = add_item(title="Local Only No Ref", description="desc", priority="P2")
+
+        assert "item_ref" not in result
+
 
 class TestAddItemDuplicateDetection:
     """add_item raises DuplicateItemError on fuzzy duplicates unless force=True."""

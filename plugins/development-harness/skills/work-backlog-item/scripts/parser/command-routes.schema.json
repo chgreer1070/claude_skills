@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["commands"],
+  "properties": {
+    "commands": {
+      "type": "object",
+      "description": "Map of exact argv tokens to their skill-relative documentation paths",
+      "additionalProperties": {
+        "type": "string",
+        "description": "Path relative to the skill directory (e.g., 'references/close-resolve-procedure.md')"
+      }
+    }
+  }
+}

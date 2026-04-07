@@ -21,24 +21,6 @@ A skill for querying and managing feature implementation task files. Provides pr
 
 The SAM MCP server (`mcp__plugin_dh_sam__*`) is the primary interface for all SAM task file operations. The `uv run sam` CLI is available as fallback when MCP is unavailable.
 
-> **Migration note (P1601 — 2026-Q1)**: The 8-tool SAM MCP API has been consolidated into
-> 3 distributed-safe tools: `sam_plan` (plan-level operations), `sam_task` (task-level
-> operations), and `sam_active_task` (session context registration). The deprecated tools
-> listed below remain as compatibility shims — they still work but new code must use the
-> consolidated API.
->
-> | Deprecated tool | Consolidated replacement |
-> |---|---|
-> | `sam_list` | `sam_plan` |
-> | `sam_status` | `sam_plan` |
-> | `sam_ready` | `sam_plan` |
-> | `sam_read` (plan-level) | `sam_plan` |
-> | `sam_read` (task-level) | `sam_task` |
-> | `sam_claim` | `sam_task` |
-> | `sam_state` | `sam_task` |
-> | `sam_update` | `sam_plan` |
-> | `sam_create` | `sam_plan` |
-
 ### Commands
 
 #### list
@@ -262,7 +244,7 @@ export CLAUDE_SKILLS_DISABLED_HOOKS="task-status:post-tool-use,task-status:subag
 
 The `/dh:execution` orchestrator uses this skill to:
 
-1. Query task file status via `mcp__plugin_dh_sam__sam_plan` (deprecated: `sam_status(plan="P{N}")`)
-2. Find ready tasks via `mcp__plugin_dh_sam__sam_plan` (deprecated: `sam_ready(plan="P{N}")`)
+1. Query task file status via `mcp__plugin_dh_sam__sam_plan`
+2. Find ready tasks via `mcp__plugin_dh_sam__sam_plan`
 3. Launch appropriate agents based on task's `agent` field
 4. Update timestamps via hook scripts when tasks start/complete

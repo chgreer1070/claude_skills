@@ -36,26 +36,10 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Helpers (shared — see conftest.py)
 # ---------------------------------------------------------------------------
 
-
-def make_task(
-    task_id: str,
-    status: TaskStatus = TaskStatus.NOT_STARTED,
-    dependencies: list[str] | None = None,
-    priority: Priority = Priority.MEDIUM,
-) -> Task:
-    """Return a minimal Task for test use."""
-    return Task(
-        id=task_id,
-        title=f"Task {task_id}",
-        status=status,
-        dependencies=dependencies or [],
-        priority=priority,
-        complexity=Complexity.MEDIUM,
-    )
-
+from tests_sam.conftest import make_task
 
 # ---------------------------------------------------------------------------
 # Fixtures

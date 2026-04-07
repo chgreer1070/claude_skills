@@ -116,10 +116,6 @@ $ARGUMENTS
    Omit `parent_issue_number` from the config if the story issue number is not known. The hook
    treats absence as `None` and skips GitHub sync.
 
-   > **Migration note**: This step previously wrote `active-task-{session_id}.json` directly to
-   > the filesystem via inline Python (`dh_paths.context_dir()` + `write_text`). That approach is
-   > deprecated. Use `sam_active_task(action="set")` instead.
-
 If `parent_issue_number` is known and `github_issue` field is set in the task YAML, call
 `backlog_core.gh_client.update_task_status(repo, github_issue, "in-progress")` after the
 `claim-task` step to sync the in-progress status to GitHub. Failure is non-fatal — continue

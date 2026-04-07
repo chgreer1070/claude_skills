@@ -1789,6 +1789,7 @@ def add_item(
     result: dict[str, str | int | bool | list[str]] = {"title": title, "priority": priority, "file_path": str(filepath)}
     if issue_num:
         result["issue_num"] = issue_num
+        result["item_ref"] = f"#{issue_num}"
     return {**result, **out.to_dict()}
 
 

@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["mode", "route"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["auto", "interactive"],
+      "description": "`auto` when `--auto` was passed; otherwise `interactive`"
+    },
+    "route": {
+      "type": "string",
+      "description": "`none` when there are no args to route on (skill: no-args / browser path); otherwise `issue`, `title_substring`, or a registry key (e.g. close, setup-github)"
+    },
+    "reference": {
+      "type": "string",
+      "description": "from registry when route is a registry key; omitted if null"
+    },
+    "flags": {
+      "type": "object",
+      "description": "contains only the flags that were explicitly provided in the invocation",
+      "additionalProperties": false,
+      "properties": {
+        "language": { "type": "string" },
+        "stack": { "type": "string" },
+        "force": { "type": "boolean" },
+        "auto": { "type": "boolean" },
+        "quick": { "type": "boolean" }
+      }
+    },
+    "item_ref": {
+      "type": "string",
+      "description": "Backlog item reference `#N` when input is `#N` or bare digits; full GitHub issue URL when input is a URL; omitted if absent"
+    },
+    "user_text": {
+      "type": "string",
+      "description": "any remaining positional arguments joined by a space, or the entire freetext suffix if a delimiter was used; omitted if null/empty"
+    }
+  }
+}
