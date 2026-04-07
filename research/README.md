@@ -491,6 +491,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [ruflo.md](./agent-frameworks/ruflo.md)                               | Ruflo (formerly Claude Flow) — production-ready multi-agent orchestration: 100+ specialized agents, 26 CLI commands, 215+ MCP tools, RuVector self-learning layer, fault-tolerant consensus (npm ruflo@3.5.0, MIT) | 2026-03-28   |
 | [solace-agent-mesh.md](./agent-frameworks/solace-agent-mesh.md)       | Solace Agent Mesh — event-driven multi-agent AI framework with Solace Platform messaging for agent delegation, artifact sharing, and scalable peer-to-peer agent collaboration (Apache-2.0) | 2026-03-28   |
 | [gitagent.md](./agent-frameworks/gitagent.md)                         | GitAgent v0.1.7 — framework-agnostic, git-native AI agent standard; define agents as git repos with AGENT.yaml spec (system prompts, tool schemas, compliance policies); exporters for Claude Code, OpenAI, LangChain, CrewAI, AutoGen; "Clone a repo, get an agent" (MIT) | 2026-03-29   |
+| [Trellis.md](./agent-frameworks/Trellis.md)                           | Multi-platform AI coding framework supporting 12 platforms with spec injection, task management, and parallel execution via worktrees | 2026-04-06   |
 
 **Key Topics**:
 
