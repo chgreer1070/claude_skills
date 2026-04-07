@@ -1,0 +1,12 @@
+---
+description: Do not pretty-print JSON by default for machine or LLM consumption
+alwaysApply: true
+---
+
+# JSON output (no pretty-print by default)
+
+When emitting JSON for **scripts, tools, MCP, or any path where output is consumed by programs or LLMs** (not a human reading a terminal for debugging):
+
+- Use **`JSON.stringify(value)`** only — do **not** use `JSON.stringify(value, null, 2)` or other spacing/indent by default.
+- Extra newlines and indentation are **token cost** for models and add no parsing benefit.
+
