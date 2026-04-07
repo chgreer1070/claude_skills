@@ -76,43 +76,29 @@ def test_list_issues_returns_issues_with_expected_fields(monkeypatch: pytest.Mon
     """list_issues returns dicts with all required fields for each issue.
 
     Tests: list_issues operation field mapping
-    How: Mock get_github to return a single issue; verify field names and values.
+    How: Mock get_github and sync_issues_graphql; verify field names and values.
     Why: Field names are the contract between server and MCP consumers.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    issue = _make_issue(number=42, title="Fix crash", state="open", labels=["bug"], assignees=["alice"])
-    mock_repo.get_issues.return_value = [issue]
-    mock_repo.get_milestones.return_value = []
-    mock_repo.get_labels.return_value = []
-    mock_repo.requester.graphql_query.return_value = (
-        {},
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+
+    issue_nodes = [
         {
-            "data": {
-                "repository": {
-                    "issues": {
-                        "nodes": [
-                            {
-                                "id": "I_42",
-                                "number": 42,
-                                "title": "Fix crash",
-                                "state": "OPEN",
-                                "body": "",
-                                "createdAt": "2026-03-01T00:00:00Z",
-                                "updatedAt": "2026-03-15T00:00:00Z",
-                                "labels": {"nodes": [{"id": "L_1", "name": "bug"}]},
-                                "assignees": {"nodes": [{"login": "alice"}]},
-                                "milestone": None,
-                            }
-                        ],
-                        "pageInfo": {"hasNextPage": False},
-                    }
-                }
-            }
-        },
-    )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+            "id": "I_42",
+            "number": 42,
+            "title": "Fix crash",
+            "state": "OPEN",
+            "body": "",
+            "createdAt": "2026-03-01T00:00:00Z",
+            "updatedAt": "2026-03-15T00:00:00Z",
+            "labels": [{"name": "bug"}],
+            "assignees": [{"login": "alice"}],
+            "milestone": None,
+        }
+    ]
+    monkeypatch.setattr("backlog_core.operations.sync_issues_graphql", lambda *args, **kwargs: issue_nodes)
 
     from backlog_core.operations import list_issues
 
@@ -138,43 +124,30 @@ def test_list_issues_respects_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     """list_issues stops collecting once limit is reached.
 
     Tests: list_issues limit parameter
-    How: Provide 5 issues, request limit=2, verify only 2 returned.
+    How: Provide 5 issues via sync_issues_graphql mock, request limit=2, verify only 2 returned.
     Why: Limit prevents unbounded API consumption.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_issues.return_value = [_make_issue(number=i) for i in range(5)]
-    mock_repo.get_milestones.return_value = []
-    mock_repo.get_labels.return_value = []
-    mock_repo.requester.graphql_query.return_value = (
-        {},
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+
+    issue_nodes = [
         {
-            "data": {
-                "repository": {
-                    "issues": {
-                        "nodes": [
-                            {
-                                "id": f"I_{i}",
-                                "number": i,
-                                "title": "Test issue",
-                                "state": "OPEN",
-                                "body": "",
-                                "createdAt": "2026-03-01T00:00:00Z",
-                                "updatedAt": "2026-03-15T00:00:00Z",
-                                "labels": {"nodes": []},
-                                "assignees": {"nodes": []},
-                                "milestone": None,
-                            }
-                            for i in range(5)
-                        ],
-                        "pageInfo": {"hasNextPage": False},
-                    }
-                }
-            }
-        },
-    )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+            "id": f"I_{i}",
+            "number": i,
+            "title": "Test issue",
+            "state": "OPEN",
+            "body": "",
+            "createdAt": "2026-03-01T00:00:00Z",
+            "updatedAt": "2026-03-15T00:00:00Z",
+            "labels": [],
+            "assignees": [],
+            "milestone": None,
+        }
+        for i in range(5)
+    ]
+    monkeypatch.setattr("backlog_core.operations.sync_issues_graphql", lambda *args, **kwargs: issue_nodes)
 
     from backlog_core.operations import list_issues
 
@@ -198,14 +171,8 @@ def test_list_issues_returns_empty_when_no_issues(monkeypatch: pytest.MonkeyPatc
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_issues.return_value = []
-    mock_repo.get_milestones.return_value = []
-    mock_repo.get_labels.return_value = []
-    mock_repo.requester.graphql_query.return_value = (
-        {},
-        {"data": {"repository": {"issues": {"nodes": [], "pageInfo": {"hasNextPage": False}}}}},
-    )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    monkeypatch.setattr("backlog_core.operations.sync_issues_graphql", lambda *a, **kw: [])
 
     from backlog_core.operations import list_issues
 
@@ -238,7 +205,7 @@ def test_list_issues_github_exception_raises_backlog_error(monkeypatch: pytest.M
     """list_issues wraps GithubException as BacklogError.
 
     Tests: list_issues error handling
-    How: Raise GithubException from get_issues mock; verify BacklogError raised.
+    How: Raise GithubException from sync_issues_graphql mock; verify BacklogError raised.
     Why: Callers receive a consistent error type regardless of PyGithub internals.
     """
     # Arrange
@@ -246,11 +213,12 @@ def test_list_issues_github_exception_raises_backlog_error(monkeypatch: pytest.M
 
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_issues.side_effect = GithubException(status=500, data="Server error", headers={})
-    mock_repo.get_milestones.return_value = []
-    mock_repo.get_labels.return_value = []
-    mock_repo.requester.graphql_query.side_effect = GithubException(status=500, data="Server error", headers={})
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+
+    def _raise_github_exc(*args, **kwargs):
+        raise GithubException(status=500, data="Server error", headers={})
+
+    monkeypatch.setattr("backlog_core.operations.sync_issues_graphql", _raise_github_exc)
 
     from backlog_core.operations import list_issues
 
@@ -260,28 +228,33 @@ def test_list_issues_github_exception_raises_backlog_error(monkeypatch: pytest.M
 
 
 def test_list_issues_passes_state_to_get_issues(monkeypatch: pytest.MonkeyPatch) -> None:
-    """list_issues passes the state parameter through to get_issues.
+    """list_issues passes the state parameter through to sync_issues_graphql.
 
     Tests: list_issues state forwarding
-    How: Capture kwargs passed to get_issues and verify state is forwarded.
+    How: Capture kwargs passed to sync_issues_graphql and verify state is forwarded.
     Why: Filtering by state is required for the feature to be useful.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_issues.return_value = []
-    mock_repo.get_milestones.return_value = []
-    mock_repo.get_labels.return_value = []
-    mock_repo.requester.graphql_query.return_value = (
-        {},
-        {"data": {"repository": {"issues": {"nodes": [], "pageInfo": {"hasNextPage": False}}}}},
-    )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+
+    captured_kwargs: list[dict] = []
+
+    def _capture_sync(*args, **kwargs):
+        captured_kwargs.append(kwargs)
+        return []
+
+    monkeypatch.setattr("backlog_core.operations.sync_issues_graphql", _capture_sync)
 
     from backlog_core.operations import list_issues
 
     # Act
     list_issues(state="closed")
+
+    # Assert — state should be forwarded as GraphQL enum "CLOSED"
+    assert len(captured_kwargs) == 1
+    assert captured_kwargs[0]["state"] == "CLOSED"
 
 
 def test_list_issues_output_messages_merged(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -294,14 +267,8 @@ def test_list_issues_output_messages_merged(monkeypatch: pytest.MonkeyPatch) -> 
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_issues.return_value = []
-    mock_repo.get_milestones.return_value = []
-    mock_repo.get_labels.return_value = []
-    mock_repo.requester.graphql_query.return_value = (
-        {},
-        {"data": {"repository": {"issues": {"nodes": [], "pageInfo": {"hasNextPage": False}}}}},
-    )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    monkeypatch.setattr("backlog_core.operations.sync_issues_graphql", lambda *a, **kw: [])
 
     from backlog_core.operations import list_issues
 
@@ -328,39 +295,28 @@ def test_comment_issue_returns_expected_fields(monkeypatch: pytest.MonkeyPatch) 
     """comment_issue returns issue_number, comment_id, and comment_url.
 
     Tests: comment_issue field mapping
-    How: Mock get_issue and create_comment; verify returned dict keys.
+    How: Mock get_github, _fetch_issue_graphql, and _add_comment_graphql; verify returned dict keys.
     Why: Callers depend on comment_id and comment_url for downstream linking.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.requester.graphql_query.side_effect = [
-        # First call: _fetch_issue_graphql
-        (
-            {},
-            {
-                "data": {
-                    "repository": {
-                        "issue": {
-                            "id": "I_NODE_42",
-                            "number": 42,
-                            "title": "Fix crash",
-                            "state": "OPEN",
-                            "body": "",
-                            "createdAt": "2026-03-01T00:00:00Z",
-                            "updatedAt": "2026-03-15T00:00:00Z",
-                            "labels": {"nodes": []},
-                            "assignees": {"nodes": []},
-                            "milestone": None,
-                        }
-                    }
-                }
-            },
-        ),
-        # Second call: _add_comment_graphql
-        ({}, {"data": {"addComment": {"commentEdge": {"node": {"id": "C_999"}}}}}),
-    ]
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+
+    issue_node = {
+        "id": "I_NODE_42",
+        "number": 42,
+        "title": "Fix crash",
+        "state": "OPEN",
+        "body": "",
+        "createdAt": "2026-03-01T00:00:00Z",
+        "updatedAt": "2026-03-15T00:00:00Z",
+        "labels": [],
+        "assignees": [],
+        "milestone": None,
+    }
+    monkeypatch.setattr("backlog_core.operations._fetch_issue_graphql", lambda *args, **kwargs: issue_node)
+    monkeypatch.setattr("backlog_core.operations._add_comment_graphql", lambda *args, **kwargs: "C_999")
 
     from backlog_core.operations import comment_issue
 
@@ -411,7 +367,7 @@ def test_comment_issue_github_exception_raises_backlog_error(monkeypatch: pytest
     """comment_issue wraps GithubException as BacklogError.
 
     Tests: comment_issue error handling
-    How: Raise GithubException from create_comment; verify BacklogError raised.
+    How: Raise GithubException from _fetch_issue_graphql mock; verify BacklogError raised.
     Why: Uniform error type makes caller error handling predictable.
     """
     # Arrange
@@ -419,8 +375,12 @@ def test_comment_issue_github_exception_raises_backlog_error(monkeypatch: pytest
 
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.requester.graphql_query.side_effect = GithubException(status=404, data="Not found", headers={})
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+
+    def _raise_github_exc(*args, **kwargs):
+        raise GithubException(status=404, data="Not found", headers={})
+
+    monkeypatch.setattr("backlog_core.operations._fetch_issue_graphql", _raise_github_exc)
 
     from backlog_core.operations import comment_issue
 

@@ -397,6 +397,7 @@ class TestUpdateItemSectionsRouting:
         """
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
         mocker.patch("backlog_core.operations._pull_if_issue_selector")
+        mocker.patch("backlog_core.operations._create_issue_and_update_item", return_value=None)
         spy = mocker.patch("backlog_core.operations._handle_batch_groomed")
         _write_item_file(_backlog_dir(), title="No Sections Item", topic="no-sections-item")
 

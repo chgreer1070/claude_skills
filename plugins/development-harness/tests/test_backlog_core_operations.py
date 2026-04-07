@@ -873,6 +873,7 @@ class TestUpdateItemTitleAndDescription:
         fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Old Title", topic="old-title")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mocker.patch("backlog_core.operations._create_issue_and_update_item", return_value=None)
 
         result = update_item(selector="Old Title", title="New Title")
 
@@ -927,6 +928,7 @@ class TestUpdateItemTitleAndDescription:
         fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="No Issue Item", topic="no-issue-item", issue="")
         mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
+        mocker.patch("backlog_core.operations._create_issue_and_update_item", return_value=None)
 
         update_item(selector="No Issue Item", title="Still No Issue Item")
 
@@ -949,6 +951,7 @@ class TestUpdateItemTitleAndDescription:
         fake_dir: Path = models.get_backlog_dir()
         _write_item(fake_dir, title="Desc Item", topic="desc-item")
         mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+        mocker.patch("backlog_core.operations._create_issue_and_update_item", return_value=None)
 
         result = update_item(selector="Desc Item", description="Updated description text.")
 

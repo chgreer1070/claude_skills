@@ -146,6 +146,24 @@ def mock_github(monkeypatch):
         "issue_to_local_fields": IssueLocalFields(
             title="Test", body="body", priority="P1", item_type="Feature", status="open"
         ),
+        # Backend-delegated GraphQL helpers — prevent InMemoryBackend from
+        # raising RuntimeError/KeyError when tests set BACKLOG_BACKEND=memory.
+        "_fetch_issue_graphql": {
+            "id": "I_mock",
+            "number": 0,
+            "title": "Mock Issue",
+            "state": "OPEN",
+            "body": "",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-01T00:00:00Z",
+            "labels": [],
+            "assignees": [],
+            "milestone": None,
+        },
+        "_update_issue_graphql": None,
+        "_add_comment_graphql": "C_mock",
+        "_fetch_milestones_graphql": [],
+        "sync_issues_graphql": [],
     }
     for name, default in defaults.items():
         mock = MagicMock(return_value=default)

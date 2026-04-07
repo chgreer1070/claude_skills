@@ -1573,35 +1573,32 @@ class TestResolveVerifiedGate:
         mock_repo.full_name = "owner/repo"
         mock_repo.get_issues.return_value = []
 
+        # closedAt must be recent (within 30-day cutoff used by _reconcile_closed_issues)
+        from datetime import UTC, datetime, timedelta
+
+        recent_closed = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         closed_issue_node = {
             "id": "I_206",
             "number": 206,
             "title": "Premature Close Test",
             "state": "CLOSED",
             "body": "",
-            "closedAt": "2026-01-01T00:00:00Z",
+            "closedAt": recent_closed,
             "createdAt": "2026-01-01T00:00:00Z",
-            "updatedAt": "2026-01-01T00:00:00Z",
+            "updatedAt": recent_closed,
             "isPullRequest": False,
-            "labels": {"nodes": []},
+            "labels": [],
             "milestone": None,
-            "assignees": {"nodes": []},
+            "assignees": [],
         }
 
-        def _graphql_side_effect(query: str, variables: dict) -> tuple[dict, dict]:
-            states = variables.get("states", [])
-            if "CLOSED" in states:
-                return (
-                    {},
-                    {
-                        "data": {
-                            "repository": {"issues": {"nodes": [closed_issue_node], "pageInfo": {"hasNextPage": False}}}
-                        }
-                    },
-                )
-            return ({}, {"data": {"repository": {"issues": {"nodes": [], "pageInfo": {"hasNextPage": False}}}}})
+        def _sync_issues_side_effect(*args, **kwargs):
+            state = kwargs.get("state", "OPEN")
+            if state == "CLOSED":
+                return [closed_issue_node]
+            return []
 
-        mock_repo.requester.graphql_query.side_effect = _graphql_side_effect
+        mock_github["sync_issues_graphql"].side_effect = _sync_issues_side_effect
         mock_github["try_get_github"].return_value = mock_repo
 
         # Trigger reconciliation via from_github=True

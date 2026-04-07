@@ -69,37 +69,28 @@ def test_list_milestones_returns_expected_fields(monkeypatch: pytest.MonkeyPatch
     """list_milestones returns dicts with all required fields.
 
     Tests: list_milestones field mapping
-    How: Mock get_github to return one milestone; verify field names and values.
+    How: Mock get_github and _fetch_milestones_graphql; verify field names and values.
     Why: Field names are the contract between server and MCP consumers.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_milestones.return_value = [_make_milestone(number=1, title="v1.0")]
-    mock_repo.requester.graphql_query.return_value = (
-        {},
-        {
-            "data": {
-                "repository": {
-                    "milestones": {
-                        "nodes": [
-                            {
-                                "id": "M_1",
-                                "number": 1,
-                                "title": "v1.0",
-                                "state": "OPEN",
-                                "description": "",
-                                "dueOn": _DUE_ON_STR,
-                                "issues": {"totalCount": 3},
-                                "closedIssues": {"totalCount": 7},
-                            }
-                        ]
-                    }
-                }
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    monkeypatch.setattr(
+        "backlog_core.operations._fetch_milestones_graphql",
+        lambda *a, **kw: [
+            {
+                "id": "M_1",
+                "number": 1,
+                "title": "v1.0",
+                "state": "OPEN",
+                "description": "",
+                "dueOn": _DUE_ON_STR,
+                "openIssueCount": 3,
+                "closedIssueCount": 7,
             }
-        },
+        ],
     )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
 
     from backlog_core.operations import list_milestones
 
@@ -125,37 +116,28 @@ def test_list_milestones_none_due_on_returns_null(monkeypatch: pytest.MonkeyPatc
     """list_milestones serialises milestones without a due date as None.
 
     Tests: list_milestones null due_on handling
-    How: Provide milestone with due_on=None; verify result due_on is None.
+    How: Provide milestone with due_on=None via _fetch_milestones_graphql mock; verify result due_on is None.
     Why: Nullable due_on is valid; consumers must handle None without crashing.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_milestones.return_value = [_make_milestone(due_on=None)]
-    mock_repo.requester.graphql_query.return_value = (
-        {},
-        {
-            "data": {
-                "repository": {
-                    "milestones": {
-                        "nodes": [
-                            {
-                                "id": "M_1",
-                                "number": 1,
-                                "title": "v1.0",
-                                "state": "OPEN",
-                                "description": "",
-                                "dueOn": None,
-                                "issues": {"totalCount": 3},
-                                "closedIssues": {"totalCount": 7},
-                            }
-                        ]
-                    }
-                }
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    monkeypatch.setattr(
+        "backlog_core.operations._fetch_milestones_graphql",
+        lambda *a, **kw: [
+            {
+                "id": "M_1",
+                "number": 1,
+                "title": "v1.0",
+                "state": "OPEN",
+                "description": "",
+                "dueOn": None,
+                "openIssueCount": 3,
+                "closedIssueCount": 7,
             }
-        },
+        ],
     )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
 
     from backlog_core.operations import list_milestones
 
@@ -171,38 +153,47 @@ def test_list_milestones_none_due_on_returns_null(monkeypatch: pytest.MonkeyPatc
 
 
 def test_list_milestones_passes_state_filter(monkeypatch: pytest.MonkeyPatch) -> None:
-    """list_milestones forwards the state parameter to get_milestones.
+    """list_milestones forwards the state parameter to _fetch_milestones_graphql.
 
     Tests: list_milestones state forwarding
-    How: Capture kwargs passed to get_milestones; verify state is forwarded.
+    How: Capture args passed to _fetch_milestones_graphql; verify states is forwarded.
     Why: State filtering is the core feature of this operation.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_milestones.return_value = []
-    mock_repo.requester.graphql_query.return_value = ({}, {"data": {"repository": {"milestones": {"nodes": []}}}})
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+
+    captured: list[list[str]] = []
+
+    def _capture_fetch(*args, **kwargs):
+        captured.append(kwargs.get("states", args[3] if len(args) > 3 else []))
+        return []
+
+    monkeypatch.setattr("backlog_core.operations._fetch_milestones_graphql", _capture_fetch)
 
     from backlog_core.operations import list_milestones
 
     # Act — verifies state="closed" is accepted without error
     list_milestones(state="closed")
 
+    # Assert — state "closed" maps to ["CLOSED"]
+    assert len(captured) == 1
+    assert captured[0] == ["CLOSED"]
+
 
 def test_list_milestones_empty_returns_zero_count(monkeypatch: pytest.MonkeyPatch) -> None:
     """list_milestones returns count=0 and empty list when repo has no milestones.
 
     Tests: list_milestones empty case
-    How: Return empty list from get_milestones; verify count and empty list.
+    How: Return empty list from _fetch_milestones_graphql; verify count and empty list.
     Why: Empty result must be handled without errors.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_milestones.return_value = []
-    mock_repo.requester.graphql_query.return_value = ({}, {"data": {"repository": {"milestones": {"nodes": []}}}})
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    monkeypatch.setattr("backlog_core.operations._fetch_milestones_graphql", lambda *a, **kw: [])
 
     from backlog_core.operations import list_milestones
 
@@ -223,47 +214,39 @@ def test_get_soonest_milestone_returns_earliest_due_date(monkeypatch: pytest.Mon
     """get_soonest_milestone returns the milestone with the earliest due date.
 
     Tests: get_soonest_milestone sorting logic
-    How: Provide two milestones with different due dates; verify earliest returned.
+    How: Provide two milestones with different due dates via mock; verify earliest returned.
     Why: The 'soonest' selection is the defining behaviour of this operation.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    # reversed order intentionally — graphql returns far first, near second
-    mock_repo.requester.graphql_query.return_value = (
-        {},
-        {
-            "data": {
-                "repository": {
-                    "milestones": {
-                        "nodes": [
-                            {
-                                "id": "M_2",
-                                "number": 2,
-                                "title": "v2.0",
-                                "state": "OPEN",
-                                "description": "",
-                                "dueOn": "2026-12-31T00:00:00+00:00",
-                                "issues": {"totalCount": 0},
-                                "closedIssues": {"totalCount": 0},
-                            },
-                            {
-                                "id": "M_1",
-                                "number": 1,
-                                "title": "v1.0",
-                                "state": "OPEN",
-                                "description": "",
-                                "dueOn": "2026-04-01T00:00:00+00:00",
-                                "issues": {"totalCount": 0},
-                                "closedIssues": {"totalCount": 0},
-                            },
-                        ]
-                    }
-                }
-            }
-        },
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    # reversed order intentionally — far first, near second
+    monkeypatch.setattr(
+        "backlog_core.operations._fetch_milestones_graphql",
+        lambda *a, **kw: [
+            {
+                "id": "M_2",
+                "number": 2,
+                "title": "v2.0",
+                "state": "OPEN",
+                "description": "",
+                "dueOn": "2026-12-31T00:00:00+00:00",
+                "openIssueCount": 0,
+                "closedIssueCount": 0,
+            },
+            {
+                "id": "M_1",
+                "number": 1,
+                "title": "v1.0",
+                "state": "OPEN",
+                "description": "",
+                "dueOn": "2026-04-01T00:00:00+00:00",
+                "openIssueCount": 0,
+                "closedIssueCount": 0,
+            },
+        ],
     )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
 
     from backlog_core.operations import get_soonest_milestone
 
@@ -281,15 +264,14 @@ def test_get_soonest_milestone_none_when_no_milestones(monkeypatch: pytest.Monke
     """get_soonest_milestone returns milestone=None when repo has no open milestones.
 
     Tests: get_soonest_milestone empty repo case
-    How: Return empty list from get_milestones; verify milestone key is None.
+    How: Return empty list from _fetch_milestones_graphql; verify milestone key is None.
     Why: Consumers must be able to check for None without crashing.
     """
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.get_milestones.return_value = []
-    mock_repo.requester.graphql_query.return_value = ({}, {"data": {"repository": {"milestones": {"nodes": []}}}})
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    monkeypatch.setattr("backlog_core.operations._fetch_milestones_graphql", lambda *a, **kw: [])
 
     from backlog_core.operations import get_soonest_milestone
 
@@ -310,40 +292,32 @@ def test_get_soonest_milestone_skips_milestones_without_due_date(monkeypatch: py
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.requester.graphql_query.return_value = (
-        {},
-        {
-            "data": {
-                "repository": {
-                    "milestones": {
-                        "nodes": [
-                            {
-                                "id": "M_2",
-                                "number": 2,
-                                "title": "v2.0",
-                                "state": "OPEN",
-                                "description": "",
-                                "dueOn": None,
-                                "issues": {"totalCount": 0},
-                                "closedIssues": {"totalCount": 0},
-                            },
-                            {
-                                "id": "M_1",
-                                "number": 1,
-                                "title": "v1.0",
-                                "state": "OPEN",
-                                "description": "",
-                                "dueOn": "2026-06-01T00:00:00+00:00",
-                                "issues": {"totalCount": 0},
-                                "closedIssues": {"totalCount": 0},
-                            },
-                        ]
-                    }
-                }
-            }
-        },
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    monkeypatch.setattr(
+        "backlog_core.operations._fetch_milestones_graphql",
+        lambda *a, **kw: [
+            {
+                "id": "M_2",
+                "number": 2,
+                "title": "v2.0",
+                "state": "OPEN",
+                "description": "",
+                "dueOn": None,
+                "openIssueCount": 0,
+                "closedIssueCount": 0,
+            },
+            {
+                "id": "M_1",
+                "number": 1,
+                "title": "v1.0",
+                "state": "OPEN",
+                "description": "",
+                "dueOn": "2026-06-01T00:00:00+00:00",
+                "openIssueCount": 0,
+                "closedIssueCount": 0,
+            },
+        ],
     )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
 
     from backlog_core.operations import get_soonest_milestone
 
@@ -366,40 +340,32 @@ def test_get_soonest_milestone_falls_back_to_first_when_no_due_dates(monkeypatch
     # Arrange
     mock_repo = MagicMock()
     mock_repo.full_name = "owner/repo"
-    mock_repo.requester.graphql_query.return_value = (
-        {},
-        {
-            "data": {
-                "repository": {
-                    "milestones": {
-                        "nodes": [
-                            {
-                                "id": "M_1",
-                                "number": 1,
-                                "title": "v1.0",
-                                "state": "OPEN",
-                                "description": "",
-                                "dueOn": None,
-                                "issues": {"totalCount": 0},
-                                "closedIssues": {"totalCount": 0},
-                            },
-                            {
-                                "id": "M_2",
-                                "number": 2,
-                                "title": "v2.0",
-                                "state": "OPEN",
-                                "description": "",
-                                "dueOn": None,
-                                "issues": {"totalCount": 0},
-                                "closedIssues": {"totalCount": 0},
-                            },
-                        ]
-                    }
-                }
-            }
-        },
+    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo="": mock_repo)
+    monkeypatch.setattr(
+        "backlog_core.operations._fetch_milestones_graphql",
+        lambda *a, **kw: [
+            {
+                "id": "M_1",
+                "number": 1,
+                "title": "v1.0",
+                "state": "OPEN",
+                "description": "",
+                "dueOn": None,
+                "openIssueCount": 0,
+                "closedIssueCount": 0,
+            },
+            {
+                "id": "M_2",
+                "number": 2,
+                "title": "v2.0",
+                "state": "OPEN",
+                "description": "",
+                "dueOn": None,
+                "openIssueCount": 0,
+                "closedIssueCount": 0,
+            },
+        ],
     )
-    monkeypatch.setattr("backlog_core.operations.get_github", lambda repo=None: mock_repo)
 
     from backlog_core.operations import get_soonest_milestone
 
