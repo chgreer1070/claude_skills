@@ -3,11 +3,11 @@
   "hooks": {
     "SubagentStop": [
       {
-        "matcher": "rewrite-room-.*",
+        "matcher": "^rewrite-room-",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "You are validating a rewrite-room sub-agent's output contract.\n\nStep 1: Check if this output is from a rewrite-room agent.\n- Look for agent names containing 'rewrite-room-' (rewrite-room-auditor, rewrite-room-optimizer, rewrite-room-author, rewrite-room-cite, rewrite-room-doc-converter).\n- If the agent name does NOT contain 'rewrite-room-', return {\"ok\": true} immediately.\n\nStep 2: Validate the STATUS block.\nA valid STATUS block must contain ALL four required fields in this exact format:\n\n```\nSTATUS: [DONE|BLOCKED|FAILED]\nSUMMARY: [1-2 sentences, factual, no speculation]\nARTIFACTS: [list of files created/modified with paths, or \"none\"]\nVALIDATION: [validators run and PASS/FAIL results]\nNOTES: [only if needed — omit section if nothing to add]\n```\n\nCheck for:\n1. STATUS field present with one of: DONE, BLOCKED, FAILED\n2. SUMMARY field present and non-empty\n3. ARTIFACTS field present (value may be 'none')\n4. VALIDATION field present and non-empty\n\nNOTES is optional — its absence is not a violation.\n\nIf all four required fields are present and correctly formed, return {\"ok\": true}.\nIf any required field is missing or STATUS has an invalid value, return {\"ok\": false, \"reason\": \"CONTRACT_VIOLATION: missing fields: [list]. STATUS value must be DONE, BLOCKED, or FAILED.\"}.",
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/validate-status-block.cjs\"",
             "timeout": 10000
           }
         ]
