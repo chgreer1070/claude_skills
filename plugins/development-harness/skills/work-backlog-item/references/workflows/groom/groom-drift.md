@@ -52,7 +52,20 @@ Spawn a haiku agent (`subagent_type="dh:task-worker"`, model=haiku):
 mcp__plugin_dh_backlog__backlog_groom(selector='{title}', section='Plan Drift', content='{findings}')
 ```
 
-**Output format**: Write findings as a markdown section with commit SHAs, classification per commit (Scope change / Partial fix / New callers / File moved / No impact), and a one-line summary of overall drift severity.
+**`{findings}` content format**:
+
+```text
+Drift since {date}: {N} commits, {M} affecting plan/grooming scope
+
+- {sha} {subject} — {classification}
+  Files: {changed files relevant to item}
+- {sha} {subject} — {classification}
+  Files: {changed files relevant to item}
+
+Summary: {one sentence — what changed and whether it invalidates the plan/grooming}
+```
+
+Classifications: `Scope change`, `Partial fix`, `New callers`, `File moved`, `No impact`.
 
 ---
 
@@ -78,7 +91,20 @@ Spawn a haiku agent (`subagent_type="dh:task-worker"`, model=haiku):
 mcp__plugin_dh_backlog__backlog_groom(selector='{title}', section='Grooming Drift', content='{findings}')
 ```
 
-**Output format**: Write findings as a markdown section with commit SHAs, classification per commit (Scope change / Partial fix / New callers / File moved / No impact), and a one-line summary of overall drift severity.
+**`{findings}` content format**:
+
+```text
+Drift since {date}: {N} commits, {M} affecting plan/grooming scope
+
+- {sha} {subject} — {classification}
+  Files: {changed files relevant to item}
+- {sha} {subject} — {classification}
+  Files: {changed files relevant to item}
+
+Summary: {one sentence — what changed and whether it invalidates the plan/grooming}
+```
+
+Classifications: `Scope change`, `Partial fix`, `New callers`, `File moved`, `No impact`.
 
 ---
 
