@@ -1,0 +1,12 @@
+{
+  "commands": {
+    "create": "references/workflows/create/start.md",
+    "groom": "references/workflows/groom/start.md",
+    "work": "references/workflows/work/start.md",
+    "close": "references/workflows/close/start.md",
+    "resolve": "references/workflows/close/start.md",
+    "setup-github": "references/workflows/setup-github/start.md",
+    "progress": "references/workflows/progress/start.md",
+    "resume": "references/workflows/resume/start.md"
+  }
+}
