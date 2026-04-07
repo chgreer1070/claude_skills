@@ -15,7 +15,7 @@ An agent (swarm teammate, groomer, discovery, drift-assessment) did not produce 
 3. Spawn a diagnostic agent to review the failed agent's session:
 
    ```text
-   Agent(subagent_type="general-purpose", prompt="
+   Agent(subagent_type="dh:task-worker", prompt="
      Review the session transcript for the failed agent.
      Identify:
      - Last successful tool call or output

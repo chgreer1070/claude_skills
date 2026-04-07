@@ -201,10 +201,10 @@ If operation is `resolve`:
     b. If a milestone is present, call:
 
        ```text
-       mcp__plugin_dh_backlog__backlog_list(status='open')
+       mcp__plugin_dh_backlog__backlog_list()
        ```
 
-       Count the returned items whose `milestone` field matches the resolved item's milestone. This is the `open_issues` count.
+       From the returned items, count those whose `milestone` field matches the resolved item's milestone AND whose `status` is NOT `done` or `resolved`. This is the `open_issues` count.
 
     c. Emit Handoff E only when `open_issues == 0`:
 

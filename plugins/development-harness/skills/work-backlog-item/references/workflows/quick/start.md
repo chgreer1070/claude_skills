@@ -4,7 +4,7 @@
 
 1. Extract title from <item_ref/>+ joined. Build slug: title lowercased, spaces → hyphens.
 
-2. Find the item via `backlog_view(selector="{title or #N}", summary=false)`. If not found (response contains `error` key), create a minimal item with `backlog_add(title="{title}")`. If found, extract description and acceptance criteria from `response["sections"]`.
+2. Find the item via `backlog_view(selector="{title or #N}", summary=false)`. If not found (response contains `error` key), create a minimal item with `backlog_add(title="{title}", gate_token="problems-not-solutions")`. If found, extract description and acceptance criteria from `response["sections"]`.
 
 3. Extract the item's description and acceptance criteria if available.
 
