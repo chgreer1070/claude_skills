@@ -11,10 +11,10 @@ Loading GitHub Issue #131...
   Milestone: v1.1 — Quality Gates
   State:     open
 
-Matched per-item file for additional context: ✓
-No groomed content in item file. Running groom-backlog-item first...
+Matched backlog item for additional context: ✓
+No groomed content found. Running groom-backlog-item first...
 
-[groomed content written to item file]
+[groomed content written to backlog item]
 
 RT-ICA: APPROVED — all conditions available.
 Setting status:in-progress on issue #131...
@@ -25,7 +25,7 @@ Invoking /add-new-feature...
 
 [SAM phases run]
 
-Updated per-item file with Plan: plan/tasks-2-validator-ux-coverage.md
+Updated backlog item with Plan: P2 (validator-ux-coverage)
 
 Next steps:
 - To execute:      /implement-feature validator-ux-coverage
@@ -38,9 +38,9 @@ Next steps:
 > /work-backlog-item Error Recovery
 
 Found: "SAM: Error Recovery / Rollback Procedures" (P1)
-No groomed content in item file. Running groom-backlog-item first...
+No groomed content found. Running groom-backlog-item first...
 
-[groomed content written to item file]
+[groomed content written to backlog item]
 
 RT-ICA: APPROVED — all conditions available.
 Composing feature request...
@@ -48,7 +48,7 @@ Invoking /add-new-feature...
 
 [SAM phases run]
 
-Updated per-item file with Plan: plan/tasks-2-error-recovery.md
+Updated backlog item with Plan: P2 (error-recovery)
 
 Next steps:
 - To execute:      /implement-feature error-recovery

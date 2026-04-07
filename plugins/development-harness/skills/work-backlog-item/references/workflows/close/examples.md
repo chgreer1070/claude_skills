@@ -34,7 +34,7 @@ Fetching GitHub Issue #131...
   Title: plugin-validator UX and coverage gaps
   State: open
 
-Found per-item file match: "plugin-validator UX and coverage gaps" (P1)
+Found backlog item: "plugin-validator UX and coverage gaps" (P1)
 Plan: plan/tasks-2-validator-ux-coverage.md
 Checklist: 12/12 tasks complete
 

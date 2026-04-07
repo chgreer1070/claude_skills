@@ -21,9 +21,10 @@ Each step of the GitHub integration can be independently verified using MCP back
 # Expected: issue with priority:p1, type:*, status:in-progress labels
 ```
 
-```bash
-# Verify issue field written to per-item file:
-grep -rn "issue:" ~/.dh/projects/{slug}/backlog/ | head -10
+```text
+# Verify issue field recorded in backlog item:
+# MCP: backlog_view(selector="{title}")
+# Expected: response contains "issue" field with "#N" value
 ```
 
 ## V3: Milestone Assignment Verification
@@ -50,11 +51,11 @@ grep -rn "issue:" ~/.dh/projects/{slug}/backlog/ | head -10
 # Expected: state="closed", comment contains checklist summary
 ```
 
-## V6: Per-Item File Consistency Check
+## V6: Backlog Item Consistency Check
 
-```bash
-cat ~/.dh/projects/{slug}/backlog/{priority}-{slug}.md
-# Expected: frontmatter contains issue, plan, status fields, all consistent with GitHub
+```text
+# MCP: backlog_view(selector="{title}", summary=false)
+# Expected: response contains issue, plan, status fields, all consistent with GitHub
 ```
 
 ## Full Integration Test Sequence
@@ -63,7 +64,7 @@ cat ~/.dh/projects/{slug}/backlog/{priority}-{slug}.md
 1. /work-backlog-item setup-github          → V1: 13 labels, 1 milestone, 1 project
 2. /work-backlog-item clang-format yaml     → V2, V3, V4: issue created with labels
 3. [implement the fix in code]
-4. /work-backlog-item close clang-format    → V5, V6: issue closed, per-item file DONE
+4. /work-backlog-item close clang-format    → V5, V6: issue closed, backlog item DONE
 ```
 
 ## PyGithub Validation (scripted)

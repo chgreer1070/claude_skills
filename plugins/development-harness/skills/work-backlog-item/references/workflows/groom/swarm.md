@@ -224,7 +224,7 @@ are verifiable success conditions. Do not restate description inside ACs.
 
 Groomer agent: `subagent_type="dh:backlog-item-groomer"`, model=sonnet.
 
-Input to groomer: item title, description, source, priority, file path, RT-ICA assessment,
+Input to groomer: item title, description, source, priority, plan address, RT-ICA assessment,
 Fact-Check verdicts, Issue Classification, Root-Cause Analysis (or "N/A"), Impact Radius,
 and any discovery context.
 

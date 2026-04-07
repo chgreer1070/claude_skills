@@ -61,7 +61,7 @@ Call `backlog_list()` with no filters to load all open items. Each returned item
 `title`, `type`, and `topic` fields. Read the full list in the current context and select the
 item whose title, type, and topic best match the intent of the query. The token cost is bounded:
 **245 items × ~25 tokens/item ≈ 6,125 tokens (under 10K budget)**. If two or more candidates
-are plausible, read their per-item files via `backlog_view` before choosing.
+are plausible, read their full details via `backlog_view` before choosing.
 
 **Tiebreaker rule** — applied in order when two or more candidates remain equally plausible after reading `backlog_view`:
 

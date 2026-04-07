@@ -7,13 +7,13 @@ Skip the interactive report. Instead, continue directly to implementation:
 1. Invoke implementation:
 
    ```text
-   Skill(skill: "implement-feature", args: "{task_file_path}")
+   Skill(skill: "implement-feature", args: "{plan_address}")
    ```
 
 2. When all tasks complete, invoke quality gates:
 
    ```text
-   Skill(skill: "complete-implementation", args: "{task_file_path}")
+   Skill(skill: "complete-implementation", args: "{plan_address}")
    ```
 
 3. After completion, proceed to close/resolve path to mark the item done.

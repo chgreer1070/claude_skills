@@ -115,7 +115,7 @@ If operation is `resolve`:
 
    Parse each `-` line as a separate criterion.
 
-5. Spawn a verification agent with subagent_type="dh:task-worker". Prompt must include: item title, plan file path, checklist status (100%), and each criterion listed individually as "Criterion N: {text}". Instruct the agent to: read the plan file, search `git log --oneline -20`, check relevant files for each criterion, and return per-criterion PASS/FAIL with file:line evidence. Required return format:
+5. Spawn a verification agent with subagent_type="dh:task-worker". Prompt must include: item title, plan address (e.g., `P{NNN}`), checklist status (100%), and each criterion listed individually as "Criterion N: {text}". Instruct the agent to: read the plan via `sam_read`, search `git log --oneline -20`, check relevant files for each criterion, and return per-criterion PASS/FAIL with file:line evidence. Required return format:
 
    ```text
    [PASS] {criterion} — verified at {file}:{line} (or commit {sha})
@@ -160,7 +160,7 @@ If operation is `resolve`:
    git log --oneline -20 --grep="Fixes #N\|Closes #N"
    ```
 
-   - **Open PR found**: The PR body contains `Fixes #N` — the issue will auto-close on merge. Update only the local per-item file status (do NOT close the GitHub Issue):
+   - **Open PR found**: The PR body contains `Fixes #N` — the issue will auto-close on merge. Update only the backlog item status (do NOT close the GitHub Issue):
 
      Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`.
 
@@ -186,7 +186,7 @@ If operation is `resolve`:
 
     - `selector`: `"{title}"` or `"#{N}"`
     - `summary`: `"{summary}"`
-    - `plan`: `"{plan file path}"` (if present)
+    - `plan`: `"{plan_address}"` (if present — e.g., `"P{NNN}"`)
     - `method`: `"{method}"` (if provided)
     - `notes`: `"{notes}"` (if provided)
     - `follow_ups`: `"{follow_ups}"` (if provided)

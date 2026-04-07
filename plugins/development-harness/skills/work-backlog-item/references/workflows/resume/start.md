@@ -26,7 +26,7 @@
 
    ```text
    Resume: {title}
-   Plan:   {plan file path}
+   Plan:   {plan_address}
 
    Progress: {checked_tasks}/{total_tasks} tasks ({completion_pct}%)
 

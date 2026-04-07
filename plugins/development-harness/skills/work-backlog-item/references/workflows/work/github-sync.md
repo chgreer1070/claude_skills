@@ -22,7 +22,7 @@ After extracting item fields, check for an existing linked issue:
    ```
 
    If yes, proceed to Step 2.3.
-   If no, skip GitHub sync; the per-item file remains the only local record.
+   If no, skip GitHub sync; the backlog item remains without a linked issue.
 
 4. If not found AND priority is P2 or Ideas: do not prompt; skip GitHub sync silently.
 
@@ -30,7 +30,7 @@ After extracting item fields, check for an existing linked issue:
 
 Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"`.
 
-The tool creates the issue automatically when the item lacks one and writes `issue: '#N'` back to the per-item file frontmatter. Check the returned dict for an `error` key.
+The tool creates the issue automatically when the item lacks one and records the `issue: '#N'` link in the backend. Check the returned dict for an `error` key.
 
 ## Step 2.4: Set In-Progress Label
 

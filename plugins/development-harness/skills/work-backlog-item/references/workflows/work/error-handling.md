@@ -3,20 +3,20 @@
 - `#N` / URL / bare number not found: report and list available items — call the `mcp__plugin_dh_backlog__backlog_list` tool
 - `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
 - `close #N` / `resolve #N` — issue not found: report and stop
-- Item not found: list available items from `~/.dh/projects/{slug}/backlog/` per-item files with their priority sections
+- Item not found: list available items via `backlog_list` with their priority sections
 - Multiple matches: present numbered list, ask user to choose
 - Grooming fails: proceed without grooming context, note the gap in the feature request
 - RT-ICA returns BLOCKED: present missing inputs, wait for user, do not invoke `add-new-feature`
-- `add-new-feature` fails: report the failure, do not update per-item file
+- `add-new-feature` fails: report the failure, do not update the backlog item
 - Plan file not found after planning: search `plan/` directory broadly, ask user to confirm the path
-- Grooming reports directory does not exist: treat all items as ungroomed
+- Grooming reports no groomed items: treat all items as ungroomed
 - `close` with invalid reason: reject and show valid reasons (duplicate, out_of_scope, superseded, wontfix, blocked)
 - `close` on already-completed item: report closed date, do not re-close
 - `resolve` with no `**Plan**:` field: skip checklist verification, proceed to summary collection
 - `resolve` with incomplete checklist: list remaining tasks, do not resolve (offer `close` as alternative)
 - `resolve` with verification FAIL: report gaps, do not resolve
 - `resolve` with no summary provided: block until user provides summary (summary is required evidence)
-- GitHub issue creation fails: report error, continue with per-item-file-only workflow; do not block SAM planning
+- GitHub issue creation fails: report error, continue without a linked issue; do not block SAM planning
 - `GITHUB_TOKEN` not set: backlog MCP tools report an error; local-only operations still work
 - Label not found during issue create: `github_project_setup.py` creates it automatically
 - Milestone not found: skip milestone assignment; do not fail
