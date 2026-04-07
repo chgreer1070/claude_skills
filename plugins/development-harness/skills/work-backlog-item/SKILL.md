@@ -93,7 +93,7 @@ See the [Backlog Lifecycle reference](../../docs/backlog-lifecycle.md) for the c
 **Phase separation**: Grooming (Step 3.1) is autonomous research — the agent verifies facts, maps resources, estimates effort, and surfaces blockers. Planning (Step 4.2) is solution design — architecture, tasks, implementation. The human sets priorities and resolves blockers; the agent handles research and fact-checking autonomously.
 
 **SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/workflows/work/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
-Primary source of truth is **GitHub Issues** (labels + milestone = canonical status). Local per-item files are a read cache maintained by the MCP server.
+Primary source of truth is **GitHub Issues** (labels + milestone = canonical status). Agents interact with backlog items exclusively through MCP tools (`backlog_view`, `backlog_update`, `backlog_list`, etc.).
 
 When invoked with no arguments, shows an interactive browser. When invoked with `#N` or a title substring, proceeds directly to the planning workflow.
 
