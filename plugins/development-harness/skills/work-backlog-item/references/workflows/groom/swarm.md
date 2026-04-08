@@ -26,14 +26,19 @@ Agents broadcast findings to the team so others react.
    Behavior, Acceptance Criteria, Files, Resources, Dependencies, Effort. Runs AFTER all
    other teammates complete. Write each via `section="{name}"`.
 
+6. **alignment-analyst** — Compare existing implementation against item design intent.
+   Depends on impact-analyst (uses affected systems list). Write to section="Design Intent Alignment".
+   Broadcast ALIGNMENT_DIVERGENCE or ALIGNMENT_CLEAN findings to team.
+
 ## Dependencies
 
 ```text
-impact-analyst  → (none)
-fact-checker    → (none)
-classifier      → (none)
-rtica-assessor  → blocked by impact-analyst + fact-checker
-groomer         → blocked by rtica-assessor + classifier
+impact-analyst    → (none)
+fact-checker      → (none)
+classifier        → (none)
+rtica-assessor    → blocked by impact-analyst + fact-checker
+groomer           → blocked by rtica-assessor + classifier
+alignment-analyst → blocked by impact-analyst
 ```
 
 ## Team mode (preferred)
@@ -52,6 +57,7 @@ sequenceDiagram
     participant RT as rtica-assessor
     participant CL as classifier
     participant GR as groomer
+    participant AA as alignment-analyst
 
     O->>IA: spawn (item details, Files, Evidence, suggested_location)
     O->>FC: spawn (item claims to verify)
@@ -68,8 +74,12 @@ sequenceDiagram
 
     IA->>IA: run 5-question checklist per system
     IA->>IA: write Impact Radius section via MCP
+    O->>AA: spawn (item design intent — waits for IA)
 
     FC->>FC: write Fact-Check section via MCP
+
+    AA->>AA: compare design intent vs implementation
+    AA->>AA: write Design Intent Alignment section via MCP
 
     RT->>RT: assess completeness using IA + FC results
     RT->>RT: write RT-ICA section via MCP
@@ -97,6 +107,7 @@ After Wave 1: read Impact Radius and Fact-Check. If scope expanded, spawn second
 **Wave 2** (depends on Wave 1):
 
 - rtica-assessor → `section="RT-ICA"`
+- alignment-analyst → `section="Design Intent Alignment"`
 
 If RT-ICA BLOCKED, stop and present MISSING conditions. Do not proceed to Wave 3.
 

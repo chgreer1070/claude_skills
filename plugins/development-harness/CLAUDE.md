@@ -282,7 +282,7 @@ When adding a new dispatch step to any dh skill, reference file, or workflow doc
 
 ---
 
-## Agents Overview (15)
+## Agents Overview (21)
 
 **Planning and decomposition:**
 
@@ -294,6 +294,9 @@ When adding a new dispatch step to any dh skill, reference file, or workflow doc
 - `@dh:feature-researcher` - Research feature requirements and prior art
 - `@dh:codebase-analyzer` - Analyze codebase structure and patterns
 - `@dh:ecosystem-researcher` - Research external dependencies and ecosystem
+- `@dh:alignment-analyst` - Compare implementation against design intent for grooming
+- `@dh:fact-checker` - Verify item claims against primary sources during grooming
+- `@dh:impact-analyst` - Assess blast radius and affected systems for backlog items
 
 **Verification:**
 
@@ -301,6 +304,7 @@ When adding a new dispatch step to any dh skill, reference file, or workflow doc
 - `@dh:integration-checker` - Check integration points and compatibility
 - `@dh:t0-baseline-capture` - Capture baseline state before implementation
 - `@dh:tn-verification-gate` - Verify acceptance criteria after implementation
+- `@dh:contract-verification` - Verify method signatures and type contracts match architect spec
 
 **Context management:**
 
@@ -312,10 +316,15 @@ When adding a new dispatch step to any dh skill, reference file, or workflow doc
 - `@dh:doc-drift-auditor` - Detect documentation drift from implementation
 - `@dh:service-docs-maintainer` - Generate and maintain service documentation
 
+**Review:**
+
+- `@dh:code-reviewer` - Independent code review against acceptance criteria (S6 Forensic Review)
+
 **Execution:**
 
 - `@dh:generic-stage-agent` - Generic agent for pipeline stages
 - `@dh:task-worker` - Execute individual tasks
+- `@dh:backlog-item-groomer` - Groom a backlog item with RT-ICA assessment and resource map
 
 ---
 

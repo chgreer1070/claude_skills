@@ -93,7 +93,7 @@ Runs when RT-ICA Final Decision is APPROVED, before the final write with `mark_g
 mcp__plugin_dh_backlog__backlog_view(selector='{item_ref}', summary=false)
 ```
 
-2. Check all 7 required sections are present with minimum content:
+2. Check all 8 required sections are present with minimum content:
 
 | Section | Minimum content |
 |---|---|
@@ -104,6 +104,7 @@ mcp__plugin_dh_backlog__backlog_view(selector='{item_ref}', summary=false)
 | `Reproducibility` | Non-empty — "N/A for feature items" is acceptable but must be present |
 | `Issue Classification` | Contains `Type:` field with valid type value |
 | `Priority` | Contains `Effort:` field |
+| `Design Intent Alignment` | Contains `Alignment assessment:` field with ALIGNED/DIVERGENT/NOT_APPLICABLE |
 
 Optional sections (not validated for presence): `Root-Cause Analysis`, `Impact`, `Benefits`,
 `Expected Behavior`, `Files`, `Resources`, `Dependencies`, `Scope`, `Decision`.
@@ -116,7 +117,7 @@ Escalating to a more capable model does not address interrupted writes.
 
 ```mermaid
 flowchart TD
-    Check{"All 7 required sections<br>present with minimum content?"}
+    Check{"All 8 required sections<br>present with minimum content?"}
     Check -->|Yes| ScopeCheck["Scan for prohibited patterns"]
     Check -->|No| Missing["Build list of missing section names"]
     Missing --> Verify["Verify: re-read item via backlog_view<br>Confirm sections are absent in backend,<br>not just missed in local read"]
@@ -144,7 +145,7 @@ mcp__plugin_dh_backlog__backlog_groom(selector='{item_ref}', section='Grooming N
   content='Scope violation: {pattern} in {section}')
 ```
 
-5. When validation passes (all 7 sections present, scope check logged) → proceed to write.
+5. When validation passes (all 8 sections present, scope check logged) → proceed to write.
 
 ## Write Groomed Content
 

@@ -107,11 +107,11 @@ flowchart TD
     Q1 -->|defect / bug fix| Q2{AVAILABLE count?}
     Q2 -->|All AVAILABLE| Minimal["MINIMAL — 2 agents"]
     Q2 -->|Some DERIVABLE| Narrow["NARROW — 3 agents"]
-    Q2 -->|Any MISSING| Standard["STANDARD — 4 agents"]
+    Q2 -->|Any MISSING| Standard["STANDARD — 5 agents"]
     Q1 -->|procedural / missing-guardrail| Q3{DERIVABLE + MISSING count?}
     Q3 -->|Mostly AVAILABLE| Narrow
     Q3 -->|Mixed| Standard
-    Q3 -->|Mostly DERIVABLE/MISSING| Full["FULL — 5 agents"]
+    Q3 -->|Mostly DERIVABLE/MISSING| Full["FULL — 6 agents"]
     Q1 -->|unbounded-design / new plugin| Full
     Q1 -->|recurring-pattern| Standard
 ```
@@ -120,8 +120,8 @@ flowchart TD
 |---|---|---|
 | MINIMAL | fact-checker, groomer | File + direct callers |
 | NARROW | impact-analyst, fact-checker, groomer | Known files + one expansion level |
-| STANDARD | impact-analyst, fact-checker, rtica-assessor, groomer | Full expansion from known starting points |
-| FULL | all 5 (+ classifier) | Deep expansion, issue classification, full RCA |
+| STANDARD | impact-analyst, fact-checker, rtica-assessor, alignment-analyst, groomer | Full expansion from known starting points |
+| FULL | all 6 (+ classifier) | Deep expansion, issue classification, full RCA |
 
 **Escalation**: If any agent discovers scope beyond current sizing (e.g., impact-analyst in
 NARROW finds 15+ affected systems), escalate to the next level by spawning additional agents.
