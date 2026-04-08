@@ -3654,3 +3654,332 @@ async def test_backlog_list_fields_nonexistent_field_returns_warning_or_error() 
         assert "nonexistent" in warning_text, (
             f"Expected warning to mention 'nonexistent', got warnings: {response['warnings']}"
         )
+
+
+# ---------------------------------------------------------------------------
+# _sections_index_from_result  (unit tests — pure function, no MCP transport)
+# ---------------------------------------------------------------------------
+
+
+def test_sections_index_from_result_yaml_item_returns_prebuilt_string() -> None:
+    """_sections_index_from_result returns result.sections_index when already set.
+
+    Tests: YAML item fast path — pre-built index string is returned unchanged.
+    Why: YAML items populate sections_index during include_content=False to avoid
+         repeating the same logic in both paths.  The function must not re-derive
+         the index if the pre-built string exists.
+    """
+    from backlog_core.server import _sections_index_from_result
+
+    # Arrange
+    prebuilt = "## Sections\n[0] Groomed (2026-03-22) (3 entries)\n[1] RT-ICA (1 entries)\n"
+    result = _make_view_result({"title": "Item", "sections_index": prebuilt})
+
+    # Act
+    index = _sections_index_from_result(result)
+
+    # Assert
+    assert index == prebuilt
+
+
+def test_sections_index_from_result_github_item_derives_from_sections_dict() -> None:
+    """_sections_index_from_result builds directory string from result.sections dict.
+
+    Tests: GitHub-only item path — derives index from sections dict when sections_index
+           is empty.  Regular (non-groomed) sections use num_entries count.
+    Why: GitHub-only items do not have a pre-built sections_index.  The function must
+         fall back to the sections dict and discriminate entry types via isinstance.
+    """
+    from backlog_core.server import _sections_index_from_result
+
+    # Arrange — sections dict with a normal (non-groomed) section
+    result = _make_view_result({
+        "title": "GitHub Item",
+        "sections_index": "",
+        "sections": {
+            "Acceptance Criteria": {"num_entries": 5, "num_struck": 0, "entries": []},
+            "Impact Radius": {"num_entries": 2, "num_struck": 1, "entries": []},
+        },
+    })
+
+    # Act
+    index = _sections_index_from_result(result)
+
+    # Assert
+    assert index.startswith("## Sections")
+    assert "[0] Acceptance Criteria (5 entries)" in index
+    assert "[1] Impact Radius (2 entries)" in index
+
+
+def test_sections_index_from_result_github_item_groomed_section_uses_subsections_count() -> None:
+    """_sections_index_from_result counts subsections for groomed sections.
+
+    Tests: groomed section discrimination — isinstance(sec, dict) + type=='groomed'
+           branch uses len(subsections) as the count, not num_entries.
+    Why: Groomed sections use a different TypedDict shape (GroomedSectionMetadata) with
+         subsections instead of entries.  Wrong discrimination would report 0 entries.
+    """
+    from backlog_core.server import _sections_index_from_result
+
+    # Arrange — groomed section has type='groomed' and subsections dict
+    result = _make_view_result({
+        "title": "Groomed Item",
+        "sections_index": "",
+        "sections": {
+            "Groomed (2026-04-01)": {
+                "type": "groomed",
+                "date": "2026-04-01",
+                "subsections": {"Overview": "text", "Details": "text", "Plan": "text"},
+            }
+        },
+    })
+
+    # Act
+    index = _sections_index_from_result(result)
+
+    # Assert
+    assert "[0] Groomed (2026-04-01) (3 subsections)" in index
+
+
+def test_sections_index_from_result_empty_sections_returns_empty_string() -> None:
+    """_sections_index_from_result returns '' when result has no sections information.
+
+    Tests: no-data short-circuit — both sections_index and sections are empty.
+    Why: Callers use the empty string as a signal that no section directory is available.
+         Returning a header-only string would mislead callers into thinking sections exist.
+    """
+    from backlog_core.server import _sections_index_from_result
+
+    # Arrange
+    result = _make_view_result({"title": "Bare Item", "sections_index": "", "sections": {}})
+
+    # Act
+    index = _sections_index_from_result(result)
+
+    # Assert
+    assert index == ""
+
+
+# ---------------------------------------------------------------------------
+# _build_over_budget_view  (unit tests — pure function, no MCP transport)
+# ---------------------------------------------------------------------------
+
+
+def test_build_over_budget_view_includes_all_nine_fields() -> None:
+    """_build_over_budget_view returns a dict containing exactly the 9 documented fields.
+
+    Tests: response shape contract — number, title, priority, status, description,
+           sections_index, _over_budget, _full_chars, _usage are all present.
+    Why: Callers depend on the exact field set.  A missing field causes a KeyError
+         in the caller; an extra undocumented field creates noise.
+    """
+    from backlog_core.server import _build_over_budget_view
+
+    # Arrange
+    result = _make_view_result({
+        "number": 42,
+        "title": "Big Feature",
+        "priority": "P1",
+        "status": "needs-grooming",
+        "description": "Short summary of the item.",
+        "sections_index": "## Sections\n[0] Plan (3 entries)\n",
+    })
+
+    # Act
+    compact = _build_over_budget_view(result, full_chars=12345, selector="#42")
+
+    # Assert — all 9 documented fields present
+    required_fields = {
+        "number",
+        "title",
+        "priority",
+        "status",
+        "description",
+        "sections_index",
+        "_over_budget",
+        "_full_chars",
+        "_usage",
+    }
+    assert required_fields <= compact.keys(), f"Missing fields: {required_fields - compact.keys()}"
+    assert compact["_over_budget"] is True
+    assert compact["_full_chars"] == 12345
+    assert compact["number"] == 42
+    assert compact["title"] == "Big Feature"
+    assert compact["priority"] == "P1"
+    assert compact["status"] == "needs-grooming"
+    assert compact["description"] == "Short summary of the item."
+
+
+def test_build_over_budget_view_usage_mentions_sections_param() -> None:
+    """_build_over_budget_view _usage field instructs caller to use sections= parameter.
+
+    Tests: _usage hint fidelity — the hint must name the sections= syntax so callers
+           can request individual sections without reading server source.
+    Why: The hint is the primary UX for teaching callers how to recover from an
+         over-budget response.  If the hint names the wrong parameter, callers get stuck.
+    """
+    from backlog_core.server import _build_over_budget_view
+
+    # Arrange
+    result = _make_view_result({
+        "number": 7,
+        "title": "Over-Budget Item",
+        "priority": "P2",
+        "status": "open",
+        "description": "A large item.",
+        "sections_index": "## Sections\n[0] Details (10 entries)\n",
+    })
+
+    # Act
+    compact = _build_over_budget_view(result, full_chars=99999, selector="#7")
+
+    # Assert — usage text mentions the sections= recovery syntax
+    usage = str(compact["_usage"])
+    assert "sections=" in usage, f"_usage must mention 'sections=', got: {usage!r}"
+    assert "#7" in usage, f"_usage must embed the selector '#7', got: {usage!r}"
+
+
+# ---------------------------------------------------------------------------
+# backlog_view auto-compact branch  (integration tests via MCP transport)
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_view_auto_compact_triggers_when_over_token_budget(mocker) -> None:
+    """backlog_view returns compact form with _over_budget=True when response exceeds token budget.
+
+    Tests: auto-compact activation — large response triggers compact path.
+    How: Mock _enc.encode to return a list longer than _VIEW_TOKEN_BUDGET so any
+         serialised response is always over budget.  Call with summary=False and no
+         sections/section filter.  Assert _over_budget is True in response.
+    Why: The compact form is the caller's signal to narrow the request.  Without this
+         behaviour, callers get an unmanageably large response.
+    """
+    from backlog_core.server import _VIEW_TOKEN_BUDGET
+
+    # Arrange — mock encoder returns budget+1 tokens for every call
+    mocker.patch("backlog_core.server._enc.encode", return_value=list(range(_VIEW_TOKEN_BUDGET + 1)))
+
+    op_result = _make_view_result({
+        "number": 99,
+        "title": "Huge Item",
+        "priority": "P1",
+        "status": "needs-grooming",
+        "description": "A very large item that exceeds the token budget.",
+        "sections_index": "## Sections\n[0] Plan (20 entries)\n",
+        "body": "x" * 1000,
+        "sections": {},
+    })
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#99", "summary": False})
+
+    # Assert
+    assert response.get("_over_budget") is True, (
+        f"Expected _over_budget=True when token count exceeds budget, got: {response.get('_over_budget')}"
+    )
+    assert "_full_chars" in response
+    assert "_usage" in response
+
+
+async def test_backlog_view_auto_compact_not_triggered_when_under_token_budget(mocker) -> None:
+    """backlog_view returns full response unchanged when token count is within budget.
+
+    Tests: auto-compact non-activation — small response bypasses compact path.
+    How: Mock _enc.encode to return a single token (well under _VIEW_TOKEN_BUDGET).
+         Call with summary=False.  Assert _over_budget is absent and body is present.
+    Why: The pass-through contract is fundamental to backward compatibility.  Callers
+         that explicitly request summary=False must receive the full response for small items.
+    """
+    # Arrange — mock encoder returns exactly 1 token for every call
+    mocker.patch("backlog_core.server._enc.encode", return_value=[1])
+
+    op_result = _make_view_result({
+        "number": 10,
+        "title": "Small Item",
+        "priority": "P2",
+        "status": "open",
+        "description": "Fits within budget.",
+        "body": "## Plan\n- [ ] step one",
+        "sections": {"Plan": {"num_entries": 1, "num_struck": 0, "entries": []}},
+    })
+
+    # Act
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#10", "summary": False})
+
+    # Assert — full response, no compact form
+    assert "_over_budget" not in response, (
+        f"Expected no _over_budget key for under-budget response, got: {response.get('_over_budget')}"
+    )
+    assert "body" in response
+
+
+async def test_backlog_view_auto_compact_bypassed_when_sections_filter_provided(mocker) -> None:
+    """backlog_view skips auto-compact when sections= filter is provided by the caller.
+
+    Tests: sections= bypass — explicit sections filter always returns filtered content,
+           never the compact form, even when the filtered content would be over budget.
+    How: Mock _enc.encode to return an over-budget count.  Call with sections=['Plan'].
+         Assert _over_budget is absent — the sections filter bypassed the compact branch.
+    Why: Callers who already narrowed the response via sections= should not be bounced
+         back to the compact form.  They have already done the right thing.
+    """
+    from backlog_core.server import _VIEW_TOKEN_BUDGET
+
+    # Arrange — encoder still returns over-budget count
+    mocker.patch("backlog_core.server._enc.encode", return_value=list(range(_VIEW_TOKEN_BUDGET + 1)))
+
+    op_result = _make_view_result({
+        "number": 15,
+        "title": "Filtered Item",
+        "priority": "P1",
+        "status": "open",
+        "description": "Caller is filtering.",
+        "body": "## Plan\n- [ ] step one",
+        "sections": {"Plan": {"num_entries": 1, "num_struck": 0, "entries": []}},
+    })
+
+    # Act — explicit sections= filter must bypass auto-compact
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#15", "summary": False, "sections": ["Plan"]})
+
+    # Assert — compact form must not activate
+    assert "_over_budget" not in response, (
+        f"sections= filter must bypass auto-compact, but got _over_budget={response.get('_over_budget')}"
+    )
+
+
+async def test_backlog_view_auto_compact_bypassed_when_section_filter_provided(mocker) -> None:
+    """backlog_view skips auto-compact when section= filter is provided by the caller.
+
+    Tests: section= bypass — explicit section filter returns filtered content without
+           triggering the compact branch, regardless of token count.
+    How: Mock _enc.encode to return an over-budget count.  Call with section='0'.
+         Assert _over_budget is absent.
+    Why: section= (singular) is a separate parameter from sections= (list).  Both must
+         independently bypass the auto-compact branch so callers are never double-blocked.
+    """
+    from backlog_core.server import _VIEW_TOKEN_BUDGET
+
+    # Arrange — encoder still returns over-budget count
+    mocker.patch("backlog_core.server._enc.encode", return_value=list(range(_VIEW_TOKEN_BUDGET + 1)))
+
+    op_result = _make_view_result({
+        "number": 20,
+        "title": "Section Filtered Item",
+        "priority": "P0",
+        "status": "in-progress",
+        "description": "Caller uses section= filter.",
+        "body": "## Plan\n- [ ] step one",
+        "sections": {"Plan": {"num_entries": 1, "num_struck": 0, "entries": []}},
+    })
+
+    # Act — explicit section= filter must bypass auto-compact
+    with patch("backlog_core.operations.view_item", return_value=op_result):
+        response = await _call("backlog_view", {"selector": "#20", "summary": False, "section": "0"})
+
+    # Assert — compact form must not activate
+    assert "_over_budget" not in response, (
+        f"section= filter must bypass auto-compact, but got _over_budget={response.get('_over_budget')}"
+    )

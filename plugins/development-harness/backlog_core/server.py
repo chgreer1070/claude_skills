@@ -56,6 +56,11 @@ if TYPE_CHECKING:
 
 # Token budget for auto-pagination in backlog_list: 4400 tokens (cl100k_base encoding).
 _LIST_TOKEN_BUDGET = 4_400
+# Token budget for auto-compacting backlog_view: 4000 tokens (cl100k_base encoding).
+# When the full response exceeds this budget and the caller has not requested a
+# specific section, backlog_view returns a compact section-directory form so the
+# caller can request only the sections it needs.
+_VIEW_TOKEN_BUDGET = 4_000
 _enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
 
 # Fields searched by default when no field-specific prefix is given.
@@ -1585,6 +1590,83 @@ def _build_compact_manifest(
     return compact
 
 
+def _sections_index_from_result(result: _models.ViewItemResult) -> str:
+    r"""Build a ``## Sections`` index string from a populated ViewItemResult.
+
+    Prefers ``result.sections_index`` when already set (YAML items with
+    ``include_content=False``).  Falls back to deriving the index from
+    ``result.sections`` (the dict populated by the full-content path for both
+    YAML and GitHub items) so that over-budget responses always include a usable
+    section directory regardless of item type or ``include_content`` flag.
+
+    Args:
+        result: ViewItemResult after view_item has been called.
+
+    Returns:
+        ``"## Sections\\n[0] Name (N entries)\\n..."`` string, or ``""`` when no
+        section information is available.
+    """
+    if result.sections_index:
+        return result.sections_index
+    if not result.sections:
+        return ""
+    lines: list[str] = ["## Sections"]
+    for idx, (name, sec) in enumerate(result.sections.items()):
+        if isinstance(sec, dict):
+            sec_type = sec.get("type")
+            if sec_type == "groomed":
+                subs = sec.get("subsections")
+                count = len(subs) if isinstance(subs, dict) else 0
+                lines.append(f"[{idx}] {name} ({count} subsections)")
+            else:
+                num = sec.get("num_entries", 0)
+                count = int(num) if isinstance(num, int) else 0
+                lines.append(f"[{idx}] {name} ({count} entries)")
+    return "\n".join(lines) + "\n"
+
+
+def _build_over_budget_view(result: _models.ViewItemResult, full_chars: int, selector: str) -> dict[str, object]:
+    """Build a compact section-directory response for an over-budget backlog_view call.
+
+    When the full response would exceed ``_VIEW_TOKEN_BUDGET`` tokens and the caller
+    has not requested a specific section, this response is returned instead.  It
+    always includes item metadata and the ``description`` field (the short summary),
+    a section directory listing each section name with its approximate size, and
+    usage instructions for requesting individual sections.
+
+    Args:
+        result: Typed ViewItemResult from view_item.
+        full_chars: Character length of the serialised full response (size hint).
+        selector: Original selector string used to build the usage hint.
+
+    Returns:
+        Compact dict with number, title, priority, status, description,
+        sections_index, _over_budget, _full_chars, and _usage.
+    """
+    compact: dict[str, object] = {
+        "number": result.number,
+        "title": result.title,
+        "priority": result.priority,
+        "status": result.status,
+        "description": result.description,
+        "_over_budget": True,
+        "_full_chars": full_chars,
+        "_usage": (
+            f"This response exceeded the {_VIEW_TOKEN_BUDGET}-token budget "
+            f"({full_chars} chars in full form). "
+            "Use the sections_index below to identify which sections you need, "
+            "then request them individually:\n"
+            f"  backlog_view(selector='{selector}', summary=False, sections=['Section Name'])\n"
+            f"  backlog_view(selector='{selector}', summary=False, section='0,1,3')\n"
+            f"  backlog_view(selector='{selector}', summary=False, section='/regex/')"
+        ),
+    }
+    sections_index = _sections_index_from_result(result)
+    if sections_index:
+        compact["sections_index"] = sections_index
+    return compact
+
+
 @mcp.tool
 async def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
@@ -1690,7 +1772,18 @@ async def backlog_view(
         if not summary:
             # Primitive 3: filter to named sections when requested.
             if sections is not None:
-                full_response = _filter_view_sections(full_response, sections)
+                return _filter_view_sections(full_response, sections)
+            # Auto-compact: when the full response exceeds the token budget and the
+            # caller has not narrowed the request (no sections/section filter), return
+            # a compact section-directory form so the caller can request only what it
+            # needs.  Callers that have already narrowed via sections= or section= get
+            # the filtered result unchanged — it is their responsibility to paginate
+            # further if needed.
+            if section is None:
+                serialised = _json.dumps(full_response)
+                token_count = len(_enc.encode(serialised))
+                if token_count > _VIEW_TOKEN_BUDGET:
+                    return _build_over_budget_view(result, len(serialised), selector)
             return full_response
         return _build_compact_manifest(result, full_response, selector)
     except BacklogError as e:
