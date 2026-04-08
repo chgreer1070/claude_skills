@@ -64,6 +64,26 @@ _VIEW_TOKEN_BUDGET = 4_000
 _GROOMED_SECTION_TYPE = "groomed"
 _enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
 
+# Heuristic threshold for the body-length pre-check in backlog_view.
+# If result.body alone exceeds this many characters the full JSON response is
+# almost certainly over _VIEW_TOKEN_BUDGET (cl100k_base averages ~4 chars/token,
+# so _VIEW_TOKEN_BUDGET tokens ≈ 16 000 chars; body is only part of the payload).
+# The precise token count is still computed for borderline cases.
+_VIEW_BODY_CHARS_THRESHOLD = _VIEW_TOKEN_BUDGET * 4
+
+
+def _token_count(obj: object) -> int:
+    """Count cl100k_base tokens in the JSON serialization of *obj*.
+
+    Args:
+        obj: Any JSON-serializable object.
+
+    Returns:
+        Token count as an integer.
+    """
+    return len(_enc.encode(_json.dumps(obj)))
+
+
 # Fields searched by default when no field-specific prefix is given.
 # ``body`` contains the full item content (description + all section entries)
 # built by operations._build_item_body so that plain-text and regex searches
@@ -886,7 +906,7 @@ def _compute_match_tokens(item: dict[str, object]) -> int:
     # Serialize the match output (header + all match text lines) and count tokens.
     # We use json.dumps on the relevant keys rather than subscript access to stay
     # type-safe: item is dict[str, object] so individual values are object.
-    return len(_enc.encode(_json.dumps({"h": item.get("match_header"), "m": item.get("matches")})))
+    return _token_count({"h": item.get("match_header"), "m": item.get("matches")})
 
 
 def _paginate_match_items(
@@ -1498,7 +1518,7 @@ async def backlog_list(
         candidate = all_items[offset:]
         effective_limit = len(candidate)
         while effective_limit > 1:
-            token_count = len(_enc.encode(_json.dumps(candidate[:effective_limit])))
+            token_count = _token_count(candidate[:effective_limit])
             if token_count <= _LIST_TOKEN_BUDGET:
                 break
             effective_limit = max(1, effective_limit // 2)
@@ -1614,15 +1634,16 @@ def _sections_index_from_result(result: _models.ViewItemResult) -> str:
         return ""
     lines: list[str] = ["## Sections"]
     for idx, (name, sec) in enumerate(result.sections.items()):
-        if isinstance(sec, dict):
-            sec_type = sec.get("type")
-            if sec_type == _GROOMED_SECTION_TYPE:
-                subs = sec.get("subsections")
-                count = len(subs) if isinstance(subs, dict) else 0
-                lines.append(f"[{idx}] {name} ({count} subsections)")
-            else:
-                count = int(sec.get("num_entries", 0))
-                lines.append(f"[{idx}] {name} ({count} entries)")
+        # Both SectionEntryMetadata and GroomedSectionMetadata are TypedDicts
+        # (plain dicts at runtime) — no isinstance guard needed.
+        sec_type = sec.get("type")
+        if sec_type == _GROOMED_SECTION_TYPE:
+            subs = sec.get("subsections")
+            count = len(subs) if isinstance(subs, dict) else 0
+            lines.append(f"[{idx}] {name} ({count} subsections)")
+        else:
+            count = int(sec.get("num_entries", 0))
+            lines.append(f"[{idx}] {name} ({count} entries)")
     return "\n".join(lines) + "\n"
 
 
@@ -1781,9 +1802,16 @@ async def backlog_view(
             # the filtered result unchanged — it is their responsibility to paginate
             # further if needed.
             if section is None:
+                # Heuristic pre-check: if body alone exceeds the chars threshold the
+                # full response is almost certainly over budget — skip serialisation.
+                # The precise token count is still computed for borderline cases where
+                # the body is small but other fields push the total over the limit.
+                body_chars = len(result.body)
+                if body_chars > _VIEW_BODY_CHARS_THRESHOLD:
+                    serialised = _json.dumps(full_response)
+                    return _build_over_budget_view(result, len(serialised), selector)
                 serialised = _json.dumps(full_response)
-                token_count = len(_enc.encode(serialised))
-                if token_count > _VIEW_TOKEN_BUDGET:
+                if _token_count(serialised) > _VIEW_TOKEN_BUDGET:
                     return _build_over_budget_view(result, len(serialised), selector)
             return full_response
         return _build_compact_manifest(result, full_response, selector)
