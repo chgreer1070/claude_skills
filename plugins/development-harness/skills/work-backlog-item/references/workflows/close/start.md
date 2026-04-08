@@ -86,7 +86,7 @@ If operation is `resolve`:
 2. Extract the plan address from the plan path (e.g., `plan/P398-backlog-lifecycle-process-gaps.yaml` → `P398`). Call:
 
    ```text
-   mcp__plugin_dh_sam__sam_status(plan="{address}")
+   mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="{address}")
    ```
 
    From the response, read `status_counts`. A plan is complete when `status_counts.not_started == 0` and `status_counts.in_progress == 0` and `status_counts.blocked == 0`.
@@ -115,7 +115,7 @@ If operation is `resolve`:
 
    Parse each `-` line as a separate criterion.
 
-5. Spawn a verification agent with subagent_type="dh:task-worker". Prompt must include: item title, plan address (e.g., `P{NNN}`), checklist status (100%), and each criterion listed individually as "Criterion N: {text}". Instruct the agent to: read the plan via `sam_read`, search `git log --oneline -20`, check relevant files for each criterion, and return per-criterion PASS/FAIL with file:line evidence. Required return format:
+5. Spawn a verification agent with subagent_type="dh:task-worker". Prompt must include: item title, plan address (e.g., `P{NNN}`), checklist status (100%), and each criterion listed individually as "Criterion N: {text}". Instruct the agent to: read the plan via `sam_plan(action='read')`, search `git log --oneline -20`, check relevant files for each criterion, and return per-criterion PASS/FAIL with file:line evidence. Required return format:
 
    ```text
    [PASS] {criterion} — verified at {file}:{line} (or commit {sha})

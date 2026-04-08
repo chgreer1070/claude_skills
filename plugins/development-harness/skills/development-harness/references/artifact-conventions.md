@@ -55,15 +55,15 @@ Artifact types used in the S1–S7 pipeline:
 
 - `"feature-context"` — S1 Discovery output
 - `"architect"` — S2 Plan output (updated by S3 Context Integration)
-- `"task-plan"` — S4 Task Decomposition output (auto-registered by `sam_create`)
+- `"task-plan"` — S4 Task Decomposition output (auto-registered by `sam_plan(action='create')`)
 
 ### SAM System
 
 Task plans and task-level state are managed by the SAM MCP server:
 
-- **Create:** `sam_create(slug, goal, tasks_yaml, issue={issue_number})` — creates a task plan YAML and auto-registers it as `artifact_type="task-plan"`.
-- **Read:** `sam_read(plan, task)` — returns a `TaskAssignment` dict with plan-level context and task fields.
-- **Update:** `sam_update(address, append_section, section_content)` — appends sections to task bodies. Used by S5 Execution, S6 Forensic Review, and S7 Final Verification to store results within the task structure.
+- **Create:** `sam_plan(config={"action": "create", "slug": slug, "goal": goal, "tasks_yaml": tasks_yaml, "issue": issue_number})` — creates a task plan YAML and auto-registers it as `artifact_type="task-plan"`.
+- **Read:** `sam_task(plan, task, config={"action": "read"})` — returns a `TaskAssignment` dict with plan-level context and task fields.
+- **Update:** `sam_task(plan, task, config={"action": "update", "append_section": ..., "section_content": ...})` — appends sections to task bodies. Used by S5 Execution, S6 Forensic Review, and S7 Final Verification to store results within the task structure.
 
 Task plan YAML files are stored in `~/.dh/projects/{project-slug}/plan/` by the SAM MCP server. Access is exclusively via MCP tools — never via direct filesystem paths.
 

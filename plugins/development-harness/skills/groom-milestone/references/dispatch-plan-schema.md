@@ -145,9 +145,9 @@ This section clarifies how `/work-milestone` uses the dispatch plan when spawnin
 
 **Isolation mode is hardcoded, not schema-configured.** Every item dispatches via `Agent(isolation: "worktree")`. There is no per-item field to select isolation mode or agent type. All worktree agents use the same prompt template; per-item specialization is via task content and skills, not agent configuration.
 
-**The orchestrator passes references, not data.** The dispatch plan provides the issue number, title, and integration branch name. The worktree agent self-discovers description, acceptance criteria, task list, and skills by calling `backlog_view` and `sam_read` after spawning. The orchestrator does not pre-read item data before dispatch.
+**The orchestrator passes references, not data.** The dispatch plan provides the issue number, title, and integration branch name. The worktree agent self-discovers description, acceptance criteria, task list, and skills by calling `backlog_view` and `sam_task(action='read')` after spawning. The orchestrator does not pre-read item data before dispatch.
 
-**Skills come from SAM task metadata, discovered by the agent.** The worktree agent reads the SAM plan via `sam_read` and loads skills from the `skills` field in task metadata. The dispatch plan's wave/item fields do not carry skill metadata, and the orchestrator does not aggregate skills before spawning.
+**Skills come from SAM task metadata, discovered by the agent.** The worktree agent reads the SAM plan via `sam_task(action='read')` and loads skills from the `skills` field in task metadata. The dispatch plan's wave/item fields do not carry skill metadata, and the orchestrator does not aggregate skills before spawning.
 
 **Each item executes in an isolated worktree.** The worktree agent receives the issue number, integration branch, quality gate commands, and prior-wave relay content. It self-discovers item description, acceptance criteria, task list, and skills via MCP. The agent executes work directly without delegating to subagents (worktree agents cannot spawn further agents).
 

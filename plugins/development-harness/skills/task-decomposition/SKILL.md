@@ -122,12 +122,12 @@ field contains the full contextualized ARTIFACT:PLAN markdown.
 Create a SAM task plan via MCP:
 
 ```text
-sam_create(slug="{feature-slug}", goal="{plan goal}", tasks_yaml="{YAML task list}", issue={issue_number})
+sam_plan(config={"action": "create", "slug": "{feature-slug}", "goal": "{plan goal}", "tasks_yaml": "{YAML task list}", "issue": {issue_number}})
 ```
 
 Passing `issue={issue_number}` auto-registers the task plan as
 `artifact_type="task-plan"` in the artifact system, making it accessible
-to worktree-isolated agents via `sam_read`.
+to worktree-isolated agents via `sam_task(action='read')`.
 
 Each file contains YAML frontmatter followed by CLEAR-ordered sections:
 

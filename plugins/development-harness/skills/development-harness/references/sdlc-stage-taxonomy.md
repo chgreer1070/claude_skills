@@ -65,7 +65,7 @@ skill_activation: /dh:task-decomposition
 purpose: Break the validated plan into executable, independently-delegatable task files with acceptance criteria and dependency ordering.
 inputs: Amended PLAN artifact
 outputs: One TASK file per work unit, with acceptance criteria, agent routing, and dependency graph
-artifact_access: sam_create(slug, goal, tasks_yaml, issue=issue_number) / sam_read(plan, task)
+artifact_access: sam_plan(action=create, slug, goal, tasks_yaml, issue=issue_number) / sam_task(plan, task, config={action:read})
 ```
 
 #### S5 — `execution`
@@ -77,7 +77,7 @@ skill_activation: /dh:execution
 purpose: Implement each task using language-appropriate specialist agents; produce execution artifacts per task.
 inputs: TASK file, quality gate commands from language manifest
 outputs: EXECUTION artifact per task containing implementation evidence and quality gate results
-artifact_access: sam_read(plan, task) / sam_update(address, append_section="Execution Results", section_content=...)
+artifact_access: sam_task(plan, task, config={action:read}) / sam_task(plan, task, config={action:update, append_section="Execution Results", section_content=...})
 ```
 
 #### S6 — `forensic-review`
@@ -89,7 +89,7 @@ skill_activation: /dh:forensic-review
 purpose: Verify each executed task against its acceptance criteria; identify regressions, gaps, and quality violations.
 inputs: TASK file, EXECUTION artifact, codebase diff
 outputs: REVIEW artifact per task with pass/fail per acceptance criterion and remediation instructions
-artifact_access: sam_read(plan, task) / sam_update(address, append_section="Review Results", section_content=...)
+artifact_access: sam_task(plan, task, config={action:read}) / sam_task(plan, task, config={action:update, append_section="Review Results", section_content=...})
 ```
 
 #### S7 — `final-verification`
@@ -101,7 +101,7 @@ skill_activation: /dh:final-verification
 purpose: Certify the complete feature against the original discovery and acceptance criteria; produce a CERTIFIED or NOT_CERTIFIED verdict.
 inputs: DISCOVERY artifact, all REVIEW artifacts, codebase state
 outputs: VERIFICATION artifact with per-criterion verdict and overall CERTIFIED or NOT_CERTIFIED determination
-artifact_access: sam_read(plan, task) / sam_update(address, append_section="Final Verification", section_content=...)
+artifact_access: sam_task(plan, task, config={action:read}) / sam_task(plan, task, config={action:update, append_section="Final Verification", section_content=...})
 ```
 
 ---

@@ -378,7 +378,7 @@ sam_task(plan="{plan_id}", task="T1", config={"action": "read"})
 sam_plan(config={"action": "list", "search": "{feature_slug}"})
 ```
 
-When delegated with a plan path like `plan/P1129-some-slug.yaml`, extract the plan ID (`P1129`) and use `sam_read(plan="P1129")`. Do NOT attempt to read the file at the literal path — it is not repo-relative.
+When delegated with a plan path like `plan/P1129-some-slug.yaml`, extract the plan ID (`P1129`) and use `sam_plan(config={"action": "read"}, plan="P1129")`. Do NOT attempt to read the file at the literal path — it is not repo-relative.
 
 Read the architect spec and feature context via artifact MCP tools:
 

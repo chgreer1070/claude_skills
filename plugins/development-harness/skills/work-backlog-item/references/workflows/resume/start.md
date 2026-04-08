@@ -13,7 +13,7 @@
 
    Then stop.
 
-3. Read the plan via `mcp__plugin_dh_sam__sam_read` using the plan ID extracted from the item's
+3. Read the plan via `mcp__plugin_dh_sam__sam_plan(config={"action": "read"})` using the plan ID extracted from the item's
    `plan` field. Do not read the YAML file directly. Parse the task list from the response:
    - `total_tasks` — count of all task entries
    - `checked_tasks` — count of tasks with `status: complete`

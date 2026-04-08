@@ -18,9 +18,9 @@ This runs the full SAM workflow: discovery, codebase analysis, architecture spec
 
 ## Step 4.3: Update Backlog with Plan Reference
 
-After `add-new-feature` completes, identify the task plan it created by calling `mcp__plugin_dh_sam__sam_list(search="{slug}")` where `{slug}` is the item title lowercased with spaces replaced by hyphens. The SAM MCP server manages plan storage — do not search the filesystem directly.
+After `add-new-feature` completes, identify the task plan it created by calling `mcp__plugin_dh_sam__sam_plan(config={"action": "list", "search": "{slug}"})` where `{slug}` is the item title lowercased with spaces replaced by hyphens. The SAM MCP server manages plan storage — do not search the filesystem directly.
 
-If `sam_list` returns an empty list, call `sam_list()` with no search argument and scan the
+If `sam_plan(action='list')` returns an empty list, call `sam_plan(config={"action": "list"})` with no search argument and scan the
 most-recently-updated plan for a title matching the item slug. If still not found, log a
 warning and skip the `backlog_update` — do not block Step 4.4.
 

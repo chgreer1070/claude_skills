@@ -28,7 +28,7 @@ The SAM MCP server (`mcp__plugin_dh_sam__*`) is the primary interface for all SA
 List all features with task files in the project's `plan/` directory:
 
 ```text
-mcp__plugin_dh_sam__sam_list()
+mcp__plugin_dh_sam__sam_plan(config={"action": "list"})
 ```
 
 **Output:**
@@ -51,7 +51,7 @@ mcp__plugin_dh_sam__sam_list()
 Get detailed status for a specific feature:
 
 ```text
-mcp__plugin_dh_sam__sam_status(plan="P1")
+mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="P1")
 ```
 
 **Output:**
@@ -84,7 +84,7 @@ mcp__plugin_dh_sam__sam_status(plan="P1")
 List tasks ready for execution (dependencies satisfied):
 
 ```text
-mcp__plugin_dh_sam__sam_ready(plan="P1")
+mcp__plugin_dh_sam__sam_plan(config={"action": "ready"}, plan="P1")
 ```
 
 **Output:**
@@ -108,7 +108,7 @@ mcp__plugin_dh_sam__sam_ready(plan="P1")
 Read full plan data including task fields and context:
 
 ```text
-mcp__plugin_dh_sam__sam_read(plan="P1")
+mcp__plugin_dh_sam__sam_plan(config={"action": "read"}, plan="P1")
 ```
 
 #### claim
@@ -116,7 +116,7 @@ mcp__plugin_dh_sam__sam_read(plan="P1")
 Claim a task in-progress (prevents duplicate dispatch):
 
 ```text
-mcp__plugin_dh_sam__sam_claim(plan="P1", task="T01")
+mcp__plugin_dh_sam__sam_task(plan="P1", task="T01", config={"action": "claim"})
 ```
 
 Returns `{"claimed": false, "error": "..."}` if task is already claimed or not found.
@@ -126,7 +126,7 @@ Returns `{"claimed": false, "error": "..."}` if task is already claimed or not f
 Update plan-level fields (e.g., context manifest):
 
 ```text
-mcp__plugin_dh_sam__sam_update(plan="P1", context="Context Manifest content")
+mcp__plugin_dh_sam__sam_plan(config={"action": "update", "context": "Context Manifest content"}, plan="P1")
 ```
 
 ## Task File Format

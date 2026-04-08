@@ -11,21 +11,24 @@
 4. Create the quick plan using the SAM MCP tool:
 
    ```text
-   mcp__plugin_dh_sam__sam_create(
-     slug="quick-{slug}",
-     goal="{goal from description or acceptance_criteria}",
-     tasks_yaml="tasks:\n  - task: T1\n    title: \"{description}\"\n    status: not-started\n    agent: task-worker\n    dependencies: []\n    priority: 1\n    complexity: low\n    accuracy-risk: low\n    skills: []\n    reason: \"Quick fix task\"\n    handoff: \"Done when acceptance criteria met\""
+   mcp__plugin_dh_sam__sam_plan(
+     config={
+       "action": "create",
+       "slug": "quick-{slug}",
+       "goal": "{goal from description or acceptance_criteria}",
+       "tasks_yaml": "tasks:\n  - id: T1\n    title: \"{description}\"\n    status: not-started\n    agent: task-worker\n    dependencies: []\n    priority: 1\n    complexity: low\n    accuracy-risk: low\n    skills: []\n    reason: \"Quick fix task\"\n    handoff: \"Done when acceptance criteria met\""
+     }
    )
    ```
 
-   `sam_create` handles path resolution internally — do not resolve or pass a file path.
+   `sam_plan(action='create')` handles path resolution internally — do not resolve or pass a file path.
 
 5. Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `plan="quick-{slug}"` to record the plan slug.
 
-6. Report the path returned by `sam_create`:
+6. Report the path returned by `sam_plan(action='create')`:
 
    ```text
-   Quick plan created: {path returned by sam_create}
+   Quick plan created: {path returned by sam_plan(action='create')}
    Steps: {N} tasks
 
    To execute: /implement-feature quick-{slug}

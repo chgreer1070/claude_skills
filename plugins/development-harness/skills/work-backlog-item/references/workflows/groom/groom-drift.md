@@ -35,7 +35,7 @@ flowchart TD
 
 Spawn a haiku agent (`subagent_type="dh:task-worker"`, model=haiku):
 
-1. Read the plan via `mcp__plugin_dh_sam__sam_read(plan='{plan_address}')`.
+1. Read the plan via `mcp__plugin_dh_sam__sam_plan(config={"action": "read"}, plan='{plan_address}')`.
 2. Extract all file paths from the plan (task descriptions, files-to-modify, context manifest).
 3. Get the plan's last commit date: `git log -1 --format=%aI -- {plan_path}`.
 4. For each file, find commits since that date: `git log --oneline --since={date} -- {file}`.

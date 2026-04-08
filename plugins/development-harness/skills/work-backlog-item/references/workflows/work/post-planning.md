@@ -25,7 +25,7 @@ Do not stop for user input at any point.
 ```text
 Backlog item "{title}" is now planned.
 
-- Plan: accessible via `sam_read(plan="{slug}")` MCP tool
+- Plan: accessible via `sam_plan(action='read', plan="{slug}")` MCP tool
 - To execute:      /implement-feature {slug}
 - To check status: /implementation-manager status . {slug}
 - To close when done: /work-backlog-item close {title}

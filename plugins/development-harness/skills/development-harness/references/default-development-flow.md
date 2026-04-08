@@ -132,7 +132,7 @@ Each arrow represents a file-based artifact handoff. No stage reads from convers
 - Map task dependencies and identify parallelization opportunities
 - Assign each task to the appropriate specialist agent (from manifest or fallback)
 
-**Output:** `ARTIFACT:TASK({task-id})` per task — Task plan registered via `sam_create`; access via `sam_read` / `sam_list`.
+**Output:** `ARTIFACT:TASK({task-id})` per task — Task plan registered via `sam_plan(action='create')`; access via `sam_task(action='read')` / `sam_plan(action='list')`.
 
 **Skill:** `/dh:task-decomposition`
 

@@ -4,14 +4,9 @@ Exposes the same operations as the Typer CLI as MCP tools for use by
 Claude Code agents and other MCP clients.
 
 Tools:
-    sam_read    — Read a task by address (returns TaskAssignment when task provided)
-    sam_state   — Update a task's status
-    sam_ready   — List ready tasks for a plan
-    sam_status  — Get plan-level progress summary
-    sam_list    — List all plans with search and pagination
-    sam_create  — Create a new plan from YAML task definitions
-    sam_update  — Update plan or task fields, or append a section
-    sam_claim   — Claim a task (transition to in-progress)
+    sam_plan        — Consolidated plan-level operations (read, create, list, status, ready, update)
+    sam_task        — Consolidated task-level operations (read, claim, state, update)
+    sam_active_task — Session-scoped active task context management (get, set, update, clear)
 """
 
 from __future__ import annotations
@@ -134,98 +129,6 @@ def run_server() -> None:
     mcp.run()
 
 
-@mcp.tool
-def sam_read(
-    plan: Annotated[str, Field(description="Plan address (e.g., 'P1' or slug)")],
-    task: Annotated[str | None, Field(description="Task ID (e.g., 'T3'). Omit to read plan-level fields only.")] = None,
-    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
-) -> dict:
-    """Read a plan or task and return its fields as a dict.
-
-    When ``task`` is provided, returns a ``TaskAssignment`` dict that includes
-    both plan-level context (``plan_goal``, ``plan_context``,
-    ``plan_acceptance_criteria``) and the nested ``task`` object.  This gives
-    agents everything they need in one call.
-
-    When ``task`` is omitted, returns the ``Plan`` fields only.
-
-    Args:
-        plan: Plan address component (numeric index or slug).
-        task: Task ID component (e.g., ``T3``). Optional.
-        plan_dir: Path to the directory containing plan files.
-
-    Deprecated:
-        Use ``sam_task(action='read', ...)`` or ``sam_plan(action='read', ...)``.
-    """
-    raise ToolError(
-        "sam_read is deprecated. "
-        "Use sam_task(action='read', plan=..., task=...) for task reads, "
-        "or sam_plan(action='read', plan=...) for plan-only reads."
-    )
-
-
-@mcp.tool
-def sam_state(
-    plan: Annotated[str, Field(description="Plan address")],
-    task: Annotated[str, Field(description="Task ID")],
-    status: Annotated[str, Field(description="New status value")],
-    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
-) -> dict:
-    """Update a task's status.
-
-    Args:
-        plan: Plan address component.
-        task: Task ID component.
-        status: New status string (e.g., ``complete``, ``in-progress``).
-        plan_dir: Path to the directory containing plan files.
-
-    Deprecated:
-        Use ``sam_task(action='state', ...)``.
-    """
-    raise ToolError("sam_state is deprecated. Use sam_task(action='state', plan=..., task=..., ...) instead.")
-
-
-@mcp.tool
-def sam_ready(
-    plan: Annotated[str, Field(description="Plan address")],
-    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
-    full: Annotated[bool, Field(description="Return full Task model dump instead of routing manifest")] = False,
-) -> dict:
-    """List tasks ready for dispatch.
-
-    By default returns a compact 7-field routing manifest per task so the
-    orchestrator can decide which agent to dispatch next without receiving the
-    full task body (25+ fields).  Pass ``full=True`` to get the complete model
-    dump (preserves backward compatibility for callers that need all fields).
-
-    Args:
-        plan: Plan address component.
-        plan_dir: Path to the directory containing plan files.
-        full: When True, return full Task model dump instead of routing manifest.
-
-    Deprecated:
-        Use ``sam_plan(action='ready', ...)``.
-    """
-    raise ToolError("sam_ready is deprecated. Use sam_plan(action='ready', plan=...) instead.")
-
-
-@mcp.tool
-def sam_status(
-    plan: Annotated[str, Field(description="Plan address")],
-    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
-) -> dict:
-    """Get plan-level progress summary.
-
-    Args:
-        plan: Plan address component.
-        plan_dir: Path to the directory containing plan files.
-
-    Deprecated:
-        Use ``sam_plan(action='status', ...)``.
-    """
-    raise ToolError("sam_status is deprecated. Use sam_plan(action='status', plan=...) instead.")
-
-
 def _paginate_results(
     all_items: list[dict[str, Any]],
     *,
@@ -268,47 +171,6 @@ def _paginate_results(
         next_offset = offset + len(page)
         result["next_call"] = f"{tool_name}(offset={next_offset}, limit={effective_limit})"
     return result
-
-
-@mcp.tool
-def sam_list(
-    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
-    search: Annotated[
-        str | None, Field(description="Case-insensitive substring filter across feature, description, and goal fields")
-    ] = None,
-    offset: Annotated[int, Field(description="Zero-based index of the first item to return", ge=0)] = 0,
-    limit: Annotated[
-        int | None,
-        Field(
-            description="Maximum number of items to return. Defaults to auto-calculated value within 4400-token budget"
-        ),
-    ] = None,
-) -> dict:
-    """List all plans in ``plan_dir`` with optional search and automatic pagination.
-
-    Reads every plan file found in ``plan_dir``, applies optional search filtering,
-    then returns a page of results within the 4400-token budget (cl100k_base encoding).
-
-    Search filtering checks the ``feature``, ``description``, and ``goal`` fields
-    simultaneously, case-insensitively.  The ``offset`` and ``limit`` parameters
-    let callers page through results explicitly.  When ``limit`` is omitted, the
-    tool calculates a default limit that keeps the response within budget.
-
-    When ``has_more`` is true in the ``pagination`` object, use the ``next_call``
-    hint to request the next page.
-
-    Args:
-        plan_dir: Directory to scan for plan files (``*.yaml``, ``*.md``,
-                  or subdirectories that are plan directories).
-        search: Optional substring to filter by. Matched case-insensitively
-                against ``feature``, ``description``, and ``goal`` fields.
-        offset: Zero-based start index into the (filtered) result list.
-        limit: Maximum items to return. Defaults to a budget-based calculation.
-
-    Deprecated:
-        Use ``sam_plan(action='list', ...)``.
-    """
-    raise ToolError("sam_list is deprecated. Use sam_plan(action='list') instead.")
 
 
 def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None:
@@ -366,40 +228,6 @@ def _try_register_task_plan_artifact(issue_number: int, plan_path: Path) -> None
         )
 
 
-@mcp.tool
-def sam_create(
-    slug: Annotated[str, Field(description="Short identifier for the plan (e.g., 'auth-system')")],
-    goal: Annotated[str, Field(description="Human-readable goal statement for the plan")],
-    tasks_yaml: Annotated[str, Field(description="YAML string with a 'tasks' key containing a list of task dicts")],
-    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
-    context: Annotated[str | None, Field(description="Optional plan-level context (markdown prose)")] = None,
-    issue: Annotated[int | None, Field(description="Optional GitHub issue number to associate with the plan")] = None,
-) -> dict:
-    """Create a new plan from YAML task definitions.
-
-    Parses ``tasks_yaml`` (a YAML string containing a ``tasks:`` list), validates
-    each task dict against the ``Task`` Pydantic model, assigns the next available
-    plan number, and writes the plan file to ``{plan_dir}/P{NNN}-{slug}.yaml``.
-
-    Mirrors ``sam create`` CLI behaviour. All write operations are atomic.
-
-    Args:
-        slug: Short identifier for the plan.
-        goal: Human-readable goal statement.
-        tasks_yaml: YAML string whose top-level key is ``tasks`` — a list of task
-                    dicts (required fields per ``Task`` model: ``task``, ``title``,
-                    ``status``, ``agent``, ``dependencies``, ``priority``,
-                    ``complexity``).
-        plan_dir: Directory in which to create the plan file.
-        context: Optional plan-level context string.
-        issue: Optional GitHub issue number.
-
-    Deprecated:
-        Use ``sam_plan(action='create', ...)``.
-    """
-    raise ToolError("sam_create is deprecated. Use sam_plan(action='create', ...) instead.")
-
-
 def _validated_task_patch(backend: TaskBackend, plan_id: str, task_id: str, raw_fields: dict[str, Any]) -> Task:
     """Validate raw JSON patch fields through the Pydantic Task model.
 
@@ -425,72 +253,6 @@ def _validated_task_patch(backend: TaskBackend, plan_id: str, task_id: str, raw_
     task_data = backend.read_task(plan_id, task_id)
     current = Task.model_validate(task_data)
     return Task.model_validate({**current.model_dump(), **raw_fields})
-
-
-@mcp.tool
-def sam_update(
-    address: Annotated[str, Field(description="Plan address (e.g., 'P1') or task address (e.g., 'P1/T2')")],
-    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
-    set_fields_json: Annotated[
-        str | None, Field(description="JSON object of field=value pairs to set on the plan or task")
-    ] = None,
-    context: Annotated[str | None, Field(description="Set the plan-level context field")] = None,
-    append_section: Annotated[
-        str | None, Field(description="Name of the markdown section to append to the task body")
-    ] = None,
-    section_content: Annotated[str | None, Field(description="Body content for the appended section")] = None,
-) -> dict:
-    """Update plan or task fields, or append a markdown section to a task body.
-
-    Supports three non-exclusive operations that can be combined in one call:
-
-    1. ``set_fields_json`` — a JSON object of ``{field: value}`` pairs to update.
-    2. ``context`` — shorthand for setting the plan-level ``context`` field.
-    3. ``append_section`` + ``section_content`` — append a named markdown section
-       to a task's body (task address required for this operation).
-
-    Mirrors ``sam update`` CLI behaviour.
-
-    Args:
-        address: Plan or task address. Task address required for
-                 ``append_section`` and task-level ``set_fields_json``.
-        plan_dir: Directory containing plan files.
-        set_fields_json: JSON string ``{"field": "value", ...}`` to set.
-        context: If provided, sets the plan-level ``context`` field.
-        append_section: Section heading to append to the task body.
-        section_content: Body text for the appended section.
-
-    Deprecated:
-        Use ``sam_task(action='update', ...)`` or ``sam_plan(action='update', ...)``.
-    """
-    raise ToolError(
-        "sam_update is deprecated. "
-        "Use sam_task(action='update', plan=..., task=...) for task-level updates, "
-        "or sam_plan(action='update', plan=...) for plan-level updates."
-    )
-
-
-@mcp.tool
-def sam_claim(
-    plan: Annotated[str, Field(description="Plan address (e.g., 'P1' or slug)")],
-    task: Annotated[str, Field(description="Task ID to claim (e.g., 'T3')")],
-    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
-) -> dict:
-    """Claim a task by transitioning it from ``not-started`` to ``in-progress``.
-
-    Guards against double-claiming: returns an error dict (not an exception) if
-    the task is already in-progress or in a terminal state. Mirrors ``sam claim``
-    CLI behaviour.
-
-    Args:
-        plan: Plan address component (numeric index or slug).
-        task: Task ID to claim (e.g., ``T3``).
-        plan_dir: Path to the directory containing plan files.
-
-    Deprecated:
-        Use ``sam_task(action='claim', ...)``.
-    """
-    raise ToolError("sam_claim is deprecated. Use sam_task(action='claim', plan=..., task=...) instead.")
 
 
 # Actions that require the ``plan`` parameter to be supplied.

@@ -31,7 +31,7 @@ $ARGUMENTS
 
 ## If `--complete <task-id>` Provided
 
-1. Run `mcp__plugin_dh_sam__sam_state(plan="P{N}", task="T{M}", status="complete")` to mark the task complete.
+1. Run `mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action": "state", "status": "complete"})` to mark the task complete.
 2. Output: `Task {ID} marked as complete`
 
 ---
@@ -41,7 +41,7 @@ $ARGUMENTS
 1. Read the task assignment via the SAM MCP tool:
 
    ```text
-   mcp__plugin_dh_sam__sam_read(plan="P{N}", task="T{M}")
+   mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action": "read"})
    ```
 
    The response is a `TaskAssignment` JSON object containing:
@@ -85,11 +85,11 @@ $ARGUMENTS
 
 3. Claim the task (prevents duplicate dispatch):
 
-   Use `sam_claim` MCP tool. This is the ONLY permitted way to mark a task in-progress.
+   Use `sam_task(action='claim')` MCP tool. This is the ONLY permitted way to mark a task in-progress.
    Do NOT edit status or started fields directly with the Edit tool.
 
    ```text
-   mcp__plugin_dh_sam__sam_claim(plan="P{N}", task="T{M}")
+   mcp__plugin_dh_sam__sam_task(plan="P{N}", task="T{M}", config={"action": "claim"})
    ```
 
    If the response contains `"claimed": false`:

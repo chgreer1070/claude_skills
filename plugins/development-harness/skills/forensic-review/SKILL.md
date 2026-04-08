@@ -48,7 +48,7 @@ flowchart TD
 Read the task via MCP:
 
 ```text
-sam_read(plan="{plan_id}", task="{task_id}")
+sam_task(plan="{plan_id}", task="{task_id}", config={"action": "read"})
 ```
 
 Extract:
@@ -105,16 +105,16 @@ for remediation task creation.
 Append review results to the task:
 
 ```text
-sam_update(
-  address="{plan_id}/{task_id}",
-  append_section="Review Results",
-  section_content="{artifact_content}"
+sam_task(
+  plan="{plan_id}",
+  task="{task_id}",
+  config={"action": "update", "append_section": "Review Results", "section_content": "{artifact_content}"}
 )
 ```
 
 ## Input
 
-- `ARTIFACT:EXECUTION` + `ARTIFACT:TASK` via `sam_read(plan="{plan_id}", task="{task_id}")`
+- `ARTIFACT:EXECUTION` + `ARTIFACT:TASK` via `sam_task(plan="{plan_id}", task="{task_id}", config={"action": "read"})`
 - `issue_number` — must be present; used by `@dh:code-reviewer` for `artifact_register` and
   by this skill for `artifact_read`
 
@@ -153,5 +153,5 @@ Remediation tasks follow the same CLEAR format as original tasks. They:
 
 - `@dh:code-reviewer` returns STATUS: DONE with a PASS, FAIL, or NEEDS-WORK verdict
 - `codebase-analysis` artifact is registered on issue #{issue_number}
-- Review Results appended to the SAM task via `sam_update`
+- Review Results appended to the SAM task via `sam_task(action='update')`
 - Blocking findings (if any) have concrete remediation tasks created

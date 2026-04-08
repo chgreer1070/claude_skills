@@ -256,7 +256,7 @@ Revision Protocol:
 
 ## Task Structure Requirements
 
-The `sam_create` MCP tool validates all required fields at creation time. The YAML template below is the authoritative field reference for this agent.
+The `sam_plan(action='create')` MCP tool validates all required fields at creation time. The YAML template below is the authoritative field reference for this agent.
 
 **Creating the plan file**: Generate task definitions as YAML, then use the SAM MCP tool:
 

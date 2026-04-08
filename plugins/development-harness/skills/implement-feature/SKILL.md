@@ -1,6 +1,6 @@
 ---
 name: implement-feature
-description: Use when a SAM task plan exists and you need to execute the implementation loop — picks up ready tasks, delegates each to its specified agent, and relies on hooks to update task timestamps and status. Activates when a plan address (P{NNN}) or feature slug is provided after planning is complete. Task plans are managed by the SAM MCP server (sam_status, sam_read).
+description: Use when a SAM task plan exists and you need to execute the implementation loop — picks up ready tasks, delegates each to its specified agent, and relies on hooks to update task timestamps and status. Activates when a plan address (P{NNN}) or feature slug is provided after planning is complete. Task plans are managed by the SAM MCP server (sam_plan, sam_task).
 argument-hint: <task-file-path or feature-slug>
 user-invocable: true
 ---
@@ -20,10 +20,10 @@ This workflow continues from `add-new-feature`. It executes tasks from a SAM tas
 Rules:
 
 - If `<feature_input/>` ends with `.md`, treat it as the task file path and extract the plan address `P{N}` from the filename (e.g., `plan/tasks-3-integrate-sam-schema.md` → `P3`).
-- Otherwise, treat it as a feature slug (or partial slug) and resolve plan address via `sam_status`:
+- Otherwise, treat it as a feature slug (or partial slug) and resolve plan address via `sam_plan`:
 
 ```text
-mcp__plugin_dh_sam__sam_status(plan="<feature_input/>")
+mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="<feature_input/>")
 ```
 
 ---
@@ -33,7 +33,7 @@ mcp__plugin_dh_sam__sam_status(plan="<feature_input/>")
 1. Query status:
 
 ```text
-mcp__plugin_dh_sam__sam_status(plan="P{N}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="P{N}")
 ```
 
 2. If tasks remain, query ready tasks **once** and store the result as the current batch:
@@ -49,14 +49,14 @@ Falls back to local cache if GitHub unavailable.
 If parent issue number is unknown, use the SAM MCP tool:
 
 ```text
-mcp__plugin_dh_sam__sam_ready(plan="P{N}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "ready"}, plan="P{N}")
 ```
 
-> **Call `sam_ready` (or `backlog_get_ready_sam_tasks`) ONCE per batch.** Store the returned
-> task list. Loop over the stored list — do NOT call `sam_ready` again within the loop.
+> **Call `sam_plan(action='ready')` (or `backlog_get_ready_sam_tasks`) ONCE per batch.** Store the returned
+> task list. Loop over the stored list — do NOT call `sam_plan(action='ready')` again within the loop.
 > After all tasks in the current batch are dispatched and completed, use
-> `mcp__plugin_dh_sam__sam_status` (~270 chars) to check whether more tasks remain.
-> Only call `sam_ready` again when the previous batch is fully dispatched and you need the
+> `mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="P{N}")` to check whether more tasks remain.
+> Only call `sam_plan(action='ready')` again when the previous batch is fully dispatched and you need the
 > next batch of ready tasks.
 
 3. For each ready task (or batch of ready tasks):
@@ -112,8 +112,8 @@ flowchart TD
     Trigger([Health check triggered]) --> Spawn
     Spawn["Task is session health summary<br>subagent_type='agentskill-kaizen:transcript-analyst'<br>Context: agent name or teammate ID to check,<br>JSONL dir ~/.claude/projects/{project-slug}/*.jsonl<br>Report: last turn timestamp, last tool call,<br>verdict of crashed / idle / active"]
     Spawn --> Verdict{Analyst verdict}
-    Verdict -->|"Crashed — session ended abruptly<br>after sam_claim with no further turns"| Confirm
-    Confirm["Confirm task state via<br>mcp__plugin_dh_sam__sam_read(task_id)<br>Verify task is still CLAIMED"] --> Respawn
+    Verdict -->|"Crashed — session ended abruptly<br>after sam_task(action=claim) with no further turns"| Confirm
+    Confirm["Confirm task state via<br>mcp__plugin_dh_sam__sam_task(plan, task, config={action:read})<br>Verify task is still CLAIMED"] --> Respawn
     Respawn["Re-spawn agent with same task file path and task ID<br>SubagentStop hook updates status on completion"]
     Verdict -->|"Idle — no tool calls for 5+ min<br>agent appears stuck mid-task"| TeamCheck{Agent is a teammate<br>in an active team?}
     TeamCheck -->|Yes| SendMsg["SendMessage to teammate<br>'Are you blocked? What is your current status?'<br>Wait 2 minutes for response"]
@@ -199,9 +199,9 @@ This terminates the teammate immediately rather than leaving it idle. Idle teamm
 
 **Skip when**: the agent was dispatched via a single `Agent` call (not `TeamCreate`) — subagents terminate automatically when their prompt completes.
 
-5. After all tasks in the current batch complete, call `mcp__plugin_dh_sam__sam_status` to
+5. After all tasks in the current batch complete, call `mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="P{N}")` to
    check plan progress. If tasks remain, return to step 2 to fetch the next batch of ready
-   tasks. Do NOT call `sam_ready` again until the previous batch is fully dispatched.
+   tasks. Do NOT call `sam_plan(action='ready')` again until the previous batch is fully dispatched.
 
 > **Hook behavior on SubagentStop**: When a sub-agent finishes, `task_status_hook.py` marks
 > the task complete in the local task file. After marking the task complete locally, the hook

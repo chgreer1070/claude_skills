@@ -295,7 +295,7 @@ Then append the document content as a markdown section using:
 mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "research-{mode}-{slug}", "task_id": null, "section": "{MODE}", "content": "{document body}"})
 ```
 
-`sam_create` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path. The document is stored under `plan/research/` via the SAM plan directory conventions.
+`sam_plan(action='create')` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path. The document is stored under `plan/research/` via the SAM plan directory conventions.
 
 Use the appropriate output template for the research mode.
 

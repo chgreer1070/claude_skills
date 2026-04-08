@@ -183,14 +183,14 @@ flowchart TD
 After the dispatch loop exits, verify all 3 phases reached terminal status:
 
 ```text
-mcp__plugin_dh_sam__sam_status(plan="{PQG}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="{PQG}")
 ```
 
 All 3 tasks must have `status == 'complete'`. No skip whitelist — all 3 tasks are required.
 
 ```mermaid
 flowchart TD
-    Status["sam_status(plan='{PQG}')"] --> Iter["Iterate over all 3 tasks"]
+    Status["sam_plan(action=status, plan='{PQG}')"] --> Iter["Iterate over all 3 tasks"]
     Iter --> Check{For each task:<br>check status}
     Check -->|"status == 'complete'"| PassTask["Task passes"]
     Check -->|"any other status"| FailTask["FAIL"]
@@ -385,13 +385,13 @@ Extract `{slug}` from the task file path (`plan/P{NNN}-{slug}.yaml` — strip th
 ### Step 1: Check for existing QG plan
 
 ```text
-mcp__plugin_dh_sam__sam_list(search="qg-{slug}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "list", "search": "qg-{slug}"})
 ```
 
 ```mermaid
 flowchart TD
-    List["sam_list(search='qg-{slug}')"] --> Found{QG plan found?}
-    Found -->|No| Create["Call build_quality_gate_plan,<br>then sam_create"]
+    List["sam_plan(action=list, search='qg-{slug}')"] --> Found{QG plan found?}
+    Found -->|No| Create["Call build_quality_gate_plan,<br>then sam_plan(action=create)"]
     Found -->|Yes| Check{All tasks terminal?}
     Check -->|Yes — COMPLETE or SKIPPED| Skip["Skip to Completion Verification Gate"]
     Check -->|No — tasks remain| Reset["Reset BLOCKED tasks to NOT_STARTED,<br>resume SAM dispatch loop"]
@@ -464,12 +464,12 @@ Check for an existing implementation team before dispatching QG agents:
 
 ### Dispatch Loop
 
-Repeat until `sam_ready` returns an empty list:
+Repeat until `sam_plan(action='ready')` returns an empty list:
 
 **1. Get next ready task:**
 
 ```text
-mcp__plugin_dh_sam__sam_ready(plan="{QG}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "ready"}, plan="{QG}")
 ```
 
 If the result is empty, exit the loop and proceed to Completion Verification Gate.
@@ -477,7 +477,7 @@ If the result is empty, exit the loop and proceed to Completion Verification Gat
 **2. Claim the task:**
 
 ```text
-mcp__plugin_dh_sam__sam_claim(plan="{QG}", task="{task_id}")
+mcp__plugin_dh_sam__sam_task(plan="{QG}", task="{task_id}", config={"action": "claim"})
 ```
 
 If `"claimed": false`, stop — another agent is running this phase. Do not re-dispatch.
@@ -494,14 +494,14 @@ The SubagentStop hook marks the task COMPLETE after the sub-agent finishes.
 
 **4. Phase-specific post-dispatch actions:**
 
-After each dispatched phase completes, run the phase-specific processing before querying `sam_ready` again:
+After each dispatched phase completes, run the phase-specific processing before querying `sam_plan(action='ready')` again:
 
 ```mermaid
 flowchart TD
     Done{Which task<br>just completed?}
     Done -->|T1 Code Review| T1Post["Read codebase-analysis artifact.<br>Verdict drives Recursive Follow-up Handling<br>(Step 1 — fix loop or backlog routing)."]
     Done -->|T4 Drift Audit| T4Post{Drift found<br>in T4 output?}
-    T4Post -->|No drift| SkipT5["sam_state(plan='{QG}', task='T5', status='skipped')"]
+    T4Post -->|No drift| SkipT5["sam_task(plan='{QG}', task='T5', config={action:state, status:skipped})"]
     T4Post -->|Drift found| T5Ready["T5 remains NOT_STARTED — will be<br>dispatched on next loop iteration"]
     Done -->|T6 Context Refinement| T6Post["Check T6 agent output for<br>DIVERGENCE_REQUIRING_REVIEW block.<br>If present, store for final output."]
     Done -->|T2, T3, T5| Continue["No phase-specific action —<br>continue loop"]
@@ -520,14 +520,14 @@ flowchart TD
 After the SAM dispatch loop exits (no ready tasks), verify all 6 phases reached terminal status before allowing label application.
 
 ```text
-mcp__plugin_dh_sam__sam_status(plan="{QG}")
+mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="{QG}")
 ```
 
 Examine each of the 6 tasks:
 
 ```mermaid
 flowchart TD
-    Status["sam_status(plan='{QG}')"] --> Iter["Iterate over all 6 tasks"]
+    Status["sam_plan(action=status, plan='{QG}')"] --> Iter["Iterate over all 6 tasks"]
     Iter --> Check{For each task:<br>check status}
     Check -->|"status == 'complete'"| PassTask["Task passes"]
     Check -->|"status == 'skipped' AND task_id == 'T5'"| PassTask
@@ -609,7 +609,7 @@ Check the `verdict` field in the report:
 - `PASS` — no blocking findings; skip the entire routing section (no follow-ups to route)
 - `NEEDS-WORK` or `FAIL` — extract the "Required changes (blocking)" section; each blocking
   item becomes a follow-up to route. **When "Required changes (blocking)" is non-empty, run the
-  fix loop first (max 3 cycles, `{fix_cycle}`=0):** `sam_create(slug="fix-{slug}-blocking-N")`
+  fix loop first (max 3 cycles, `{fix_cycle}`=0):** `sam_plan(action='create', slug="fix-{slug}-blocking-N")`
   one task per entry (`agent: dh:task-worker`); dispatch via `subagent_type="dh:task-worker"`;
   reset T1 to `not-started`; re-dispatch T1; if verdict is `PASS` or blocking entries empty →
   proceed to Step 2; else `fix_cycle += 1`, repeat or BLOCKED at 3. **On BLOCKED** (exhausted
@@ -619,7 +619,7 @@ Check the `verdict` field in the report:
 If `artifact_read` returns an error or the artifact is absent, fall back to the SAM MCP search:
 
 ```text
-mcp__plugin_dh_sam__sam_list(search="{slug}-followup")
+mcp__plugin_dh_sam__sam_plan(config={"action": "list", "search": "{slug}-followup"})
 ```
 
 Where `{slug}` is extracted from the parent task file path (`plan/P{NNN}-{slug}.yaml` — strip `P{NNN}-` prefix and `.yaml` suffix).

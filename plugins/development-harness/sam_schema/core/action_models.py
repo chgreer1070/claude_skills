@@ -145,8 +145,12 @@ class CreatePlanConfig(BaseModel):
         ...,
         description=(
             "YAML string with a top-level 'tasks' key containing a list of task dicts. "
-            "Required task fields per Task model: id, title, status, agent, dependencies, "
-            "priority, complexity. All other Task fields are optional."
+            "Required task fields per Task model: id (str, e.g. 'T1'), title (str), "
+            "status ('not-started'), agent (str, e.g. 'dh:code-reviewer'), "
+            "dependencies (list of task IDs, e.g. ['T1', 'T2']), "
+            "priority (int 1-5, where 1=highest), "
+            "complexity ('low', 'medium', or 'high'). "
+            "All other Task fields are optional."
         ),
     )
     context: str | None = Field(

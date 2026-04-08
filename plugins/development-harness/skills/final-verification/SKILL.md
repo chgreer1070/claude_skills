@@ -102,14 +102,14 @@ For the quality gate protocol, reference `/dh:validation-protocol`.
 
 ## Input
 
-- All review results via `sam_read(plan="{plan_id}", task="{task_id}")` per task — review content is stored in task body sections
+- All review results via `sam_task(plan="{plan_id}", task="{task_id}", config={"action": "read"})` per task — review content is stored in task body sections
 - Feature-context artifact via `artifact_read(issue_number={issue}, artifact_type="feature-context")`
 - Architect artifact via `artifact_read(issue_number={issue}, artifact_type="architect")`
 - Read access to the codebase
 
 ## Output
 
-Append to the plan via `sam_update(address="{plan_id}/{task_id}", append_section="Final Verification", section_content="{verification_markdown}")` where `{verification_markdown}` follows this template:
+Append to the plan via `sam_task(plan="{plan_id}", task="{task_id}", config={"action": "update", "append_section": "Final Verification", "section_content": "{verification_markdown}"})` where `{verification_markdown}` follows this template:
 
 ```markdown
 # ARTIFACT:VERIFICATION

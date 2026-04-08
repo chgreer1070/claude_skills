@@ -649,7 +649,7 @@ Then append the document content as a markdown section:
 mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "codebase-{focus}", "task_id": null, "section": "{DOCUMENT}", "content": "{document body}"})
 ```
 
-`sam_create` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path. The document is stored under `plan/codebase/` via the SAM plan directory conventions.
+`sam_plan(action='create')` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path. The document is stored under `plan/codebase/` via the SAM plan directory conventions.
 
 **Document naming:** UPPERCASE focus area name (e.g., PATTERNS, ARCHITECTURE).
 
@@ -662,13 +662,13 @@ mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "codebase-
 
 ## Large Document Strategy
 
-Thorough codebase analysis documents -- particularly PATTERNS.md and ARCHITECTURE.md with extensive code examples -- can be large. All content is written via `sam_update` section appends, so there is no single-call size limit to hit, but each `sam_update` call should stay under 25K characters.
+Thorough codebase analysis documents -- particularly PATTERNS.md and ARCHITECTURE.md with extensive code examples -- can be large. All content is written via `sam_plan(action='update')` section appends, so there is no single-call size limit to hit, but each `sam_plan(action='update')` call should stay under 25K characters.
 
 **Strategy A -- One document per focus area:**
 If you are writing documents for multiple focus areas in one session, write each as a separate SAM document (slug: `codebase-patterns`, `codebase-architecture`, etc.). Do not combine multiple focus areas into one document.
 
-**Strategy B -- Multiple `sam_update` section appends (when a single document is large):**
-If a single focus area document is large (e.g., a comprehensive PATTERNS.md with many code examples), split the content into logical sections and issue one `sam_update` call per section. Each call appends one section to the document. Keep each call under 25K characters.
+**Strategy B -- Multiple `sam_plan(action='update')` section appends (when a single document is large):**
+If a single focus area document is large (e.g., a comprehensive PATTERNS.md with many code examples), split the content into logical sections and issue one `sam_plan(action='update')` call per section. Each call appends one section to the document. Keep each call under 25K characters.
 
 ```text
 # Example: large PATTERNS.md written in three appends
@@ -677,11 +677,11 @@ mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "codebase-
 mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "codebase-patterns", "task_id": null, "section": "PATTERNS", "content": "## Callback Patterns\n\n{third section content}"})
 ```
 
-Do not use `Write` or `Edit` for codebase analysis documents -- all content goes through `sam_update`.
+Do not use `Write` or `Edit` for codebase analysis documents -- all content goes through `sam_plan(action='update')`.
 
 ## Step 4: Register Artifact
 
-After `sam_create` + `sam_update` complete, register the artifact so it is discoverable via `artifact_list`:
+After `sam_plan(action='create')` + `sam_plan(action='update')` complete, register the artifact so it is discoverable via `artifact_list`:
 
 ```text
 mcp__plugin_dh_backlog__artifact_register(
@@ -770,7 +770,7 @@ SUGGESTED_NEXT_STEP: {what orchestrator should do}
 
 **Level 3: Wired**
 
-- [ ] Document path matches downstream consumer expectations (under `dh_paths.plan_dir() / "codebase/"`, resolved internally by `sam_create`)
+- [ ] Document path matches downstream consumer expectations (under `dh_paths.plan_dir() / "codebase/"`, resolved internally by `sam_plan(action='create')`)
 - [ ] Document format compatible with agent consumption (python-cli-design-spec, python-cli-architect, python-pytest-architect)
 - [ ] Confirmation returned to orchestrator (not document contents)
 - [ ] ARTIFACTS in DONE response uses logical reference: `type=codebase-analysis, issue={issue_number}, artifact_id=codebase-{focus}-{slug}`
