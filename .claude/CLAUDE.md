@@ -322,6 +322,19 @@ Skills `/dh:create-backlog-item` and `/dh:work-backlog-item` invoke these tools.
 
 ---
 
+## No Derived Data in Documentation
+
+Do not embed counts, totals, or other values derived from a list or table defined elsewhere. These values drift silently when the source changes, creating stale documentation that misleads agents and humans. This is the documentation equivalent of magic numbers in code.
+
+- **Do**: "All required sections (defined in finalize.md validation gate) must be present"
+- **Don't**: "All 8 required sections must be present"
+- **Why**: Prevents misleading data through undetected drift and stale derived values
+
+**Trigger**: When writing or editing documentation that states a count, total, or summary derived from a list, table, or directory defined elsewhere.
+**Action**: Find the source of truth and reference it instead of restating the derived value. Use a subagent to locate the source if the Agent tool is available.
+
+---
+
 ## File Reference Standards
 
 ### Code Fence Language Specifiers
