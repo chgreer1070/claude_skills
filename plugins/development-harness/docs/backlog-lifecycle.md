@@ -61,7 +61,7 @@ stateDiagram-v2
 | State | Status value | Description |
 |---|---|---|
 | `needs-grooming` | `needs-grooming` | Item created, not yet fact-checked or groomed |
-| `groomed` | `groomed` | All 7 canonical sections present, RT-ICA APPROVED |
+| `groomed` | `groomed` | All 8 canonical sections present, RT-ICA APPROVED |
 | `blocked-grooming` | `blocked` | RT-ICA BLOCKED during grooming — missing information prevents grooming |
 | `blocked-work` | `blocked` | AC verification FAIL during work — implementation issue prevents completion |
 | `in-milestone` | `in-milestone` | Assigned to a milestone, awaiting work |
@@ -81,7 +81,7 @@ status determines which resolution path applies:
 
 - **`in-progress` timing**: Set only after the RT-ICA gate returns APPROVED and the SAM plan
   file is created. Not during grooming or RT-ICA checking.
-- **`groomed` timing**: Set only when ALL 7 canonical sections are present with minimum content.
+- **`groomed` timing**: Set only when ALL 8 canonical sections are present with minimum content.
   Partial grooming is not groomed.
 - **`blocked` and `in-progress` are exclusive**: If AC verification fails during close, set
   `blocked` — do not close.
@@ -111,7 +111,7 @@ The backend creates an issue at that point via `backlog_sync`.
 ```text
 Trigger:    work-backlog-item discovers during planning that a required groomed section
             is missing or the RT-ICA result is stale and cannot be re-run
-Precondition: grooming incomplete — at least one of the 7 required sections absent
+Precondition: grooming incomplete — at least one of the 8 required sections absent
 Action:     backlog_update(selector='{item_ref}', status='needs-grooming')
             Report reason to user — which sections are missing
             User re-runs /dh:work-backlog-item groom {item_ref} before item can
@@ -141,7 +141,7 @@ NEXT-token handoff model where separate skills passed control to each other.
 | Stage | Route | Workflow file | Produces | Status on completion |
 |---|---|---|---|---|
 | Create | `create` | `workflows/create/scope.md` + `start.md` | `item_ref` (`#N`), backend issue | `needs-grooming` |
-| Groom | `groom` | `workflows/groom/scope.md` + `start.md` | DEEP item with 7 required sections | `groomed` |
+| Groom | `groom` | `workflows/groom/scope.md` + `start.md` | DEEP item with 8 required sections | `groomed` |
 | Work | `work` | `workflows/work/scope.md` + `start.md` | SAM plan | `open/groomed` → `in-progress` |
 
 ### Stage Transitions
@@ -283,7 +283,7 @@ may modify lifecycle state without being added to this table.
 | From State | To State | Initiating Route | Observable Trigger Condition |
 |---|---|---|---|
 | `[*]` | `needs-grooming` | `work-backlog-item create` | `backlog_add` returns success with `item_ref` |
-| `needs-grooming` | `groomed` | `work-backlog-item groom` | RT-ICA APPROVED AND all 7 canonical sections present |
+| `needs-grooming` | `groomed` | `work-backlog-item groom` | RT-ICA APPROVED AND all 8 canonical sections present |
 | `needs-grooming` | `blocked` | `work-backlog-item groom` | RT-ICA BLOCKED — one or more MISSING conditions |
 | `blocked` | `needs-grooming` | (user re-queues) | User provides missing info; operator runs `groom` again |
 | `blocked` | `resolved` | any route | User cancels item; explicit reason provided |
@@ -380,10 +380,10 @@ metadata:
   updated_at: {ISO timestamp}
 ```
 
-### 7 Required Groomed Sections
+### 8 Required Groomed Sections
 
-An item is considered fully groomed only when ALL 7 sections are present with minimum content.
-`metadata.groomed` MUST NOT be set until all 7 sections pass the presence check.
+An item is considered fully groomed only when ALL 8 sections are present with minimum content.
+`metadata.groomed` MUST NOT be set until all 8 sections pass the presence check.
 
 | Section | Required | Minimum Content |
 |---|---|---|

@@ -20,7 +20,7 @@ metadata:
   priority: P0|P1|P2|Ideas   # REQUIRED — priority tier
   type: Feature|Bug|Refactor|Docs|Chore   # REQUIRED
   status: needs-grooming|groomed|blocked|in-milestone|in-progress|done|resolved|closed   # REQUIRED
-  groomed: YYYY-MM-DD     # optional — set by groom-backlog-item when all 7 sections present
+  groomed: YYYY-MM-DD     # optional — set by groom-backlog-item when all 8 sections present
   issue: '#N'             # optional — GitHub issue number (string with # prefix)
   milestone: integer      # optional — GitHub milestone number
   plan: string            # optional — relative path to SAM task file
@@ -39,7 +39,7 @@ metadata:
 | `metadata.priority` | create-backlog-item | Set at creation |
 | `metadata.type` | create-backlog-item | Set at creation |
 | `metadata.status` | all skills | Updated on state transitions (see state-machine.md) |
-| `metadata.groomed` | groom-backlog-item | Set when all 7 required sections present |
+| `metadata.groomed` | groom-backlog-item | Set when all 8 required sections present |
 | `metadata.issue` | backlog script | Set on GitHub issue creation |
 | `metadata.milestone` | group-items-to-milestone | Set on milestone assignment |
 | `metadata.plan` | work-backlog-item | Set when SAM task file created |
@@ -154,13 +154,13 @@ Overall: FAIL (2/3 criteria met)
 | Newly created | All frontmatter fields | Description, optionally AC + Research First + Suggested Location |
 | Fact-checked | + | + Fact-Check section |
 | RT-ICA assessed | + | + RT-ICA section |
-| Fully groomed | `metadata.groomed` set | All 7 canonical sections: Fact-Check, RT-ICA, Reproducibility, Dependencies, Skills, Agents, Prior Work |
+| Fully groomed | `metadata.groomed` set | All 8 canonical sections: Fact-Check, RT-ICA, Reproducibility, Dependencies, Skills, Agents, Prior Work |
 | In-milestone | `metadata.milestone` set, `metadata.status: in-milestone` | (same as fully groomed) |
 | In-progress | `metadata.plan` set, `metadata.status: in-progress` | + plan file exists at path |
 | Done | `metadata.status: done` | + Acceptance Criteria Verification section (all criteria PASS) |
 | Closed | `metadata.status: closed` | Terminal — set by complete-milestone only |
 
-An item is **fully groomed** only when ALL 7 of these sections are present in the item file (in this order):
+An item is **fully groomed** only when ALL 8 of these sections are present in the item file (in this order):
 
 1. `Fact-Check` — must contain V/R/I counts
 2. `RT-ICA` — must contain `Decision: APPROVED` or `Decision: BLOCKED`
@@ -170,7 +170,7 @@ An item is **fully groomed** only when ALL 7 of these sections are present in th
 6. `Agents` — content or explicit "None"
 7. `Prior Work`
 
-`metadata.groomed` MUST NOT be set until all 7 are present. Partial grooming (e.g., only Fact-Check and RT-ICA written) is NOT considered groomed — groom-backlog-item resumes from the first missing section rather than restarting.
+`metadata.groomed` MUST NOT be set until all 8 are present. Partial grooming (e.g., only Fact-Check and RT-ICA written) is NOT considered groomed — groom-backlog-item resumes from the first missing section rather than restarting.
 
 ---
 

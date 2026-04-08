@@ -140,7 +140,7 @@ uv run .claude/skills/backlog/scripts/backlog.py groom "{title}" \
 # After groomer agent output
 uv run .claude/skills/backlog/scripts/backlog.py groom "{title}" \
   --section "Reproducibility" --content "{content}"
-# ... repeated for each of the 7 required subsections
+# ... repeated for each of the 8 required subsections
 ```
 
 **Alternative (full body at once)**:
@@ -155,7 +155,7 @@ uv run .claude/skills/backlog/scripts/backlog.py groom "{title}" \
 
 **What gets written to the item file**:
 
-- `metadata.groomed: YYYY-MM-DD` (set only after ALL 7 required sections are present)
+- `metadata.groomed: YYYY-MM-DD` (set only after ALL 8 required sections are present)
 - Body sections appended: Fact-Check, RT-ICA, then groomed subsections (Reproducibility,
   Priority, Impact, Scope, Output / Evidence, Dependencies, Research, Skills, Agents,
   Prior Work, Files, Decision)
@@ -636,7 +636,7 @@ Items to verify in the next session by running the commands and observing actual
 ### State Transitions
 
 - [ ] Confirm `backlog groom "{title}" --section "Fact-Check" --content "..."` appends without overwriting existing sections
-- [ ] Confirm `metadata.groomed` is set only after all 7 required sections are present (try with 6 sections and verify field is absent)
+- [ ] Confirm `metadata.groomed` is set only after all 8 required sections are present (try with 7 sections and verify field is absent)
 - [ ] Confirm `backlog update --status in-progress` requires a prior `--plan` to be set, or can set status independently
 - [ ] Confirm `backlog close` without `--checklist-pass` flag is rejected (expected: error or warning)
 - [ ] Confirm `backlog resolve` without `--reason` is rejected
