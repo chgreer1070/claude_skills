@@ -61,6 +61,7 @@ _LIST_TOKEN_BUDGET = 4_400
 # specific section, backlog_view returns a compact section-directory form so the
 # caller can request only the sections it needs.
 _VIEW_TOKEN_BUDGET = 4_000
+_GROOMED_SECTION_TYPE = "groomed"
 _enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
 
 # Fields searched by default when no field-specific prefix is given.
@@ -1585,8 +1586,9 @@ def _build_compact_manifest(
             f"Load specific sections: backlog_view(selector='{selector}', summary=False, section='<index, title, or /regex/>')"
         ),
     }
-    if result.sections_index:
-        compact["sections_index"] = result.sections_index
+    sections_index = _sections_index_from_result(result)
+    if sections_index:
+        compact["sections_index"] = sections_index
     return compact
 
 
@@ -1614,13 +1616,12 @@ def _sections_index_from_result(result: _models.ViewItemResult) -> str:
     for idx, (name, sec) in enumerate(result.sections.items()):
         if isinstance(sec, dict):
             sec_type = sec.get("type")
-            if sec_type == "groomed":
+            if sec_type == _GROOMED_SECTION_TYPE:
                 subs = sec.get("subsections")
                 count = len(subs) if isinstance(subs, dict) else 0
                 lines.append(f"[{idx}] {name} ({count} subsections)")
             else:
-                num = sec.get("num_entries", 0)
-                count = int(num) if isinstance(num, int) else 0
+                count = int(sec.get("num_entries", 0))
                 lines.append(f"[{idx}] {name} ({count} entries)")
     return "\n".join(lines) + "\n"
 
