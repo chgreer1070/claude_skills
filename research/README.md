@@ -75,6 +75,7 @@ research/
 │   ├── the-unwind-ai.md              # AI builder newsletter with 95K+ star open-source companion repo
 │   └── samuraizer.md                 # Samuraizer - Full-stack AI knowledge base: semantic search, RAG chat, knowledge graph, Telegram bot (Flask+React+Gemini)
 ├── coding-agents/                     # Autonomous AI coding agent platforms
+├── customer-support-platforms/        # Open-source customer support and live chat platforms
 │   ├── accomplish.md                  # Local-first AI desktop agent with MCP tools, 15 providers, permission-gated execution (9K+ stars)
 │   ├── cline.md                       # Open-source autonomous coding agent with human-in-the-loop approvals (Apache-2.0)
 │   ├── openai-codex-cli.md            # OpenAI Codex CLI — Rust-based coding agent with OS sandbox, MCP server/client, Starlark exec policy (62.5K stars)
@@ -188,6 +189,7 @@ research/
 │   ├── skrills.md                     # Rust skills support engine: validates, syncs, and analyzes skills across Claude Code, Codex CLI, and Copilot CLI (52 stars)
 │   ├── softaworks-agent-toolkit.md    # 43 skills, 6 agents, 7 slash commands for Claude Code (621 stars)
 │   └── vercel-labs-skills.md          # Universal skill installer for 40+ AI coding agents (6.3K stars)
+├── paas-platforms/                    # Self-hosted PaaS and deployment platforms
 ├── prompt-engineering/                # Prompt optimization and testing platforms
 │   ├── google-ai-studio.md            # Google AI Studio — browser-based Gemini IDE with 20+ models, function calling, grounding, and OpenAI-compatible API
 │   ├── prompt-engine.md               # SaaS prompt generator converting plain-language to professional-grade prompts in <15s ($19/month)
@@ -559,6 +561,7 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [holyclaude.md](./agent-infrastructure/holyclaude.md) | HolyClaude — containerized AI development workstation: Claude Code + web UI + 7 AI CLIs + headless browser + 50+ dev tools in one `docker compose up` (1.1K stars, MIT, v1.1.4) | 2026-03-28   |
 | [cmux.md](./agent-infrastructure/cmux.md) | cmux — Ghostty-based macOS terminal for AI coding agents: sidebar vertical tabs, visual notification rings, in-app browser with scriptable API, CLI socket for pane automation (11.1K stars, AGPL-3.0, v0.63.0) | 2026-03-28   |
 | [empirica.md](./agent-infrastructure/empirica.md) | Empirica v1.7.7 — epistemic measurement and Sentinel gating system for autonomous AI agents: 13-vector assessment, 4-layer memory architecture, noetic-praxic gating enforces understanding before code modification, Claude Code native hooks integration | 2026-04-05   |
+| [trigger-dev.md](./agent-infrastructure/trigger-dev.md) | Trigger.dev v3 — open-source TypeScript platform for AI agents and long-running workflows: durable checkpoint-resume execution, human-in-the-loop waitpoints, real-time streaming, batch ops, concurrency control, multi-environment isolation (14.5K stars, Apache-2.0) | 2026-04-11   |
 
 **Key Topics**:
 
@@ -634,7 +637,7 @@ High-performance API frameworks for building backend services, tool endpoints, a
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------ |
 | [fastapi.md](./api-frameworks/fastapi.md)  | Modern Python web framework with Pydantic validation, automatic OpenAPI docs, async support (95K+ stars)  | 2026-02-05   |
 | [motia.md](./api-frameworks/motia.md)      | Motia - unified backend framework replacing APIs, queues, workflows, and AI agents with one Step primitive (15K+ stars) | 2026-02-23   |
-| [pocketbase.md](./api-frameworks/pocketbase.md) | PocketBase - open-source Go backend in 1 file: embedded SQLite, realtime subscriptions, auth (password/OTP/OAuth2/MFA), file storage, admin dashboard (56K+ stars) | 2026-02-23   |
+| [pocketbase.md](./api-frameworks/pocketbase.md) | PocketBase v0.36.9 - open-source Go backend in 1 file: embedded SQLite, realtime subscriptions, auth (password/OTP/OAuth2/MFA), file storage, admin dashboard (57.5K+ stars) | 2026-04-11   |
 | [tornado.md](./api-frameworks/tornado.md)  | Python web framework and async networking library for WebSockets and long-polling (22K+ stars, 95M+ downloads/month) | 2026-02-05   |
 | [modelence.md](./api-frameworks/modelence.md) | Modelence - AI-native TypeScript/Node.js backend framework with MongoDB, auth, real-time stores, WebSockets, observability, cron, rate limiting, and managed cloud deploy (YC-backed, Apache 2.0) | 2026-03-04   |
 | [violit.md](./api-frameworks/violit.md) | Violit - reactive Python web framework replacing Streamlit's full-script reruns with fine-grained state reactivity; WebSocket + HTMX dual engine; Streamlit-compatible API; desktop mode via pywebview (368 stars, MIT, v0.5.2) | 2026-04-10   |
@@ -702,6 +705,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [google-ai-studio.md](./developer-tools/google-ai-studio.md) | Google AI Studio — free browser-based IDE and playground for Gemini API with 1M-token context, OpenAI compatibility, and built-in Google Search grounding | 2026-02-23   |
 | [grepai.md](./developer-tools/grepai.md)               | Semantic code search and call graph analysis for AI agents with MCP server, 12-language trace, and embedding-based search (1.2K stars) | 2026-02-13   |
 | [gridland.md](./developer-tools/gridland.md)           | Gridland v0.2.53 — React-based TUI framework rendering identical component code to HTML5 Canvas (browser) and native terminal (OpenTUI); write-once deploy to both environments with Bun binary compilation | 2026-03-24   |
+| [hoppscotch.md](./developer-tools/hoppscotch.md)       | Hoppscotch — open-source API development suite (78.9K stars); 13-package monorepo (web, Tauri desktop, CLI, self-hosted); REST/GraphQL/WebSocket/SSE/MQTT multi-protocol; JavaScript sandbox for pre/post-request scripts; NestJS + Vue 3 + Vite backend | 2026-04-11   |
 | [jina-reader.md](./developer-tools/jina-reader.md)     | Jina Reader - Apache 2.0 URL-to-Markdown API (`r.jina.ai` prefix), full SPA/PDF support via Puppeteer, web search grounding via `s.jina.ai` (~9.8K stars) | 2026-02-23   |
 | [jirajs.md](./developer-tools/jirajs.md)               | jira.js - TypeScript Jira API client for Cloud, Server, and Data Center with full REST API coverage                                   | 2026-02-20   |
 | [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                                 | 2026-01-31   |
@@ -718,6 +722,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [portless.md](./developer-tools/portless.md)           | Portless — replaces numeric port numbers with stable named `.localhost` URLs for local dev servers; targets both humans and AI coding agents; zero external proxy deps, HTTP/2 + TLS, loop detection (2,569 stars) | 2026-02-26   |
 | [scrapling.md](./developer-tools/scrapling.md)         | Scrapling — adaptive Python web scraping framework with anti-bot bypass (Cloudflare Turnstile), auto-relocating element selectors, built-in MCP server for Claude agents, 784x faster than BeautifulSoup4 (15K+ stars) | 2026-02-26   |
 | [surf-cli.md](./developer-tools/surf-cli.md)           | surf-cli — zero-config CLI for AI agent Chrome control via extension + Unix socket bridge; 50+ commands covering navigation, page reading, screenshots, network capture, and keyless AI model querying | 2026-02-26   |
+| [tabularis.md](./developer-tools/tabularis.md) | Tabularis v0.9.15 — Tauri cross-platform desktop database client (React + Rust/Tokio); MySQL/MariaDB/PostgreSQL/SQLite, SQL editor, SQL notebooks, visual query builder, ER diagrams, SSH tunneling, JSON-RPC 2.0 plugin system, and native MCP server for AI agent database queries (1,053 stars) | 2026-04-11   |
 | [tabz-browser-console-forwarder.md](./developer-tools/tabz-browser-console-forwarder.md) | Tabz — browser console to terminal forwarder; intercepts console.* methods, batches POSTs to backend, prefixes with [Browser:source:line], visible in tmux for AI agent debugging (MIT) | 2026-03-01   |
 | [piebald.md](./developer-tools/piebald.md)             | Piebald - cross-platform agentic AI desktop client with parallel subagents, persistent sessions, OAuth AI subscriptions, and HTTP traffic inspector (Free + Pro) | 2026-02-23   |
 | [pixel-agents.md](./developer-tools/pixel-agents.md)   | Pixel Agents — VS Code extension (v1.0.2) rendering Claude Code terminals as animated pixel-art characters in a virtual office; parses JSONL transcripts, visualizes sub-agent hierarchies, React 19 + Canvas 2D with BFS pathfinding (3K+ stars, MIT) | 2026-03-05   |
@@ -905,6 +910,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [1code.md](./coding-agents/1code.md) | 1Code — Electron desktop app wrapping Claude Code CLI and OpenAI Codex with git worktree isolation, tRPC router (20 namespaces), SQLite session tracking, MCP plugin management, voice input; Pro/Max tiers for background agents and sync (5.2K stars, MIT) | 2026-03-17   |
 | [maverick.md](./coding-agents/maverick.md) | Maverick — Claude Code plugin (28 skills + 4 agents) + CLI with enforcement chain (best-practice → project skill → local verify → CI → agent review → human review), three workflow modes (do-issue-solo, do-issue-guided, do-task-solo), upskill auto-generation from codebase, and AWS EC2/SQS/Lambda worker fleet for autonomous issue resolution (alpha) | 2026-03-23   |
 | [hyperagents.md](./coding-agents/hyperagents.md) | HyperAgents — Meta research framework for self-referential self-improving agents; MetaAgent iteratively modifies codebase, TaskAgent solves domains (Balrog, Genesis, IMO, Polyglot, Paper Review, Search Arena); Docker-containerized evaluation, LiteLLM multi-model support, evolutionary optimization loop (CC BY-NC-SA 4.0) | 2026-03-29   |
+| [trigger-dev-examples.md](./coding-agents/trigger-dev-examples.md) | Trigger.dev Examples — 29 TypeScript/Python example projects covering 5 AI agent patterns (prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer); Next.js/Remix integrations; real-time streaming via Socket.io; OpenAI/Anthropic/Mastra integrations (Apache-2.0) | 2026-04-11   |
 
 **Key Topics**:
 
@@ -945,7 +951,7 @@ Real-time data platforms and analytics infrastructure for powering AI applicatio
 | [dolt.md](./data-infrastructure/dolt.md)                 | Dolt v1.83.0 — MySQL wire-protocol compatible version-controlled SQL database with Git semantics (branch, merge, diff, clone via SQL stored procedures), Prolly Tree O(d) diffs, and agentic memory via Beads (20.3K stars, Apache 2.0) | 2026-03-01   |
 | [motherduck.md](./data-infrastructure/motherduck.md)     | Serverless cloud DuckDB warehouse with Dual Execution engine and native MCP integration for AI agents        | 2026-02-23   |
 | [tinybird.md](./data-infrastructure/tinybird.md)         | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
-| [pocketbase.md](./data-infrastructure/pocketbase.md)     | PocketBase — open-source Go backend in 1 file: embedded SQLite with realtime subscriptions, password/OTP/OAuth2/MFA auth, file storage, admin UI, simple REST API (57.2K stars, MIT) | 2026-03-28   |
+| [pocketbase.md](./data-infrastructure/pocketbase.md)     | PocketBase v0.36.9 — open-source Go backend in 1 file: embedded SQLite with realtime subscriptions, password/OTP/OAuth2/MFA auth, file storage, admin UI, simple REST API (57.5K stars, MIT) | 2026-04-11   |
 | [chroma.md](./data-infrastructure/chroma.md)             | Chroma — open-source vector database for AI applications: Python/JavaScript/Rust clients, in-memory and persistent storage, multi-modal embeddings, metadata filtering, distance functions (17K+ stars, Apache-2.0) | 2026-03-28   |
 
 **Key Topics**:
@@ -1406,6 +1412,30 @@ High-performance serialization, deserialization, and validation libraries for Py
 
 ---
 
+### 29. Customer Support Platforms
+
+**Location**: [./customer-support-platforms/](./customer-support-platforms/)
+
+Open-source customer support, live chat, and communication platforms relevant to agent-accessible conversation infrastructure.
+
+| File | Description | Last Verified |
+|------|-------------|--------------|
+| [papercups.md](./customer-support-platforms/papercups.md) | Papercups — open-source Elixir/Phoenix customer support platform (maintenance mode since 2021); React frontend with Ant Design; multi-channel (Slack, email, SMS/Twilio); PostgreSQL + Redis; real-time via Phoenix PubSub; Heroku/Docker self-hosted; demonstrates durable Phoenix OTP patterns for conversation management (MIT) | 2026-04-11   |
+
+---
+
+### 30. PaaS Platforms
+
+**Location**: [./paas-platforms/](./paas-platforms/)
+
+Self-hosted and open-source platform-as-a-service tools for deploying and managing applications and services.
+
+| File | Description | Last Verified |
+|------|-------------|--------------|
+| [coolify.md](./paas-platforms/coolify.md) | Coolify v4 — open-source self-hostable Heroku/Netlify/Vercel alternative (PHP 8.4 + Laravel 12 + Livewire 3); Docker-first deployments via SSH; REST API with OpenAPI 3.0; real-time WebSocket status; multi-tenancy with team roles (52.9K stars, Apache-2.0) | 2026-04-11   |
+
+---
+
 ## Planned Categories
 
 The following categories are planned for future research:
@@ -1434,6 +1464,8 @@ The following categories are planned for future research:
 | `evaluation-testing/`   | Agent evaluation and testing tools                 | **Done** |
 | `llm-infrastructure/`   | LLM inference servers and multi-provider gateways  | **Done** |
 | `serialization-libraries/` | High-performance serialization and validation libraries | **Done** |
+| `customer-support-platforms/` | Open-source customer support and live chat platforms | **Done** |
+| `paas-platforms/`       | Self-hosted PaaS and deployment platforms          | **Done** |
 
 ---
 
