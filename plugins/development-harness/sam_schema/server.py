@@ -11,7 +11,6 @@ Tools:
 
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 from datetime import UTC, datetime
@@ -273,7 +272,10 @@ def _sam_plan_create(config: CreatePlanConfig, plan_dir: str) -> dict:
     """Create a new plan from YAML task definitions.
 
     Returns:
-        Dict with ``path``, ``plan_number``, and ``task_count`` keys.
+        Dict with ``plan_id``, ``plan_ref``, and ``task_count`` keys.
+        ``plan_ref`` is computed in the server response as ``#{issue},{plan_id}``
+        when an issue number is present, or just ``plan_id`` otherwise.
+        It is not stored in the Plan model.
     """
     yaml_parser: Any = YAML()
     parsed: dict[str, Any] = yaml_parser.load(config.tasks_yaml)
@@ -284,16 +286,11 @@ def _sam_plan_create(config: CreatePlanConfig, plan_dir: str) -> dict:
     plan_data = backend.create_plan(
         slug=config.slug, goal=config.goal, tasks=task_defs, context=config.context, issue=config.issue
     )
-    plan_number: int | None = None
     plan_id_str = plan_data["plan_id"]
-    if plan_id_str.startswith("P"):
-        with contextlib.suppress(ValueError):
-            plan_number = int(plan_id_str[1:])
-    result: dict[str, Any] = {
-        "path": str(plan_data["source_path"] or ""),
-        "plan_number": plan_number,
-        "task_count": len(plan_data["tasks"]),
-    }
+    plan_ref: str | None = (
+        (f"#{config.issue},{plan_id_str}" if config.issue is not None else plan_id_str) if plan_id_str else None
+    )
+    result: dict[str, Any] = {"plan_id": plan_id_str, "task_count": len(plan_data["tasks"]), "plan_ref": plan_ref}
     if config.issue is not None and plan_data["source_path"]:
         _try_register_task_plan_artifact(config.issue, Path(plan_data["source_path"]))
     return result
@@ -303,7 +300,9 @@ def _sam_plan_list(config: ListPlansConfig, plan_dir: str) -> dict:
     """List all plans with optional search and auto-pagination.
 
     Returns:
-        Paginated dict with ``items``, ``total``, ``offset``, and ``limit`` keys.
+        Paginated dict with ``items``, ``count``, ``pagination``, ``messages``,
+        ``warnings``, and ``errors`` keys. Each item contains ``feature``,
+        ``goal``, ``description``, ``task_count``, ``issue``, and ``plan_ref``.
     """
     backend = _get_backend(plan_dir)
     summaries = backend.list_plans(search=config.search)
@@ -313,7 +312,8 @@ def _sam_plan_list(config: ListPlansConfig, plan_dir: str) -> dict:
             "goal": s["goal"],
             "description": s["description"],
             "task_count": s["task_count"],
-            "path": str(s["source_path"] or s["plan_id"]),
+            "issue": s.get("issue"),
+            "plan_ref": (f"#{s['issue']},{s['plan_id']}" if s.get("issue") else s.get("plan_id")),
         }
         for s in summaries
     ]
@@ -332,7 +332,7 @@ def _sam_plan_ready(plan: str, config: ReadyPlanConfig, plan_dir: str) -> dict:
     """List tasks ready for dispatch.
 
     Returns:
-        Dict with ``ready_tasks``, ``count``, ``feature``, ``source_path``, and ``issue`` keys.
+        Dict with ``ready_tasks``, ``count``, ``feature``, and ``issue`` keys.
     """
     backend = _get_backend(plan_dir)
     plan_data = backend.read_plan(plan)
@@ -356,7 +356,6 @@ def _sam_plan_ready(plan: str, config: ReadyPlanConfig, plan_dir: str) -> dict:
         "ready_tasks": ready_tasks,
         "count": len(tasks_data),
         "feature": plan_data["feature"],
-        "source_path": str(plan_data["source_path"] or plan),
         "issue": plan_data["issue"],
     }
 

@@ -38,8 +38,10 @@ if TYPE_CHECKING:
 
 __all__ = ["LocalYamlTaskProvider"]
 
-# Extract plan_id from a plan file stem, e.g. "P912" from "P912-migrate-...".
-_P_STEM_RE = re.compile(r"^(P\d+)-")
+# Extract plan_id from a plan file stem.
+# Matches both legacy numeric IDs (e.g. "P912" from "P912-migrate-...")
+# and UUID-derived hex IDs (e.g. "Pa1b2c3d4" from "Pa1b2c3d4-migrate-...").
+_P_STEM_RE = re.compile(r"^(P[0-9a-f]+)-", re.IGNORECASE)
 _TASKS_STEM_RE = re.compile(r"^tasks-(\d+)-")
 _TASK_VALIDATION_RE = re.compile(r"Task at index (\d+) failed validation: (.+)", re.DOTALL)
 
@@ -286,7 +288,10 @@ class LocalYamlTaskProvider:
             result = query.load_plan(path)
         except FileNotFoundError as exc:
             raise PlanNotFoundError(plan_id) from exc
-        return _plan_to_plan_data(result.plan, plan_id)
+        # Prefer the plan_id stored in the record; fall back to filename-derived
+        # value for backwards compatibility with pre-existing files.
+        effective_plan_id = result.plan.plan_id or _plan_id_from_path(path)
+        return _plan_to_plan_data(result.plan, effective_plan_id)
 
     def list_plans(self, *, search: str | None = None, offset: int = 0, limit: int | None = None) -> list[PlanSummary]:
         """Return lightweight summaries for all plans, optionally filtered.
@@ -312,7 +317,9 @@ class LocalYamlTaskProvider:
                     text = f"{plan.feature} {plan.goal or ''} {plan.description}"
                     if search.lower() not in text.lower():
                         continue
-                plan_id = _plan_id_from_path(candidate)
+                # Prefer the plan_id stored in the record; fall back to filename-derived
+                # value for backwards compatibility with pre-existing files.
+                plan_id = plan.plan_id or _plan_id_from_path(candidate)
                 summary: PlanSummary = {
                     "plan_id": plan_id,
                     "feature": plan.feature,

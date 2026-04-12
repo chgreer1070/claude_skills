@@ -86,7 +86,7 @@ Skills and agents access plan artifacts via MCP tools — not via `dh_paths` dir
 
 - `plan/feature-context-{slug}.md` - S1 output
 - `plan/architect-{slug}.md` - architecture output
-- `plan/P{NNN}-{slug}.yaml` - task plan
+- `plan/P{id}-{slug}.yaml` - task plan
 - `plan/T0-baseline-{slug}.yaml` - pre-implementation baseline
 - `plan/TN-verification-{slug}.yaml` - post-implementation verification
 - `backlog/*.md` - backlog item cache (synced from GitHub Issues)
@@ -102,7 +102,7 @@ The `plan_dir` parameter in `sam_read`, `sam_update`, `sam_create`, and related 
 
 Two distinct types of plan data exist:
 
-- **SAM task plan YAML files** (`P{NNN}-{slug}.yaml`, `T0-baseline-*.yaml`, etc.) — stored in `~/.dh/projects/{slug}/plan/` by the SAM MCP. Access via `sam_read`, `sam_list`, `sam_update` — never via direct filesystem path.
+- **SAM task plan YAML files** (`P{id}-{slug}.yaml`, `T0-baseline-*.yaml`, etc.) — stored in `~/.dh/projects/{slug}/plan/` by the SAM MCP. Access via `sam_read`, `sam_list`, `sam_update` — never via direct filesystem path.
 - **Plan artifact markdown files** (`plan/feature-context-{slug}.md`, `plan/architect-{slug}.md`, etc.) — written to the repo root worktree's `plan/` directory. Not visible from isolated worktrees. Access via `artifact_read(issue_number, artifact_type)` — not filesystem path.
 
 ---
@@ -141,7 +141,7 @@ Wave-based parallel execution state for `/work-milestone`. State is persisted to
 - `dispatch_read(milestone_number)` — Read an existing dispatch plan from `plan/milestone-{N}-dispatch.yaml`. Returns parsed plan structure or error.
 - `dispatch_validate(milestone_number)` — Validate structural integrity of an existing dispatch plan. Returns is_valid, errors, warnings.
 - `dispatch_stale_check(milestone_number)` — Check whether any wave items have stale or dead PIDs and return staleness summary.
-- `dispatch_create_plan(milestone_number, plan_yaml, overwrite, validate, issue)` — Validate and persist a dispatch plan YAML atomically. Returns plan_path, wave_count, item_count, and validation results. Set overwrite=True when re-grooming. Pass issue to auto-register as a `dispatch-plan` artifact.
+- `dispatch_create_plan(milestone_number, plan, overwrite, validate, issue)` — Validate and persist a dispatch plan atomically. `plan` is a typed DispatchPlan object. Returns `milestone_number`, `wave_count`, `item_count`, `is_valid`, `errors`, `warnings`, and `messages`. Set overwrite=True when re-grooming. Pass issue to auto-register as a `dispatch-plan` artifact.
 - `dispatch_wave_start(milestone, wave_num, items)` — Create a wave entry; initialise all items with `status=pending`. Call before spawning processes. Returns error if wave already exists.
 - `dispatch_item_status(milestone, issue, status, result, error, cost)` — Record completion or failure of one item. Looks up item by milestone+issue across all waves. Valid status: `complete`, `failed`, `skipped`.
 - `dispatch_wave_status(milestone, wave_num)` — Query wave progress with per-item detail and elapsed time. Checks stale PIDs (marks dead processes failed) before returning.

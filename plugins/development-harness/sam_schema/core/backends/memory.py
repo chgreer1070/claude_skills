@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import copy
 import uuid
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
 
+from sam_schema.core.backends._utils import _now_iso
 from sam_schema.core.dependencies import TERMINAL_STATUSES as _TERMINAL_STATUSES
 from sam_schema.core.exceptions import (
     DocumentNotFoundError,
@@ -30,6 +30,7 @@ from sam_schema.core.exceptions import (
     TaskNotFoundError,
     TaskValidationError,
 )
+from sam_schema.core.query import _new_plan_id
 
 if TYPE_CHECKING:
     from sam_schema.core.models import Task
@@ -53,11 +54,6 @@ _VALID_STATUSES: frozenset[str] = frozenset({
     "deferred",
     "skipped",
 })
-
-
-def _now_iso() -> str:
-    """Return current UTC time as an ISO 8601 string."""
-    return datetime.now(UTC).isoformat()
 
 
 def _task_def_to_task_data(task_def: TaskDefinition) -> TaskData:
@@ -180,9 +176,10 @@ class InMemoryTaskProvider:
     has no side effects outside this instance. No filesystem access and no
     external dependencies.
 
-    Plan IDs are auto-assigned as ``P1``, ``P2``, etc. in insertion order
-    when no ``issue`` is provided. When ``issue`` is provided, the plan ID
-    is ``P{issue}``.
+    Plan IDs are auto-assigned as ``P`` + first 8 hex chars of a UUID4
+    (e.g. ``Pa1b2c3d4``) for every new plan, regardless of whether an
+    ``issue`` is provided. The ``issue`` value is stored in plan metadata
+    but does not influence the plan ID.
     """
 
     def __init__(self) -> None:
@@ -191,8 +188,6 @@ class InMemoryTaskProvider:
         self._plans: dict[str, PlanData] = {}
         # content_ref -> DocumentData
         self._documents: dict[str, DocumentData] = {}
-        # Monotonically increasing counter for auto-assigned plan IDs.
-        self._next_plan_num: int = 1
 
     # ------------------------------------------------------------------
     # Plan lifecycle
@@ -226,11 +221,7 @@ class InMemoryTaskProvider:
             PlanExistsError: When the resolved plan_id already exists.
             TaskValidationError: When any task definition is missing required fields.
         """
-        if issue is not None:
-            plan_id = f"P{issue}"
-        else:
-            plan_id = f"P{self._next_plan_num}"
-            self._next_plan_num += 1
+        plan_id = _new_plan_id()
 
         if plan_id in self._plans:
             raise PlanExistsError(plan_id)
