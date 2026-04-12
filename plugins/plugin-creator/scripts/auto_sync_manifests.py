@@ -359,26 +359,72 @@ def _format_json(data: object) -> str:
     return json.dumps(data, indent=2) + "\n"
 
 
-def _is_standard_path_skill(field_name: str, comp_path: str) -> bool:
-    """Return True when the component is an auto-discovered standard-path skill.
+def _is_standard_path_component(field_name: str, comp_path: str) -> bool:
+    """Return True when the component sits in the auto-discovered default location.
 
-    The ``skills/`` directory at the plugin root is auto-discovered by Claude
-    Code; explicit ``skills`` array entries are unnecessary for directory paths
-    that start with ``skills/``.  File paths (ending in ``/SKILL.md``) are not
-    subject to this rule because they are explicit file references, not the
-    directory-level auto-discovery path.
+    Claude Code auto-discovers components in these default directories at the
+    plugin root:
+
+    - ``skills/`` — every subdirectory containing ``SKILL.md``
+    - ``agents/`` — every ``*.md`` file
+    - ``commands/`` — every ``*.md`` file
+
+    When the corresponding ``skills`` / ``agents`` / ``commands`` key in
+    ``plugin.json`` is ABSENT, auto-discovery registers everything in the
+    default directory.  Writing that key — even to add a single entry —
+    overrides auto-discovery: the declared list becomes the *complete* list
+    and every file not named in it becomes invisible.
+
+    **2026-03-17 incident**: ``python3-development`` committed
+
+    .. code-block:: json
+
+        "agents": ["./agents/t0-baseline-capture.md", "./agents/tn-verification-gate.md"]
+
+    17 of 19 agents disappeared.  **2026-04-12 recurrence**: this same script
+    auto-added two new ``development-harness`` agents to a fresh ``agents``
+    array in commit 30260566, silently masking 21 of 23 agents.  The fix is
+    to teach this function that ``agents`` and ``commands`` obey the same
+    auto-discovery semantics as ``skills``.
+
+    File paths (ending in ``/SKILL.md`` or a specific ``.md`` file under
+    a non-standard directory) are NOT auto-discovered — those are explicit
+    file references that the user deliberately placed outside the default.
+    They must still be registered.
 
     Args:
-        field_name: The plugin.json array field being updated (``skills``, etc.)
+        field_name: The plugin.json array field being updated
+            (``skills``, ``agents``, ``commands``).
         comp_path: Component path relative to the plugin root (without ``./``).
-            Production pre-commit detection always emits directory form
-            (e.g. ``skills/my-skill``), never file form
-            (e.g. ``skills/my-skill/SKILL.md``).
+            Production pre-commit detection emits directory form for skills
+            (e.g. ``skills/my-skill``) and file form for agents/commands
+            (e.g. ``agents/my-agent.md``, ``commands/my-command.md``).
 
     Returns:
-        True if the component should be skipped for array registration.
+        True if the component lives in its default auto-discovered location
+        and therefore MUST NOT be added to ``plugin.json``.
+
+    See Also:
+        ``.claude/rules/plugin-development.md`` — canonical rule documenting
+        auto-discovery and the 2026-03-17 incident.
     """
-    return field_name == "skills" and comp_path.startswith("skills/") and not comp_path.endswith("/SKILL.md")
+    if field_name == "skills":
+        # Skills auto-discovered at skills/<name>/SKILL.md. Pre-commit detection
+        # emits the directory form (skills/my-skill). Explicit file references
+        # (skills/my-skill/SKILL.md) are not subject to this rule.
+        return comp_path.startswith("skills/") and not comp_path.endswith("/SKILL.md")
+    if field_name == "agents":
+        # Agents auto-discovered at agents/*.md. Any path directly under
+        # agents/ with no further subdirectory is standard-path.
+        return comp_path.startswith("agents/") and comp_path.count("/") == 1 and comp_path.endswith(".md")
+    if field_name == "commands":
+        # Commands auto-discovered at commands/*.md.
+        return comp_path.startswith("commands/") and comp_path.count("/") == 1 and comp_path.endswith(".md")
+    return False
+
+
+# Backwards-compat alias — several tests still import the old name.
+_is_standard_path_skill = _is_standard_path_component
 
 
 def _remove_component_from_array(data: dict[str, list[str] | str], field_name: str, comp_path: str) -> bool:
@@ -425,13 +471,31 @@ def _update_component_arrays(data: dict[str, list[str] | str], changes: Componen
 
         field_name = f"{comp_type}s"
 
-        # Standard-path skills are auto-discovered; skip explicit array
-        # registration, but still record the addition so the caller emits a
-        # minor version bump for the new skill directory.
-        if _is_standard_path_skill(field_name, comp_path):
+        # Standard-path components (skills/, agents/, commands/) are
+        # auto-discovered by Claude Code. Registering them in plugin.json is
+        # ACTIVELY HARMFUL: any write to the field — even to add one entry —
+        # overrides auto-discovery and makes every unlisted component invisible.
+        # See _is_standard_path_component for the 2026-03-17 / 2026-04-12
+        # incident history.
+        #
+        # Record the addition so the caller emits a minor version bump, but do
+        # NOT touch the plugin.json array. Only when the field ALREADY exists
+        # (Mode B — manual allowlist) do we append the new entry, because in
+        # that mode auto-discovery is already disabled and we must keep the
+        # explicit list complete.
+        if _is_standard_path_component(field_name, comp_path):
             modified = True
+            if field_name in data:
+                # Mode B: array already declared by the user — carry the new
+                # entry forward so it stays visible under manual allowlist mode.
+                relative_path = f"./{comp_path}"
+                field_value = data[field_name]
+                if isinstance(field_value, list) and relative_path not in field_value:
+                    field_value.append(relative_path)
             continue
 
+        # Non-standard path (e.g. custom subdirectory) — explicit registration
+        # is mandatory because auto-discovery does not see these paths.
         relative_path = f"./{comp_path}"
 
         if field_name not in data:
@@ -883,7 +947,9 @@ def _normalize_skill_ref(ref: str) -> str:
     """Normalize a skill reference for comparison.
 
     Both ``./skills/foo`` and ``./skills/foo/SKILL.md`` refer to the same skill.
-    This normalizes to the directory form.
+    The ``./`` prefix is optional in some hand-edited plugin.json files
+    (e.g. ``skills/foo``), so it is stripped here as well. This normalizes
+    to the bare directory form.
 
     Args:
         ref: Skill reference path from plugin.json
@@ -891,29 +957,61 @@ def _normalize_skill_ref(ref: str) -> str:
     Returns:
         Normalized path for comparison
     """
-    if ref.endswith("/SKILL.md"):
-        return ref[: -len("/SKILL.md")]
-    return ref
+    normalized = ref.removeprefix("./")
+    return normalized.removesuffix("/SKILL.md")
 
 
-def _reconcile_stale_only(
+def _strip_ref_prefix(ref: str) -> str:
+    """Strip the leading ``./`` from a component reference for path predicates.
+
+    Args:
+        ref: Component reference path as it appears in plugin.json.
+
+    Returns:
+        The same path with any leading ``./`` removed, matching the bare
+        form used by ``_is_standard_path_component``.
+    """
+    return ref.removeprefix("./")
+
+
+def _reconcile_mode_b(
     data: dict[str, list[str] | str], field_name: str, disk_items: list[str], plugin_name: str, *, dry_run: bool
 ) -> bool:
-    """Remove stale entries from a component array without adding new ones.
+    """Reconcile a component array that is already present in plugin.json.
 
-    Used in Mode B (explicit field present): the user manages the allowlist
-    manually.  New skills added to disk are NOT auto-included; only entries
-    that no longer exist on disk are removed to keep the manifest clean.
+    Mode B invariant: when the key is present, the declared list overrides
+    auto-discovery and becomes the *complete* set of registered components.
+    Any default-path component on disk that is not in the list becomes
+    invisible — the 2026-03-17 / 2026-04-12 masking pattern.
+
+    This function keeps the invariant true by:
+
+    1. Adding every default-path item discovered on disk that is not already
+       in the registered list. New files added to disk after the key was
+       created are no longer silently dropped.
+    2. Removing stale default-path entries that refer to files no longer
+       present on disk.
+    3. Preserving non-default-path entries (explicit references to files
+       outside ``agents/`` / ``commands/`` / ``skills/`` one-level roots)
+       untouched. Those entries are legitimate because Claude Code's
+       auto-discovery would not pick them up; the user deliberately placed
+       them outside the default location.
+
+    A cleaner fix for many plugins is to remove the key entirely so
+    auto-discovery handles everything. This function does not perform that
+    rewrite — it only maintains the all-or-nothing invariant for plugins
+    that keep the key.
 
     Args:
         data: Plugin.json data dictionary (mutated in place unless dry_run)
         field_name: Array field name (``skills``, ``agents``, ``commands``)
-        disk_items: All items discovered on disk (used to detect stale entries)
+        disk_items: Default-path items discovered on disk (authority set for
+            the default directory only — non-default paths are not included)
         plugin_name: Plugin name for logging
         dry_run: If True, only report
 
     Returns:
-        True if any stale entries were found (or would be removed in dry_run)
+        True if drift was detected (entries added or removed)
     """
     raw = data.get(field_name, [])
     registered = list(raw) if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
@@ -921,12 +1019,24 @@ def _reconcile_stale_only(
         return False
 
     normalize = field_name == "skills"
-    stale = _find_stale_items(registered, disk_items, normalize=normalize)
 
-    if not stale:
+    # Add: default-path disk items that are not yet registered.
+    missing = _find_missing_items(disk_items, registered, normalize=normalize)
+
+    # Remove stale: only prune default-path entries whose on-disk file is
+    # gone. Non-default-path entries are preserved regardless — they are
+    # explicit declarations that auto-discovery cannot satisfy.
+    stale: list[str] = []
+    for reg in registered:
+        if not _is_standard_path_component(field_name, _strip_ref_prefix(reg)):
+            continue  # Non-default path — preserve untouched
+        if not any(_refs_match(reg, item, normalize=normalize) for item in disk_items):
+            stale.append(reg)
+
+    if not missing and not stale:
         return False
 
-    _apply_drift_changes(data, field_name, [], stale, plugin_name, dry_run=dry_run)
+    _apply_drift_changes(data, field_name, missing, stale, plugin_name, dry_run=dry_run)
     return True
 
 
@@ -941,12 +1051,18 @@ def _reconcile_one_plugin(plugin_name: str, plugins_root: Path, *, dry_run: bool
         drift.  The same applies to the ``commands`` field for standard-path
         invocable skills.
 
-    **Mode B — Manual selection (explicit ``skills`` field present)**
-        The explicit list acts as an allowlist.  New skills added to disk are
-        NOT auto-included; the user must add them manually.  Only entries that
-        no longer exist on disk are removed to keep the manifest clean.
+    **Mode B — Explicit field present**
+        The declared list overrides auto-discovery — the array becomes the
+        *complete* set Claude Code sees.  Reconciliation keeps that invariant
+        true by adding every default-path component found on disk that is
+        not already in the array, removing stale default-path entries whose
+        files no longer exist, and preserving non-default-path entries
+        untouched.  The preferred long-term fix is to remove the key so
+        auto-discovery handles everything, but that rewrite is out of scope
+        for reconcile mode.
 
-    The same Mode A / Mode B logic applies to the ``commands`` field.
+    The same Mode A / Mode B logic applies to the ``agents`` and ``commands``
+    fields.
 
     Args:
         plugin_name: Name of the plugin
@@ -976,24 +1092,49 @@ def _reconcile_one_plugin(plugin_name: str, plugins_root: Path, *, dry_run: bool
 
     has_drift = False
 
+    # All three component types (skills, agents, commands) share the same
+    # auto-discovery semantics: if the field is ABSENT from plugin.json,
+    # Claude Code auto-discovers every file in the default directory. If the
+    # field is PRESENT, its list becomes the complete set and every file not
+    # listed becomes invisible.
+    #
+    # Reconciliation therefore runs in one of two modes per field:
+    #
+    #   Mode A (field absent): auto-discovery handles everything — do NOT
+    #       write the field. Writing an empty or partial list would silently
+    #       mask every unlisted file.
+    #
+    #   Mode B (field present): the declared list overrides auto-discovery,
+    #       so it must remain complete. Add every default-path item on disk
+    #       that is not already registered, remove stale default-path entries
+    #       whose files are gone, and preserve non-default-path entries
+    #       untouched. A partial list would silently mask unlisted files.
+    #
+    # A previous revision of this script violated this rule for agents:
+    # "agents always require explicit registration" was a false assumption
+    # carried over from an older Claude Code version. On 2026-04-12 commit
+    # 30260566 the agents branch auto-created an array containing only the
+    # two newly-added agent files, silently masking 21 of 23 existing
+    # development-harness agents. See the docstring of
+    # _is_standard_path_component for the full incident history.
+
     # --- Skills reconciliation ---
     if "skills" not in data:
-        # Mode A: auto-discovery is in effect — skip entirely, no drift to report.
-        pass
+        pass  # Mode A
     else:
-        # Mode B: explicit allowlist — only remove stale entries, never add new ones.
-        has_drift |= _reconcile_stale_only(data, "skills", disk_skills, plugin_name, dry_run=dry_run)
+        has_drift |= _reconcile_mode_b(data, "skills", disk_skills, plugin_name, dry_run=dry_run)
 
-    # --- Agents reconciliation (agents always require explicit registration) ---
-    has_drift |= _reconcile_component_array(data, "agents", disk_agents, plugin_name, dry_run=dry_run)
+    # --- Agents reconciliation ---
+    if "agents" not in data:
+        pass  # Mode A — auto-discovery handles agents/*.md
+    else:
+        has_drift |= _reconcile_mode_b(data, "agents", disk_agents, plugin_name, dry_run=dry_run)
 
     # --- Commands reconciliation ---
     if "commands" not in data:
-        # Mode A: auto-discovery is in effect — skip entirely, no drift to report.
-        pass
+        pass  # Mode A
     else:
-        # Mode B: explicit allowlist — only remove stale entries, never add new ones.
-        has_drift |= _reconcile_stale_only(data, "commands", disk_commands_full, plugin_name, dry_run=dry_run)
+        has_drift |= _reconcile_mode_b(data, "commands", disk_commands_full, plugin_name, dry_run=dry_run)
 
     if has_drift and not dry_run:
         current_version = cast("str", data.get("version", "0.0.0"))
