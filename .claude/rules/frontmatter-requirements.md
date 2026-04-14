@@ -16,7 +16,7 @@ paths:
 ## Agents
 
 - `name`: Required — lowercase, hyphens, max 64 chars
-- `description`: Required — include trigger keywords, max 1024 chars, no colons except in URLs
+- `description`: Required — include trigger keywords, max 1024 chars. Validate with `uvx skilllint@latest check --fix <file>`
 - `model`: Must be `sonnet`, `opus`, `haiku`, or `inherit` if specified
 - `tools`: Must be comma-separated string (not YAML array)
 - No YAML multiline indicators (`>-`, `|-`, `>`, `|`) in any field

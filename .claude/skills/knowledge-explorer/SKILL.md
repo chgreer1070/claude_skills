@@ -255,12 +255,12 @@ uv run research/knowledge-explorer.py list-candidates --all
 
 **Description rules (pass verbatim to each subagent):**
 - Single line, no newlines
-- No colons (`:`) — rephrase around them
 - Max 1024 characters
 - Front-load what the KB covers, then when an agent should load it
 - Include specific trigger keywords (tool name, alternatives, use cases)
 - Format: `{what it covers}. Use when {trigger scenarios}.`
 - Output ONLY the description string — no quotes, no YAML, no explanation
+- After writing, validate with `uvx skilllint@latest check --fix <file>`
 
 <example>
 

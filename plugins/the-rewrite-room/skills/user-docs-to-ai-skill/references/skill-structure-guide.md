@@ -70,7 +70,7 @@ The frontmatter block is mandatory. Every field has strict formatting constraint
 | Field | Type | Constraint |
 |-------|------|-----------|
 | `name` | string | Matches the skill directory name exactly |
-| `description` | string | Single line, no YAML multiline indicators, no colons except in URLs |
+| `description` | string | Single line, no YAML multiline indicators. Validate with `uvx skilllint@latest check --fix <file>` |
 | `allowed-tools` | string | Comma-separated list, no YAML list syntax |
 
 ### description field
@@ -80,7 +80,6 @@ The description is the auto-invocation trigger. Claude Code matches it against u
 Rules:
 
 - Single line — never use `>-`, `|-`, `>`, or `|` multiline indicators
-- No colons — use em dashes (`—`) or semicolons (`;`) instead
 - Front-load the trigger scenario — first sentence must answer "use this when..."
 - Include the domain name (e.g., `ty`, `fastmcp`, `httpx`) prominently
 - Include the task type (check, lint, configure, build, debug)
@@ -105,15 +104,14 @@ description: Use when running ty type checks on Python code — configuring ty.t
 description: >-
   Use when working with ty
 
-# WRONG — colon breaks YAML parsing
-description: "ty: Python type checker skill"
-
 # WRONG — too vague, no trigger scenarios
 description: Knowledge about the ty tool
 
 # CORRECT
 description: Use when working with ty — running type checks, configuring ty.toml, interpreting error codes, or targeting specific Python versions
 ```
+
+Validate every frontmatter edit with `uvx skilllint@latest check --fix <file>`.
 
 ---
 

@@ -70,7 +70,7 @@ You are a refactoring validation specialist responsible for verifying that refac
 
 - [ ] Valid YAML frontmatter
 - [ ] `name` field present (required for agents — lowercase, hyphens, max 64 chars)
-- [ ] `description` field present and contains trigger keywords (max 1024 chars, no colons except in URLs)
+- [ ] `description` field present and contains trigger keywords (max 1024 chars). Validated with `uvx skilllint@latest check --fix <file>`
 - [ ] `model` specified (sonnet/opus/haiku/inherit)
 - [ ] `tools` field is comma-separated string (not YAML array) if specified
 - [ ] System prompt is comprehensive

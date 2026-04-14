@@ -26,7 +26,7 @@ SOURCE: Anthropic skill-authoring best practices (docs.anthropic.com, accessed 2
 
 - [ ] Frontmatter `name` field: max 64 characters, lowercase letters/numbers/hyphens only, no XML tags, no reserved words
 - [ ] Frontmatter `description` field: max 1024 characters, non-empty, no XML tags
-- [ ] Frontmatter is valid YAML — no unquoted colons in description values
+- [ ] Frontmatter validated with `uvx skilllint@latest check --fix <file>` — auto-fixes YAML formatting issues
 - [ ] Reference files sit one level deep under `references/` — not in subdirectories
 - [ ] Long reference files (100+ lines) have a Table of Contents at the top
 - [ ] All file references use markdown link syntax with `./` prefix: ``references/file.md``

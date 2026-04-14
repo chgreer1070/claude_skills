@@ -13,10 +13,9 @@ Stack-specific rules loaded by `dh:code-reviewer` when `SKILL.md`, agent frontma
 - `name` must match the containing directory name exactly — mismatch causes lookup failures
 - `name` must satisfy `^[a-z][a-z0-9-]*$` — lowercase letters, digits, hyphens only
 - `description` must be a single-line string — no YAML multiline indicators (`>-`, `|-`, `>`, `|`)
-- `description` must not contain colons (`:`) except in URLs — colons trigger YAML quoting requirements
 - `tools` field (in agents) must be a comma-separated string, not a YAML array — `Read, Grep, Glob` not `[Read, Grep, Glob]`
 - `model` must be one of `sonnet`, `opus`, `haiku`, or `inherit` — no version strings, no full model IDs
-- Run `uvx skilllint@latest check <path>` after every frontmatter edit
+- Run `uvx skilllint@latest check --fix <path>` after every frontmatter edit — auto-fixes YAML formatting issues including quoting
 
 ## Description Quality
 
@@ -81,10 +80,7 @@ description: >-
 # RIGHT: single-line description
 description: TypeScript-specific code review patterns covering strict mode, ESM, type safety, and branded types. Loaded automatically when reviewing TypeScript code.
 
-# WRONG: colon in description (breaks YAML without quoting)
-description: Code review: TypeScript patterns for strict mode and type safety.
-
-# RIGHT: no colon
+# RIGHT: single-line description — run `uvx skilllint@latest check --fix <file>` to auto-fix any YAML quoting needs
 description: Code review for TypeScript — strict mode, type safety, branded types, and ESM patterns.
 ```
 

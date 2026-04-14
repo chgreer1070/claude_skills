@@ -21,10 +21,10 @@ Run all items. Mark each PASS or FAIL. Fix all FAILs before proceeding.
 
 - [ ] FM-1: `name` field matches the skill directory name exactly
 - [ ] FM-2: `description` is a single line — no `>-`, `|-`, `>`, `|` multiline indicators
-- [ ] FM-3: `description` contains no colons except in URLs
-- [ ] FM-4: `description` front-loads a trigger scenario ("Use when...")
-- [ ] FM-5: `description` names the domain tool or library explicitly
-- [ ] FM-6: `allowed-tools` is present and uses comma-separated string format
+- [ ] FM-3: `description` front-loads a trigger scenario ("Use when...")
+- [ ] FM-4: `description` names the domain tool or library explicitly
+- [ ] FM-5: `allowed-tools` is present and uses comma-separated string format
+- [ ] FM-6: Validated with `uvx skilllint@latest check --fix <file>`
 
 ### SKILL.md Structure
 

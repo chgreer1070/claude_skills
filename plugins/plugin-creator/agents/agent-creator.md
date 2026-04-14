@@ -22,7 +22,7 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 **Required fields:**
 
 - `name`: lowercase, hyphens only, max 64 chars — REQUIRED
-- `description`: single-line quoted string, no colons (use em dashes), max 1024 chars, front-load trigger keywords — REQUIRED
+- `description`: single-line string, max 1024 chars, front-load trigger keywords — REQUIRED. Validate with `uvx skilllint@latest check --fix <file>`
 
 **Configuration fields:**
 
