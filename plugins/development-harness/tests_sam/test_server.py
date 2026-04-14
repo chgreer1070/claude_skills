@@ -23,6 +23,7 @@ from sam_schema.core.action_models import (
     ReadyPlanConfig,
     StateTaskConfig,
     StatusPlanConfig,
+    TaskDefinition,
     UpdatePlanConfig,
     UpdateTaskConfig,
 )
@@ -513,30 +514,21 @@ def test_sam_read_with_missing_plan_returns_error(tmp_path: Path) -> None:
 
 
 def test_sam_create_valid_tasks_yaml_returns_path_and_counts(tmp_path: Path) -> None:
-    """sam_plan(create) with valid tasks_yaml creates a plan file and returns metadata.
+    """sam_plan(create) with typed task list creates a plan file and returns metadata.
 
     Tests: sam_plan create happy path.
-    How: Pass a minimal tasks_yaml string; verify returned dict has path, plan_number, task_count.
+    How: Pass a minimal tasks list; verify returned dict has path, plan_number, task_count.
     Why: sam_plan create is the MCP entry point for swarm-task-planner to persist new plans.
     """
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    tasks_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: First task\n"
-        "    status: not-started\n"
-        "    agent: test-agent\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
+    task = TaskDefinition(
+        id="T01", title="First task", status="not-started", agent="test-agent", priority=1, complexity="low"
     )
 
     # Act
-    result = sam_plan(
-        config=CreatePlanConfig(slug="test-create", goal="Test goal", tasks_yaml=tasks_yaml), plan_dir=str(p_dir)
-    )
+    result = sam_plan(config=CreatePlanConfig(slug="test-create", goal="Test goal", tasks=[task]), plan_dir=str(p_dir))
 
     import re
 
@@ -556,19 +548,12 @@ def test_sam_create_file_is_readable_by_sam_task(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    tasks_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: Round-trip task\n"
-        "    status: not-started\n"
-        "    agent: test-agent\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
+    task = TaskDefinition(
+        id="T01", title="Round-trip task", status="not-started", agent="test-agent", priority=1, complexity="low"
     )
 
     create_result = sam_plan(
-        config=CreatePlanConfig(slug="round-trip", goal="Round-trip goal", tasks_yaml=tasks_yaml), plan_dir=str(p_dir)
+        config=CreatePlanConfig(slug="round-trip", goal="Round-trip goal", tasks=[task]), plan_dir=str(p_dir)
     )
     assert "error" not in create_result
 
@@ -582,21 +567,26 @@ def test_sam_create_file_is_readable_by_sam_task(tmp_path: Path) -> None:
     assert read_result["task"]["title"] == "Round-trip task"
 
 
-def test_sam_create_invalid_tasks_yaml_returns_error(tmp_path: Path) -> None:
-    """sam_plan(create) raises ValueError when tasks_yaml lacks 'tasks' key.
+def test_sam_create_empty_tasks_creates_drafting_plan(tmp_path: Path) -> None:
+    """sam_plan(create) with empty tasks list creates a drafting plan.
 
-    Tests: sam_plan create input validation.
-    How: Pass YAML without 'tasks' key.
-    Why: Invalid input raises ValueError. FastMCP converts it to isError=true;
-         direct callers must handle it.
+    Tests: sam_plan create with empty tasks list enters drafting state.
+    How: Pass tasks=[] and verify plan_id returned; plan is in drafting state.
+    Why: Drafting plans support incremental building via append_task + finalize.
     """
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
 
-    # Act / Assert
-    with pytest.raises(ValueError, match="tasks"):
-        sam_plan(config=CreatePlanConfig(slug="bad", goal="Bad goal", tasks_yaml="not_tasks: []"), plan_dir=str(p_dir))
+    # Act
+    result = sam_plan(config=CreatePlanConfig(slug="empty-plan", goal="Drafting goal", tasks=[]), plan_dir=str(p_dir))
+
+    # Assert
+    import re
+
+    assert "error" not in result
+    assert re.match(r"^P[0-9a-f]{8}$", result["plan_id"]), f"Expected UUID plan_id, got: {result['plan_id']!r}"
+    assert result["task_count"] == 0
 
 
 def test_sam_create_assigns_unique_plan_ids(tmp_path: Path) -> None:
@@ -611,20 +601,11 @@ def test_sam_create_assigns_unique_plan_ids(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    minimal_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: Task\n"
-        "    status: not-started\n"
-        "    agent: a\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
-    )
+    minimal_task = TaskDefinition(id="T01", title="Task", status="not-started", agent="a", priority=1, complexity="low")
 
     # Act
-    r1 = sam_plan(config=CreatePlanConfig(slug="first", goal="First", tasks_yaml=minimal_yaml), plan_dir=str(p_dir))
-    r2 = sam_plan(config=CreatePlanConfig(slug="second", goal="Second", tasks_yaml=minimal_yaml), plan_dir=str(p_dir))
+    r1 = sam_plan(config=CreatePlanConfig(slug="first", goal="First", tasks=[minimal_task]), plan_dir=str(p_dir))
+    r2 = sam_plan(config=CreatePlanConfig(slug="second", goal="Second", tasks=[minimal_task]), plan_dir=str(p_dir))
 
     # Assert
     assert "error" not in r1
@@ -649,19 +630,10 @@ def test_sam_update_context_sets_plan_context(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    minimal_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: Task\n"
-        "    status: not-started\n"
-        "    agent: a\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
-    )
+    minimal_task = TaskDefinition(id="T01", title="Task", status="not-started", agent="a", priority=1, complexity="low")
 
     create_result = sam_plan(
-        config=CreatePlanConfig(slug="update-ctx", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+        config=CreatePlanConfig(slug="update-ctx", goal="Goal", tasks=[minimal_task]), plan_dir=str(p_dir)
     )
     assert "error" not in create_result
     plan_id = create_result["plan_id"]
@@ -691,19 +663,10 @@ def test_sam_update_append_section_adds_to_task_body(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    minimal_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: Task\n"
-        "    status: not-started\n"
-        "    agent: a\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
-    )
+    minimal_task = TaskDefinition(id="T01", title="Task", status="not-started", agent="a", priority=1, complexity="low")
 
     create_result = sam_plan(
-        config=CreatePlanConfig(slug="append-sec", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+        config=CreatePlanConfig(slug="append-sec", goal="Goal", tasks=[minimal_task]), plan_dir=str(p_dir)
     )
     assert "error" not in create_result
     plan_id = create_result["plan_id"]
@@ -759,19 +722,10 @@ def test_sam_claim_not_started_task_returns_claimed_true(tmp_path: Path) -> None
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    minimal_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: Task\n"
-        "    status: not-started\n"
-        "    agent: a\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
-    )
+    minimal_task = TaskDefinition(id="T01", title="Task", status="not-started", agent="a", priority=1, complexity="low")
 
     create_result = sam_plan(
-        config=CreatePlanConfig(slug="claim-test", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+        config=CreatePlanConfig(slug="claim-test", goal="Goal", tasks=[minimal_task]), plan_dir=str(p_dir)
     )
     assert "error" not in create_result
     plan_id = create_result["plan_id"]
@@ -795,19 +749,10 @@ def test_sam_claim_already_claimed_returns_claimed_false(tmp_path: Path) -> None
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    minimal_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: Task\n"
-        "    status: not-started\n"
-        "    agent: a\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
-    )
+    minimal_task = TaskDefinition(id="T01", title="Task", status="not-started", agent="a", priority=1, complexity="low")
 
     create_result = sam_plan(
-        config=CreatePlanConfig(slug="double-claim", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+        config=CreatePlanConfig(slug="double-claim", goal="Goal", tasks=[minimal_task]), plan_dir=str(p_dir)
     )
     assert "error" not in create_result
     plan_id = create_result["plan_id"]
@@ -834,19 +779,10 @@ def test_sam_claim_missing_task_returns_claimed_false(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    minimal_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: Task\n"
-        "    status: not-started\n"
-        "    agent: a\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
-    )
+    minimal_task = TaskDefinition(id="T01", title="Task", status="not-started", agent="a", priority=1, complexity="low")
 
     create_result = sam_plan(
-        config=CreatePlanConfig(slug="missing-task", goal="Goal", tasks_yaml=minimal_yaml), plan_dir=str(p_dir)
+        config=CreatePlanConfig(slug="missing-task", goal="Goal", tasks=[minimal_task]), plan_dir=str(p_dir)
     )
     assert "error" not in create_result
     plan_id = create_result["plan_id"]
@@ -885,21 +821,12 @@ def test_sam_create_returns_plan_ref_without_issue(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    tasks_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: First task\n"
-        "    status: not-started\n"
-        "    agent: test-agent\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
+    task = TaskDefinition(
+        id="T01", title="First task", status="not-started", agent="test-agent", priority=1, complexity="low"
     )
 
     # Act
-    result = sam_plan(
-        config=CreatePlanConfig(slug="ref-no-issue", goal="Test goal", tasks_yaml=tasks_yaml), plan_dir=str(p_dir)
-    )
+    result = sam_plan(config=CreatePlanConfig(slug="ref-no-issue", goal="Test goal", tasks=[task]), plan_dir=str(p_dir))
 
     # Assert
     assert "error" not in result
@@ -918,23 +845,232 @@ def test_sam_create_returns_plan_ref_with_issue(tmp_path: Path) -> None:
     # Arrange
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    tasks_yaml = (
-        "tasks:\n"
-        "  - task: T01\n"
-        "    title: First task\n"
-        "    status: not-started\n"
-        "    agent: test-agent\n"
-        "    dependencies: []\n"
-        "    priority: 1\n"
-        "    complexity: low\n"
+    task = TaskDefinition(
+        id="T01", title="First task", status="not-started", agent="test-agent", priority=1, complexity="low"
     )
 
     # Act
     result = sam_plan(
-        config=CreatePlanConfig(slug="ref-with-issue", goal="Test goal", tasks_yaml=tasks_yaml, issue=42),
-        plan_dir=str(p_dir),
+        config=CreatePlanConfig(slug="ref-with-issue", goal="Test goal", tasks=[task], issue=42), plan_dir=str(p_dir)
     )
 
     # Assert — plan_ref includes issue number and UUID plan_id
     assert "error" not in result
     assert re.match(r"^#42,P[0-9a-f]{8}$", result["plan_ref"]), f"Expected '#42,P<hex8>', got: {result['plan_ref']!r}"
+
+
+# ---------------------------------------------------------------------------
+# sam_plan — append_task action (#1770)
+# ---------------------------------------------------------------------------
+
+
+def test_sam_append_task_routes_through_backend_append_task(tmp_path: Path) -> None:
+    """sam_plan action=append_task calls backend.append_task for the given plan.
+
+    AC #2: sam_plan(action='append_task', plan=P, task=<TaskDefinition>) must append
+    a single task and return a success acknowledgment.
+
+    Arrange: create a plan with empty tasks list; inject mock backend.
+    Act: call sam_plan with action=append_task.
+    Assert: backend.append_task was called exactly once with the plan_id and a
+            parsed task definition.
+    """
+    from unittest.mock import MagicMock
+
+    from sam_schema.core.action_models import AppendTaskConfig
+    from sam_schema.core.task_config import TaskConfig, reset_task_config, set_task_config
+
+    # Arrange
+    mock_backend = MagicMock()
+    mock_backend.read_plan.return_value = {
+        "plan_id": "P1",
+        "feature": "test-plan",
+        "version": "1",
+        "description": "",
+        "goal": "Test goal",
+        "context": "",
+        "acceptance_criteria": "",
+        "issue": None,
+        "tasks": [],
+        "source_path": None,
+        "state": "drafting",
+    }
+    mock_backend.append_task.return_value = {"appended": True, "task_id": "T1"}
+    mock_backend.create_plan.return_value = {
+        "plan_id": "P1",
+        "feature": "test-plan",
+        "version": "1",
+        "description": "",
+        "goal": "Test goal",
+        "context": "",
+        "acceptance_criteria": "",
+        "issue": None,
+        "tasks": [],
+        "source_path": str(tmp_path / "P1-test-plan.yaml"),
+        "state": "drafting",
+    }
+    set_task_config(TaskConfig(backend=mock_backend))
+
+    try:
+        task_def = TaskDefinition(
+            id="T1",
+            title="First task",
+            status="not-started",
+            agent="test-agent",
+            dependencies=[],
+            priority=2,
+            complexity="low",
+        )
+
+        # Act
+        result = sam_plan(config=AppendTaskConfig(task=task_def), plan="P1")
+
+        # Assert — backend.append_task called once
+        assert "error" not in result, f"append_task returned error: {result}"
+        mock_backend.append_task.assert_called_once()
+        call_args = mock_backend.append_task.call_args
+        plan_id_arg = call_args.args[0] if call_args.args else call_args.kwargs.get("plan_id")
+        assert plan_id_arg == "P1"
+    finally:
+        reset_task_config()
+
+
+def test_sam_append_task_returns_success_acknowledgment(tmp_path: Path) -> None:
+    """sam_plan action=append_task returns a success acknowledgment dict.
+
+    AC #2: the response must not be an error dict; it must contain a truthy
+    success indicator (e.g. 'appended': True or 'task_id': 'T1').
+
+    Arrange: create plan via InMemoryTaskProvider; append one task.
+    Act: call sam_plan(action='append_task', plan=P, task=<TaskDefinition>).
+    Assert: result contains 'appended': True or 'task_id': 'T1' and no 'error' key.
+    """
+    from sam_schema.core.action_models import AppendTaskConfig, CreatePlanConfig
+    from sam_schema.core.backends.memory import InMemoryTaskProvider
+    from sam_schema.core.task_config import TaskConfig, reset_task_config, set_task_config
+
+    backend = InMemoryTaskProvider()
+    set_task_config(TaskConfig(backend=backend))
+
+    try:
+        create_result = sam_plan(config=CreatePlanConfig(slug="append-test", goal="Append goal", tasks=[]))
+        plan_id = create_result["plan_id"]
+
+        task_def = TaskDefinition(
+            id="T1",
+            title="First task",
+            status="not-started",
+            agent="test-agent",
+            dependencies=[],
+            priority=2,
+            complexity="low",
+        )
+
+        # Act
+        result = sam_plan(config=AppendTaskConfig(task=task_def), plan=plan_id)
+
+        # Assert
+        assert "error" not in result, f"Expected success but got error: {result}"
+        success = result.get("appended") is True or result.get("task_id") is not None
+        assert success, f"Expected success indicator in append_task response, got: {result!r}"
+    finally:
+        reset_task_config()
+
+
+def test_sam_append_task_plan_not_found_raises(tmp_path: Path) -> None:
+    """sam_plan action=append_task raises PlanNotFoundError when plan does not exist.
+
+    AC #6: backend must raise PlanNotFoundError for unknown plan_id.
+    FastMCP converts this to a ToolError (isError=true) at the MCP transport.
+
+    Arrange: inject fresh InMemoryTaskProvider (no plans).
+    Act: call sam_plan(action='append_task', plan='P99999').
+    Assert: PlanNotFoundError or ToolError is raised containing 'P99999'.
+    """
+    from sam_schema.core.action_models import AppendTaskConfig
+    from sam_schema.core.backends.memory import InMemoryTaskProvider
+    from sam_schema.core.exceptions import PlanNotFoundError
+    from sam_schema.core.task_config import TaskConfig, reset_task_config, set_task_config
+
+    backend = InMemoryTaskProvider()
+    set_task_config(TaskConfig(backend=backend))
+
+    try:
+        task_def = TaskDefinition(id="T1", title="Task", agent="a")
+
+        # Act / Assert
+        with pytest.raises(PlanNotFoundError, match="P99999"):
+            sam_plan(config=AppendTaskConfig(task=task_def), plan="P99999")
+    finally:
+        reset_task_config()
+
+
+def test_sam_append_task_duplicate_task_id_raises(tmp_path: Path) -> None:
+    """sam_plan action=append_task raises an error when duplicate task ID is appended.
+
+    AC #6: backend raises TaskValidationError when a duplicate task ID is appended.
+
+    Arrange: create a plan with T1; append T1 a second time.
+    Act: second append_task call.
+    Assert: TaskValidationError is raised.
+    """
+    from sam_schema.core.action_models import AppendTaskConfig, CreatePlanConfig
+    from sam_schema.core.backends.memory import InMemoryTaskProvider
+    from sam_schema.core.exceptions import TaskValidationError
+    from sam_schema.core.task_config import TaskConfig, reset_task_config, set_task_config
+
+    backend = InMemoryTaskProvider()
+    set_task_config(TaskConfig(backend=backend))
+
+    try:
+        create_result = sam_plan(config=CreatePlanConfig(slug="dup-task", goal="Goal", tasks=[]))
+        plan_id = create_result["plan_id"]
+
+        task_def = TaskDefinition(id="T1", title="Task", agent="a")
+
+        # First append succeeds
+        sam_plan(config=AppendTaskConfig(task=task_def), plan=plan_id)
+
+        # Act / Assert — second append with same ID must raise TaskValidationError
+        with pytest.raises(TaskValidationError):
+            sam_plan(config=AppendTaskConfig(task=task_def), plan=plan_id)
+    finally:
+        reset_task_config()
+
+
+# ---------------------------------------------------------------------------
+# sam_plan — finalize action (#1770)
+# ---------------------------------------------------------------------------
+
+
+def test_sam_finalize_routes_through_backend_finalize_plan(tmp_path: Path) -> None:
+    """sam_plan action=finalize calls backend.finalize_plan (or update_plan_fields).
+
+    AC #14: finalize must clear the drafting state via a dedicated backend call.
+
+    Arrange: inject mock backend.
+    Act: call sam_plan(action='finalize', plan='P1').
+    Assert: backend.finalize_plan (or update_plan_fields with state='ready') called once.
+    """
+    from unittest.mock import MagicMock
+
+    from sam_schema.core.action_models import FinalizePlanConfig
+    from sam_schema.core.task_config import TaskConfig, reset_task_config, set_task_config
+
+    mock_backend = MagicMock()
+    mock_backend.finalize_plan.return_value = {"finalized": True, "state": "ready"}
+    mock_backend.update_plan_fields.return_value = {"updated": True}
+    set_task_config(TaskConfig(backend=mock_backend))
+
+    try:
+        # Act
+        result = sam_plan(config=FinalizePlanConfig(), plan="P1")
+
+        # Assert — either finalize_plan OR update_plan_fields called to transition state
+        assert "error" not in result, f"Expected success, got: {result!r}"
+        state_transitioned = mock_backend.finalize_plan.called or mock_backend.update_plan_fields.called
+        assert state_transitioned, (
+            "Expected either backend.finalize_plan or backend.update_plan_fields to be called to clear drafting state"
+        )
+    finally:
+        reset_task_config()

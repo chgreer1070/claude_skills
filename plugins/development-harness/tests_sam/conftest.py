@@ -10,9 +10,16 @@ Fixture design follows AAA pattern with full type annotations and pytest-mock
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+from sam_schema.core.action_models import TaskDefinition
+from sam_schema.core.backends.memory import InMemoryTaskProvider
 from sam_schema.core.models import Complexity, Plan, Priority, Task, TaskStatus
+from sam_schema.core.task_config import TaskConfig, reset_task_config, set_task_config
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 # ---------------------------------------------------------------------------
 # Path constants
@@ -54,12 +61,15 @@ def make_task_def(
     status: str = "not-started",
     deps: list[str] | None = None,
     agent: str = "test-agent",
-) -> dict[str, object]:
-    """Return a minimal task definition dict suitable for InMemoryTaskProvider.create_plan.
+) -> TaskDefinition:
+    """Return a minimal TaskDefinition suitable for TaskBackend.create_plan and append_task.
+
+    Uses model_validate to accept raw test values (int priority, str complexity)
+    without triggering ty type errors on enum fields.
 
     Used by test_consolidated_tools.  Centralised here to eliminate duplication.
     """
-    return {
+    return TaskDefinition.model_validate({
         "id": task_id,
         "title": title,
         "status": status,
@@ -67,7 +77,27 @@ def make_task_def(
         "dependencies": deps if deps is not None else [],
         "priority": 1,
         "complexity": "low",
-    }
+    })
+
+
+# ---------------------------------------------------------------------------
+# Backend fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def memory_backend() -> Generator[InMemoryTaskProvider, None, None]:
+    """Inject a fresh InMemoryTaskProvider via set_task_config.
+
+    Calls reset_task_config() in teardown to prevent cross-test contamination.
+
+    Yields:
+        Configured InMemoryTaskProvider instance.
+    """
+    backend = InMemoryTaskProvider()
+    set_task_config(TaskConfig(backend=backend))
+    yield backend
+    reset_task_config()
 
 
 # ---------------------------------------------------------------------------

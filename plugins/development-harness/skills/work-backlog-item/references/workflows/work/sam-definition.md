@@ -68,7 +68,43 @@ Each artifact type uses the token pattern `ARTIFACT:{TYPE}({SCOPE_OR_ID})`. Stor
 
 2. **Produce artifacts at every stage**
    - Use `ARTIFACT:{TYPE}({ID})` tokens in artifact headers; cross-reference predecessor/successor.
-   - In claude_skills: Register via MCP — `artifact_register(issue_number, artifact_type, path, agent, content)` for discovery and plan artifacts, `sam_plan(action='create', slug, goal, tasks_yaml, issue)` for task plans. Artifacts are stored in the artifact manifest and accessible to all agents including worktree-isolated sessions.
+   - In claude_skills: Register via MCP — `artifact_register(issue_number, artifact_type, path, agent, content)` for discovery and plan artifacts. For task plans, choose a creation path based on plan size:
+
+     **Monolithic path** (fewer than 16 tasks):
+
+     ```text
+     sam_plan(action='create', slug, goal, tasks=[{task_dict}, ...], issue)
+     ```
+
+     `tasks` is a list of task definition objects. Required fields: `id`, `title`. Optional: `status`, `agent`, `dependencies`, `priority`, `complexity`.
+
+     **Incremental path** (16+ tasks — preferred for large plans):
+
+     1. Create a drafting plan — passing an empty task list enters `state="drafting"`:
+
+        ```text
+        sam_plan(action='create', slug, goal, tasks=[], issue)
+        ```
+
+        While `state="drafting"`, `sam_plan status` and `sam_plan ready` return a drafting
+        marker rather than task counts; the plan is not visible to the dispatch loop.
+
+     2. Append tasks one at a time:
+
+        ```text
+        sam_plan(plan='P{N}', action='append_task', task={single_task_dict})
+        ```
+
+     3. Finalize — clears `state="drafting"` → `state="ready"`:
+
+        ```text
+        sam_plan(plan='P{N}', action='finalize')
+        ```
+
+     `append_task` is single-writer only — do not call it concurrently for the same plan.
+     For the full contract, see the gotcha note in `plugins/development-harness/CLAUDE.md`.
+
+   Artifacts are stored in the artifact manifest and accessible to all agents including worktree-isolated sessions.
 
 3. **Apply structural gates, not instructions**
    - Run quality gates (format, lint, typecheck, test) after each stage.

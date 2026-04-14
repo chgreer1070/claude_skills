@@ -12,10 +12,11 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from sam_schema.core import query
 from sam_schema.core.addressing import AddressingError, resolve_plan_address
+from sam_schema.core.backends._utils import validate_appended_task
 from sam_schema.core.exceptions import (
     DocumentNotFoundError,
     PlanExistsError,
@@ -23,18 +24,13 @@ from sam_schema.core.exceptions import (
     TaskNotFoundError,
     TaskValidationError,
 )
-from sam_schema.core.models import Plan, Task, TaskStatus
+from sam_schema.core.models import Plan, PlanState, Task, TaskStatus
 from sam_schema.readers.detect import FormatDetectionError
 
 if TYPE_CHECKING:
-    from sam_schema.core.task_backend_types import (
-        DocumentData,
-        DocumentHandle,
-        PlanData,
-        PlanSummary,
-        TaskData,
-        TaskDefinition,
-    )
+    from collections.abc import Sequence
+
+    from sam_schema.core.task_backend_types import DocumentData, DocumentHandle, PlanData, PlanSummary, TaskData
 
 __all__ = ["LocalYamlTaskProvider"]
 
@@ -166,6 +162,7 @@ def _plan_to_plan_data(plan: Plan, plan_id: str) -> PlanData:
         data["codebase_patterns"] = plan.codebase_patterns
     if plan.backend_ref is not None:
         data["backend_ref"] = plan.backend_ref
+    data["state"] = plan.state
     return data
 
 
@@ -198,6 +195,10 @@ class LocalYamlTaskProvider:
 
             plan_dir = dh_paths.plan_dir()
         self._plan_dir: Path = plan_dir
+        # Per-plan task-ID cache — avoids repeated YAML parse+deserialize when
+        # calling append_task multiple times on the same plan in sequence.
+        # Keyed by plan_id (str); invalidated on finalize_plan.
+        self._task_id_cache: dict[str, set[str]] = {}
 
     def _resolve_path(self, plan_id: str) -> Path:
         """Resolve a plan_id to its filesystem path.
@@ -224,7 +225,7 @@ class LocalYamlTaskProvider:
         self,
         slug: str,
         goal: str,
-        tasks: list[TaskDefinition],
+        tasks: Sequence[Task],
         *,
         context: str | None = None,
         issue: int | None = None,
@@ -240,7 +241,7 @@ class LocalYamlTaskProvider:
         Args:
             slug: Human-readable identifier slug for the plan.
             goal: One-sentence goal statement.
-            tasks: Ordered list of task definitions.
+            tasks: Ordered list of validated Task models.
             context: Optional plan-level context narrative.
             issue: Optional GitHub issue number.
             acceptance_criteria: Accepted but not written by this backend.
@@ -253,7 +254,7 @@ class LocalYamlTaskProvider:
             PlanExistsError: When a plan with the resolved plan_id already exists.
             TaskValidationError: When any task definition fails validation.
         """
-        task_dicts: list[dict[str, Any]] = [cast("dict[str, Any]", t) for t in tasks]
+        task_dicts: list[dict[str, Any]] = [t.model_dump(by_alias=False, exclude_none=True) for t in tasks]
         try:
             plan = query.create_plan(
                 slug=slug, goal=goal, tasks=task_dicts, plan_dir=self._plan_dir, context=context, issue=issue
@@ -267,6 +268,13 @@ class LocalYamlTaskProvider:
             if m:
                 raise TaskValidationError(int(m.group(1)), m.group(2)) from exc
             raise TaskValidationError(0, msg) from exc
+
+        if not tasks:
+            from sam_schema.writers.yaml_writer import write_plan  # noqa: PLC0415
+
+            plan = plan.model_copy(update={"state": PlanState.DRAFTING})
+            if plan.source_path is not None:
+                write_plan(plan, plan.source_path, force_single=True)
 
         plan_id = _plan_id_from_path(plan.source_path) if plan.source_path else slug
         return _plan_to_plan_data(plan, plan_id)
@@ -535,6 +543,75 @@ class LocalYamlTaskProvider:
         except FileNotFoundError as exc:
             raise PlanNotFoundError(plan_id) from exc
 
+    def append_task(self, plan_id: str, task: Task) -> dict[str, Any]:
+        """Append a single validated Task to an existing plan.
+
+        Duplicate-ID check via ``validate_appended_task``; see ADR-1770-1 for the
+        single-writer contract (callers must serialise writes to the same plan).
+
+        Args:
+            plan_id: Plan identifier.
+            task: Validated Task model to append.
+
+        Returns:
+            ``{"appended": True, "task_id": task.id}``
+
+        Raises:
+            PlanNotFoundError: When plan_id cannot be resolved to a file.
+            TaskValidationError: When the task ID already exists in the plan.
+        """
+        from sam_schema.writers.yaml_writer import write_plan  # noqa: PLC0415
+
+        path = self._resolve_path(plan_id)
+        result = query.load_plan(path)
+        plan = result.plan
+
+        # Use cache on subsequent calls; populate from plan on first call.
+        if plan_id not in self._task_id_cache:
+            self._task_id_cache[plan_id] = {t.id for t in plan.tasks}
+
+        validate_appended_task(task, self._task_id_cache[plan_id], plan_id)
+        self._task_id_cache[plan_id].add(task.id)
+
+        new_tasks = [*plan.tasks, task]
+        updated_plan = plan.model_copy(update={"tasks": new_tasks})
+        write_plan(updated_plan, path, force_single=True)
+
+        return {"appended": True, "task_id": task.id}
+
+    def finalize_plan(self, plan_id: str) -> dict[str, Any]:
+        """Finalize a drafting plan by setting its state to ready.
+
+        Loads the plan, sets ``state="ready"``, writes back via ``write_plan``.
+        See ADR-1770-1 for the single-writer contract (callers must serialise
+        writes to the same plan).
+
+        Args:
+            plan_id: Plan identifier.
+
+        Returns:
+            ``{"finalized": True, "state": "ready"}``
+
+        Raises:
+            PlanNotFoundError: When plan_id cannot be resolved to a file.
+        """
+        from sam_schema.writers.yaml_writer import write_plan  # noqa: PLC0415
+
+        path = self._resolve_path(plan_id)
+        result = query.load_plan(path)
+        plan = result.plan
+
+        # No-op guard: already ready — skip write, return early.
+        if plan.state == PlanState.READY:
+            return {"finalized": True, "state": PlanState.READY}
+
+        updated_plan = plan.model_copy(update={"state": PlanState.READY})
+        write_plan(updated_plan, path, force_single=True)
+        # Invalidate task-ID cache so subsequent appends read fresh state.
+        self._task_id_cache.pop(plan_id, None)
+
+        return {"finalized": True, "state": PlanState.READY}
+
     def get_ready_tasks(self, plan_id: str) -> list[TaskData]:
         """Return all tasks that are ready for dispatch.
 
@@ -572,6 +649,7 @@ class LocalYamlTaskProvider:
         """
         path = self._resolve_path(plan_id)
         try:
+            result = query.load_plan(path)
             status = query.get_plan_status(path)
         except FileNotFoundError as exc:
             raise PlanNotFoundError(plan_id) from exc
@@ -583,6 +661,7 @@ class LocalYamlTaskProvider:
             "blocked_tasks": list(status.blocked_tasks),
             "completion_pct": status.completion_pct,
             "has_cycles": status.has_cycles,
+            "state": result.plan.state,
         }
 
     # ------------------------------------------------------------------

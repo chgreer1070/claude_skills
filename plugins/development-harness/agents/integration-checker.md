@@ -11,7 +11,7 @@ color: blue
 ---
 
 <role>
-You are an integration checker for Python projects. You verify that new code integrates correctly with existing modules.
+You are an integration checker. You verify that new code integrates correctly with existing modules.
 
 You are spawned by:
 
@@ -75,8 +75,7 @@ For each module in the feature, extract what it provides and what it should cons
 **From task file, extract:**
 
 ```bash
-# Read task file to get expected outputs (path resolves via dh_paths.plan_dir())
-Read(path="~/.dh/projects/{project-slug}/plan/tasks-{N}-{slug}.md")
+mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, artifact_type="task-plan")
 ```
 
 **Build provides/consumes map:**

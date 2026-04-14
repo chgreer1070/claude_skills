@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import copy
 import uuid
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from sam_schema.core.backends._utils import _now_iso
+from sam_schema.core.backends._utils import _now_iso, validate_appended_task
 from sam_schema.core.dependencies import TERMINAL_STATUSES as _TERMINAL_STATUSES
 from sam_schema.core.exceptions import (
     DocumentNotFoundError,
@@ -30,17 +30,19 @@ from sam_schema.core.exceptions import (
     TaskNotFoundError,
     TaskValidationError,
 )
+from sam_schema.core.models import PlanState, Task
 from sam_schema.core.query import _new_plan_id
 
 if TYPE_CHECKING:
-    from sam_schema.core.models import Task
+    from collections.abc import Sequence
+
     from sam_schema.core.task_backend_types import (
         DocumentData,
         DocumentHandle,
         PlanData,
         PlanSummary,
         TaskData,
-        TaskDefinition,
+        TaskDefinitionDict,
     )
 
 __all__ = ["InMemoryTaskProvider"]
@@ -56,8 +58,8 @@ _VALID_STATUSES: frozenset[str] = frozenset({
 })
 
 
-def _task_def_to_task_data(task_def: TaskDefinition) -> TaskData:
-    """Convert a TaskDefinition input TypedDict to a TaskData output TypedDict.
+def _task_def_to_task_data(task_def: TaskDefinitionDict) -> TaskData:
+    """Convert a TaskDefinitionDict input TypedDict to a TaskData output TypedDict.
 
     Applies defaults for all optional fields absent from the input.
 
@@ -197,7 +199,7 @@ class InMemoryTaskProvider:
         self,
         slug: str,
         goal: str,
-        tasks: list[TaskDefinition],
+        tasks: Sequence[Task],
         *,
         context: str | None = None,
         issue: int | None = None,
@@ -208,7 +210,7 @@ class InMemoryTaskProvider:
         Args:
             slug: Human-readable identifier slug for the plan.
             goal: One-sentence goal statement.
-            tasks: Ordered list of task definitions.
+            tasks: Ordered list of validated Task models.
             context: Optional plan-level context narrative.
             issue: Optional GitHub issue number. When provided, the plan_id
                 is ``P{issue}``; otherwise an auto-incremented ID is used.
@@ -227,12 +229,12 @@ class InMemoryTaskProvider:
             raise PlanExistsError(plan_id)
 
         task_data_list: list[TaskData] = []
-        for idx, task_def in enumerate(tasks):
-            if not task_def.get("id"):
+        for idx, task in enumerate(tasks):
+            if not task.id:
                 raise TaskValidationError(idx, "Task 'id' is required")
-            if not task_def.get("title"):
+            if not task.title:
                 raise TaskValidationError(idx, "Task 'title' is required")
-            task_data_list.append(_task_def_to_task_data(task_def))
+            task_data_list.append(_task_def_to_task_data(cast("TaskDefinitionDict", task.model_dump(by_alias=False))))
 
         plan_data: PlanData = {
             "plan_id": plan_id,
@@ -245,6 +247,7 @@ class InMemoryTaskProvider:
             "issue": str(issue) if issue is not None else None,
             "tasks": task_data_list,
             "source_path": None,
+            "state": PlanState.DRAFTING if not tasks else PlanState.READY,
         }
         self._plans[plan_id] = copy.deepcopy(plan_data)
         return copy.deepcopy(plan_data)
@@ -480,6 +483,57 @@ class InMemoryTaskProvider:
             new_context = f"{existing}{separator}{heading}\n\n{content}"
         task["context_notes"] = new_context  # type: ignore[typeddict-item]
 
+    def append_task(self, plan_id: str, task: Task) -> dict[str, Any]:
+        """Append a single validated Task to an existing plan.
+
+        Duplicate-ID check via ``validate_appended_task``; see ADR-1770-1 for the
+        single-writer contract (callers must serialise writes to the same plan).
+
+        Args:
+            plan_id: Backend-assigned plan identifier.
+            task: Validated Task model to append.
+
+        Returns:
+            Dict with ``appended`` (True) and ``task_id`` (the appended task's ID).
+
+        Raises:
+            PlanNotFoundError: When plan_id is not known.
+            TaskValidationError: When the task ID already exists in the plan.
+        """
+        if plan_id not in self._plans:
+            raise PlanNotFoundError(plan_id)
+
+        existing_ids = {t["id"] for t in self._plans[plan_id]["tasks"]}
+        validate_appended_task(task, existing_ids, plan_id)
+
+        task_data = _task_def_to_task_data(cast("TaskDefinitionDict", task.model_dump(by_alias=False)))
+        self._plans[plan_id]["tasks"].append(task_data)
+
+        return {"appended": True, "task_id": task.id}
+
+    def finalize_plan(self, plan_id: str) -> dict[str, Any]:
+        """Finalize a drafting plan, transitioning its state to 'ready'.
+
+        Clears the drafting marker set during create_plan. See ADR-1770-1 for the
+        single-writer contract (callers must serialise writes to the same plan).
+
+        Args:
+            plan_id: Backend-assigned plan identifier.
+
+        Returns:
+            Dict with ``finalized`` (True) and ``state`` ('ready').
+
+        Raises:
+            PlanNotFoundError: When plan_id is not known.
+        """
+        if plan_id not in self._plans:
+            raise PlanNotFoundError(plan_id)
+        # No-op guard: already ready — skip write, return early.
+        if self._plans[plan_id].get("state") == PlanState.READY:
+            return {"finalized": True, "state": PlanState.READY}
+        self._plans[plan_id]["state"] = PlanState.READY
+        return {"finalized": True, "state": PlanState.READY}
+
     def get_ready_tasks(self, plan_id: str) -> list[TaskData]:
         """Return all tasks that are ready for dispatch.
 
@@ -557,6 +611,7 @@ class InMemoryTaskProvider:
             "blocked_tasks": blocked_tasks,
             "completion_pct": completion_pct,
             "has_cycles": _has_cycle(tasks),
+            "state": plan.get("state", PlanState.READY),
         }
 
     # ------------------------------------------------------------------

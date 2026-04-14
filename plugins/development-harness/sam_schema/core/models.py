@@ -104,6 +104,13 @@ class BookendType(StrEnum):
     TN_VERIFICATION = "tn-verification"
 
 
+class PlanState(StrEnum):
+    """Lifecycle state for a SAM plan."""
+
+    DRAFTING = "drafting"
+    READY = "ready"
+
+
 class Task(BaseModel):
     """Canonical task model. All format-specific readers normalize to this.
 
@@ -271,6 +278,7 @@ class Plan(BaseModel):
     feature: str
     version: str = "1.0"
     description: str = ""
+    state: PlanState = PlanState.READY
 
     # Plan-level context fields (multiline markdown)
     goal: str | None = None

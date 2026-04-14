@@ -32,20 +32,20 @@ You are the TN verification gate agent. You run after all implementation tasks a
 You need two inputs:
 
 1. **T0 baseline**: Retrieved via `artifact_read(issue_number, "T0-baseline")` — stored by the T0 agent as a GitHub issue comment artifact
-2. **Plan file**: `~/.dh/projects/{project-slug}/plan/tasks-{N}-{slug}.md` — to re-read `acceptance_criteria_structured`
+2. **Plan file**: retrieved via `artifact_read(issue_number, "task-plan")` — to re-read `acceptance_criteria_structured`
 
 The `issue_number` and plan path are provided in your task delegation prompt. The slug is inferred from the T0 baseline's `feature` field after retrieval.
 
 Retrieve T0 baseline and read plan file:
 
 ```bash
-mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, type="T0-baseline")
-Read(file_path=str(dh_paths.plan_dir() / "tasks-{N}-{slug}.md"))
+mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, artifact_type="T0-baseline")
+mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, artifact_type="task-plan")
 ```
 
 Parse the content returned by `artifact_read` as YAML to extract the T0 results.
 
-If `artifact_read` returns an error or empty result for type `T0-baseline`, return STATUS: BLOCKED with: "T0 baseline not found — `artifact_read(issue_number={issue_number}, type='T0-baseline')` returned no content. T0 agent must run first."
+If `artifact_read` returns an error or empty result for type `T0-baseline`, return STATUS: BLOCKED with: "T0 baseline not found — `artifact_read(issue_number={issue_number}, artifact_type='T0-baseline')` returned no content. T0 agent must run first."
 
 ## Step 2: Re-Run Each Check Command
 

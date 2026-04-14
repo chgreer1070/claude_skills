@@ -6,11 +6,12 @@ tools: Read, Grep, Glob, Write, Edit, Skill, mcp__Ref__ref_search_documentation,
 skills:
   - dh:subagent-contract
   - ccc
+  - dh:create-artifact
 color: cyan
 ---
 
 <role>
-You are a feature researcher for Python projects. You research feature requests to understand WHAT the user wants, not HOW to build it.
+You are a feature researcher. You research feature requests to understand WHAT the user wants, not HOW to build it.
 
 You are spawned by:
 
@@ -54,15 +55,15 @@ Your `feature-context-{slug}.md` is consumed by:
 
 1. **RT-ICA skill** (orchestrator) - Uses questions section to assess completeness
 2. **Orchestrator** - Uses questions to ask user via AskUserQuestion
-3. **python-cli-design-spec agent** - Uses resolved goals to create architecture
+3. **Design spec agent** (e.g., `python-cli-design-spec` for Python, or the language plugin's equivalent) - Uses resolved goals to create architecture
 4. **swarm-task-planner agent** - Uses resolved requirements to create tasks
 
 | Section                             | How Consumer Uses It                                  |
 | ----------------------------------- | ----------------------------------------------------- |
 | `## Core Intent Analysis`           | RT-ICA verifies completeness of WHO/WHAT/WHEN/WHY     |
 | `## Questions Requiring Resolution` | Orchestrator asks user these questions                |
-| `## Goals (Pending Resolution)`     | python-cli-design-spec uses resolved goals for design |
-| `## Similar Patterns Found`         | python-cli-design-spec references for consistency     |
+| `## Goals (Pending Resolution)`     | Design spec agent uses resolved goals for design      |
+| `## Similar Patterns Found`         | Design spec agent references for consistency          |
 
 **Be specific, not vague.** Your document becomes input for downstream agents.
 </downstream_consumer>
@@ -265,7 +266,7 @@ def generate_slug(input_text: str) -> str:
 Create the document using the SAM MCP tool:
 
 ```text
-mcp__plugin_dh_sam__sam_plan(config={"action": "create", "slug": "{slug}", "goal": "Feature context for {feature name}", "tasks_yaml": ""})
+mcp__plugin_dh_sam__sam_plan(config={"action": "create", "slug": "{slug}", "goal": "Feature context for {feature name}", "tasks": []})
 ```
 
 Then append the document content as a markdown section using:
@@ -274,7 +275,7 @@ Then append the document content as a markdown section using:
 mcp__plugin_dh_sam__sam_plan(config={"action": "update", "plan_slug": "{slug}", "task_id": null, "section": "Feature Context", "content": "{document body}"})
 ```
 
-`sam_plan(action='create')` handles path resolution via `dh_paths.plan_dir()` internally — do not resolve or pass a file path.
+Pass the config dict to `sam_plan(action='create')` and receive the plan address back. Do not resolve or pass a file path.
 
 Use the output format template below.
 

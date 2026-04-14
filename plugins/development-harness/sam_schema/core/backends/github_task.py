@@ -14,21 +14,17 @@ or GraphQL calls are made from this module.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from sam_schema.core.backends._utils import _now_iso
+from sam_schema.core.backends._utils import _now_iso, validate_appended_task
 from sam_schema.core.dependencies import TERMINAL_STATUSES as _TERMINAL_STATUSES
 from sam_schema.core.exceptions import PlanNotFoundError, TaskNotFoundError, TaskValidationError
-from sam_schema.core.task_backend_types import (
-    DocumentData,
-    DocumentHandle,
-    PlanData,
-    PlanSummary,
-    TaskData,
-    TaskDefinition,
-)
+from sam_schema.core.models import PlanState, Task
+from sam_schema.core.task_backend_types import DocumentData, DocumentHandle, PlanData, PlanSummary, TaskData
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from backlog_core.backend_protocol import BacklogBackend, IssueNode, LabelNode
     from github.Repository import Repository
 
@@ -69,6 +65,7 @@ _METADATA_END = "<!-- sam-task-metadata:end -->"
 _META_ROW_RE = re.compile(r"^\|\s*(?P<key>[^|]+?)\s*\|\s*(?P<value>[^|]*?)\s*\|$")
 _TASK_TITLE_RE = re.compile(r"^\[(?P<tid>T\d+)\] (?P<title>.+)$")
 _PLAN_SLUG_RE = re.compile(r"<!-- sam-plan-slug: (?P<slug>[^>]+?) -->")
+_DRAFTING_MARKER = "<!-- sam:state=drafting -->"
 _GOAL_RE = re.compile(r"## Goal\n\n(?P<goal>.+?)(?=\n\n##|\Z)", re.DOTALL)
 
 
@@ -81,19 +78,21 @@ def _status_from_labels(labels: list[LabelNode]) -> str:
     return "not-started"
 
 
-def _render_metadata_section(task_def: TaskDefinition, plan_id: str) -> str:
+def _render_metadata_section(task: Task, plan_id: str) -> str:
     """Render the ``<!-- sam-task-metadata:begin/end -->`` table block."""
+    # Use model_dump to get Python-native values (enum members, not raw strings)
+    td = task.model_dump(mode="python", by_alias=False)
     rows: list[tuple[str, str]] = [
-        ("task_id", task_def["id"]),
+        ("task_id", td["id"]),
         ("plan_id", plan_id),
-        ("agent", task_def.get("agent") or ""),
-        ("priority", str(task_def.get("priority", 0))),
-        ("complexity", task_def.get("complexity", "")),
-        ("dependencies", ",".join(task_def.get("dependencies", []))),
-        ("skills", ",".join(task_def.get("skills", []))),
-        ("created", task_def.get("created") or _now_iso()),
-        ("started", task_def.get("started") or ""),
-        ("completed", task_def.get("completed") or ""),
+        ("agent", td.get("agent") or ""),
+        ("priority", str(td.get("priority", 0))),
+        ("complexity", str(td.get("complexity", ""))),
+        ("dependencies", ",".join(td.get("dependencies") or [])),
+        ("skills", ",".join(td.get("skills") or [])),
+        ("created", str(td.get("created") or _now_iso())),
+        ("started", str(td.get("started") or "")),
+        ("completed", str(td.get("completed") or "")),
     ]
     lines = [_METADATA_BEGIN, "| Field | Value |", "|-------|-------|"]
     lines.extend(f"| {k} | {v} |" for k, v in rows)
@@ -129,15 +128,15 @@ def _render_plan_body(slug: str, goal: str, context: str | None, ac: str | None)
     return "\n\n".join(parts)
 
 
-def _render_task_body(task_def: TaskDefinition, plan_id: str) -> str:
+def _render_task_body(task: Task, plan_id: str) -> str:
     """Render the full sub-issue body for a task."""
-    parts = [_render_metadata_section(task_def, plan_id)]
-    if body := task_def.get("body"):
-        parts.append(body)
-    if ac := task_def.get("acceptance_criteria"):
-        parts.append(f"## Acceptance Criteria\n\n{ac}")
-    if vs := task_def.get("verification_steps"):
-        parts.append(f"## Verification Steps\n\n{vs}")
+    parts = [_render_metadata_section(task, plan_id)]
+    if task.body:
+        parts.append(task.body)
+    if task.acceptance_criteria:
+        parts.append(f"## Acceptance Criteria\n\n{task.acceptance_criteria}")
+    if task.verification_steps:
+        parts.append(f"## Verification Steps\n\n{task.verification_steps}")
     return "\n\n".join(parts)
 
 
@@ -225,6 +224,11 @@ class GitHubTaskProvider:
         """Store the IssueBackend and DocumentBackend dependency instances."""
         self._issue_backend = issue_backend
         self._doc_backend = doc_backend
+        # Per-plan task-ID cache — avoids O(N²) sub-issue fetches during
+        # incremental append_task workflows.  Keyed by plan_id (str).
+        # Populated lazily on first append_task call per plan; invalidated on
+        # finalize_plan to force a fresh read if the plan is re-used.
+        self._task_id_cache: dict[str, set[str]] = {}
 
     def _get_repo(self) -> tuple[Repository, str, str]:
         """Return (repo, owner, repo_name) from the IssueBackend."""
@@ -274,44 +278,45 @@ class GitHubTaskProvider:
         self,
         slug: str,
         goal: str,
-        tasks: list[TaskDefinition],
+        tasks: Sequence[Task],
         *,
         context: str | None = None,
         issue: int | None = None,
         acceptance_criteria: str | None = None,
     ) -> PlanData:
         """Create a plan as a parent GitHub Issue with task sub-issues."""
-        for i, task_def in enumerate(tasks):
-            if not task_def.get("id") or not task_def.get("title"):
+        for i, task in enumerate(tasks):
+            if not task.id or not task.title:
                 raise TaskValidationError(i, "Task must have 'id' and 'title' fields")
 
         repo, _, _ = self._get_repo()
+        plan_body = _render_plan_body(slug, goal, context, acceptance_criteria)
+        if not tasks:
+            plan_body = f"{plan_body}\n{_DRAFTING_MARKER}"
         parent_issue = repo.create_issue(  # type: ignore[attr-defined]
-            title=f"SAM Plan: {slug}",
-            body=_render_plan_body(slug, goal, context, acceptance_criteria),
-            labels=[_SAM_PLAN_LABEL],
+            title=f"SAM Plan: {slug}", body=plan_body, labels=[_SAM_PLAN_LABEL]
         )
         plan_id = str(parent_issue.number)  # type: ignore[attr-defined]
 
         task_data_list: list[TaskData] = []
-        for task_def in tasks:
-            task_body = _render_task_body(task_def, plan_id)
-            status_label = _STATUS_TO_LABEL.get(task_def.get("status", "not-started"), "sam:not-started")
+        for task in tasks:
+            task_body = _render_task_body(task, plan_id)
+            status_label = _STATUS_TO_LABEL.get(str(task.status), "sam:not-started")
             task_issue = repo.create_issue(  # type: ignore[attr-defined]
-                title=f"[{task_def['id']}] {task_def['title']}", body=task_body, labels=[_SAM_TASK_LABEL, status_label]
+                title=f"[{task.id}] {task.title}", body=task_body, labels=[_SAM_TASK_LABEL, status_label]
             )
             task_data_list.append(
                 TaskData(
-                    id=task_def["id"],
-                    title=task_def["title"],
-                    status=task_def.get("status", "not-started"),
-                    agent=task_def.get("agent") or None,
-                    dependencies=task_def.get("dependencies", []),
-                    blocked_by=task_def.get("blocked_by", []),
-                    parallelize_with=task_def.get("parallelize_with", []),
-                    priority=task_def.get("priority", 0),
-                    complexity=task_def.get("complexity", ""),
-                    skills=task_def.get("skills", []),
+                    id=task.id,
+                    title=task.title,
+                    status=str(task.status),
+                    agent=task.agent or None,
+                    dependencies=task.dependencies or [],
+                    blocked_by=task.blocked_by or [],
+                    parallelize_with=task.parallelize_with or [],
+                    priority=int(task.priority),
+                    complexity=str(task.complexity),
+                    skills=task.skills or [],
                     created=_now_iso(),
                     started=None,
                     completed=None,
@@ -340,7 +345,7 @@ class GitHubTaskProvider:
         node = self._fetch_plan_node(plan_id)
         slug, goal = self._extract_plan_meta(node)
         tasks = [_node_to_task_data(n) for n in self._fetch_task_nodes(plan_id)]
-        return PlanData(
+        plan_data = PlanData(
             plan_id=plan_id,
             feature=slug,
             version="1",
@@ -352,6 +357,9 @@ class GitHubTaskProvider:
             tasks=tasks,
             source_path=None,
         )
+        if _DRAFTING_MARKER in (node.get("body") or ""):
+            plan_data["state"] = PlanState.DRAFTING
+        return plan_data
 
     def list_plans(self, *, search: str | None = None, offset: int = 0, limit: int | None = None) -> list[PlanSummary]:
         """List all SAM plan issues, optionally filtered by search substring."""
@@ -456,6 +464,8 @@ class GitHubTaskProvider:
         """Return a summary dict of task status counts for a plan."""
         node = self._fetch_plan_node(plan_id)
         slug, _ = self._extract_plan_meta(node)
+        # Derive plan state from drafting marker in the issue body.
+        state = PlanState.DRAFTING if _DRAFTING_MARKER in (node.get("body") or "") else PlanState.READY
         tasks = [_node_to_task_data(n) for n in self._fetch_task_nodes(plan_id)]
         by_id: dict[str, TaskData] = {t["id"]: t for t in tasks}
         by_status: dict[str, int] = {}
@@ -478,7 +488,82 @@ class GitHubTaskProvider:
             "blocked_tasks": blocked,
             "completion_pct": pct,
             "has_cycles": _has_cycles(tasks),
+            "state": state,
         }
+
+    def append_task(self, plan_id: str, task: Task) -> dict[str, Any]:
+        """Append a single validated Task to an existing plan as a GitHub sub-issue.
+
+        Duplicate-ID check via ``validate_appended_task``; see ADR-1770-1 for the
+        single-writer contract (callers must serialise writes to the same plan).
+
+        Args:
+            plan_id: Plan identifier (GitHub issue number string).
+            task: Validated Task model to append.
+
+        Returns:
+            Dict with ``appended`` (True), ``task_id`` (str), and ``github_issue`` (int).
+
+        Raises:
+            PlanNotFoundError: When plan_id does not correspond to a SAM plan issue.
+            TaskValidationError: When the task ID already exists in the plan.
+        """
+        self._fetch_plan_node(plan_id)
+
+        # Populate cache on first call per plan, then reuse — eliminates O(N²)
+        # GitHub API calls when appending N tasks in sequence.
+        if plan_id not in self._task_id_cache:
+            fetched: set[str] = set()
+            for n in self._fetch_task_nodes(plan_id):
+                meta_id = _parse_metadata(n["body"]).get("task_id")
+                if meta_id:
+                    fetched.add(meta_id)
+                else:
+                    m = _TASK_TITLE_RE.match(n["title"])
+                    if m:
+                        fetched.add(m.group("tid"))
+            self._task_id_cache[plan_id] = fetched
+
+        validate_appended_task(task, self._task_id_cache[plan_id], plan_id)
+        self._task_id_cache[plan_id].add(task.id)
+
+        task_body = _render_task_body(task, plan_id)
+        status_val = str(task.status)
+        status_label = _STATUS_TO_LABEL.get(status_val, "sam:not-started")
+        repo, _, _ = self._get_repo()
+        task_issue = repo.create_issue(  # type: ignore[attr-defined]
+            title=f"[{task.id}] {task.title}", body=task_body, labels=[_SAM_TASK_LABEL, status_label]
+        )
+
+        return {"appended": True, "task_id": task.id, "github_issue": task_issue.number}  # type: ignore[attr-defined]
+
+    def finalize_plan(self, plan_id: str) -> dict[str, Any]:
+        """Transition a plan from drafting state to ready state.
+
+        Clears the ``<!-- sam:state=drafting -->`` marker from the issue body.
+        See ADR-1770-1 for the single-writer contract (callers must serialise
+        writes to the same plan).
+
+        Args:
+            plan_id: Plan identifier (GitHub issue number string).
+
+        Returns:
+            Dict with ``finalized`` (True) and ``state`` ("ready").
+
+        Raises:
+            PlanNotFoundError: When plan_id does not correspond to a SAM plan issue.
+        """
+        node = self._fetch_plan_node(plan_id)
+        body = node["body"]
+        # No-op guard: already ready — drafting marker absent, nothing to write.
+        if _DRAFTING_MARKER not in body:
+            return {"finalized": True, "state": PlanState.READY}
+        new_body = re.sub(r"\n?" + re.escape(_DRAFTING_MARKER), "", body)
+        repo, _, _ = self._get_repo()
+        self._issue_backend._update_issue_graphql(repo, node["id"], body=new_body)  # type: ignore[arg-type]
+        # Invalidate task-ID cache so subsequent reads pick up the current state.
+        self._task_id_cache.pop(plan_id, None)
+        return {"finalized": True, "state": PlanState.READY}
 
     def store_document(
         self, plan_id: str, task_id: str | None, stage: str, doc_type: str, title: str, content: str, fmt: str = "md"

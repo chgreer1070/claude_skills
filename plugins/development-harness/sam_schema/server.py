@@ -26,10 +26,10 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
-from ruamel.yaml import YAML
 
 from sam_schema.core.action_models import (
     ActiveTaskActionConfig,
+    AppendTaskConfig,
     CreatePlanConfig,
     ListPlansConfig,
     PlanActionConfig,
@@ -43,12 +43,11 @@ from sam_schema.core.action_models import (
 )
 from sam_schema.core.context_config import ContextConfig, create_context_backend, get_context_config, set_context_config
 from sam_schema.core.exceptions import PlanNotFoundError, SamError, TaskNotFoundError
-from sam_schema.core.models import Plan, Task, TaskAssignment
+from sam_schema.core.models import Plan, PlanState, Task, TaskAssignment
 from sam_schema.core.task_config import TaskConfig, create_task_backend, get_task_config, set_task_config
 
 if TYPE_CHECKING:
     from sam_schema.core.task_backend import TaskBackend
-    from sam_schema.core.task_backend_types import TaskDefinition
 
 _log = logging.getLogger(__name__)
 _artifact_registry = _ArtifactRegistry()
@@ -58,6 +57,10 @@ _PLAN_DIR_SENTINEL = "plan"
 # Sentinel session key used when session_id is omitted from sam_active_task calls.
 # Single-agent scenarios do not require explicit session isolation.
 _DEFAULT_SESSION_ID = "_default"
+
+# Returned by _sam_plan_status and _sam_plan_ready when the plan is in drafting state.
+# Defined once here to ensure both handlers return an identical shape.
+_DRAFTING_MARKER_RESPONSE: dict[str, object] = {"drafting": True, "state": PlanState.DRAFTING}
 
 # Stem parsing thresholds used in _build_task_assignment.
 _STEM_MIN_PARTS_FOR_NUMBER: int = 2
@@ -116,7 +119,7 @@ mcp: FastMCP = FastMCP(
         "set config.action to: read | claim | state | update. "
         "Use sam_plan to read a plan, create a plan, list all plans, get progress status, "
         "or list ready-to-dispatch tasks — "
-        "set config.action to: read | create | list | status | ready | update. "
+        "set config.action to: read | create | list | status | ready | update | append_task | finalize. "
         "Use sam_active_task to park and retrieve the task currently being worked on "
         "within an agent session — "
         "set config.action to: get | set | update | clear."
@@ -256,7 +259,7 @@ def _validated_task_patch(backend: TaskBackend, plan_id: str, task_id: str, raw_
 
 
 # Actions that require the ``plan`` parameter to be supplied.
-_SAM_PLAN_REQUIRED_ACTIONS: frozenset[str] = frozenset({"read", "status", "ready", "update"})
+_SAM_PLAN_REQUIRED_ACTIONS: frozenset[str] = frozenset({"read", "status", "ready", "update", "append_task", "finalize"})
 
 
 def _sam_plan_read(plan: str, plan_dir: str) -> dict:
@@ -269,7 +272,7 @@ def _sam_plan_read(plan: str, plan_dir: str) -> dict:
 
 
 def _sam_plan_create(config: CreatePlanConfig, plan_dir: str) -> dict:
-    """Create a new plan from YAML task definitions.
+    """Create a new plan from a typed list of task definitions.
 
     Returns:
         Dict with ``plan_id``, ``plan_ref``, and ``task_count`` keys.
@@ -277,14 +280,9 @@ def _sam_plan_create(config: CreatePlanConfig, plan_dir: str) -> dict:
         when an issue number is present, or just ``plan_id`` otherwise.
         It is not stored in the Plan model.
     """
-    yaml_parser: Any = YAML()
-    parsed: dict[str, Any] = yaml_parser.load(config.tasks_yaml)
-    if not isinstance(parsed, dict) or "tasks" not in parsed:
-        raise ValueError("tasks_yaml must be a YAML string with a top-level 'tasks' key")
-    task_defs = cast("list[TaskDefinition]", parsed["tasks"])
     backend = _get_backend(plan_dir)
     plan_data = backend.create_plan(
-        slug=config.slug, goal=config.goal, tasks=task_defs, context=config.context, issue=config.issue
+        slug=config.slug, goal=config.goal, tasks=config.tasks, context=config.context, issue=config.issue
     )
     plan_id_str = plan_data["plan_id"]
     plan_ref: str | None = (
@@ -323,20 +321,33 @@ def _sam_plan_list(config: ListPlansConfig, plan_dir: str) -> dict:
 
 
 def _sam_plan_status(plan: str, plan_dir: str) -> dict:
-    """Return plan-level progress summary."""
+    """Return plan-level progress summary.
+
+    Uses a single backend call — ``get_plan_status`` now includes ``state``
+    so no separate ``read_plan`` is needed for the drafting check.
+    """
     backend = _get_backend(plan_dir)
-    return dict(backend.get_plan_status(plan))
+    status = backend.get_plan_status(plan)
+    if status.get("state") == PlanState.DRAFTING:
+        return dict(_DRAFTING_MARKER_RESPONSE)
+    return dict(status)
 
 
 def _sam_plan_ready(plan: str, config: ReadyPlanConfig, plan_dir: str) -> dict:
     """List tasks ready for dispatch.
 
+    Calls ``get_plan_status`` first for the drafting check (single backend call),
+    then ``get_ready_tasks`` only when the plan is not in drafting state.
+
     Returns:
         Dict with ``ready_tasks``, ``count``, ``feature``, and ``issue`` keys.
     """
     backend = _get_backend(plan_dir)
-    plan_data = backend.read_plan(plan)
+    status = backend.get_plan_status(plan)
+    if status.get("state") == PlanState.DRAFTING:
+        return dict(_DRAFTING_MARKER_RESPONSE)
     tasks_data = backend.get_ready_tasks(plan)
+    plan_data = backend.read_plan(plan)  # needed for plan_data["issue"]
     if config.full:
         ready_tasks: list[dict[str, Any]] = [Task.model_validate(t).model_dump(mode="json") for t in tasks_data]
     else:
@@ -355,7 +366,7 @@ def _sam_plan_ready(plan: str, config: ReadyPlanConfig, plan_dir: str) -> dict:
     return {
         "ready_tasks": ready_tasks,
         "count": len(tasks_data),
-        "feature": plan_data["feature"],
+        "feature": cast("str", status["feature"]),
         "issue": plan_data["issue"],
     }
 
@@ -377,6 +388,44 @@ def _sam_plan_update(plan: str, config: UpdatePlanConfig, plan_dir: str) -> dict
     return {"updated": True, "address": plan}
 
 
+def _sam_plan_append_task(plan: str, config: AppendTaskConfig, plan_dir: str) -> dict:
+    """Append a single task to an existing plan.
+
+    Converts ``config.task`` (a validated :class:`TaskDefinition` model) to a
+    snake_case dict via ``model_dump`` and delegates to ``backend.append_task``.
+    Pydantic handles alias normalisation (kebab-case → snake_case) at the MCP
+    boundary; no YAML parsing or re-normalisation is required downstream.
+
+    See AppendTaskConfig for the single-writer contract and #1770 for the ADR.
+
+    Args:
+        plan: Plan address (e.g., ``P1`` or slug).
+        config: AppendTaskConfig carrying the validated TaskDefinition.
+        plan_dir: Plan directory path passed through to ``_get_backend``.
+
+    Returns:
+        Result dict from ``backend.append_task`` — shape: ``{"appended": True, "task_id": ...}``.
+
+    Raises:
+        PlanNotFoundError: When the plan address cannot be resolved.
+        TaskValidationError: When the task definition fails model validation.
+    """
+    backend = _get_backend(plan_dir)
+    return backend.append_task(plan, config.task)
+
+
+def _sam_plan_finalize(plan: str, plan_dir: str) -> dict:
+    """Transition a plan from drafting state to ready state.
+
+    See FinalizePlanConfig and #1770 for the ADR.
+
+    Returns:
+        Result dict from ``backend.finalize_plan`` — shape: ``{"finalized": True, "state": "ready"}``.
+    """
+    backend = _get_backend(plan_dir)
+    return backend.finalize_plan(plan)
+
+
 @mcp.tool(
     annotations=ToolAnnotations(
         title="SAM Plan Operations", readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False
@@ -385,7 +434,9 @@ def _sam_plan_update(plan: str, config: UpdatePlanConfig, plan_dir: str) -> dict
 def sam_plan(
     config: Annotated[
         PlanActionConfig,
-        Field(description="Action config. Set 'action' to: read | create | list | status | ready | update"),
+        Field(
+            description="Action config. Set 'action' to: read | create | list | status | ready | update | append_task | finalize"
+        ),
     ],
     plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
     plan: Annotated[
@@ -393,7 +444,7 @@ def sam_plan(
         Field(
             description=(
                 "Plan address (e.g., 'P1' or slug). "
-                "Required for: read, status, ready, update. "
+                "Required for: read, status, ready, update, append_task, finalize. "
                 "Not used for: list, create."
             )
         ),
@@ -409,16 +460,18 @@ def sam_plan(
     - ``status``: Return plan-level progress summary (task counts, completion %).
     - ``ready``: List tasks ready for dispatch (not-started, all deps resolved).
     - ``update``: Set plan-level context and/or patch plan fields.
+    - ``append_task``: Append a single task to an existing plan (incremental build; see #1770).
+    - ``finalize``: Transition a plan from drafting state to ready state (see #1770).
 
     Actions that do not use ``plan``:
 
-    - ``create``: Create a new plan from YAML task definitions.
+    - ``create``: Create a new plan from a typed list of task definitions.
     - ``list``: List all plans with optional search and auto-pagination.
 
     Args:
         config: Discriminated union config. The ``action`` field selects the operation.
         plan_dir: Path to the directory containing plan files.
-        plan: Plan address component. Required for read, status, ready, update actions.
+        plan: Plan address component. Required for read, status, ready, update, append_task, finalize actions.
 
     Returns:
         Response dict whose shape depends on the action (see individual action docs).
@@ -445,6 +498,10 @@ def sam_plan(
             return _sam_plan_ready(cast("str", plan), cast("ReadyPlanConfig", config), plan_dir)
         case "update":
             return _sam_plan_update(cast("str", plan), cast("UpdatePlanConfig", config), plan_dir)
+        case "append_task":
+            return _sam_plan_append_task(cast("str", plan), cast("AppendTaskConfig", config), plan_dir)
+        case "finalize":
+            return _sam_plan_finalize(cast("str", plan), plan_dir)
         case _:  # pragma: no cover
             raise ValueError(f"sam_plan: unhandled action '{config.action}'")
 

@@ -112,25 +112,30 @@ artifact_read(issue_number={issue}, artifact_type="research") before starting
 discovery — they contain prior investigation findings that should be incorporated.
 Produce feature-context-{slug}.md content with WHAT/WHY analysis — problem space, desired
 outcome, stakeholders, risks, open questions.
-Return the full markdown content in your response. Do NOT write to disk.
 Do NOT prescribe HOW to build it.
 If the feature involves replacing or migrating a local module to an external tool,
 you MUST perform a Replacement Coverage Analysis: enumerate all capabilities of the
 local module, enumerate the replacement's capabilities, and produce a coverage matrix
 (COVERED/PARTIAL/MISSING for each capability). Include the matrix in the feature-context
 document. Surface any PARTIAL or MISSING capabilities as questions.
+
+Register your deliverable with:
+    artifact_type="feature-context"
+    artifact_id="plan/feature-context-{slug}.md"
+    issue_number={issue}
+    agent="feature-researcher"
 ```
 
-After the agent writes the feature-context file, register it as an artifact on the GitHub Issue:
+After the agent completes, verify the artifact was registered:
 
 ```text
-mcp__plugin_dh_backlog__artifact_register(
-    issue_number={issue},
-    artifact_type="feature-context",
-    path="plan/feature-context-{slug}.md",  # state-relative path
-    agent="feature-researcher"
-)
+mcp__plugin_dh_backlog__artifact_list(issue_number={issue}, artifact_type="feature-context")
 ```
+
+If `count == 0`, the agent did not register the artifact. Re-dispatch with an explicit
+reminder that `artifact_register(content=...)` is the agent's responsibility, not the
+orchestrator's. The orchestrator MUST NOT call `artifact_register` as a workaround —
+the MCP-native rule is that agents own their artifact storage.
 
 ---
 
@@ -164,20 +169,28 @@ statements of fact without citation, code smells, missing documentation.
 Analyze {focus_area} for #{issue}: "{title}".
 Produce {focus_area}.md content documenting what exists today — patterns,
 conventions, constraints.
-Return the full markdown content in your response. Do NOT write to disk.
 Do NOT prescribe changes.
+
+Register each document with:
+    artifact_type="codebase-analysis"
+    artifact_id="codebase-{focus}-{slug}"  (logical id — use lowercase focus area, e.g. codebase-patterns-{slug})
+    issue_number={issue}
+    agent="codebase-analyzer"
+
+A single invocation covering multiple focus areas issues one artifact_register call per
+focus area with a distinct artifact_id per focus.
 ```
 
-After the agent writes each codebase analysis file, register it as an artifact:
+After the agent completes, verify the artifact was registered:
 
 ```text
-mcp__plugin_dh_backlog__artifact_register(
-    issue_number={issue},
-    artifact_type="codebase-analysis",
-    path="plan/codebase/{FOCUS}.md",  # state-relative path
-    agent="codebase-analyzer"
-)
+mcp__plugin_dh_backlog__artifact_list(issue_number={issue}, artifact_type="codebase-analysis")
 ```
+
+If `count == 0`, the agent did not register the artifact. Re-dispatch with an explicit
+reminder that `artifact_register(content=...)` is the agent's responsibility, not the
+orchestrator's. The orchestrator MUST NOT call `artifact_register` as a workaround —
+the MCP-native rule is that agents own their artifact storage.
 
 ---
 
@@ -324,20 +337,25 @@ If research artifacts exist for this issue, read them via
 artifact_read(issue_number={issue}, artifact_type="research") for prior research
 findings that should inform the architecture.
 Produce architect-{slug}.md content with interfaces, contracts, data models, module boundaries.
-Return the full markdown content in your response. Do NOT write to disk.
 Do NOT implement — define WHAT to build, not the code.
+
+Register your deliverable with:
+    artifact_type="architect"
+    artifact_id="plan/architect-{slug}.md"
+    issue_number={issue}
+    agent="python-cli-design-spec"
 ```
 
-After the agent writes the architect spec, register it as an artifact:
+After the agent completes, verify the artifact was registered:
 
 ```text
-mcp__plugin_dh_backlog__artifact_register(
-    issue_number={issue},
-    artifact_type="architect",
-    path="plan/architect-{slug}.md",  # state-relative path
-    agent="python-cli-design-spec"
-)
+mcp__plugin_dh_backlog__artifact_list(issue_number={issue}, artifact_type="architect")
 ```
+
+If `count == 0`, the agent did not register the artifact. Re-dispatch with an explicit
+reminder that `artifact_register(content=...)` is the agent's responsibility, not the
+orchestrator's. The orchestrator MUST NOT call `artifact_register` as a workaround —
+the MCP-native rule is that agents own their artifact storage.
 
 ---
 
@@ -390,22 +408,18 @@ into each implementation agent's prompt. Omitting it means implementation agents
 without domain schema context.
 ```
 
-After the agent writes the task plan, register it as an artifact and write the plan path
-back to the backlog item:
+After the agent completes, write the plan path back to the backlog item:
 
 ```text
-mcp__plugin_dh_backlog__artifact_register(
-    issue_number={issue},
-    artifact_type="task-plan",
-    path="plan/P{id}-{slug}.yaml",  # state-relative path; auto-registered by sam_plan when issue is set
-    agent="swarm-task-planner"
-)
-
 mcp__plugin_dh_backlog__backlog_update(
     selector="{title}",
     plan="P{id}"
 )
 ```
+
+Note: `sam_plan(action='create', issue={issue})` already auto-registers the `task-plan`
+artifact. Do NOT call `artifact_register` for the `task-plan` type — it is redundant and
+would create a duplicate entry.
 
 The `backlog_update(plan=...)` call writes the plan address into the backlog item's `metadata.plan`
 field. This is a backend signal — it records that a plan exists and its address, not a filesystem
