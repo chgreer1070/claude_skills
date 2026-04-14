@@ -1,6 +1,6 @@
 ---
 name: typer
-description: Use when building CLI applications with Typer — creating commands, defining arguments and options, composing subcommands, testing with CliRunner, or using advanced features like callbacks and autocompletion. Covers app creation, parameter types, subcommand composition, testing patterns, and output utilities.
+description: Use when building CLI applications with Typer — creating commands, defining arguments and options with enum restrictions, path validation, date and UUID types, composing subcommands, testing with CliRunner, or using advanced features like colored output, progress bars, shell autocompletion, and version callbacks.
 user-invocable: false
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---

@@ -1,6 +1,6 @@
 ---
 name: python3-web
-description: Python web and API development with strong request boundaries, typed validation, and maintainable service design. Activates on FastAPI, Starlette, Django, Flask, HTTP endpoints, request models, authentication flows, or web framework tasks.
+description: Python web and API development enforcing strict route/domain/data layer separation, Pydantic v2 strict request-response models, edge-resolved auth, and async-safe HTTP clients. Use when working with FastAPI, Starlette, Django, Flask, HTTP endpoints, request models, authentication flows, async handlers, or any Python web framework task.
 user-invocable: false
 ---
 

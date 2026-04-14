@@ -1,6 +1,6 @@
 ---
 name: python3-stdlib-only
-description: Python work in constrained, dependency-restricted, or legacy environments. Activates on "stdlib-only", "airgapped", "no dependencies", "no internet", "restricted environment", or confirmed Python 3.10 targets where third-party packages are prohibited.
+description: Use when building dependency-free Python 3.11+ scripts for airgapped, stdlib-only, or restricted environments where third-party package installation is prohibited — triggers on "stdlib-only", "airgapped", "no dependencies", "no internet", "restricted environment", or confirmed environments where external packages cannot be installed.
 user-invocable: false
 ---
 

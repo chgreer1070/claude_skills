@@ -1,6 +1,6 @@
 ---
 name: analyze-test-failures
-description: Use when analyzing failing test cases to determine whether failures indicate genuine bugs or test implementation issues. Activates on "analyze failing tests", "debug test failures", "investigate test errors", or when provided with specific failing test names or output. Applies balanced investigative reasoning — does not auto-fix tests without establishing root cause.
+description: Analyzes failing test cases to determine whether failures indicate genuine bugs or incorrect test implementations. Use when debugging test failures, investigating test errors, classifying failures as test bugs vs implementation bugs vs ambiguous behavior, or when given specific failing test names or pytest output. Applies balanced investigative reasoning — never auto-fixes tests without establishing root cause first.
 argument-hint: <test_file_or_test_name>
 user-invocable: true
 ---

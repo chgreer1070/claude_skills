@@ -1,6 +1,6 @@
 ---
 name: python3-packaging
-description: Configure pyproject.toml and Python packaging for distribution. Use when setting up a new Python package, when configuring build tools and dependencies, or when preparing a project for PyPI publishing.
+description: Configures pyproject.toml and Python packaging using PEP 517/518/621/660/723 standards. Use when creating or updating pyproject.toml, selecting a build backend (hatchling/setuptools/flit), configuring ruff, ty, mypy, pytest, or coverage tool sections, setting up dependency constraints or optional extras, defining CLI entry points, configuring pre-commit hooks, establishing src-layout directory structure, or preparing a package for PyPI publishing.
 argument-hint: '[project-path]'
 user-invocable: true
 ---

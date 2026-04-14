@@ -1,6 +1,6 @@
 ---
 name: python3-test-design
-description: Use when designing pytest test suite architecture, planning test coverage strategy, or reviewing test structure for Python 3.11+ projects. Activates on "design a test strategy", "plan test coverage", "create test architecture", or when TDD/BDD/property-based testing patterns are mentioned. Guides fixture design, parametrization, async testing, and mutation testing coverage decisions.
+description: Guides pytest test suite architecture and coverage strategy for Python 3.11+ projects. Activates when designing test architecture, planning test pyramid distribution, choosing between unit/integration/property-based/BDD strategies, structuring fixture hierarchies, configuring branch coverage thresholds, or applying mutation testing to critical code paths.
 ---
 
 # Python Test Design Skill

@@ -1,6 +1,6 @@
 ---
 name: python3-core
-description: Python engineering foundation for all projects. Activates automatically on any Python task — establishes coding standards, SOLID guidance, typing policy, testing defaults, tooling expectations, and code smell detection as design signals. Routes to specialist skills for TDD, CLI, web, data, or constrained environments.
+description: Activates on any Python task involving *.py files, uv, ruff, ty, pytest, or pyproject.toml — establishes Python 3.11+ coding standards, SOLID design guidance, strict typing policy, testing defaults (pytest + pytest-mock), tooling expectations (uv, ruff, ty, hatchling), and code smell detection as design signals. Routes to specialist skills for TDD, CLI, web, data, async, or constrained environments.
 user-invocable: false
 ---
 

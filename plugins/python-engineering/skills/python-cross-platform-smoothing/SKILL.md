@@ -1,6 +1,6 @@
 ---
 name: python-cross-platform-smoothing
-description: 'Knowledge base of cross-platform compatibility tips, tricks, and helper patterns for Python scripts targeting Windows, Linux, macOS, CLI, TUI (Rich/Textual), and GUI environments. Use when writing Python scripts that must run on multiple platforms, when Rich or Typer output breaks on Windows, when dealing with Unicode/encoding issues, terminal detection, path separators, or console color support. Covers: stdout/stderr encoding guards, ANSI escape handling, Windows console quirks, terminal capability detection, and portable I/O patterns.'
+description: Use when writing Python scripts that must run on Windows, Linux, and macOS — especially when Rich or Typer output breaks on Windows, when dealing with Unicode/encoding errors, ANSI escape handling, terminal detection, path separators, or console color support. Provides verified cross-platform patterns covering stdout/stderr encoding guards, Windows console quirks, terminal capability detection, and portable I/O for CLI, TUI (Rich/Textual), and GUI environments.
 ---
 
 # Python Cross-Platform Smoothing

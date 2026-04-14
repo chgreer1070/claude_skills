@@ -1,6 +1,6 @@
 ---
 name: comprehensive-test-review
-description: Use when reviewing pytest test suites for coverage, isolation, mock usage, naming conventions, or completeness. Activates on requests like "review test coverage", "audit test quality", or "check tests for completeness". Performs thorough checklist-driven review for test isolation, mock correctness, AAA pattern adherence, and naming standards.
+description: Performs checklist-driven review of pytest test suites against coverage thresholds (80% line/branch minimum, 95% for critical paths), AAA pattern adherence, pytest-mock usage, test isolation, naming clarity, type hints, and flaky pattern detection. Use when auditing test quality before a release, reviewing coverage gaps, checking tests for completeness or best practices, or validating mocking standards. Accepts a test file or directory as input and outputs prioritized findings grouped by HIGH, MEDIUM, and LOW priority.
 argument-hint: <test_file_or_directory>
 user-invocable: true
 ---

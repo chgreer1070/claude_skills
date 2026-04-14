@@ -1,6 +1,6 @@
 ---
 name: mkdocs
-description: Comprehensive guide for creating and managing MkDocs documentation projects with Material theme. Includes official CLI command reference with complete parameters and arguments, and mkdocs.yml configuration reference with all available settings and valid values. Use when working with MkDocs projects including site initialization, mkdocs.yml configuration, Material theme customization, plugin integration, or building static documentation sites from Markdown files.
+description: MkDocs documentation project reference covering CLI commands, mkdocs.yml configuration, Material theme setup, and plugin integration. Bundled references include complete CLI parameters, all mkdocs.yml settings with valid values, Material theme customization options, and plugin configs for mkdocstrings, mermaid2, mkdocs-gen-files, mkdocs-literate-nav, and mkdocs-typer2. Use when initializing a MkDocs site, configuring mkdocs.yml, customizing the Material theme, integrating plugins, building static docs from Markdown, or generating API documentation from Python docstrings.
 ---
 
 # Mkdocs

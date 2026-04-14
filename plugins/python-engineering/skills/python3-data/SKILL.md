@@ -1,6 +1,6 @@
 ---
 name: python3-data
-description: Python data, ETL, analysis, and scientific workflows with maintainable module boundaries and explicit validation at ingress points. Activates on pandas, numpy, scipy, jupyter, notebooks, ETL pipelines, tabular data ingestion, or scientific processing code.
+description: Specialist skill for Python data engineering — pandas, polars, DuckDB, numpy, ETL pipelines, tabular data ingestion, and notebook-to-module extraction. Use when working with dataframes, data validation at ingress boundaries, merge/join operations, typed column contracts, or choosing between pandas vs polars vs DuckDB for a data task.
 user-invocable: false
 ---
 

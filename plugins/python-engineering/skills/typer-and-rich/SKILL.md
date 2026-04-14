@@ -1,6 +1,6 @@
 ---
 name: typer-and-rich
-description: Use when building Typer/Rich CLI applications or reviewing existing CLI code for correctness. Activates on requests involving Rich table rendering, console output handling, testing Rich-formatted output, or Typer command wiring. Prevents common AI mistakes — Rich table wrapping in non-TTY contexts, incorrect stderr/stdout separation, and integration pitfalls. Load alongside the typer and rich API reference skills.
+description: Use when building or debugging Typer/Rich CLI applications. Activates on Rich table rendering, console output in non-TTY environments, CliRunner testing with Rich output, snapshot testing, Typer command wiring, exception chain prevention with AppExit/AppExitRich patterns, table width at 80-column wrapping, Progress/Live in non-interactive contexts, stderr/stdout separation, or force_terminal vs width configuration. Grounds AI-generated CLI code in verified correctness patterns and prevents known Typer/Rich integration mistakes.
 argument-hint: <test_file_or_test_name>
 user-invocable: true
 ---

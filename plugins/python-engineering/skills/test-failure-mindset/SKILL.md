@@ -1,6 +1,6 @@
 ---
 name: test-failure-mindset
-description: Use when encountering failing tests, diagnosing test errors, or establishing a systematic approach to test failure investigation. Activates on "test failure analysis", "debugging tests", or "why tests fail" requests. Establishes the mindset that treats test failures as valuable diagnostic signals requiring root-cause investigation — not automatic code fixes or test dismissal.
+description: Establishes a dual-hypothesis investigation mindset for every test failure — treating failures as diagnostic signals that may indicate a real bug OR an incorrect test, never defaulting to automatic code changes or test dismissal. Use when encountering failing tests, debugging test errors, running a test suite that shows regressions, or any request involving "test failure analysis", "why is this test failing", or "should I fix the test or the code". Loads a 5-step protocol covering failure reading, implementation tracing, requirement context, reasoned decision-making, and learning extraction. Works alongside analyze-test-failures for detailed per-failure analysis and comprehensive-test-review for full suite review.
 user-invocable: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: modernpython
-description: Reference guide for Python 3.11+ patterns with PEP citations. Use when reviewing code for modernization opportunities, writing new Python 3.11+ code to ensure modern patterns, refactoring legacy code to current idioms, or learning about specific PEPs and features.
+description: Applies and teaches Python 3.11+ modernization patterns with PEP citations. Use when reviewing or writing Python code to apply built-in generics (PEP 585), pipe unions (PEP 604), walrus operator (PEP 572), match-case (PEP 634), Self type (PEP 673), exception notes (PEP 678), StrEnum, tomllib, pytest-mock fixtures, Typer Annotated syntax, or Rich terminal output — or when refactoring legacy typing imports or elif chains to modern equivalents.
 argument-hint: '[file-paths-or-topic]'
 user-invocable: true
 ---

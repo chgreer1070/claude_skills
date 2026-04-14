@@ -1,6 +1,6 @@
 ---
 name: python3-testing
-description: Python testing patterns with pytest, pytest-mock, hypothesis, and coverage strategy. Load when writing tests, designing fixtures, or setting up coverage. Activated on test phases, parametrization, async testing, property-based testing, and mutation testing decisions.
+description: Pytest testing patterns for Python — fixtures (session/module/function/factory), AAA structure, behavioral naming, coverage targets by code type, property-based testing with Hypothesis, and mutation testing with mutmut. Use when writing tests, designing fixtures, configuring coverage, or applying parametrize, async testing, or property-based strategies.
 user-invocable: false
 ---
 

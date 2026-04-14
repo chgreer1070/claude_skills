@@ -1,6 +1,6 @@
 ---
 name: textual
-description: Use when building Textual TUI apps — creating widgets, laying out screens, handling events, managing reactivity, testing with Pilot, or running background workers. Covers App lifecycle, CSS styling, screen stack, reactive attributes, custom messages, actions, bindings, and the Worker API.
+description: Use when building terminal UI apps with the Textual framework — creating widgets, screens, layouts, handling events, managing reactive attributes, testing with Pilot, snapshot testing with pytest-textual-snapshot, or running background workers. Covers App lifecycle, CSS styling, screen stack, custom messages, actions, bindings, and the Worker API.
 user-invocable: false
 allowed-tools: Read, Grep, Glob, Write, Edit, Bash
 ---

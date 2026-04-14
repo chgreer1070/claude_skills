@@ -1,6 +1,6 @@
 ---
 name: specialist-skill-routing
-description: Use as the routing layer for Python engineering tasks — matches task descriptions against trigger lists and activates specialist skills before starting work. Covers Typer, Rich, Textual, FastMCP/MCP, ty type checker, uv, Hatchling, TOML editing, pre-commit/prek, async Python, PyPI packaging, complex linting, technical debt modernization, testing, feature workflows, and stdlib scripting.
+description: Routes Python engineering tasks to specialist skills by matching trigger patterns before any architecture, plan, or code is written. Use when working with Typer CLI frameworks, Rich or Textual terminal UIs, FastMCP/MCP servers, ty type checker, uv package manager, Hatchling build backend, TOML editing, pre-commit/prek hooks, async Python, PyPI packaging, complex linting, technical debt modernization, testing workflows, feature development, or stdlib-only scripting.
 ---
 
 Scan your task description against the triggers below. For every match, call `Skill(skill="...")` **before** writing any architecture, plan, or code. Multiple matches → load all matching skills.

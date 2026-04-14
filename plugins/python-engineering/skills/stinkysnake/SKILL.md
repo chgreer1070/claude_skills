@@ -1,6 +1,6 @@
 ---
 name: stinkysnake
-description: Progressive Python quality improvement with static analysis, type refinement, modernization planning, plan review, and test-driven implementation. Use when addressing technical debt, eliminating Any types, applying modern Python patterns, or refactoring for better design.
+description: Nine-phase Python quality improvement system for file paths passed as arguments. Runs prek/ruff/ty static analysis with auto-fixes, inventories Any types and typing gaps, plans Protocol/Generic/TypeGuard/TypedDict/dataclass modernization, forks a code-reviewer agent to critique the plan, refines the plan, discovers documentation changes, designs interfaces first, forks python-pytest-architect for failing tests, then hands off to snakepolish for implementation. Use when eliminating Any types, addressing technical debt, applying modern Python 3.11+ patterns, modernizing library usage (httpx, orjson), or refactoring for stronger type safety.
 argument-hint: '[file-paths-or-module]'
 user-invocable: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: shebangpython
-description: Validate Python shebangs and PEP 723 inline script metadata. Use when checking if Python files have correct shebangs based on their dependency requirements, when fixing incorrect shebang patterns, or when adding PEP 723 script blocks to standalone scripts with external dependencies.
+description: Validates and corrects Python shebangs and PEP 723 inline script metadata by applying four shebang-selection rules. Use when auditing or fixing shebangs in Python files — choosing between plain python3 and the uv shebang for standalone scripts with external dependencies, enforcing correct uv flag ordering (--quiet before run subcommand), adding or removing PEP 723 metadata blocks to match actual import requirements, checking execute bit presence, or avoiding redundant transitive dependencies when typer is declared (typer bundles rich and shellingham automatically).
 argument-hint: '[file-paths...]'
 user-invocable: true
 ---

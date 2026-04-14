@@ -1,6 +1,6 @@
 ---
 name: toml-python
-description: Use when reading or writing pyproject.toml or .toml config files in Python, editing TOML while preserving comments and formatting, designing configuration file formats for Python tools, working with tomlkit or tomllib, or implementing atomic config file updates.
+description: Handles TOML configuration file operations in Python using tomlkit for comment-preserving read-modify-write cycles. Use when reading or writing pyproject.toml or any .toml config file, selecting between tomlkit and tomllib, modifying TOML while preserving comments and whitespace, implementing atomic config file updates, integrating TOML with Python dataclasses, handling TOML parse errors, or applying XDG base directory patterns for config file locations.
 ---
 
 # TOML Python Integration

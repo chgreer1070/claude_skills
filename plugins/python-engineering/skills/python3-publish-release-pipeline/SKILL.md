@@ -1,6 +1,6 @@
 ---
 name: python3-publish-release-pipeline
-description: Set up CI/CD pipeline for Python package publishing to PyPI. Use when preparing to publish a package, when setting up automated releases, or when configuring GitHub Actions or GitLab CI for Python projects.
+description: Configures CI/CD pipelines for automated Python package publishing to PyPI or GitLab Package Registry. Use when creating GitHub Actions or GitLab CI release workflows, setting up trusted publishing or API token-based PyPI authentication, configuring version management with git tags and hatch-vcs, writing pyproject.toml publishing metadata, testing packages against TestPyPI, or documenting the release process for a Python project.
 argument-hint: '[github|gitlab]'
 user-invocable: true
 ---

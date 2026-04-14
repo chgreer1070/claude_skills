@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Use when debugging Python failures using a structured investigation workflow focused on reproduction, boundary assumptions, and root-cause isolation. Activate for tracebacks, test failures, or unexpected behavior.
+description: Structured 6-phase Python debugging workflow covering problem intake, scoping, hypothesis formation, systematic investigation, root-cause analysis, and fix implementation. Use when diagnosing tracebacks, test failures, AttributeError, TypeError, intermittent failures, async/await issues, or any unexpected Python behavior. Applies a dual-hypothesis approach (implementation bug vs test bug), minimal reproduction isolation, data-flow tracing, and produces a structured Bug Investigation Report with confirmed root cause and regression test.
 disable-model-invocation: true
 argument-hint: '[symptom, error, or path]'
 ---

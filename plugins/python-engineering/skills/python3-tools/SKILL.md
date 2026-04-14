@@ -1,6 +1,6 @@
 ---
 name: python3-tools
-description: Python tooling expertise for uv, Hatchling, ty type checker, pre-commit, TOML editing, and PyPI packaging. Activates on uv commands, pyproject.toml configuration, type checker setup, build system, git hooks, packaging, or release workflows.
+description: Use when working with Python tooling — uv package management, Hatchling build backend, ty or mypy type checker configuration, ruff linting, pre-commit hook setup, TOML read-write with tomlkit or tomllib, or PyPI packaging and release workflows. Routes to standalone specialist skills for deep dives on any single tool.
 user-invocable: false
 ---
 

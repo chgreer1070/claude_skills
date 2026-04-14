@@ -1,6 +1,6 @@
 ---
 name: review
-description: Use when reviewing Python changes for design quality, typed-boundary compliance, testing adequacy, and maintainability. Invoke for code review, PR review, or quality assessment.
+description: Reviews Python code across 9 dimensions — type safety, error handling, security, performance, modern patterns, design clarity, typed-boundary compliance, test quality, and documentation. Use when performing code review, PR review, pre-merge quality checks, or assessing Python for security vulnerabilities, bare except clauses, Any usage outside boundaries, or missing input validation at system boundaries.
 disable-model-invocation: true
 argument-hint: '[path or scope]'
 ---

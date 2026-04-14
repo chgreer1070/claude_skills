@@ -1,6 +1,6 @@
 ---
 name: python3-typing
-description: Selects and applies the strongest valid Python typing strategy for the current project. Use when designing models, validating external data, addressing type checker failures, reducing Any usage, defining boundaries, or choosing between stdlib typing, Pydantic, and Hypothesis-based boundary testing.
+description: Auto-selects and enforces the strongest valid Python typing lane for the detected Python version and dependencies — no user input required. Use when adding or tightening type annotations, eliminating Any usage in internal code, designing boundary validators or parsers, choosing between stdlib typing (TypedDict, Protocol, dataclasses), Pydantic models, or Hypothesis property tests, addressing ty or mypy failures, or applying version-specific features (TypeIs, ReadOnly, PEP 695 generics, PEP 649 deferred evaluation). Enforces boundary isolation — raw payloads validated immediately at ingress and returned as typed internal objects.
 user-invocable: false
 ---
 

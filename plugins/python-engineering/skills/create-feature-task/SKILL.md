@@ -1,6 +1,6 @@
 ---
 name: create-feature-task
-description: Use when creating a new feature task with structured tracking, phases, and documentation. Activates on "create a feature task", "set up development tracking", or "plan a feature implementation" requests. Produces a comprehensive feature development task with acceptance criteria, phase breakdown, and tracking artifacts ready for SAM pipeline execution.
+description: Use when creating a new feature development task — scaffolds a structured task file at .claude/tasks/{feature-name}.md with phased breakdown (Design, Implementation, Testing, Documentation), acceptance criteria, context preservation, and TaskCreate tracking. Activates on "create a feature task", "set up development tracking", "plan a feature implementation", or when preparing work for python-cli-architect or python-pytest-architect agents.
 argument-hint: <feature_name_and_description>
 user-invocable: true
 ---

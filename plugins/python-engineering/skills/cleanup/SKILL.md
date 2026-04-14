@@ -1,6 +1,6 @@
 ---
 name: cleanup
-description: Use when improving Python code quality through focused cleanup, smell investigation, modernization, and typed-boundary hardening. Invoke for refactoring tasks, dead code removal, or modernization passes.
+description: Runs structured Python cleanup and modernization — static analysis via prek/ruff, smell investigation to root cause, typed-boundary hardening by inventorying Any usage, and modernization within the project's requires-python lane. Use when refactoring Python code, removing dead code, hardening type boundaries, or running a modernization pass on a file or scope.
 disable-model-invocation: true
 argument-hint: '[path or scope]'
 ---

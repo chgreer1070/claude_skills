@@ -1,6 +1,6 @@
 ---
 name: snakepolish
-description: Implementation phase for stinkysnake workflow. Use when tests are written and plan is ready. Implements functions following the modernization plan, runs tests until passing.
+description: Executes the implementation phase of the python-engineering stinkysnake modernization workflow. Use when stinkysnake phases 1-8 are complete — modernization plan reviewed, interfaces designed, and failing tests written. Implements functions in dependency order (types, data structures, utilities, core logic, integration, entry points) applying modern Python patterns (Protocol, dataclass, Pydantic, modern type annotations, httpx, orjson). Runs iterative pytest loops until all tests pass, then verifies with static analysis via prek or ruff. Success criteria — all tests pass, no type errors, no lint errors, coverage meets project threshold.
 argument-hint: '[file-paths-or-module]'
 context: fork
 agent: python-cli-architect

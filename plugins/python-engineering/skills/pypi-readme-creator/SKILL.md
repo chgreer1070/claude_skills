@@ -1,6 +1,6 @@
 ---
 name: pypi-readme-creator
-description: Use when creating a README for a Python package, preparing for PyPI publication, fixing README rendering errors found by twine check, choosing between README.md and README.rst, or configuring the readme field in pyproject.toml. Generates professional, PyPI-compliant README files.
+description: Generates professional PyPI-compliant README files in Markdown or reStructuredText. Use when creating a Python package README for PyPI publication, converting between README.md and README.rst formats, validating markup with twine check before publishing, configuring the readme field in pyproject.toml, integrating sphinx-readme to generate PyPI-compatible RST from Sphinx docs, troubleshooting rendering errors on PyPI, or previewing README rendering locally with grip or docutils.
 ---
 
 # PyPI README Creator

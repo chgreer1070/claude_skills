@@ -1,6 +1,6 @@
 ---
 name: python3-tdd
-description: Test-driven development workflow for Python. Activates on "TDD", "write tests first", "red-green-refactor", or tasks requiring test-first implementation with pytest. Guides design-first interfaces, failing tests, and implementation to pass.
+description: Guides test-driven development for Python using a five-phase red-green-refactor cycle. Use when asked to write tests first, apply TDD, do test-first implementation, or follow red-green-refactor — designs typed interfaces and Protocol classes, writes failing pytest tests (RED), implements minimal passing code (GREEN), verifies with prek or ruff plus pytest-cov, and enforces a quality gate requiring all tests pass with no lint or type errors and coverage at or above 80 percent.
 argument-hint: '<feature-description>'
 user-invocable: true
 ---

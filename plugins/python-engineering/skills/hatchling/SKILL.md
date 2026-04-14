@@ -1,6 +1,6 @@
 ---
 name: hatchling
-description: Use when working with Hatchling — configuring build system setup, pyproject.toml metadata, dependencies, entry points, build hooks, version management, wheel and sdist builds, package distribution, setuptools migration, or troubleshooting Hatchling build errors. Covers PEP 517/518/621/660 standards.
+description: Provides Hatchling build backend guidance for Python packaging — use when configuring pyproject.toml metadata, build targets (wheel, sdist, binary), file selection with git-style globs, build hooks, metadata hooks, version management (code/regex/env sources), editable installs, the hatch-vcs plugin, plugin development, build environment setup (UV/pip/Cython), setuptools migration, or troubleshooting Hatchling errors. Covers PEP 517/518/621/660 standards and context variable interpolation.
 ---
 
 # Hatchling

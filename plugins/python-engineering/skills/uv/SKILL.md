@@ -1,6 +1,6 @@
 ---
 name: uv
-description: Use when working with Astral's uv — managing Python project dependencies, creating PEP 723 scripts, installing tools, managing Python versions, configuring package indexes, or migrating from pip/poetry. Covers project initialization, virtual environments, workspace configuration, and CI/CD integration.
+description: Use when working with Astral's uv — the fast Python package and project manager replacing pip, pipx, pyenv, poetry, and virtualenv. Activates for project initialization, dependency management, PEP 723 inline scripts, virtual environments, Python version management, workspace and monorepo configuration, tool installation via uvx, building and publishing packages, Docker and CI/CD integration, package index configuration, SBOM export, and migrating from pip, poetry, pipx, pyenv, or conda.
 ---
 
 # uv: Modern Python Package and Project Manager

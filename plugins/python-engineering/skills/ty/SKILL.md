@@ -1,6 +1,6 @@
 ---
 name: ty
-description: Use when working with ty — running Python type checks, configuring ty.toml or pyproject.toml, suppressing diagnostics, interpreting error codes, targeting Python versions, or integrating ty with editors and CI. Covers CLI flags, configuration schema, rule severity, suppression comments, environment discovery, module resolution, and all installation methods.
+description: Use when working with ty — the Astral Python type checker. Activates for running type checks, interpreting diagnostic error codes, suppressing ty errors with inline comments, configuring ty.toml or pyproject.toml, resolving unresolved imports, targeting Python versions, and integrating ty into editors or CI. Covers CLI flags, configuration schema, rule severity, environment discovery, module resolution, and all installation methods including uvx and uv add --dev.
 allowed-tools: Read, Grep, Glob, Bash
 ---
 

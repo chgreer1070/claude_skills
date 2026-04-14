@@ -1,6 +1,6 @@
 ---
 name: python3-add-feature
-description: Guided workflow for adding new features to Python projects. Use when planning a new feature implementation, when adding functionality with proper test coverage, or when following TDD to build features incrementally.
+description: Executes a four-phase feature addition workflow (Discovery, Planning, TDD Implementation, Verification) for Python projects. Use when adding a new feature end-to-end — discovering project structure and integration points, drafting a feature spec with MoSCoW-prioritized requirements and BDD acceptance criteria, implementing via test-first TDD cycles, then verifying with ruff lint, ty type checks, and 100% coverage on new code.
 argument-hint: <feature-description>
 user-invocable: true
 ---

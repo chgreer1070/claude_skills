@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Use when orchestrating a multi-step Python engineering workflow from a user-supplied task description. Invoke to coordinate planning, implementation, testing, and validation across skills.
+description: Orchestrates Python engineering tasks by routing to SAM track (feature additions, multi-step work spanning 2+ agents or files, durable progress tracking) or Direct track (single-focused tasks — bug fixes, test writing, code review, one-shot refactors). Use when implementing a Python feature, adding CLI commands, writing pytest suites, reviewing code, debugging, or any task requiring specialist agent coordination via python-cli-architect, python-pytest-architect, code-reviewer, or python-cli-design-spec.
 disable-model-invocation: true
 argument-hint: '[task description]'
 tools: mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_update

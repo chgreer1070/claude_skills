@@ -1,6 +1,6 @@
 ---
 name: python3-cli
-description: Python CLI application development with Typer and Rich. Activates on Typer, Rich, CLI tools, progress bars, terminal output, Annotated syntax, or command-line application requests. Covers app structure, parameter types, subcommands, async patterns, and testing with CliRunner.
+description: Use when building CLI applications with Typer and Rich — creating commands with Annotated parameter syntax, defining arguments and options, composing subcommands, async concurrent CLI tasks with semaphores, testing with CliRunner, PEP 723 shebang scripts, progress bars, Rich terminal output, or non-TTY display width handling.
 user-invocable: false
 ---
 
