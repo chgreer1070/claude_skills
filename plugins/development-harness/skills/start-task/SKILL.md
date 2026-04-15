@@ -8,7 +8,7 @@ hooks:
   - matcher: Write|Edit|Bash
     hooks:
     - type: command
-      command: python3 "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
+      command: uv run --script "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py"
 ---
 
 # Start Task (SAM Task Execution Helper)
