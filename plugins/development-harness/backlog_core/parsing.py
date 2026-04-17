@@ -32,6 +32,7 @@ from .models import (
     ROLE_MAP,
     SECTION_HEADING_ALIAS,
     SKIP_STATUS,
+    AmbiguousItemError,
     BacklogItem,
     Entry,
     GroomedData,
@@ -454,10 +455,16 @@ def find_item(items: list[BacklogItem], selector: str) -> BacklogItem | None:
       - ``https://github.com/owner/repo/issues/123`` — extract issue number
       - ``#123`` — match by issue number
       - ``123`` — match by issue number (bare number)
-      - ``title substring`` — case-insensitive title match
+      - ``title substring`` — case-insensitive title match; raises
+        :exc:`AmbiguousItemError` when more than one item matches
 
     Returns:
-        Matching BacklogItem or None.
+        Matching BacklogItem or None when no item matches.
+
+    Raises:
+        AmbiguousItemError: When a title-substring selector matches more than
+            one item. Use ``#N``, a GitHub issue URL, or a more specific
+            substring to identify a unique item.
     """
     selector = selector.strip()
     issue_num = parse_issue_selector(selector)
@@ -470,7 +477,11 @@ def find_item(items: list[BacklogItem], selector: str) -> BacklogItem | None:
     # Title substring match (case-insensitive)
     selector_lower = selector.lower()
     matches = [it for it in items if selector_lower in it.title.lower()]
-    return matches[0] if len(matches) == 1 else (matches[0] if matches else None)
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise AmbiguousItemError(selector, [it.title for it in matches])
+    return None
 
 
 def find_fuzzy_duplicates(
