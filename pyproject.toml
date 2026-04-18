@@ -19,7 +19,6 @@ dev = [
     "defusedxml>=0.7.1",
     "duckdb>=1.4.4",
     "fastmcp[tasks]>=3.1.1",
-    "generate-changelog>=0.16.0",
     "gitpython>=3.1.45",
     "hatch-vcs>=0.5.0",
     "holoviews>=1.22.1",
@@ -50,14 +49,10 @@ dev = [
     "ruff>=0.15.4",
     "scikit-learn>=1.0",
     "tiktoken>=0.12.0",
-    "toml-sort>=0.24.3",
     "tomlkit>=0.13.0",
     "tornado>=6.5.5",
     "ty>=0.0.25",
     "typer>=0.21.0",
-    "uv-sort>=0.7.0",
-    "vadersentiment>=3.3.2",
-    "zvec>=0.2.0; sys_platform != 'win32'",
 ]
 
 [tool.ty.environment]
@@ -136,7 +131,10 @@ include = ["**/*.py"]
 backlog-core = { workspace = true }
 
 [tool.uv.workspace]
-members = ["plugins/development-harness"]
+members = [
+    "plugins/development-harness",
+    "plugins/scientific-method/mcp/experiment-registry",
+]
 
 [tool.ruff]
 # Exclude git symlinks - Windows reads target path as file content; linters fail.
