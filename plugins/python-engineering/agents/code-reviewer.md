@@ -115,13 +115,22 @@ Look for:
 
 ### Step 6: Execute Automated Analysis
 
-For Python files, you must run automated quality checks:
+For Python files, run automated quality checks. The shebangpython, stinkysnake, and modernpython
+rules are preloaded in your context via the `skills:` frontmatter — apply them directly without
+invoking the Skill tool, which would terminate your flow prematurely.
 
 1. Create `.claude/smells/` directory: `mkdir -p .claude/smells`
-2. For each Python file, run shebang validation: `/python-engineering:shebangpython {file_path}`
-3. For each Python file, run code smell analysis: `/python-engineering:stinkysnake {file_path}`
+2. For each Python file, apply shebangpython validation rules inline:
+   - Read the file and check shebang presence and type
+   - Apply the four shebang selection rules to determine the correct shebang
+   - Check PEP 723 metadata against actual external imports
+   - Check execute bit status
+   - Record verdict (CORRECT / INCORRECT) — do not produce output yet
+3. For each Python file, apply stinkysnake rules inline:
+   - Identify code smells using the stinkysnake criteria in your context
    - Write findings to `.claude/smells/{base_filename}.smells.{timestamp}.md`
-4. For each Python file, run modernization analysis: `/python-engineering:modernpython {file_path}`
+4. For each Python file, apply modernpython rules inline:
+   - Identify modernization opportunities using the modernpython criteria in your context
    - Write findings to `.claude/smells/{base_filename}.modernization.{timestamp}.md`
 5. Consolidate these findings to inform the follow-up tasks in the next step.
 
