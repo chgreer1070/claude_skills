@@ -26,6 +26,12 @@ Extract: Impact Radius, Fact-Check, Issue Classification, groomed subsections.
    - Training data answers are not valid resolutions.
    - If resolved: mark AVAILABLE with tool citation.
 
+**Orchestrator checklist for Step 3 (no section may advance without this):**
+
+- For each DERIVABLE condition: run the cited tool (Grep/Read/Bash/WebSearch). Paste the exact tool output as the citation. Do not cite session context or training data recall. If the tool returns no result, the condition remains DERIVABLE.
+- For each MISSING condition resolved by user: paste the exact user message as citation. Mark AVAILABLE with that citation.
+- No condition status changes from DERIVABLE or MISSING to AVAILABLE without a tool output or user message pasted as its citation.
+
 4. Build RT-ICA Final report:
 
 ```text
@@ -91,13 +97,23 @@ with multiple options or no options remain BLOCKED and halt the workflow.
 
 Runs when RT-ICA Final Decision is APPROVED, before the final write with `mark_groomed=True`.
 
-1. Read current item sections:
+1. Check section presence — Step 1: query summary:
 
 ```text
-mcp__plugin_dh_backlog__backlog_view(selector='{item_ref}', summary=false)
+backlog_view(selector='{item_ref}', summary=True)
 ```
 
-2. Check all required sections are present with minimum content (defined in the table below):
+Read the `sections_index` field. A section is PRESENT if its name appears in `sections_index`. A section is ABSENT if its name does not appear.
+
+2. Verify minimum content — Step 2: for each required section that appears in `sections_index`, verify content:
+
+```text
+backlog_view(selector='{item_ref}', summary=False, section='{section-name}')
+```
+
+Check the returned content against the minimum content table below. Do NOT use a full `summary=False` read without a `section` filter to check individual section presence — the `sections_index` from Step 1 is the authoritative presence check.
+
+**Required sections and minimum content:**
 
 | Section | Minimum content |
 |---|---|
@@ -112,6 +128,19 @@ mcp__plugin_dh_backlog__backlog_view(selector='{item_ref}', summary=false)
 
 Optional sections (not validated for presence): `Root-Cause Analysis`, `Impact`, `Benefits`,
 `Expected Behavior`, `Files`, `Resources`, `Dependencies`, `Scope`, `Decision`.
+
+### Diagnostic Gate — Before Retry or Direct Write
+
+When a required section is absent or has 0 entries, identify the cause before acting:
+
+| Observable signal | Cause | Correct action |
+|---|---|---|
+| Section absent from `sections_index` AND agent reported STATUS: DONE | Agent used wrong section name in MCP call | Re-run agent with corrected section name |
+| Section present in `sections_index` but shows 0 entries | Agent write format did not create entry blocks | Re-run agent with explicit content format requirement |
+| Section absent AND agent did not report STATUS: DONE | Agent terminated before write | Re-run agent with scoped prompt |
+| Section absent AND it was not included in the orchestrator's groomer prompt | Orchestrator prompt omission | Add section to prompt; re-run groomer |
+
+**The orchestrator must NOT write a required section directly** unless `finalize.md` explicitly designates it as an orchestrator responsibility (e.g., RT-ICA Final Pass). For all other sections, the correct recovery is re-running the appropriate agent with a targeted prompt.
 
 3. If sections are missing — retry with same model, refined prompt:
 

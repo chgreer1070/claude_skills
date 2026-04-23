@@ -239,6 +239,11 @@ Input to groomer: item title, description, source, priority, plan address, RT-IC
 Fact-Check verdicts, Issue Classification, Root-Cause Analysis (or "N/A"), Impact Radius,
 and any discovery context.
 
+> **Orchestrator:** Before dispatching the groomer, verify your prompt names all required
+> subsections: Reproducibility, Priority, Impact, Benefits, Expected Behavior, Acceptance
+> Criteria, Files, Resources, Dependencies, Effort. A prompt that omits a subsection produces
+> a missing section that cannot be recovered by retry alone.
+
 ## Outputs
 
 On completion, all teammate sections are written to the item via MCP.
