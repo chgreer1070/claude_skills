@@ -83,6 +83,22 @@ flowchart TD
 
 SOURCE: Decision framework derived from component capabilities documented in `../claude-plugins-official/plugins/plugin-dev/skills/plugin-structure/references/component-patterns.md` and `/plugin-creator:claude-plugins-reference-2026`
 
+### Agent Security Profile — Plugin vs. Direct Install
+
+Agents shipped inside a plugin have a restricted security profile compared to agents installed directly. Factor this into the decision framework above — not every agent capability works in every install path.
+
+**Plugin-shipped agents have a restricted security profile:**
+
+- `hooks` declared in frontmatter: silently ignored at runtime
+- `mcpServers` declared in frontmatter: not supported
+- `permissionMode` declared in frontmatter: not supported; agent will not start correctly
+
+Directly-installed agents (`.claude/agents/` or `~/.claude/agents/`) support all frontmatter fields.
+
+**Decision rule**: If an agent requires hooks for lifecycle automation, MCP server declarations, or custom permission modes — it must be directly installed, not shipped inside a plugin.
+
+SOURCE: [Claude Code Plugins Reference](https://code.claude.com/docs/en/plugins-reference.md) line 182 (accessed 2026-04-23)
+
 ## Organization Patterns by Component Type
 
 For detailed organization patterns (directory structures, scaling strategies, when-to-use guidance) for each component type, see [component organization reference](./references/organization-patterns.md).

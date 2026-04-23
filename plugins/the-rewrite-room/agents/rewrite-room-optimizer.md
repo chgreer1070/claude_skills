@@ -33,6 +33,12 @@ Before delegating, read the corresponding reference file to understand exact inp
 | contextual-ai-documentation-optimizer | plugin-creator:contextual-ai-documentation-optimizer | Optimize CLAUDE.md, SKILL.md, or prompt files. Runs RT-ICA pre-check + 6-step optimization + CoVe post-check. Produces token impact report. |
 | subagent-refactorer | plugin-creator:subagent-refactorer | Refactor agent .md files using Anthropic official best practices. MANDATORY research phase reads official Anthropic docs first. Produces refactored agent + validation checklist. |
 
+Routing within `contextual-ai-documentation-optimizer`:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `contextual-ai-documentation-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
+
 ## Reference Files — Read Before Delegating
 
 | Reference | Path | Read When |

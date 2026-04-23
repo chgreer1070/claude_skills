@@ -519,6 +519,12 @@ PERFORM these planning steps:
    - ORPHAN_RESOLVE tasks → `contextual-ai-documentation-optimizer` (integrate) or orchestrator (remove)
    - Documentation generation → `plugin-docs-writer`
 
+   Routing within contextual-ai-documentation-optimizer (DOC_IMPROVE and ORPHAN_RESOLVE):
+   - Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `contextual-ai-documentation-optimizer`
+   - Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+   - Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+   - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
+
    AFTER all refactoring tasks, ALWAYS include these verification tasks:
 
    ```markdown

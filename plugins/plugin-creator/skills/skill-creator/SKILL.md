@@ -76,67 +76,7 @@ The context window is a public good. Skills share the context window with everyt
 
 Prefer concise examples over verbose explanations.
 
-### Skill Tokenomics and Budget Constraints
-
-Skills use progressive disclosure to manage context efficiently:
-
-1. **Metadata (name + description)** - Always loaded into `<available_skills>` block (~100 words per skill)
-2. **SKILL.md body** - Loaded only when skill activates (<5k words recommended)
-3. **Bundled resources** - Loaded on demand by Claude (unlimited)
-
-**Budget Constraints:**
-
-| Resource                   | Limit         | Notes                                                            |
-| -------------------------- | ------------- | ---------------------------------------------------------------- |
-| `name` field               | 64 chars      | Lowercase, numbers, hyphens only                                 |
-| `description` field        | 1024 chars    | Critical for skill selection                                     |
-| `<available_skills>` block | 2% of context window (fallback 16,000 chars) | Scales dynamically; separate from global context |
-| Skills before truncation   | ~34-36        | Varies by description complexity and length                      |
-
-**Truncation Behavior:**
-
-When total skill metadata exceeds the budget (2% of context window, fallback 16,000 characters):
-
-1. Skills are truncated from the `<available_skills>` block
-2. Truncated skills cannot be auto-invoked by Claude
-3. User can still invoke truncated skills explicitly with `/skill-name`
-4. Run `/context` to check for a warning about excluded skills
-
-To increase the limit, set the `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable.
-
-**Fallback Strategy:**
-
-If you have many skills, embed pointers in CLAUDE.md as a safeguard:
-
-```markdown
-## Skills Available
-- For debugging: use `/scientific-method:scientific-thinking` skill
-- For delegation: use `/delegate` skill
-```
-
-This ensures Claude can find skills even if truncated from `<available_skills>`.
-
-**CRITICAL YAML BUG:**
-
-Do NOT use YAML multiline indicators in descriptions:
-
-```yaml
-# WRONG - will show ">-" as description
-description: >-
-  This is a multiline description that breaks.
-
-# WRONG - same problem
-description: |-
-  This breaks too.
-
-# CORRECT - single-line string; quote only when YAML syntax requires it (colons, leading special chars, boolean literals)
-description: This works correctly without quotes when no special characters are present.
-description: 'This works when the value contains colons or other YAML-special characters.'
-```
-
-The Claude Code skill indexer does not parse YAML multiline indicators correctly - the description appears as ">-" instead of actual content.
-
-**SOURCE:** `../claude-skills-overview-2026/SKILL.md` section on Skill Tokenomics.
+For token budget limits, truncation behavior, and fallback strategy, activate the `/plugin-creator:claude-skills-overview-2026` skill — it is the authoritative source for this section.
 
 ### Set Appropriate Degrees of Freedom
 
@@ -418,6 +358,8 @@ flowchart TD
 
 **SOURCE:** `../claude-skills-overview-2026/SKILL.md` section on Directory Structure and Location Priority.
 
+For capability restrictions per destination (plugin/project/user/headless/fork), load [destination-capabilities.md](./references/destination-capabilities.md).
+
 ### Step 4: Initializing the Skill
 
 **CRITICAL: This is the MANDATORY first step for creating ANY skill. Do NOT skip this step.**
@@ -479,6 +421,7 @@ Consult these helpful guides based on your skill's needs:
 
 - **Multi-step processes**: Load [workflows.md](./references/workflows.md) for sequential workflows and conditional logic
 - **Output formats, examples, anti-patterns, and quality standards**: Load [best-practices.md](../agentskills/references/best-practices.md)
+- **Upstream best practices (evaluation-first, MCP tool qualification, script error handling, plan-validate-execute)**: Load [best-practices-upstream.md](./references/best-practices-upstream.md)
 
 These files contain established best practices for effective skill design.
 
@@ -562,52 +505,7 @@ Here `mcp:` is an OpenCode-only extension — Claude Code ignores it. Use this p
 
 Write instructions for using the skill and its bundled resources.
 
-**Advanced Body Features:**
-
-1. **String Substitutions** - Skills support dynamic value replacement:
-
-   - `$ARGUMENTS` - All arguments passed when invoking the skill
-   - `$ARGUMENTS[N]` or `$N` - Specific argument by 0-based index (e.g., `$0`, `$1`)
-   - `${CLAUDE_SESSION_ID}` - Current session ID for logging or session-specific files
-
-   Example:
-
-   ```markdown
-   ---
-   name: migrate-component
-   description: Migrate a component from one framework to another
-   ---
-
-   Migrate the $0 component from $1 to $2.
-   Preserve all existing behavior and tests.
-   ```
-
-   Running `/migrate-component SearchBar React Vue` replaces `$0` with `SearchBar`, `$1` with `React`, and `$2` with `Vue`.
-
-2. **Dynamic Context Injection** - Preprocess shell commands before skill content reaches Claude:
-
-   - Syntax: \`\!\`command\`\` runs immediately (before Claude sees anything)
-   - Command output replaces the placeholder
-   - Claude receives fully-rendered prompt with actual data
-   - Use for fetching PR data, git status, API responses, etc.
-
-   Example (summarize GitHub PR):
-
-   ```markdown
-   ---
-   name: pr-summary
-   description: Summarize GitHub pull request changes
-   ---
-
-   Pull Request Data:
-   \`\!\`gh pr view $0 --json title,body,commits\`\`\`
-
-   Create a summary of the changes above.
-   ```
-
-3. **Extended Thinking Mode** - Include the word "ultrathink" anywhere in skill content to enable extended thinking mode for complex reasoning tasks.
-
-**SOURCE:** `../claude-skills-overview-2026/SKILL.md` sections on String Substitutions and Dynamic Context Injection.
+For advanced body features (string substitutions, dynamic context injection, extended thinking), activate the `/plugin-creator:claude-skills-overview-2026` skill.
 
 ### Step 6: Packaging a Skill (OPTIONAL — Plugin Distribution Only)
 

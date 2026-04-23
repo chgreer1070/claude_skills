@@ -174,6 +174,51 @@ Three methods:
 
 ---
 
+## Subagent `skills` Field — Preloading Skill Content
+
+Subagents support a `skills` field in frontmatter that injects the full content of named skills into the subagent's context at startup. This is different from regular skill invocation: the full body is injected immediately rather than made available for on-demand loading.
+
+```yaml
+---
+name: api-developer
+description: Implement API endpoints following team conventions
+skills:
+  - api-conventions
+  - error-handling-patterns
+---
+
+Implement API endpoints. Follow the conventions and patterns from the preloaded skills.
+```
+
+Key behaviors:
+
+- Subagents do NOT inherit skills from the parent conversation — each skill must be listed explicitly
+- Skills with `disable-model-invocation: true` cannot be preloaded (they are excluded from the invocable set Claude draws from)
+- If a listed skill is missing or disabled, Claude Code skips it and logs a warning to the debug log
+
+This is the inverse of `context: fork` in a skill. With `skills` in a subagent, the subagent controls its own system prompt and loads skill content at startup. With `context: fork` in a skill, the skill content becomes the task sent to the agent type you specify.
+
+SOURCE: [Create custom subagents](https://code.claude.com/docs/en/sub-agents.md) section "Preload skills into subagents" (accessed 2026-04-23)
+
+---
+
+## Subagent Model Resolution Priority
+
+When Claude invokes a subagent, the model is resolved in this priority order (highest to lowest):
+
+1. `CLAUDE_CODE_SUBAGENT_MODEL` environment variable, if set
+2. The per-invocation `model` parameter passed at invocation time
+3. The subagent definition's `model` frontmatter field
+4. The main conversation's model (the default — equivalent to `inherit`)
+
+The `model` field in frontmatter accepts: `sonnet`, `opus`, `haiku`, a full model ID (e.g., `claude-opus-4-7`), or `inherit`. Omitting `model` defaults to `inherit`.
+
+The model override from a skill's `model` field applies for the rest of the current turn only and is not saved to settings; the session model resumes on the next prompt.
+
+SOURCE: [Create custom subagents](https://code.claude.com/docs/en/sub-agents.md) section "Choose a model" (accessed 2026-04-23)
+
+---
+
 ## Related
 
 - [Subagents](https://code.claude.com/docs/en/sub-agents.md) — delegate tasks to specialized agents

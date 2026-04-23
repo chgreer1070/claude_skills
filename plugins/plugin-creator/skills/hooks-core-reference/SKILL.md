@@ -23,6 +23,7 @@ For working examples and patterns, activate `Skill(skill: "plugin-creator:hooks-
 | `PostToolUseFailure` | After tool fails                                             | Yes — tool name                        | Error handling          |
 | `Notification`       | When Claude wants attention                                  | Yes — notification type                | Custom notifications    |
 | `UserPromptSubmit`   | User submits prompt                                          | No                                     | Input validation        |
+| `UserPromptExpansion`| Slash command expands into a full prompt                     | Yes — command name                     | Block expansions, inject context |
 | `Stop`               | Claude finishes response                                     | No                                     | Cleanup, final checks   |
 | `SubagentStart`      | When spawning a subagent                                     | Yes — agent type name                  | Subagent initialization |
 | `SubagentStop`       | Subagent (Agent tool) completes                              | Yes — agent type name                  | Result validation       |
@@ -37,6 +38,9 @@ For working examples and patterns, activate `Skill(skill: "plugin-creator:hooks-
 | `Elicitation`        | MCP server requests user input mid-task                      | Yes — MCP server name                  | Programmatic responses  |
 | `ElicitationResult`  | User responds to MCP elicitation                             | Yes — MCP server name                  | Observe/modify response |
 | `Setup`              | Repository setup/maintenance                                 | Yes — `init` or `maintenance`          | One-time operations     |
+| `CwdChanged`         | Working directory changes during session                     | No                                     | Reload env, activate toolchains |
+| `FileChanged`        | Watched file changes on disk                                 | Yes — literal filename pattern         | Monitor .env, direnv integration |
+| `PermissionDenied`   | Auto mode classifier denies a tool call                      | Yes — tool name                        | Log denials, allow retry |
 | `SessionStart`       | Session begins or resumes                                    | Yes — `startup`, `resume`, etc.        | Environment setup       |
 | `SessionEnd`         | Session ends                                                 | Yes — exit reason                      | Cleanup, persistence    |
 
@@ -93,6 +97,8 @@ Hooks are organized by matchers, where each matcher can have multiple hooks:
   - `url`: (For `type: "http"`) The URL to POST the hook input to
   - `prompt`: (For `type: "prompt"` or `type: "agent"`) The prompt to send to the model
   - `timeout`: (Optional) Seconds before canceling (default: 600 for commands, 30 for prompts, 60 for agent hooks)
+  - `async`: (For `type: "command"`) If `true`, runs in background without blocking Claude
+  - `asyncRewake`: (For `type: "command"`) If `true`, runs in background and wakes Claude when process exits with code 2 — stderr/stdout delivered as a system reminder
 
 ### Project-Specific Hook Scripts
 
@@ -284,6 +290,8 @@ Runs when a Claude Code subagent (Agent tool call) is spawned.
 - `agent_id`: Unique identifier for the subagent
 - `agent_type`: Agent name (built-in like "Bash", "Explore", "Plan", or custom agent names)
 
+For the defer permissionDecision and its constraints, see the [hooks-guide reference](../hooks-guide/references/claude-code.md).
+
 ---
 
 ## Environment Variables
@@ -292,7 +300,7 @@ Runs when a Claude Code subagent (Agent tool call) is spawned.
 | -------------------- | ---------------------------------- | ------------------- |
 | `CLAUDE_PROJECT_DIR` | Project root (absolute path)       | All hooks           |
 | `CLAUDE_CODE_REMOTE` | `"true"` if remote, empty if local | All hooks           |
-| `CLAUDE_ENV_FILE`    | Path for persisting env vars       | SessionStart, Setup |
+| `CLAUDE_ENV_FILE`    | Path for persisting env vars       | SessionStart, Setup, CwdChanged, FileChanged |
 | `CLAUDE_PLUGIN_ROOT` | Plugin directory (absolute)        | Plugin hooks        |
 
 ### SessionStart Environment Persistence
@@ -388,6 +396,8 @@ MCP tools follow the pattern `mcp__<server>__<tool>`:
 | TeammateIdle, TaskCompleted, ConfigChange                  | Shown in verbose mode (Ctrl+O)   |
 | WorktreeCreate                                             | Stdout must be the absolute path to the created worktree directory |
 | WorktreeRemove                                             | Non-blocking; logged to debug    |
+| CwdChanged, FileChanged                                    | Non-blocking; logged to debug    |
+| PermissionDenied                                           | Logged to debug only (`--debug`) |
 | Elicitation, ElicitationResult                             | JSON response controls MCP input |
 
 ---
@@ -497,7 +507,7 @@ echo '{"tool_name":"Write","tool_input":{"file_path":"test.txt"}}' | ./your-hook
 
 ## Sources
 
-- [Hooks Reference](https://code.claude.com/docs/en/hooks.md) (accessed 2026-01-28)
+- [Hooks Reference](https://code.claude.com/docs/en/hooks.md) (accessed 2026-04-23, updated from 2026-01-28)
 - [Hooks Guide](https://code.claude.com/docs/en/hooks-guide.md)
 - [Settings Reference](https://code.claude.com/docs/en/settings.md)
 - [Plugin Components Reference](https://code.claude.com/docs/en/plugins-reference.md#hooks)

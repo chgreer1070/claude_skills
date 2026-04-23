@@ -26,23 +26,34 @@ SOURCE: <https://code.claude.com/docs/en/hooks-reference.md> (accessed 2026-03-0
 
 | Event | When it fires | Matcher support |
 |:---|:---|:---|
+| `Setup` | Repository setup/maintenance (`--init`, `--init-only`, `--maintenance` flags) | `init`, `maintenance` |
 | `SessionStart` | Session begins or resumes | `startup`, `resume`, `clear`, `compact` |
 | `UserPromptSubmit` | User submits a prompt, before Claude processes it | none |
+| `UserPromptExpansion` | User-typed slash command expands into a full prompt | command name |
 | `PreToolUse` | Before a tool call executes | tool name |
 | `PermissionRequest` | When a permission dialog appears | tool name |
+| `PermissionDenied` | When auto mode classifier denies a tool call | tool name |
 | `PostToolUse` | After a tool call succeeds | tool name |
 | `PostToolUseFailure` | After a tool call fails | tool name |
 | `Notification` | When Claude Code sends a notification | `permission_prompt`, `idle_prompt`, `auth_success`, `elicitation_dialog` |
+| `InstructionsLoaded` | When CLAUDE.md or `.claude/rules/*.md` is loaded into context | none |
 | `SubagentStart` | When a subagent is spawned | agent type |
 | `SubagentStop` | When a subagent finishes | agent type |
 | `Stop` | When Claude finishes responding | none |
 | `TeammateIdle` | When an agent team teammate is about to go idle | none |
 | `TaskCompleted` | When a task is being marked as completed | none |
 | `ConfigChange` | When a configuration file changes during a session | `user_settings`, `project_settings`, `local_settings`, `policy_settings`, `skills` |
+| `Elicitation` | When an MCP server requests user input mid-task | MCP server name |
+| `ElicitationResult` | After user responds to MCP elicitation, before response sent to server | MCP server name |
 | `WorktreeCreate` | When a worktree is being created | none |
 | `WorktreeRemove` | When a worktree is being removed | none |
+| `CwdChanged` | When the working directory changes | none |
+| `FileChanged` | When a watched file changes on disk | literal filename (e.g. `.envrc\|.env`) |
 | `PreCompact` | Before context compaction | `manual`, `auto` |
+| `PostCompact` | After context compaction completes | `manual`, `auto` |
 | `SessionEnd` | When a session terminates | `clear`, `logout`, `prompt_input_exit`, `bypass_permissions_disabled`, `other` |
+
+SOURCE: [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md) (accessed 2026-04-23)
 
 For subagents, `Stop` hooks are automatically converted to `SubagentStop`.
 
@@ -75,14 +86,20 @@ The `matcher` field is a regex string. Omit, use `"*"`, or use `""` to match all
 
 | Event | Matcher filters |
 |:---|:---|
-| `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest` | tool name |
+| `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`, `PermissionDenied` | tool name |
+| `UserPromptExpansion` | command name |
 | `SessionStart` | how session started: `startup`, `resume`, `clear`, `compact` |
 | `SessionEnd` | why session ended: `clear`, `logout`, `prompt_input_exit`, `bypass_permissions_disabled`, `other` |
 | `Notification` | notification type: `permission_prompt`, `idle_prompt`, `auth_success`, `elicitation_dialog` |
 | `SubagentStart`, `SubagentStop` | agent type: `Bash`, `Explore`, `Plan`, or custom agent names |
-| `PreCompact` | trigger: `manual`, `auto` |
+| `Setup` | `init` or `maintenance` |
+| `PreCompact`, `PostCompact` | trigger: `manual`, `auto` |
 | `ConfigChange` | source: `user_settings`, `project_settings`, `local_settings`, `policy_settings`, `skills` |
-| `UserPromptSubmit`, `Stop`, `TeammateIdle`, `TaskCompleted`, `WorktreeCreate`, `WorktreeRemove` | no matcher support — always fires |
+| `Elicitation`, `ElicitationResult` | MCP server name |
+| `FileChanged` | literal filename pattern (e.g. `.envrc\|.env`); not regex |
+| `UserPromptSubmit`, `Stop`, `TeammateIdle`, `TaskCompleted`, `WorktreeCreate`, `WorktreeRemove`, `CwdChanged`, `InstructionsLoaded` | no matcher support — always fires |
+
+SOURCE: [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md) (accessed 2026-04-23)
 
 MCP tools follow the pattern `mcp__<server>__<tool>`:
 
@@ -154,20 +171,32 @@ All hook events receive these fields on stdin as JSON:
 | `PreToolUse` | Yes | Blocks the tool call |
 | `PermissionRequest` | Yes | Denies the permission |
 | `UserPromptSubmit` | Yes | Blocks prompt processing and erases the prompt |
+| `UserPromptExpansion` | Yes | Blocks the expansion |
 | `Stop` | Yes | Prevents Claude from stopping, continues the conversation |
 | `SubagentStop` | Yes | Prevents the subagent from stopping |
 | `TeammateIdle` | Yes | Prevents the teammate from going idle |
 | `TaskCompleted` | Yes | Prevents the task from being marked as completed |
 | `ConfigChange` | Yes | Blocks the configuration change (except `policy_settings`) |
+| `Elicitation` | Yes | Blocks the elicitation dialog |
+| `ElicitationResult` | Yes | Blocks the elicitation response |
+| `WorktreeCreate` | Yes | Any non-zero exit code causes worktree creation to fail |
 | `PostToolUse` | No | Shows stderr to Claude (tool already ran) |
 | `PostToolUseFailure` | No | Shows stderr to Claude (tool already failed) |
+| `PermissionDenied` | No | Shows stderr to user only |
 | `Notification` | No | Shows stderr to user only |
 | `SubagentStart` | No | Shows stderr to user only |
 | `SessionStart` | No | Shows stderr to user only |
+| `Setup` | No | Shows stderr to user only |
 | `SessionEnd` | No | Shows stderr to user only |
+| `CwdChanged` | No | Failures logged to debug only |
+| `FileChanged` | No | Failures logged to debug only |
+| `InstructionsLoaded` | No | Failures logged to debug only |
 | `PreCompact` | No | Shows stderr to user only |
-| `WorktreeCreate` | Yes | Any non-zero exit code causes worktree creation to fail |
+| `PostCompact` | No | Logged to debug only |
 | `WorktreeRemove` | No | Failures are logged in debug mode only |
+| `StopFailure` | No | Output and exit code are ignored (logging and alerts only) |
+
+SOURCE: [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md) (accessed 2026-04-23)
 
 ---
 
@@ -678,6 +707,179 @@ Additional fields:
 
 No decision control. Cannot block session termination.
 
+### Setup
+
+Additional fields:
+
+| Field | Description |
+|:---|:---|
+| `trigger` | `"init"` (from `--init` or `--init-only`) or `"maintenance"` (from `--maintenance`) |
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/Users/.../.claude/projects/.../00893aaf-19fa-41d2-8238-13269b9b3ca0.jsonl",
+  "cwd": "/Users/...",
+  "permission_mode": "default",
+  "hook_event_name": "Setup",
+  "trigger": "init"
+}
+```
+
+Has access to `CLAUDE_ENV_FILE` for persisting environment variables. Output added to Claude's context. Exit code 2 shows stderr to user only (non-blocking).
+
+### UserPromptExpansion
+
+Additional fields:
+
+| Field | Description |
+|:---|:---|
+| `expansion_type` | How the expansion was triggered |
+| `command_name` | The slash command that was expanded |
+| `command_args` | Arguments passed to the command |
+| `command_source` | Source of the command definition |
+| `prompt` | The original prompt before expansion |
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/Users/.../.claude/projects/.../00893aaf-19fa-41d2-8238-13269b9b3ca0.jsonl",
+  "cwd": "/Users/...",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptExpansion",
+  "expansion_type": "skill",
+  "command_name": "my-skill",
+  "command_args": "",
+  "command_source": "plugin",
+  "prompt": "/my-skill"
+}
+```
+
+Can block expansion (exit 2) or inject context. Fires before the expanded prompt reaches Claude.
+
+### CwdChanged
+
+Additional fields:
+
+| Field | Description |
+|:---|:---|
+| `old_cwd` | The previous working directory |
+| `new_cwd` | The new working directory |
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/Users/.../.claude/projects/.../00893aaf-19fa-41d2-8238-13269b9b3ca0.jsonl",
+  "cwd": "/Users/.../new-dir",
+  "permission_mode": "default",
+  "hook_event_name": "CwdChanged",
+  "old_cwd": "/Users/.../old-dir",
+  "new_cwd": "/Users/.../new-dir"
+}
+```
+
+Has access to `CLAUDE_ENV_FILE`. Non-blocking — failures logged to debug only. Can return `watchPaths` in JSON output to update the list of files watched by `FileChanged` hooks.
+
+### FileChanged
+
+Additional fields:
+
+| Field | Description |
+|:---|:---|
+| `file_path` | Absolute path to the file that changed |
+| `event` | `"change"`, `"add"`, or `"unlink"` |
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/Users/.../.claude/projects/.../00893aaf-19fa-41d2-8238-13269b9b3ca0.jsonl",
+  "cwd": "/Users/...",
+  "permission_mode": "default",
+  "hook_event_name": "FileChanged",
+  "file_path": "/Users/.../.envrc",
+  "event": "change"
+}
+```
+
+Has access to `CLAUDE_ENV_FILE`. Non-blocking — failures logged to debug only. Matcher uses literal filenames (not regex): e.g. `.envrc|.env`. Can return `watchPaths` in JSON output to update the watch list.
+
+### PermissionDenied
+
+Additional fields:
+
+| Field | Description |
+|:---|:---|
+| `tool_name` | Name of the tool that was denied |
+| `tool_input` | Arguments that were passed to the tool |
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/Users/.../.claude/projects/.../00893aaf-19fa-41d2-8238-13269b9b3ca0.jsonl",
+  "cwd": "/Users/...",
+  "permission_mode": "default",
+  "hook_event_name": "PermissionDenied",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "rm -rf /"
+  }
+}
+```
+
+Fires only when the auto mode classifier denies a tool call — not on manual denials or rule denials. Non-blocking. Can return `{ "retry": true }` in `hookSpecificOutput` to tell Claude it may retry the denied tool call.
+
+### InstructionsLoaded
+
+Additional fields:
+
+| Field | Description |
+|:---|:---|
+| `file_path` | Path to the CLAUDE.md or rules file that was loaded |
+| `memory_type` | Memory type identifier |
+| `load_reason` | `"session_start"`, `"nested_traversal"`, `"path_glob_match"`, `"include"`, or `"compact"` |
+| `globs` | Optional glob patterns that triggered the load |
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/Users/.../.claude/projects/.../00893aaf-19fa-41d2-8238-13269b9b3ca0.jsonl",
+  "cwd": "/Users/...",
+  "permission_mode": "default",
+  "hook_event_name": "InstructionsLoaded",
+  "file_path": "/Users/.../.claude/CLAUDE.md",
+  "memory_type": "project",
+  "load_reason": "session_start"
+}
+```
+
+Non-blocking — used for observability only (audit logging, compliance tracking). Failures logged to debug only.
+
+### Elicitation
+
+Additional fields:
+
+| Field | Description |
+|:---|:---|
+| `server_name` | Name of the MCP server requesting input |
+| `message` | The elicitation message shown to the user |
+| `request_id` | Unique identifier for the elicitation request |
+
+Can return a programmatic response via `hookSpecificOutput` with `action` (`"accept"`, `"decline"`, or `"cancel"`) and `content` (form field values) to respond without showing the dialog.
+
+### ElicitationResult
+
+Additional fields:
+
+| Field | Description |
+|:---|:---|
+| `server_name` | Name of the MCP server that requested input |
+| `action` | User's action: `"accept"`, `"decline"`, or `"cancel"` |
+| `content` | Form field values from the user's response |
+
+Fires after user responds, before the response is sent to the MCP server. Can observe, modify, or block the response.
+
+SOURCE: [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md) (accessed 2026-04-23)
+
 ---
 
 ## Event Decision Control
@@ -688,10 +890,14 @@ Returns decision inside `hookSpecificOutput`. Deprecated: top-level `decision`/`
 
 | Field | Description |
 |:---|:---|
-| `permissionDecision` | `"allow"` bypasses permission system, `"deny"` prevents tool call, `"ask"` prompts user to confirm |
+| `permissionDecision` | `"allow"` bypasses permission system, `"deny"` prevents tool call, `"ask"` prompts user to confirm, `"defer"` pauses and exits (non-interactive mode only) |
 | `permissionDecisionReason` | For `"allow"` and `"ask"`: shown to user but not Claude. For `"deny"`: shown to Claude |
 | `updatedInput` | Modifies tool input parameters before execution |
 | `additionalContext` | String added to Claude's context before the tool executes |
+
+`"defer"` is only valid in non-interactive mode (`-p` flag) and only when Claude makes a single tool call (not a batch). Deferring pauses tool execution and exits the process with `stop_reason: "tool_deferred"`. The calling process receives the deferred tool use, handles it externally, then resumes the session to retry. Use to integrate Claude Code into Agent SDK apps that need a custom UI for tool approval.
+
+SOURCE: [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md) (accessed 2026-04-23)
 
 ```json
 {
@@ -968,9 +1174,13 @@ Agent hooks (`type: "agent"`) spawn a subagent with tool access (Read, Grep, Glo
 
 Set `"async": true` on a `type: "command"` hook to run it in the background. Claude continues immediately. Only `type: "command"` hooks support `async`.
 
+Set `"asyncRewake": true` instead of `"async": true` to run in the background and wake Claude when the process exits with code 2. On exit 2, stderr and stdout are delivered to Claude as a system reminder immediately, interrupting the idle state.
+
 Async hooks cannot block or control behavior — `decision`, `permissionDecision`, `continue` fields have no effect.
 
 After the background process exits, if stdout contains `systemMessage` or `additionalContext`, that content is delivered to Claude on the next conversation turn.
+
+SOURCE: [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md) (accessed 2026-04-23)
 
 ```json
 {
@@ -1007,8 +1217,10 @@ After the background process exits, if stdout contains `systemMessage` or `addit
 |:---|:---|:---|
 | `CLAUDE_PROJECT_DIR` | All hooks | Project root directory. Wrap in quotes for paths with spaces |
 | `CLAUDE_PLUGIN_ROOT` | Plugin hooks | Plugin root directory for bundled scripts |
-| `CLAUDE_ENV_FILE` | SessionStart only | File path for persisting environment variables to subsequent Bash commands |
+| `CLAUDE_ENV_FILE` | SessionStart, Setup, CwdChanged, FileChanged | File path for persisting environment variables to subsequent Bash commands |
 | `CLAUDE_CODE_REMOTE` | All hooks | Set to `"true"` in remote web environments; not set in local CLI |
+
+SOURCE: [Claude Code Hooks](https://code.claude.com/docs/en/hooks.md) (accessed 2026-04-23)
 
 ### Persist Environment Variables (SessionStart only)
 

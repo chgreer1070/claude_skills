@@ -1,6 +1,6 @@
 # Output Styles — Claude Code Reference
 
-SOURCE: <https://code.claude.com/docs/en/output-styles.md> (accessed 2026-03-07)
+SOURCE: <https://code.claude.com/docs/en/output-styles.md> (accessed 2026-04-23)
 
 Output styles allow Claude Code to operate as different types of agent while retaining core
 capabilities (running scripts, reading/writing files, tracking TODOs).
@@ -20,7 +20,6 @@ capabilities (running scripts, reading/writing files, tracking TODOs).
 ## How Output Styles Work
 
 - Output styles directly modify Claude Code's system prompt.
-- All output styles exclude instructions for efficient output (such as "respond concisely").
 - Custom output styles exclude coding-related instructions (such as "verify code with tests")
   UNLESS `keep-coding-instructions: true` is set in the style's frontmatter.
 - Custom instructions are appended to the END of the system prompt.
@@ -39,6 +38,11 @@ capabilities (running scripts, reading/writing files, tracking TODOs).
 - Changes apply at the local project level.
 - Saved in `.claude/settings.local.json` under the `outputStyle` field.
 - Can also be set by directly editing the `outputStyle` field in any settings file.
+- Style changes take effect at the start of the next session — they do not apply mid-conversation.
+  The output style is set in the system prompt at session start; keeping the system prompt stable
+  throughout a conversation allows prompt caching to reduce latency and cost.
+
+SOURCE: <https://code.claude.com/docs/en/output-styles.md> (accessed 2026-04-23)
 
 ---
 
@@ -86,6 +90,20 @@ Plugins can bundle output styles via the `outputStyles` field in `plugin.json`:
 
 The path is relative to `plugin.json`. The style file uses the same frontmatter format as
 project- or user-level custom styles.
+
+---
+
+## Token Costs and Prompt Caching
+
+Adding instructions to the system prompt increases input tokens. Prompt caching reduces this cost
+after the first request in a session — the cached system prompt is not re-processed on subsequent
+turns within the same session.
+
+The built-in `explanatory` and `learning` styles produce longer responses than `default` by
+design, which increases output tokens. For custom styles, output token usage depends on what your
+instructions tell Claude to produce.
+
+SOURCE: <https://code.claude.com/docs/en/output-styles.md> (accessed 2026-04-23)
 
 ---
 

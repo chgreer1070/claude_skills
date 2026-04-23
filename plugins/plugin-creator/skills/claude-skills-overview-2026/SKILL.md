@@ -97,9 +97,9 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 >
 > When an `allowed-tools` field is not specified, the skill inherits the tool capabilities of the parent agent. This is a common pattern for skills that need to use tools from the parent agent. Such as when a skill is used by the orchestrator agent for knowledge or task information, no `allowed-tools` field is needed.
 >
-> The `allowed-tools` field is both a pre-approval mechanism and a capability scoping mechanism.
-> Listed tools are granted to Claude without per-use permission prompts when the skill is active, and Claude is restricted to only those tools.
-> This also reduces context size by limiting included tool definitions to only those the skill may need.
+> The `allowed-tools` field grants permission for the listed tools while the skill is active, so Claude can use them without prompting you for approval. It does not restrict which tools are available: every tool remains callable, and your permission settings still govern tools that are not listed. To block a skill from using certain tools, add deny rules in your permission settings instead.
+>
+> SOURCE: [Extend Claude with skills](https://code.claude.com/docs/en/skills.md) section "Pre-approve tools for a skill" (accessed 2026-04-23)
 
 > [!NOTE]
 > **`name:` is required** per the [Agent Skills open standard](https://agentskills.io/specification). A bug in Claude Code v2.1.23 caused plugin skills with `name:` to not appear as slash commands; that bug was resolved 2026-02-20. Include `name:` in all SKILL.md files. The value must match the directory name.
@@ -365,7 +365,9 @@ By default, both you and Claude can invoke any skill. You can type `/skill-name`
 | `disable-model-invocation: true` | Yes            | No                | Description not in context, full skill loads when you invoke |
 | `user-invocable: false`          | No             | Yes               | Description always in context, full skill loads when invoked |
 
-In a regular session, skill descriptions are loaded into context so Claude knows what's available, but full skill content only loads when invoked. [Subagents with preloaded skills](/en/sub-agents#preload-skills-into-subagents) work differently: the full skill content is injected at startup.
+In a regular session, skill descriptions are loaded into context so Claude knows what's available, but full skill content only loads when invoked. [Subagents with preloaded skills](https://code.claude.com/docs/en/sub-agents.md#preload-skills-into-subagents) work differently: the full skill content is injected at startup. Subagents do not inherit skills from the parent conversation — they must be listed explicitly in the `skills` frontmatter field. Skills that set `disable-model-invocation: true` cannot be preloaded. See `resources/claude-code-skills-official.md` for the subagent `skills` field syntax and model resolution priority.
+
+SOURCE: [Create custom subagents](https://code.claude.com/docs/en/sub-agents.md) sections "Preload skills into subagents" and "Choose a model" (accessed 2026-04-23)
 
 **Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Control who invokes a skill")
 

@@ -257,6 +257,30 @@ Choose one term and use it throughout:
 - Bad: Mix "API endpoint" / "URL" / "API route" / "path"
 - Bad: Mix "field" / "box" / "element" / "control"
 
+### Cross-Client Compatibility: Handling Unquoted Colons in YAML
+
+The most common YAML parse failure when sharing skills across clients is unquoted values containing colons. A colon followed by a space is a YAML key-value separator; an unquoted value containing `:` breaks parsing.
+
+**Symptom:** Skill fails to load in some clients but not others; frontmatter is silently ignored.
+
+**Fix:** Quote any value that contains a colon, or use a YAML block scalar:
+
+```yaml
+# Broken — colon in value breaks YAML parsing
+description: Use when working with HTTP: requests, responses, and headers.
+
+# Fixed — quoted value
+description: "Use when working with HTTP: requests, responses, and headers."
+
+# Also valid — block scalar
+description: >-
+  Use when working with HTTP: requests, responses, and headers.
+```
+
+Apply this check before sharing or publishing a skill that targets multiple clients.
+
+SOURCE: [agentskills.io integration guide](https://agentskills.io/integrate-skills.md) (accessed 2026-04-23)
+
 ---
 
 ## Common Patterns

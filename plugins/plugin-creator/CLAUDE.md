@@ -93,7 +93,7 @@ flowchart TD
 | `refactor-executor` | sonnet | Read, Write, Edit, Grep, Glob, Bash, Task | Execute refactoring tasks from plans |
 | `refactor-validator` | sonnet | Read, Grep, Glob, Bash | Validate refactoring completeness and quality |
 | `subagent-refactorer` | sonnet | Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Skill, MCP tools | Refactor Claude agents using Anthropic prompt engineering best practices |
-| `contextual-ai-documentation-optimizer` | sonnet | (inherits) | Optimize prompts, SKILL.md, CLAUDE.md for Claude comprehension |
+| `contextual-ai-documentation-optimizer` | sonnet | (inherits) | Quality audit, content optimization, and frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files |
 | `plugin-assessor` | sonnet | (inherits) | Analyze plugins for structure, frontmatter, and quality |
 
 ### Scripts (6)
@@ -221,6 +221,12 @@ Validates: plugin.json exists in `.claude-plugin/`; JSON syntax valid; required 
 | `DOC_UPDATER_ADD` | `/plugin-creator:add-doc-updater` skill |
 | `ORPHAN_RESOLVE` | Manual or context optimizer |
 | `STRUCTURE_FIX` | Direct implementation |
+
+Routing within `contextual-ai-documentation-optimizer` (DOC_IMPROVE and ORPHAN_RESOLVE):
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `contextual-ai-documentation-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 `DOC_UPDATER_ADD` applies when: skill wraps external documentation (API specs, CLI refs, frameworks); documentation source updates regularly (weekly, monthly); skill would benefit from automated sync.
 
@@ -392,7 +398,13 @@ Refactors Claude Code subagents using Anthropic prompt engineering best practice
 
 ### contextual-ai-documentation-optimizer
 
-Optimizes prompts, SKILL.md, and CLAUDE.md files for Claude comprehension. Used for `DOC_IMPROVE` and `ORPHAN_RESOLVE` task types. Applies positive framing; uses concrete examples; front-loads critical instructions. Uses the `prompt-optimization` skill (now part of this plugin).
+Bundles three concerns: (1) quality audit and assessment (read-only scoring), (2) content optimization and rewriting for Claude comprehension, and (3) frontmatter description writing. Used for `DOC_IMPROVE` and `ORPHAN_RESOLVE` task types. Applies positive framing; uses concrete examples; front-loads critical instructions. Uses the `prompt-optimization` skill (now part of this plugin).
+
+Routing within this agent:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `contextual-ai-documentation-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ### plugin-assessor
 
