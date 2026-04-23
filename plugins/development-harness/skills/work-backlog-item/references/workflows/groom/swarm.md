@@ -96,7 +96,7 @@ sequenceDiagram
 
 ## No-team fallback
 
-**Wave 1** (parallel):
+#### Wave 1 (parallel)
 
 - impact-analyst → `section="Impact Radius"`
 - fact-checker → `section="Fact-Check"`
@@ -104,20 +104,20 @@ sequenceDiagram
 
 After Wave 1: read Impact Radius and Fact-Check. If scope expanded, spawn second fact-checker.
 
-**Wave 2** (depends on Wave 1):
+#### Wave 2 (depends on Wave 1)
 
 - rtica-assessor → `section="RT-ICA"`
 - alignment-analyst → `section="Design Intent Alignment"`
 
 If RT-ICA BLOCKED, stop and present MISSING conditions. Do not proceed to Wave 3.
 
-**Wave 3** (depends on Wave 2):
+#### Wave 3 (depends on Wave 2)
 
 - groomer → all groomed subsections
 
 ## Impact Radius — what the impact-analyst produces
 
-**Phase 1: Build Affected Systems Inventory**
+#### Phase 1: Build Affected Systems Inventory
 
 Start from known files (Files section, Output/Evidence section, suggested_location). Expand:
 
@@ -130,7 +130,7 @@ Start from known files (Files section, Output/Evidence section, suggested_locati
 
 Exclude: plan artifacts, `docs/plans/`, `.claude/archive/`, test fixtures.
 
-**Phase 2: Impact Checklist (per system)**
+#### Phase 2: Impact Checklist (per system)
 
 For each system, answer:
 
@@ -140,7 +140,7 @@ For each system, answer:
 4. Does this file need a content update?
 5. Is there a test covering this file's interaction with the changed interface?
 
-**Output format** — 6 named categories:
+#### Output format — 6 named categories
 
 ```markdown
 ## Impact Radius
@@ -215,7 +215,7 @@ mcp__plugin_dh_backlog__backlog_groom(selector='{item_ref}', section='Issue Clas
   content='**Type**: {type}\n**Rationale**: {explanation}\n**Analysis Method**: {method}\n**Scenario Target**: {scenario} -> {improvement}')
 ```
 
-**Root-Cause Analysis** — only for `defect` or `recurring-pattern`:
+#### Root-Cause Analysis — only for `defect` or `recurring-pattern`
 
 - `defect`: invoke `Skill(skill='find-cause', args='{description}')`, write evidence chain
   to `section="Root-Cause Analysis"`.
@@ -226,12 +226,13 @@ mcp__plugin_dh_backlog__backlog_groom(selector='{item_ref}', section='Issue Clas
 
 The groomer agent receives all prior teammate output and produces groomed subsections.
 
-**Scope boundary**: Problem space and outcomes only. Do NOT include implementation steps,
-architecture decisions, code design, or proposed solutions. Acceptance criteria must be
-observable checks — not implementation steps.
+#### Scope boundary
 
-**Description / AC separation**: Description is the problem statement. Acceptance Criteria
-are verifiable success conditions. Do not restate description inside ACs.
+Problem space and outcomes only. Do NOT include implementation steps, architecture decisions, code design, or proposed solutions. Acceptance criteria must be observable checks — not implementation steps.
+
+#### Description / AC separation
+
+Description is the problem statement. Acceptance Criteria are verifiable success conditions. Do not restate description inside ACs.
 
 Groomer agent: `subagent_type="dh:backlog-item-groomer"`, model=sonnet.
 
@@ -239,10 +240,7 @@ Input to groomer: item title, description, source, priority, plan address, RT-IC
 Fact-Check verdicts, Issue Classification, Root-Cause Analysis (or "N/A"), Impact Radius,
 and any discovery context.
 
-> **Orchestrator:** Before dispatching the groomer, verify your prompt names all required
-> subsections: Reproducibility, Priority, Impact, Benefits, Expected Behavior, Acceptance
-> Criteria, Files, Resources, Dependencies, Effort. A prompt that omits a subsection produces
-> a missing section that cannot be recovered by retry alone.
+Orchestrator: before dispatching the groomer, verify your prompt names all required subsections: Reproducibility, Priority, Impact, Benefits, Expected Behavior, Acceptance Criteria, Files, Resources, Dependencies, Effort. A prompt that omits a subsection produces a missing section that cannot be recovered by retry alone.
 
 ## Outputs
 

@@ -26,11 +26,15 @@ Extract: Impact Radius, Fact-Check, Issue Classification, groomed subsections.
    - Training data answers are not valid resolutions.
    - If resolved: mark AVAILABLE with tool citation.
 
-**Orchestrator checklist for Step 3 (no section may advance without this):**
+#### Orchestrator checklist for Step 3
+
+No section may advance without satisfying all items:
 
 - For each DERIVABLE condition: run the cited tool (Grep/Read/Bash/WebSearch). Paste the exact tool output as the citation. Do not cite session context or training data recall. If the tool returns no result, the condition remains DERIVABLE.
 - For each MISSING condition resolved by user: paste the exact user message as citation. Mark AVAILABLE with that citation.
 - No condition status changes from DERIVABLE or MISSING to AVAILABLE without a tool output or user message pasted as its citation.
+
+SOURCE: Session observation — #1899 groom failure diagnosis, 2026-04-23
 
 4. Build RT-ICA Final report:
 
@@ -73,7 +77,7 @@ flowchart TD
     Recheck -->|No| Present
 ```
 
-**BLOCKED batch format**:
+#### BLOCKED batch format
 
 ```text
 RT-ICA: BLOCKED
@@ -89,9 +93,9 @@ Answer what you can — skip what you don't know.
 Grooming will not proceed to output validation with unresolved gaps.
 ```
 
-**When <mode/> is `auto`**: BLOCKED conditions with exactly one viable
-option are auto-resolved with `[AUTO] Resolved {condition} — {option} — {evidence}`. Conditions
-with multiple options or no options remain BLOCKED and halt the workflow.
+#### When `<mode/>` is `auto`
+
+BLOCKED conditions with exactly one viable option are auto-resolved with `[AUTO] Resolved {condition} — {option} — {evidence}`. Conditions with multiple options or no options remain BLOCKED and halt the workflow.
 
 ## Output Validation Gate
 
@@ -113,7 +117,7 @@ backlog_view(selector='{item_ref}', summary=False, section='{section-name}')
 
 Check the returned content against the minimum content table below. Do NOT use a full `summary=False` read without a `section` filter to check individual section presence — the `sections_index` from Step 1 is the authoritative presence check.
 
-**Required sections and minimum content:**
+#### Required sections and minimum content
 
 | Section | Minimum content |
 |---|---|
@@ -131,16 +135,20 @@ Optional sections (not validated for presence): `Root-Cause Analysis`, `Impact`,
 
 ### Diagnostic Gate — Before Retry or Direct Write
 
-When a required section is absent or has 0 entries, identify the cause before acting:
+When a required section is absent or has 0 entries, identify the cause before acting.
 
-| Observable signal | Cause | Correct action |
-|---|---|---|
-| Section absent from `sections_index` AND agent reported STATUS: DONE | Agent used wrong section name in MCP call | Re-run agent with corrected section name |
-| Section present in `sections_index` but shows 0 entries | Agent write format did not create entry blocks | Re-run agent with explicit content format requirement |
-| Section absent AND agent did not report STATUS: DONE | Agent terminated before write | Re-run agent with scoped prompt |
-| Section absent AND it was not included in the orchestrator's groomer prompt | Orchestrator prompt omission | Add section to prompt; re-run groomer |
+SOURCE: Session observation — #1899 groom failure diagnosis, 2026-04-23
 
-**The orchestrator must NOT write a required section directly** unless `finalize.md` explicitly designates it as an orchestrator responsibility (e.g., RT-ICA Final Pass). For all other sections, the correct recovery is re-running the appropriate agent with a targeted prompt.
+```mermaid
+flowchart TD
+    Start([Required section absent or 0 entries]) --> Q{Observable signal?}
+    Q -->|"Absent from sections_index<br>AND agent reported STATUS: DONE"| A1["Cause — agent used wrong section name in MCP call<br>Action — re-run agent with corrected section name"]
+    Q -->|"Present in sections_index<br>but shows 0 entries"| A2["Cause — agent write format did not create entry blocks<br>Action — re-run agent with explicit content format requirement"]
+    Q -->|"Absent AND agent did NOT<br>report STATUS: DONE"| A3["Cause — agent terminated before write<br>Action — re-run agent with scoped prompt"]
+    Q -->|"Absent AND section was not<br>in orchestrator groomer prompt"| A4["Cause — orchestrator prompt omission<br>Action — add section to prompt; re-run groomer"]
+```
+
+The orchestrator must NOT write a required section directly unless `finalize.md` explicitly designates it as an orchestrator responsibility (e.g., RT-ICA Final Pass). For all other sections, the correct recovery is re-running the appropriate agent with a targeted prompt.
 
 3. If sections are missing — retry with same model, refined prompt:
 
@@ -184,13 +192,13 @@ mcp__plugin_dh_backlog__backlog_groom(selector='{item_ref}', section='Grooming N
 
 Final step — write groomed content via MCP and mark the item as groomed.
 
-**Preferred: batch write with atomic status transition**
+#### Preferred: batch write with atomic status transition
 
 When all groomer subsections are ready (end of swarm), write them in a single call using the
 `sections` parameter combined with `mark_groomed=True`. This writes all content and advances
 status atomically via the active backend.
 
-**RT-ICA MUST be included in this batch write.** The `{rt_ica_final_content}` produced during
+RT-ICA MUST be included in this batch write. The `{rt_ica_final_content}` produced during
 the RT-ICA Final Pass above must be passed here — this guarantees the RT-ICA section is always
 present after grooming and the rt-ica-gate can find it fresh without re-running:
 
@@ -224,12 +232,12 @@ Check `response["sections"]["RT-ICA"]` is non-empty and contains `Date: YYYY-MM-
 mcp__plugin_dh_backlog__backlog_groom(selector='{item_ref}', section='RT-ICA', content='{rt_ica_final_content}')
 ```
 
-**`mark_groomed=True`** performs these transitions via the active backend:
+`mark_groomed=True` performs these transitions via the active backend:
 
 - Advances the item's status from `needs-grooming` to `groomed`
 - Safe to call multiple times — idempotent if already in `groomed` status
 
-**Alternative: incremental section updates**
+#### Alternative: incremental section updates
 
 When sections become available during the swarm (not at the end), write each immediately:
 
@@ -239,7 +247,7 @@ mcp__plugin_dh_backlog__backlog_groom(selector='{item_ref}', section='RT-ICA', c
 # ... each section as it completes ...
 ```
 
-**Before** calling `mark_groomed=True`, verify the RT-ICA section is present. If missing, write
+Before calling `mark_groomed=True`, verify the RT-ICA section is present. If missing, write
 it with the final report from the RT-ICA Final Pass step above:
 
 ```text
@@ -252,7 +260,9 @@ Then call the final status transition:
 mcp__plugin_dh_backlog__backlog_groom(selector='{item_ref}', mark_groomed=True)
 ```
 
-**Handoff**: After grooming completes, the item is ready for SAM planning. The caller
+#### Handoff
+
+After grooming completes, the item is ready for SAM planning. The caller
 (`work-backlog-item`) routes to the planning phase based on user request or <mode/>.
 
 ## Terminal States
