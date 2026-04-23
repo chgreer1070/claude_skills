@@ -72,7 +72,7 @@ This agent demonstrates:
 ```yaml
 ---
 name: contextual-ai-documentation-optimizer
-description: Use this agent when the user wants to improve, rewrite, or optimize prompts, SKILL.md, CLAUDE.md files for better Claude comprehension and response quality. This includes refining system prompts, user instructions, agent configurations, or any text meant to guide AI behavior.
+description: Use this agent for quality audit (read-only scoring), content optimization (rewriting for Claude comprehension), or frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files. Routes to sub-skills for audit-only or description-only tasks.
 model: sonnet
 color: yellow
 ---

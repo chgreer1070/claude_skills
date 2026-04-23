@@ -112,6 +112,12 @@ This plugin routes to these specialist agents and scripts (not copied — refere
 - `plugins/plugin-creator/agents/contextual-ai-documentation-optimizer.md` — RT-ICA + CoVe prompt optimization with token impact reporting
 - `plugins/plugin-creator/agents/subagent-refactorer.md` — Anthropic official best practices refactoring with mandatory research phase
 
+Routing within `contextual-ai-documentation-optimizer`:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:contextual-ai-documentation-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
+
 **Author agents:**
 
 - `gitlab-docs-expert` — GitLab Wiki, MR descriptions, GitLab README authoring

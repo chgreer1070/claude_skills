@@ -347,10 +347,17 @@ These agents run internally to implement the skills above. They are not invoked 
 | `refactor-executor` | Executes refactoring tasks from plans with parallel orchestration |
 | `refactor-validator` | Validates refactoring completeness and quality against original assessment |
 | `subagent-refactorer` | Rewrites agent prompt files using Anthropic prompt engineering methodology — strategic XML tagging, strong imperative instructions, model-tier selection |
-| `contextual-ai-documentation-optimizer` | Optimizes prompts, SKILL.md, and CLAUDE.md files for Claude comprehension |
+| `contextual-ai-documentation-optimizer` | Quality audit, content optimization, and frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files — three bundled concerns; see routing note below |
 | `plugin-assessor` | Analyzes plugins for structure, frontmatter compliance, orphaned files, and cross-reference validity |
 | `hook-creator` | Generates Node.js `.cjs` hook scripts and wires `hooks.json` |
 | `agent-creator` | Creates agent files from requirements with template selection and plugin.json updates |
+
+Routing within `contextual-ai-documentation-optimizer`:
+
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:contextual-ai-documentation-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ## Scripts
 

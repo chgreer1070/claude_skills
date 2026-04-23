@@ -1,11 +1,10 @@
 ---
 name: optimize-claude-md
-description: Optimize CLAUDE.md, SKILL.md, agent definitions, and other AI-facing files for Claude comprehension and economy. Measures baseline metrics, delegates to @contextual-ai-documentation-optimizer agent with file-type-specific context, runs independent verification via second agent, measures post-optimization metrics, and presents comprehensive before/after report. Supports iterative mode for large targets. Use when improving prompt effectiveness, reducing token waste, rewriting instructions for LLM consumption, or enhancing files with latest Claude Code features. Invoke with /optimize-claude-md <file-or-directory>.
+description: "Optimize existing CLAUDE.md, SKILL.md, agent definitions, and other AI-facing files for Claude comprehension and economy. Scope: optimization of existing content only — not upstream sync, not read-only auditing. Measures baseline metrics, delegates to @contextual-ai-documentation-optimizer agent with file-type-specific context, runs independent verification via second agent, measures post-optimization metrics, and presents comprehensive before/after report. Supports iterative mode for large targets. Use when improving prompt effectiveness, reducing token waste, or rewriting instructions for LLM consumption. Invoke with /optimize-claude-md <file-or-directory>."
 argument-hint: <file-or-directory-path>
 user-invocable: true
 disable-model-invocation: true
 ---
-
 # Optimize AI-Facing Files
 
 Orchestrate multi-phase optimization of AI-facing documentation with measurement, delegation, verification, and comprehensive reporting.
@@ -103,6 +102,12 @@ OUTPUT STRUCTURE:
 ```
 
 </delegation_template>
+
+Routing within `contextual-ai-documentation-optimizer`:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:contextual-ai-documentation-optimizer` (this skill uses this path)
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ### Phase 4: Handle Agent Response
 

@@ -91,7 +91,7 @@ Use STATUS: PARTIAL when some acceptance criteria are met and at least one is bl
 
 ## Agent Specialization via Profile
 
-After Step 1, check the task's `agent` field from `sam_task`. If it names a specialist agent (e.g., `python-cli-architect`, `contextual-ai-documentation-optimizer`), load that agent's skills via the backlog MCP server:
+After Step 1, check the task's `agent` field from `sam_task`. If it names a specialist agent (e.g., `python-cli-architect`, `contextual-ai-documentation-optimizer` (bundles quality audit, content optimization, and description writing — see routing note in plugin-creator:CLAUDE.md for sub-capability routing)), load that agent's skills via the backlog MCP server:
 
 ```text
 mcp__plugin_dh_backlog__profile_load(agent_name="{agent-field-value}")

@@ -224,6 +224,15 @@ flowchart TD
 
     Check4 -->|"No — uncited claims found"| Fix4["Delegate to contextual-ai-documentation-optimizer:<br>subagent_type='plugin-creator:contextual-ai-documentation-optimizer'<br>Add citations to all uncited factual claims"]
     Fix4 --> Check4
+```
+
+Routing within `contextual-ai-documentation-optimizer`:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:contextual-ai-documentation-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
+
+```mermaid
 
     Check4 -->|"Yes — all claims cited"| Complete(["COMPLETE —<br>plugin validated, documented, and ready<br>for marketplace submission"])
 ```
@@ -281,7 +290,7 @@ flowchart TD
     F4(["Phase 4 validation failure"]) --> F4A{"Which layer failed?"}
     F4A -->|"Layer 1 — script exit non-zero"| F4B["Read script output for error codes;<br>fix file(s) named in output"]
     F4A -->|"Layer 2 — schema violation with file:line"| F4C["Fix the exact field at the<br>file:line location reported"]
-    F4A -->|"Layer 3 — quality score < 7<br>or critical issues listed"| F4D["Delegate fix to contextual-ai-documentation-optimizer<br>for content issues, or general-purpose for structural issues"]
+    F4A -->|"Layer 3 — quality score < 7<br>or critical issues listed"| F4D["Delegate fix to contextual-ai-documentation-optimizer<br>(content optimization only) or general-purpose for structural issues"]
     F4B --> F4E["Re-run the failed layer only"]
     F4C --> F4E
     F4D --> F4E
@@ -295,6 +304,12 @@ flowchart TD
     F6A -->|"Check 3 — Docs Check"| F6D(["Return to Phase 5"])
     F6A -->|"Check 4 — Honesty Check"| F6E["Delegate citation additions<br>to contextual-ai-documentation-optimizer;<br>re-run Check 4 when complete"]
 ```
+
+Routing within `contextual-ai-documentation-optimizer`:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:contextual-ai-documentation-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ---
 
@@ -319,6 +334,12 @@ SOURCE: CLAUDE.md global instructions (accessed 2026-01-28)
 | `contextual-ai-documentation-optimizer` | `plugin-creator:contextual-ai-documentation-optimizer` | Content optimization, citation addition, AI-facing docs |
 
 SOURCE: Verified from plugin-creator agents directory
+
+Routing within `contextual-ai-documentation-optimizer`:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:contextual-ai-documentation-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ### Validation Scripts
 

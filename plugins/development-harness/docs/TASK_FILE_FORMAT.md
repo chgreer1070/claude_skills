@@ -501,7 +501,7 @@ TaskAssignment response shape (see [TaskAssignment Schema](./assignment-schema.j
     "id": "T04",
     "title": "TASK_FILE_FORMAT.md rewrite",
     "status": "in-progress",
-    "agent": "contextual-ai-documentation-optimizer",
+    "agent": "contextual-ai-documentation-optimizer",  // bundles quality audit, content optimization, and frontmatter description writing; for upstream content sync tasks, use a general-purpose agent with drift report (pending skill-content-updater, backlog #1899)
     "dependencies": [],
     "priority": 1,
     "complexity": "medium",
