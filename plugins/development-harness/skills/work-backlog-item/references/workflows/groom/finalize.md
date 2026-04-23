@@ -2,6 +2,13 @@
 
 Post-swarm gates and final write. Runs after `swarm.md` completes.
 
+## Contents
+
+- [RT-ICA Final Pass](#rt-ica-final-pass) — re-assess conditions, self-resolve, write final report
+- [Output Validation Gate](#output-validation-gate) — verify required sections before write
+- [Write Groomed Content](#write-groomed-content) — batch or incremental write with `mark_groomed=True`
+- [Terminal States](#terminal-states) — Groomed, Blocked, Skipped, Drift
+
 ## RT-ICA Final Pass
 
 Runs after the grooming swarm completes. The orchestrator (not a subagent) executes this.
@@ -93,9 +100,9 @@ Answer what you can — skip what you don't know.
 Grooming will not proceed to output validation with unresolved gaps.
 ```
 
-#### When `<mode/>` is `auto`
+#### When `<mode/>` is `auto` (RT-ICA BLOCKED only)
 
-BLOCKED conditions with exactly one viable option are auto-resolved with `[AUTO] Resolved {condition} — {option} — {evidence}`. Conditions with multiple options or no options remain BLOCKED and halt the workflow.
+BLOCKED conditions with exactly one viable option are auto-resolved with `[AUTO] Resolved {condition} — {option} — {evidence}`. Conditions with multiple options or no options remain BLOCKED and halt the workflow. This auto-resolution applies only to the RT-ICA BLOCKED state above — output validation retries always use the same model regardless of mode.
 
 ## Output Validation Gate
 
@@ -109,13 +116,16 @@ backlog_view(selector='{item_ref}', summary=True)
 
 Read the `sections_index` field. A section is PRESENT if its name appears in `sections_index`. A section is ABSENT if its name does not appear.
 
+**Success signal**: `sections_index` contains all required section names from the table below.
+**Failure signal**: one or more required section names missing from `sections_index` — proceed to retry logic.
+
 2. Verify minimum content — Step 2: for each required section that appears in `sections_index`, verify content:
 
 ```text
 backlog_view(selector='{item_ref}', summary=False, section='{section-name}')
 ```
 
-Check the returned content against the minimum content table below. Do NOT use a full `summary=False` read without a `section` filter to check individual section presence — the `sections_index` from Step 1 is the authoritative presence check.
+Use the `section` filter to read each required section individually. The `sections_index` from Step 1 is the authoritative presence check — a full `summary=False` read without a `section` filter is not the right tool for individual section presence.
 
 #### Required sections and minimum content
 
@@ -271,6 +281,6 @@ After grooming completes, the item is ready for SAM planning. The caller
 |---|---|---|
 | Groomed | Output validation passed, `mark_groomed=True` called | Report completion to caller |
 | Blocked (RT-ICA) | MISSING conditions unresolved after user batch | `backlog_update(selector='{item_ref}', status='blocked')`, report, stop |
-| Blocked (validation) | 4 retry attempts failed to produce required sections | `backlog_update(selector='{item_ref}', status='blocked')`, report, stop |
+| Blocked (validation) | 3 retry attempts failed to produce required sections | `backlog_update(selector='{item_ref}', status='blocked')`, report, stop |
 | Skipped | Pre-groom check returned SKIP | Report reason, next item |
 | Drift | Already groomed today | Route to [groom-drift.md](./groom-drift.md), report, stop |
