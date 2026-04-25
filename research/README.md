@@ -139,6 +139,7 @@ research/
 │   ├── using-tmux-with-claude-code.md # tmux + Claude Code workflow guide: copy-mode, capture, multi-pane orchestration
 │   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
 │   ├── worktrunk.md                   # Worktrunk v0.33.0 — Rust CLI for git worktree management with parallel AI agent workflows, branch-name addressing, lifecycle hooks (14.8K stars)
+│   ├── wrkflw.md                      # wrkflw v0.8.0 — Rust CLI for local GitHub Actions and GitLab CI validation and execution; Docker/Podman/emulation runtimes, TUI with DAG view, diff-aware filtering (MIT)
 │   └── yume.md                        # Native desktop GUI for Claude Code CLI (Tauri + Rust)
 ├── evaluation-testing/                # Agent evaluation, testing, and harness engineering
 │   ├── harness-engineering-martin-fowler.md  # Harness engineering discipline for AI coding agents (Martin Fowler / Böckeler)
@@ -755,6 +756,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [tui-studio.md](./developer-tools/tui-studio.md) | TUI Studio — Figma-like visual editor for terminal UI applications; drag-and-drop component placement, real-time ANSI preview, one-click code export to 6 frameworks (Ink, BubbleTea, Blessed, Textual, OpenTUI, Tview); proprietary SaaS | 2026-03-29   |
 | [pretext.md](./developer-tools/pretext.md) | Pretext v0.0.3 — DOM-free multiline text measurement and layout library; canvas-based measurement, pure arithmetic line breaking, 100% browser accuracy (7,680/7,680 tests), CJK/Arabic/Thai/BiDi support, ~19ms prepare() for 500-text batch, 0.09ms/call layout() (8K stars) | 2026-03-29   |
 | [pyscript.md](./developer-tools/pyscript.md) | PyScript 2026.3.1 — open-source platform bringing Python to web browsers via WebAssembly; dual interpreters (Pyodide + MicroPython 170KB); Python-JavaScript FFI; pyscript.web Pythonic DOM API; worker-based execution via Donkey/Bridge API (18.7K stars, Apache-2.0) | 2026-04-12   |
+| [wrkflw.md](./developer-tools/wrkflw.md) | wrkflw v0.8.0 — Rust CLI for local GitHub Actions and GitLab CI workflow validation and execution; 4 runtimes (Docker, Podman, emulation, secure emulation), TUI with DAG view, diff-aware filtering, matrix builds, reusable workflows, multi-provider secrets (MIT) | 2026-04-25   |
 
 **Key Topics**:
 
@@ -914,6 +916,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [maverick.md](./coding-agents/maverick.md) | Maverick — Claude Code plugin (28 skills + 4 agents) + CLI with enforcement chain (best-practice → project skill → local verify → CI → agent review → human review), three workflow modes (do-issue-solo, do-issue-guided, do-task-solo), upskill auto-generation from codebase, and AWS EC2/SQS/Lambda worker fleet for autonomous issue resolution (alpha) | 2026-03-23   |
 | [hyperagents.md](./coding-agents/hyperagents.md) | HyperAgents — Meta research framework for self-referential self-improving agents; MetaAgent iteratively modifies codebase, TaskAgent solves domains (Balrog, Genesis, IMO, Polyglot, Paper Review, Search Arena); Docker-containerized evaluation, LiteLLM multi-model support, evolutionary optimization loop (CC BY-NC-SA 4.0) | 2026-03-29   |
 | [trigger-dev-examples.md](./coding-agents/trigger-dev-examples.md) | Trigger.dev Examples — 29 TypeScript/Python example projects covering 5 AI agent patterns (prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer); Next.js/Remix integrations; real-time streaming via Socket.io; OpenAI/Anthropic/Mastra integrations (Apache-2.0) | 2026-04-11   |
+| [raincast.md](./coding-agents/raincast.md) | Raincast v0.1.0 — AI-powered native desktop app generator: describe an app in plain English, receive a compiled React + Tauri binary (macOS/Windows/Linux) with real UI, file system access, and system integration; live preview with hot reload during generation (MIT) | 2026-04-25   |
 
 **Key Topics**:
 
