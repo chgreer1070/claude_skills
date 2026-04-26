@@ -96,6 +96,7 @@ research/
 │   ├── cocoindex.md                   # Ultra-performant AI data transformation framework with Rust core, incremental processing, and dataflow model (Apache 2.0)
 │   ├── dolt.md                        # MySQL-compatible version-controlled SQL database — branch, merge, diff, clone via SQL (20.3K stars)
 │   ├── chroma.md                      # Chroma v1.5.5 — open-source vector database: 4-function API, HNSW/Spann indices, hybrid search, Rust+Python (26.9K stars)
+│   ├── honker.md                      # SQLite extension + language bindings adding PostgreSQL-style NOTIFY/LISTEN, durable pub/sub, task queues, and event streams (v0.2.1, experimental)
 │   ├── motherduck.md                  # Serverless cloud DuckDB warehouse with Dual Execution and native MCP integration (36K+ stars)
 │   ├── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 │   └── pocketbase.md                  # Open-source Go backend in 1 file: SQLite, realtime, auth, file storage, admin UI (57K+ stars)
@@ -104,6 +105,7 @@ research/
 ├── embedded-ui-libraries/              # Embedded graphics libraries for microcontrollers and MCUs
 │   └── lvgl.md                         # LVGL - Light and Versatile Graphics Library (22.8K+ stars)
 ├── developer-tools/                   # Developer productivity and workflow tools
+│   ├── abtop.md                       # Real-time TUI monitor for Claude Code and Codex agent sessions with live token, context window, and rate limit tracking (v0.3.7, 1.2K stars)
 │   ├── biome.md                       # Rust-based web toolchain: formatter + linter + import organizer, 97% Prettier compat, ~35× faster (23.8K stars)
 │   ├── byobu.md                       # Enhanced terminal multiplexer wrapper for tmux/screen — F-key layer, 40+ status plugins, XDG config (1.5K stars)
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
