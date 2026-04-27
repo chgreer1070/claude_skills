@@ -126,34 +126,32 @@ process.stdin.on('end', () => {
     process.exit(0);
   }
 
-  // Build reminder message
-  const spawn = `${process.env.CLAUDE_PLUGIN_ROOT || '.'}/skills/kage-bunshin/scripts/spawn.py`;
-  const sessionList = sessions.map((s) => `  - ${s}`).join('\n');
-  const commands = sessions
-    .map((s) => {
-      const match = s.match(/_worktree-(.+)$/);
-      const name = match ? match[1] : s;
-      return `  uv run ${spawn} read --name ${name}  # check if idle (❯) or working\n  uv run ${spawn} stop --name ${name}  # graceful Ctrl-C shutdown`;
-    })
-    .join('\n');
-  const fullMessage = [
-    `Kage-bunshin worktree sessions still running (${sessions.length}):`,
-    sessionList,
-    '',
-    'Check state then gracefully stop:',
-    commands,
-    '',
-    `List all sessions: uv run ${spawn} list`,
-  ].join('\n');
-
-  // Truncate to 500 chars — injected on every task completion; 51 firings × full message
-  // consumed 105K+ chars. The orchestrator needs session count and registry path only;
-  // full command listings can be found in the registry file.
-  const MAX_CHARS = 500;
-  const message =
-    fullMessage.length > MAX_CHARS
-      ? `${fullMessage.slice(0, MAX_CHARS)}\u2026[truncated \u2014 full details at: ${registryPath}]`
-      : fullMessage;
+  // Emit metadata-only: session count + registry path.
+  // Full session details (tmux names, commands) are in the registry file.
+  // Bound the message to MAX_MESSAGE_LEN — long deep-checkout repoRoots can
+  // otherwise push the message past the documented limit. Filename is kept
+  // intact; the directory portion is elided from the front when needed.
+  const MAX_MESSAGE_LEN = 200;
+  const ELLIPSIS = '\u2026';
+  const prefix = `${sessions.length} kage-bunshin session(s) still running. Registry: `;
+  const pathBudget = MAX_MESSAGE_LEN - prefix.length;
+  let displayPath = registryPath;
+  if (displayPath.length > pathBudget) {
+    if (pathBudget <= ELLIPSIS.length) {
+      displayPath = ELLIPSIS;
+    } else {
+      const filename = path.basename(displayPath);
+      const sep = path.sep;
+      const room = pathBudget - filename.length - ELLIPSIS.length - sep.length;
+      if (room <= 0) {
+        displayPath = ELLIPSIS + filename.slice(-(pathBudget - ELLIPSIS.length));
+      } else {
+        const dir = path.dirname(displayPath);
+        displayPath = ELLIPSIS + dir.slice(-room) + sep + filename;
+      }
+    }
+  }
+  const message = prefix + displayPath;
 
   const output = {
     systemMessage: message,
