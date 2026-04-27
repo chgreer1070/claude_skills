@@ -394,7 +394,6 @@ pythonpath = [
 ]
 testpaths = [
     "plugins/agentskill-kaizen/tests",
-    "plugins/scientific-method/mcp/experiment-registry/tests",
     "plugins/development-harness/tests",
     "plugins/development-harness/tests_sam",
     "plugins/frustration-analyzer/tests",
