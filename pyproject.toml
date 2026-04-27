@@ -134,7 +134,6 @@ backlog-core = { workspace = true }
 [tool.uv.workspace]
 members = [
     "plugins/development-harness",
-    "plugins/scientific-method/mcp/experiment-registry",
 ]
 
 [tool.ruff]
@@ -394,13 +393,8 @@ pythonpath = [
     "./plugins/frustration-analyzer/tests",
 ]
 testpaths = [
-    # Explicit list excludes plugins/scientific-method/mcp/experiment-registry/tests,
-    # which is a standalone sub-project with its own pyproject.toml and pytest config.
-    # That sub-project must be tested independently: cd into its directory and run pytest.
-    # Including it here causes a conftest module name collision because uv adds the
-    # experiment-registry package root to sys.path, making tests/conftest.py resolve
-    # as "tests.conftest" — the same name as plugins/development-harness/tests/conftest.py.
     "plugins/agentskill-kaizen/tests",
+    "plugins/scientific-method/mcp/experiment-registry/tests",
     "plugins/development-harness/tests",
     "plugins/development-harness/tests_sam",
     "plugins/frustration-analyzer/tests",
