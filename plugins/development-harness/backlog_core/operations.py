@@ -4938,7 +4938,7 @@ def create_project(
 # Impact Radius conflict analysis (pure — no GitHub calls)
 # ---------------------------------------------------------------------------
 
-_MIN_CONFLICT_GROUP_SIZE = 2
+MIN_CONFLICT_GROUP_SIZE = 2
 
 
 class _UnionFind:
@@ -5050,7 +5050,7 @@ def _build_conflict_groups(titles: list[str], path_sets: list[set[str]]) -> list
     group_id = 1
     for root in sorted(components):
         members = components[root]
-        if len(members) < _MIN_CONFLICT_GROUP_SIZE:
+        if len(members) < MIN_CONFLICT_GROUP_SIZE:
             continue
         member_titles = sorted(titles[i] for i in members)
         shared = group_shared.get(root, set())
@@ -5109,6 +5109,6 @@ def analyze_impact_radius_conflicts(items: list[ImpactRadiusItem]) -> list[Confl
         conflicts are found.
     """
     titles, path_sets = _collect_items_with_paths(items)
-    if len(titles) < _MIN_CONFLICT_GROUP_SIZE:
+    if len(titles) < MIN_CONFLICT_GROUP_SIZE:
         return []
     return _build_conflict_groups(titles, path_sets)
