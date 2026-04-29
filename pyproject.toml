@@ -2,7 +2,6 @@
 name = "claude_skills"
 requires-python = ">=3.11"
 dependencies = [
-    "backlog-core",
     "fastmcp[tasks]>=3.0.2",
     "marko>=2.2.2",
     "pygithub>=2.8.1",
@@ -127,14 +126,6 @@ too-many-positional-arguments = "ignore" # ty 0.0.17 bug: @_with_exception decor
 # Only the dir needs exclusion for Python linting.
 exclude = ["plugins/uv/skills/uv", ".tmp"]
 include = ["**/*.py"]
-
-[tool.uv.sources]
-backlog-core = { workspace = true }
-
-[tool.uv.workspace]
-members = [
-    "plugins/development-harness",
-]
 
 [tool.ruff]
 # Exclude git symlinks - Windows reads target path as file content; linters fail.
