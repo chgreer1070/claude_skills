@@ -409,10 +409,7 @@ def _sam_plan_update(plan: str, config: UpdatePlanConfig, plan_dir: str) -> dict
     backend = _get_backend(plan_dir)
     plan_fields: dict[str, Any] | None = None
     if config.set_fields_json is not None:
-        raw_fields: Any = json.loads(config.set_fields_json)
-        if not isinstance(raw_fields, dict):
-            msg = "set_fields_json must be a JSON object"
-            raise ToolError(msg)
+        raw_fields: dict[str, Any] = config.set_fields_json
         validated = _validated_plan_patch(backend, plan, raw_fields)
         plan_fields = {k: v for k, v in validated.model_dump().items() if k in raw_fields}
     backend.update_plan_fields(plan, context=config.context, set_fields=plan_fields)
@@ -637,11 +634,7 @@ def sam_task(
                 raise TypeError(f"Expected UpdateTaskConfig, got {type(config).__name__}")
             update_config = config
             if update_config.set_fields_json is not None:
-                raw_fields: Any = json.loads(update_config.set_fields_json)
-                if not isinstance(raw_fields, dict):
-                    msg = "set_fields_json must be a JSON object"
-                    raise ToolError(msg)
-                validated_task = _validated_task_patch(backend, plan_id, task, raw_fields)
+                validated_task = _validated_task_patch(backend, plan_id, task, update_config.set_fields_json)
                 backend.update_task(plan_id, validated_task)
             if update_config.append_section is not None:
                 backend.append_task_section(
@@ -730,22 +723,21 @@ def sam_active_task(
                 raise ToolError(msg)
             if not isinstance(config, UpdateActiveTaskConfig):
                 raise TypeError(f"Expected UpdateActiveTaskConfig, got {type(config).__name__}")
+            update_config = config
             # ActiveTaskContext stores task_file_path and task_id.
             # Derive plan_id and plan_dir from the path rather than storing them separately.
             active_plan_dir = str(Path(active.task_file_path).parent)
             active_plan_id = Path(active.task_file_path).stem.split("-")[0]
             active_task_id = active.task_id
             task_backend = _get_backend(active_plan_dir)
-            if config.set_fields_json is not None:
-                raw_fields: Any = json.loads(config.set_fields_json)
-                if not isinstance(raw_fields, dict):
-                    msg = "set_fields_json must be a JSON object"
-                    raise ToolError(msg)
-                validated_task = _validated_task_patch(task_backend, active_plan_id, active_task_id, raw_fields)
+            if update_config.set_fields_json is not None:
+                validated_task = _validated_task_patch(
+                    task_backend, active_plan_id, active_task_id, update_config.set_fields_json
+                )
                 task_backend.update_task(active_plan_id, validated_task)
-            if config.append_section is not None:
+            if update_config.append_section is not None:
                 task_backend.append_task_section(
-                    active_plan_id, active_task_id, config.append_section, config.section_content or ""
+                    active_plan_id, active_task_id, update_config.append_section, update_config.section_content or ""
                 )
             return {"updated": True, "address": f"{active_plan_id}/{active_task_id}"}
 
