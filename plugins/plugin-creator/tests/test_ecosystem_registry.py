@@ -2,8 +2,9 @@
 
 Tests the public API of ecosystem_registry.py:
 - get_ecosystem_owned_skill_keys() return value and type
-- get_ecosystem_for_key() for owned, standard, and unknown keys
-- Immutability guarantee of returned frozenset
+- get_ecosystem_owned_agent_keys() return value and type
+- get_ecosystem_for_key() for owned, standard, and unknown keys, including agent branch
+- Immutability guarantee of returned frozensets
 - agent_frontmatter_keys coverage in both get_ecosystem_for_key() and the guard set
 """
 
@@ -14,7 +15,12 @@ from unittest.mock import patch
 import pytest
 
 import ecosystem_registry
-from ecosystem_registry import EcosystemSpec, get_ecosystem_for_key, get_ecosystem_owned_skill_keys
+from ecosystem_registry import (
+    EcosystemSpec,
+    get_ecosystem_for_key,
+    get_ecosystem_owned_agent_keys,
+    get_ecosystem_owned_skill_keys,
+)
 
 
 class TestGetEcosystemOwnedKeys:
@@ -196,6 +202,77 @@ class TestGetEcosystemForKey:
         assert result_skill == "testsuite"
         assert result_agent == "testsuite"
         assert result_unknown is None
+
+
+class TestGetEcosystemOwnedAgentKeys:
+    """Tests for get_ecosystem_owned_agent_keys() public function.
+
+    Scope: Verifies return type is frozenset (immutable), current-registry state
+    (empty set, disjoint from skill keys), and symmetry with
+    get_ecosystem_owned_skill_keys() — same contract, different field.
+
+    Strategy: Black-box tests against the public API; immutability via attribute
+    access attempt; current-registry expectations documented as tests that will
+    fail when an ecosystem adds its first agent key.
+    """
+
+    def test_returns_frozenset(self) -> None:
+        """get_ecosystem_owned_agent_keys() returns a frozenset, not a plain set.
+
+        Tests: Return type is frozenset
+        How: Call function, check isinstance
+        Why: Same immutability contract as get_ecosystem_owned_skill_keys(); callers
+             must not be able to mutate the registry guard set at runtime.
+        """
+        # Arrange / Act
+        owned = get_ecosystem_owned_agent_keys()
+
+        # Assert
+        assert isinstance(owned, frozenset)
+
+    def test_frozenset_is_immutable(self) -> None:
+        """Returned frozenset raises AttributeError on attempted mutation.
+
+        Tests: Immutability contract of returned value
+        How: Attempt frozenset.add() and expect AttributeError
+        Why: Same contract as the skill-keys guard set.
+        """
+        # Arrange
+        owned = get_ecosystem_owned_agent_keys()
+
+        # Act / Assert
+        method_name = "add"
+        with pytest.raises(AttributeError):
+            getattr(owned, method_name)("test")
+
+    def test_currently_empty(self) -> None:
+        """get_ecosystem_owned_agent_keys() is empty when no ecosystem declares agent keys.
+
+        Tests: Zero-impact current state documented as a test
+        How: Assert len == 0
+        Why: All current ecosystems have empty agent_frontmatter_keys. This test
+             documents the expected current state and will fail (as intended) when
+             an ecosystem adds an agent key, prompting a review of the guard set.
+        """
+        # Arrange / Act
+        owned = get_ecosystem_owned_agent_keys()
+
+        # Assert
+        assert len(owned) == 0
+
+    def test_skill_key_not_in_agent_keys(self) -> None:
+        """The 'mcp' skill key is absent from the agent-owned keys set.
+
+        Tests: Skill and agent key sets are disjoint for the current registry
+        How: Check 'mcp' is not a member of get_ecosystem_owned_agent_keys()
+        Why: mcp is registered as a skill_frontmatter_key only; including it in
+             the agent guard set would incorrectly suppress FM009 on agent files.
+        """
+        # Arrange / Act
+        owned = get_ecosystem_owned_agent_keys()
+
+        # Assert
+        assert "mcp" not in owned
 
 
 class TestEcosystemOwnedKeysIncludesAgentKeys:

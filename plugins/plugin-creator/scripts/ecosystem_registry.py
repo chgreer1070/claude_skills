@@ -22,7 +22,7 @@ Usage (from a sibling script)::
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).parent))
-    from ecosystem_registry import get_ecosystem_owned_skill_keys, get_ecosystem_for_key
+    from ecosystem_registry import get_ecosystem_owned_agent_keys, get_ecosystem_owned_skill_keys, get_ecosystem_for_key
 
     if get_ecosystem_for_key("mcp") is not None:
         # skip FM009 rewrite for this key
@@ -90,6 +90,17 @@ def get_ecosystem_owned_skill_keys() -> frozenset[str]:
     return frozenset().union(
         *(spec.skill_frontmatter_keys | spec.agent_frontmatter_keys for spec in _REGISTRY.values())
     )
+
+
+def get_ecosystem_owned_agent_keys() -> frozenset[str]:
+    """Return the union of all agent_frontmatter_keys across every registered ecosystem.
+
+    Returns:
+        Immutable frozenset of top-level YAML key names owned by any registered
+        ecosystem in their ``agent_frontmatter_keys``.  Callers can safely check
+        ``key in get_ecosystem_owned_agent_keys()`` without risk of accidental mutation.
+    """
+    return frozenset().union(*(spec.agent_frontmatter_keys for spec in _REGISTRY.values()))
 
 
 def get_ecosystem_for_key(key: str) -> str | None:
