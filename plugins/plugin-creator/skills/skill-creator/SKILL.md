@@ -271,7 +271,7 @@ Three patterns: (1) high-level guide with pointers to FORMS.md, REFERENCE.md, et
 
 Rules: keep references one level deep from SKILL.md. NEVER add ToC, anchor links, or bold/italic for visual emphasis to reference files — Load [ai-audience-writing-rules.md](./references/ai-audience-writing-rules.md).
 
-> **Editing an existing SKILL.md?** Before treating an unrecognized frontmatter key as an error, check `plugins/plugin-creator/scripts/ecosystem_registry.py`. If the key is returned by `get_ecosystem_owned_keys()` — such as `mcp:` (OpenCode) — preserve it and all its nested content verbatim. Do not strip, rewrite, or normalize it. For `mcp:` specifically, see the `references/agent-plugin-ecosystem.md` reference (OpenCode SKILL.md Extensions section) for the full schema.
+> **Editing an existing SKILL.md?** Before treating an unrecognized frontmatter key as an error, check whether it is an ecosystem-owned field. The currently known ecosystem-owned key is `mcp:` (owned by OpenCode) — preserve it and all its nested content verbatim. Do not strip, rewrite, or normalize it. For `mcp:` specifically, see the `references/agent-plugin-ecosystem.md` reference (OpenCode SKILL.md Extensions section) for the full schema.
 
 ## Skill Creation Process
 
@@ -536,8 +536,8 @@ After creating the skill, test it with real prompts, grade results with the A/B 
 **Read `references/evaluation-and-optimization.md`** for the complete workflow covering:
 
 - **Step 7** — Define test cases (`evals/evals.json`)
-- **Step 8** — Run A/B evaluation (parallel with-skill vs baseline runs, grading via `agents/grader.md`, viewer via `eval-viewer/generate_review.py`)
-- **Step 9** — Improve the skill (failure mode taxonomy, iteration loop, blind comparison via `agents/comparator.md` and `agents/analyzer.md`)
+- **Step 8** — Run A/B evaluation (parallel with-skill vs baseline runs, grading via `@plugin-creator:grader`, viewer via `eval-viewer/generate_review.py`)
+- **Step 9** — Improve the skill (failure mode taxonomy, iteration loop, blind comparison via `@plugin-creator:comparator` and `@plugin-creator:analyzer`)
 - **Step 10** — Description optimization (automated trigger tuning via `scripts/run_loop.py` with train/test split)
 
 Load [schemas.md](./references/schemas.md) for evals.json and grading.json formats.
@@ -546,7 +546,9 @@ Load [schemas.md](./references/schemas.md) for evals.json and grading.json forma
 
 | Directory | Contents |
 |-----------|----------|
-| `agents/` | `agents/grader.md` (assertion grading), `agents/comparator.md` (blind A/B), `agents/analyzer.md` (post-hoc analysis) |
+| `@plugin-creator:grader` | Assertion grading — evaluates eval outputs against expectations |
+| `@plugin-creator:comparator` | Blind A/B comparison — evaluates two skill versions without knowing which is which |
+| `@plugin-creator:analyzer` | Post-hoc analysis — explains why the winning version won and generates improvement suggestions |
 | `references/` | `references/schemas.md` (JSON schemas), `references/evaluation-and-optimization.md` (Steps 7-10), `references/claude-code-skills-official.md` (spec), `references/workflows.md` (patterns) |
 | `eval-viewer/` | `viewer.html` (interactive eval viewer), `generate_review.py` (HTML generator) |
 | `assets/` | `eval_review.html` (trigger eval review template) |
