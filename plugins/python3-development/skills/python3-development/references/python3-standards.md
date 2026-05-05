@@ -41,6 +41,23 @@ This document centralizes the shared Python 3.11+ development standards, quality
 - **Caching**: Cache repeated expensive function calls.
 - **String Building**: Avoid string concatenation in loops; use `.join()` or list comprehensions.
 
+### 1.5 Identifier Naming
+
+- **Expand Acronyms**: Expand acronyms in public function names, method names, and class
+  names. `gcd()` is opaque; `greatest_common_divisor()` is self-documenting.
+  SOURCE: `research/learning-resources/TheAlgorithms-Python.md` line 150 (accessed 2026-04-27,
+  citing TheAlgorithms/Python CONTRIBUTING.md) — "Expand acronyms because `gcd()` is hard
+  to understand but `greatest_common_divisor()` is not."
+- **Contrast Example**: Prefer `greatest_common_divisor(a, b)` over `gcd(a, b)` for any
+  public API.
+- **Domain Acronym Exceptions**: Established domain acronyms that are the standard term
+  in their field may remain abbreviated. Per PEP 8, they appear lowercase in `snake_case`
+  identifiers: `url`, `api`, `sql`, `http`, `json`, `xml`.
+  Example: `parse_url()`, `fetch_api_response()`, `run_sql_query()`.
+- **Local Variable Scope**: Short names are acceptable for local variables with a lifetime
+  under 5 lines (loop indices, comprehension variables, short closures). Expand acronyms
+  when the variable is referenced beyond 5 lines of its definition.
+
 ### 1.6 Script Dependency Trade-offs
 Understand the complexity vs portability trade-off when creating Python CLI scripts:
 
