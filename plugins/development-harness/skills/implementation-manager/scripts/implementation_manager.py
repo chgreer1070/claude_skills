@@ -91,6 +91,7 @@ class TaskStatus(StrEnum):
     BLOCKED = "BLOCKED"
     DEFERRED = "DEFERRED"
     SKIPPED = "SKIPPED"
+    FAILED = "FAILED"
 
 
 # Mapping from YAML frontmatter status values to TaskStatus enum members.
@@ -104,6 +105,7 @@ _YAML_STATUS_TO_ENUM: dict[str, TaskStatus] = {
     "deferred": TaskStatus.DEFERRED,
     "skipped": TaskStatus.SKIPPED,
     "wont-fix": TaskStatus.SKIPPED,
+    "failed": TaskStatus.FAILED,
 }
 
 # Reverse mapping: TaskStatus -> canonical YAML frontmatter string.
@@ -115,10 +117,20 @@ _YAML_STATUS_TO_ENUM_REVERSE: dict[TaskStatus, str] = {
     TaskStatus.BLOCKED: "blocked",
     TaskStatus.DEFERRED: "deferred",
     TaskStatus.SKIPPED: "skipped",
+    TaskStatus.FAILED: "failed",
 }
 
-# Statuses that count as terminal/done for completion gating and dependency satisfaction.
-_TERMINAL_STATUSES: frozenset[TaskStatus] = frozenset({TaskStatus.COMPLETE, TaskStatus.DEFERRED, TaskStatus.SKIPPED})
+# Statuses that satisfy a dependency requirement.  FAILED is excluded: a failed
+# parent must not unblock its downstream tasks.
+_SUCCESSFUL_STATUSES: frozenset[TaskStatus] = frozenset({TaskStatus.COMPLETE, TaskStatus.DEFERRED})
+
+# Statuses that end a task's lifecycle (includes failure).  Used for plan-done checks.
+_TERMINAL_STATUSES: frozenset[TaskStatus] = frozenset({
+    TaskStatus.COMPLETE,
+    TaskStatus.DEFERRED,
+    TaskStatus.SKIPPED,
+    TaskStatus.FAILED,
+})
 
 
 class TaskPriority(IntEnum):
@@ -747,8 +759,9 @@ def get_ready_tasks(tasks: list[Task]) -> list[Task]:
         if task.status != TaskStatus.NOT_STARTED:
             continue
 
-        # Check if all dependencies are terminal (complete, deferred, or skipped)
-        deps_satisfied = all(status_by_id.get(dep_id) in _TERMINAL_STATUSES for dep_id in task.dependencies)
+        # Check if all dependencies are satisfied (complete or deferred).
+        # FAILED parents do not satisfy dependencies — downstream tasks must be skipped.
+        deps_satisfied = all(status_by_id.get(dep_id) in _SUCCESSFUL_STATUSES for dep_id in task.dependencies)
 
         if deps_satisfied:
             ready.append(task)

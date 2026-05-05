@@ -43,6 +43,9 @@ STATUS_MAP: dict[str, str] = {
     # Legacy title-marker variants (uppercase)
     "[DEFERRED]": "deferred",
     "[SKIPPED]": "skipped",
+    "failed": "failed",
+    "FAILED": "failed",
+    "[FAILED]": "failed",
 }
 
 
@@ -55,6 +58,7 @@ class TaskStatus(StrEnum):
     BLOCKED = "blocked"
     DEFERRED = "deferred"
     SKIPPED = "skipped"
+    FAILED = "failed"
 
 
 class Complexity(StrEnum):

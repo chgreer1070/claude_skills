@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from sam_schema.core.dependencies import BookendValidator, DependencyGraph, _task_id_sort_key
+from sam_schema.core.dependencies import (
+    SUCCESSFUL_STATUSES,
+    TERMINAL_STATUSES,
+    BookendValidator,
+    DependencyGraph,
+    _task_id_sort_key,
+)
 from sam_schema.core.models import AcceptanceCriterion, BookendType, Complexity, Plan, Priority, Task, TaskStatus
 
 # ---------------------------------------------------------------------------
@@ -736,3 +742,128 @@ class TestBookendValidatorAccessors:
 
         # Assert
         assert impl_ids == ["T1", "T3", "T10"]
+
+
+# ---------------------------------------------------------------------------
+# FAILED status — dependency satisfaction and downstream skipping
+# ---------------------------------------------------------------------------
+
+
+def test_get_ready_tasks_failed_parent_does_not_unblock_downstream() -> None:
+    """A FAILED parent must NOT satisfy downstream dependencies.
+
+    Tests: FAILED is not in SUCCESSFUL_STATUSES.
+    How: Parent in FAILED; child depends on parent; verify child is NOT ready.
+    Why: Downstream tasks of a FAILED parent must be auto-skipped, not dispatched.
+    """
+    # Arrange
+    parent = make_task("T1", status=TaskStatus.FAILED)
+    child = make_task("T2", dependencies=["T1"])
+    graph = DependencyGraph([parent, child])
+
+    # Act
+    ready = graph.get_ready_tasks()
+
+    # Assert
+    assert {t.id for t in ready} == set()
+
+
+def test_mark_downstream_skipped_single_level() -> None:
+    """mark_downstream_skipped returns direct dependents of the failed task.
+
+    Tests: DependencyGraph.mark_downstream_skipped single-level propagation.
+    How: T1 fails — T2 depends on T1; T3 does not depend on T1.
+    Why: Only T2 should be in the returned list.
+    """
+    # Arrange
+    parent = make_task("T1", status=TaskStatus.FAILED)
+    child = make_task("T2", dependencies=["T1"])
+    unrelated = make_task("T3")
+    graph = DependencyGraph([parent, child, unrelated])
+
+    # Act
+    to_skip = graph.mark_downstream_skipped("T1")
+
+    # Assert
+    assert "T2" in to_skip
+    assert "T3" not in to_skip
+
+
+def test_mark_downstream_skipped_transitive_chain() -> None:
+    """mark_downstream_skipped propagates through a 3-task chain.
+
+    Tests: Transitive DFS walk in mark_downstream_skipped.
+    How: T1 -> T2 -> T3 chain; T1 fails -> T2 and T3 should be skipped.
+    Why: The measurable signal in the item spec requires this exact scenario.
+    """
+    # Arrange
+    t1 = make_task("T1", status=TaskStatus.FAILED)
+    t2 = make_task("T2", dependencies=["T1"])
+    t3 = make_task("T3", dependencies=["T2"])
+    graph = DependencyGraph([t1, t2, t3])
+
+    # Act
+    to_skip = graph.mark_downstream_skipped("T1")
+
+    # Assert
+    assert "T2" in to_skip
+    assert "T3" in to_skip
+
+
+def test_mark_downstream_skipped_already_terminal_excluded() -> None:
+    """mark_downstream_skipped excludes tasks already in a terminal status.
+
+    Tests: Only not-started tasks are returned by mark_downstream_skipped.
+    How: T1 fails -> T2 depends on T1 but is already SKIPPED.
+    Why: Re-marking an already-skipped task is a no-op; the list must be clean.
+    """
+    # Arrange
+    t1 = make_task("T1", status=TaskStatus.FAILED)
+    t2 = make_task("T2", status=TaskStatus.SKIPPED, dependencies=["T1"])
+    graph = DependencyGraph([t1, t2])
+
+    # Act
+    to_skip = graph.mark_downstream_skipped("T1")
+
+    # Assert
+    assert "T2" not in to_skip
+
+
+def test_failed_is_terminal_status() -> None:
+    """FAILED must be in TERMINAL_STATUSES for plan-completion checks.
+
+    Tests: TERMINAL_STATUSES contains FAILED.
+    How: Direct membership check.
+    Why: Plan completion checks use TERMINAL_STATUSES; a FAILED plan must be
+         recognised as completed (no more work possible).
+    """
+    assert TaskStatus.FAILED in TERMINAL_STATUSES
+
+
+def test_failed_not_in_successful_statuses() -> None:
+    """FAILED must NOT be in SUCCESSFUL_STATUSES.
+
+    Tests: SUCCESSFUL_STATUSES excludes FAILED.
+    How: Direct membership check.
+    Why: SUCCESSFUL_STATUSES gates dependency satisfaction; FAILED parents must
+         not unblock downstream tasks.
+    """
+    assert TaskStatus.FAILED not in SUCCESSFUL_STATUSES
+
+
+def test_mark_downstream_skipped_empty_for_task_without_dependents() -> None:
+    """mark_downstream_skipped returns empty list when failed task has no dependents.
+
+    Tests: Base case — leaf node failure produces empty skip list.
+    How: Single failed task with no downstream dependents.
+    Why: Must not error or return spurious IDs.
+    """
+    # Arrange
+    t1 = make_task("T1", status=TaskStatus.FAILED)
+    graph = DependencyGraph([t1])
+
+    # Act
+    to_skip = graph.mark_downstream_skipped("T1")
+
+    # Assert
+    assert to_skip == []

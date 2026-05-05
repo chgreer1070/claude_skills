@@ -17,7 +17,7 @@ import re
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from sam_schema.core.backends._utils import _now_iso, validate_appended_task
-from sam_schema.core.dependencies import TERMINAL_STATUSES as _TERMINAL_STATUSES
+from sam_schema.core.dependencies import SUCCESSFUL_STATUSES as _TERMINAL_STATUSES
 from sam_schema.core.exceptions import PlanNotFoundError, TaskNotFoundError, TaskValidationError
 from sam_schema.core.models import PlanState, Task
 from sam_schema.core.task_backend_types import DocumentData, DocumentHandle, PlanData, PlanSummary, TaskData
@@ -58,6 +58,7 @@ _STATUS_TO_LABEL: dict[str, str] = {
     "blocked": "sam:blocked",
     "deferred": "sam:deferred",
     "skipped": "sam:skipped",
+    "failed": "sam:failed",
 }
 _LABEL_TO_STATUS: dict[str, str] = {v: k for k, v in _STATUS_TO_LABEL.items()}
 _METADATA_BEGIN = "<!-- sam-task-metadata:begin -->"

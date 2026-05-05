@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import TypeAdapter
 
 from sam_schema.core.backends._utils import _now_iso, validate_appended_task
-from sam_schema.core.dependencies import TERMINAL_STATUSES as _TERMINAL_STATUSES
+from sam_schema.core.dependencies import SUCCESSFUL_STATUSES as _TERMINAL_STATUSES
 from sam_schema.core.exceptions import (
     DocumentNotFoundError,
     PlanExistsError,
@@ -61,6 +61,7 @@ _VALID_STATUSES: frozenset[str] = frozenset({
     "blocked",
     "deferred",
     "skipped",
+    "failed",
 })
 
 

@@ -68,9 +68,11 @@ if _HOOK_SAM_PACKAGES_DIR not in sys.path:
 # Import directly from submodules for concrete types (avoids lazy __getattr__ object).
 import contextlib
 
-from sam_schema.core.models import TaskStatus as SamTaskStatus
+from sam_schema.core.dependencies import DependencyGraph
+from sam_schema.core.models import Task as SamTask, TaskStatus as SamTaskStatus
 from sam_schema.core.query import (
     get_task as sam_get_task,
+    load_plan as sam_load_plan,
     update_plan_fields as sam_update_plan_fields,
     update_status as sam_update_status,
 )
@@ -776,6 +778,78 @@ def _resolve_active_task_context(
     return sub_agent_session_id, task_file_path, task_id, parent_issue_number, context_file
 
 
+def _fetch_task_for_stop_hook(
+    full_path: Path, task_id: str, sub_agent_session_id: str | None, context_file: Path | None
+) -> SamTask:
+    """Load the current task for the SubagentStop handler; exit on error.
+
+    Wraps sam_get_task with the standard error handling for hook context:
+    - ValueError (schema violation) → exit 2 with stderr message
+    - KeyError / FileNotFoundError / OSError → clean up context, exit 0
+
+    Args:
+        full_path: Absolute path to the plan YAML file.
+        task_id: Task identifier within the plan.
+        sub_agent_session_id: Agent session ID for context cleanup.
+        context_file: Context file path for cleanup on transient errors.
+
+    Returns:
+        The current Task object for task_id.
+    """
+    try:
+        return sam_get_task(full_path, task_id)
+    except ValueError as e:
+        print(f"[hook] SubagentStop: schema violation in task file {full_path} — {e}", file=sys.stderr)
+        sys.exit(2)
+    except (KeyError, FileNotFoundError, OSError):
+        _cleanup_active_task_context(sub_agent_session_id, context_file)
+        sys.exit(0)
+
+
+def _cascade_failed_task(
+    full_path: Path, task_id: str, sub_agent_session_id: str | None, context_file: Path | None
+) -> None:
+    """Best-effort downstream skip cascade when a task is already in FAILED status.
+
+    Calls _mark_downstream_skipped_in_plan, absorbs all exceptions (SubagentStop
+    critical path — a network or write error must not prevent context cleanup),
+    then cleans up and exits 0.
+
+    Args:
+        full_path: Absolute path to the plan YAML file.
+        task_id: ID of the task that transitioned to FAILED.
+        sub_agent_session_id: Agent session ID for context cleanup.
+        context_file: Context file path for cleanup.
+    """
+    try:
+        _mark_downstream_skipped_in_plan(full_path, task_id)
+    except Exception as e:  # noqa: BLE001
+        print(f"[hook] SubagentStop: downstream skip failed for {task_id} — {e}", file=sys.stderr)
+    _cleanup_active_task_context(sub_agent_session_id, context_file)
+    sys.exit(0)
+
+
+def _mark_downstream_skipped_in_plan(plan_path: Path, failed_task_id: str) -> None:
+    """Mark all tasks transitively dependent on failed_task_id as SKIPPED.
+
+    Loads the plan, builds a DependencyGraph, calls mark_downstream_skipped
+    to obtain the list of tasks that must be auto-skipped, then writes
+    status=skipped and reason="upstream {failed_task_id} failed" for each.
+
+    Args:
+        plan_path: Absolute path to the plan YAML file.
+        failed_task_id: ID of the task that transitioned to FAILED.
+    """
+    read_result = sam_load_plan(plan_path)
+    graph = DependencyGraph(read_result.plan.tasks)
+    to_skip = graph.mark_downstream_skipped(failed_task_id)
+    for dep_id in to_skip:
+        sam_update_status(plan_path, dep_id, SamTaskStatus.SKIPPED)
+        # reason field write is best-effort — status update already succeeded
+        with contextlib.suppress(ValueError, KeyError, FileNotFoundError):
+            sam_update_plan_fields(plan_path, dep_id, set_fields={"reason": f"upstream {failed_task_id} failed"})
+
+
 def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = HookProfile.STANDARD) -> None:
     """Handle SubagentStop event - mark task COMPLETE with timestamp.
 
@@ -821,18 +895,16 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
         _cleanup_active_task_context(sub_agent_session_id, context_file)
         sys.exit(0)
 
-    try:
-        current_task = sam_get_task(full_path, task_id)
-    except ValueError as e:
-        print(f"[hook] SubagentStop: schema violation in task file {full_path} — {e}", file=sys.stderr)
-        sys.exit(2)
-    except (KeyError, FileNotFoundError, OSError):
-        _cleanup_active_task_context(sub_agent_session_id, context_file)
-        sys.exit(0)
+    current_task = _fetch_task_for_stop_hook(full_path, task_id, sub_agent_session_id, context_file)
 
     if current_task.status == SamTaskStatus.COMPLETE:
         _cleanup_active_task_context(sub_agent_session_id, context_file)
         sys.exit(0)
+
+    if current_task.status == SamTaskStatus.FAILED:
+        # Agent explicitly set task to FAILED before stopping.
+        # Cascade skip signals to all downstream dependents.
+        _cascade_failed_task(full_path, task_id, sub_agent_session_id, context_file)
 
     if profile == HookProfile.STRICT:
         for warning in run_strict_pre_completion_checks(full_path, task_id, hook_input):

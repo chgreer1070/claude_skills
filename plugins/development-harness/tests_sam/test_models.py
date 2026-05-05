@@ -70,6 +70,10 @@ class TestTaskStatusEnum:
         """Verify SKIPPED maps to 'skipped'."""
         assert TaskStatus.SKIPPED == "skipped"
 
+    def test_failed_value(self) -> None:
+        """Verify FAILED maps to 'failed'."""
+        assert TaskStatus.FAILED == "failed"
+
     def test_all_members_count(self) -> None:
         """Verify the total number of status values.
 
@@ -77,7 +81,7 @@ class TestTaskStatusEnum:
         How: Count enum members.
         Why: Adding a status without a test means no coverage of its downstream impact.
         """
-        assert len(TaskStatus) == 6
+        assert len(TaskStatus) == 7
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +254,42 @@ class TestStatusMap:
     def test_skipped_marker_mapping(self) -> None:
         """Verify '[SKIPPED]' title marker maps to 'skipped'."""
         assert STATUS_MAP["[SKIPPED]"] == "skipped"
+
+    def test_status_map_failed_lowercase(self) -> None:
+        """Verify 'failed' normalises to 'failed'."""
+        assert STATUS_MAP["failed"] == "failed"
+
+    def test_status_map_failed_uppercase(self) -> None:
+        """Verify 'FAILED' normalises to 'failed'."""
+        assert STATUS_MAP["FAILED"] == "failed"
+
+    def test_status_map_failed_marker(self) -> None:
+        """Verify '[FAILED]' title marker maps to 'failed'."""
+        assert STATUS_MAP["[FAILED]"] == "failed"
+
+
+# ---------------------------------------------------------------------------
+# Task model — FAILED status
+# ---------------------------------------------------------------------------
+
+
+class TestTaskFailedStatus:
+    """Verify Task model accepts and stores FAILED status correctly.
+
+    Tests: TaskStatus.FAILED used in Task construction.
+    How: Construct Task with FAILED status, verify stored value.
+    Why: FAILED is a new lifecycle state — must be accepted and round-trip correctly.
+    """
+
+    def test_task_accepts_failed_status(self) -> None:
+        """Verify Task can be constructed with FAILED status."""
+        task = Task(id="T1", title="test", status=TaskStatus.FAILED)
+        assert task.status == "failed"
+
+    def test_task_failed_status_via_string(self) -> None:
+        """Verify Task accepts 'failed' string for status field."""
+        task = Task.model_validate({"id": "T1", "title": "test", "status": "failed"})
+        assert task.status == TaskStatus.FAILED
 
 
 # ---------------------------------------------------------------------------

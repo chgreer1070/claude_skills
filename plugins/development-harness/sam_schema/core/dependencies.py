@@ -10,9 +10,19 @@ import re
 
 from sam_schema.core.models import BookendType, Plan, Task, TaskStatus
 
-# Statuses that satisfy a dependency requirement — tasks depending on a task
-# in one of these statuses may proceed.
-TERMINAL_STATUSES: frozenset[str] = frozenset({TaskStatus.COMPLETE, TaskStatus.DEFERRED, TaskStatus.SKIPPED})
+# Statuses that satisfy a dependency — a downstream task may proceed only when
+# its dependency is in one of these statuses.  FAILED is intentionally excluded:
+# a failed parent must NOT unblock its dependents (they should be auto-skipped).
+SUCCESSFUL_STATUSES: frozenset[str] = frozenset({TaskStatus.COMPLETE, TaskStatus.DEFERRED, TaskStatus.SKIPPED})
+
+# Statuses that represent the end of a task's lifecycle (no further transitions
+# are expected).  Used for cycle detection and plan-completion checks.
+TERMINAL_STATUSES: frozenset[str] = frozenset({
+    TaskStatus.COMPLETE,
+    TaskStatus.DEFERRED,
+    TaskStatus.SKIPPED,
+    TaskStatus.FAILED,
+})
 
 # Pattern used to extract the numeric portion of a task ID for ordering.
 # Matches "T1", "1", "T2.3", "1.1" — captures the leading numeric part.
@@ -173,24 +183,69 @@ class DependencyGraph:
                 result.append((task, unsatisfied))
         return result
 
+    def mark_downstream_skipped(self, failed_task_id: str) -> list[str]:
+        """Return the IDs of all tasks that must be skipped because *failed_task_id* failed.
+
+        Performs a forward DFS from *failed_task_id* through the dependency graph
+        (following edges in the direction "task → tasks that depend on it") and
+        collects all reachable tasks that are still in ``not-started`` status.
+
+        This method does NOT mutate any task — callers are responsible for writing
+        ``status = "skipped"`` and ``reason = "upstream {failed_task_id} failed"``
+        to each returned task ID via the backend.
+
+        Args:
+            failed_task_id: ID of the task that has just transitioned to FAILED.
+
+        Returns:
+            List of task IDs (in DFS discovery order) that should be marked
+            ``skipped`` because they depend transitively on the failed task.
+            Empty list when the failed task has no downstream dependents, or all
+            downstream tasks are already in a terminal status.
+        """
+        # Build reverse adjacency: task_id -> list of task_ids that depend on it.
+        reverse: dict[str, list[str]] = {t.id: [] for t in self._tasks}
+        for t in self._tasks:
+            for dep_id in t.dependencies:
+                if dep_id in reverse:
+                    reverse[dep_id].append(t.id)
+
+        skipped: list[str] = []
+        visited: set[str] = set()
+
+        def _dfs(node_id: str) -> None:
+            for dependent_id in reverse.get(node_id, []):
+                if dependent_id in visited:
+                    continue
+                visited.add(dependent_id)
+                dep_task = self._by_id.get(dependent_id)
+                if dep_task is not None and dep_task.status == TaskStatus.NOT_STARTED:
+                    skipped.append(dependent_id)
+                    _dfs(dependent_id)
+
+        _dfs(failed_task_id)
+        return skipped
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
 
     def _dep_is_terminal(self, dep_id: str) -> bool:
-        """Return True when *dep_id* exists and is in a terminal status.
+        """Return True when *dep_id* exists and is in a successful status.
 
         Args:
             dep_id: Task ID of the dependency to check.
 
         Returns:
-            ``True`` if the dependency exists and its status is terminal,
-            ``False`` if the dependency is missing or not yet terminal.
+            ``True`` if the dependency exists and its status is in
+            ``SUCCESSFUL_STATUSES``, ``False`` if the dependency is missing,
+            not yet terminal, or in a FAILED status (which must not unblock
+            downstream tasks — those should be auto-skipped instead).
         """
         dep_task = self._by_id.get(dep_id)
         if dep_task is None:
             return False
-        return dep_task.status in TERMINAL_STATUSES
+        return dep_task.status in SUCCESSFUL_STATUSES
 
     def _all_deps_terminal(self, task: Task) -> bool:
         """Return True when all of *task*'s dependencies are in terminal status.
