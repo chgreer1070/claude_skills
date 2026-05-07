@@ -28,11 +28,25 @@ Execute in order. Report discovery summary before proceeding to Phase 2.
 - Run `uvx skilllint@latest check <skill-path>` for token count; flag SK006/SK007
 - Audit reference files: inventory all `.md` files, extract links from SKILL.md, classify each unlinked file (New Content / Duplicate / Notes / Examples / Outdated). READ orphaned files completely before classifying.
 - Validate all links resolve to existing files; check bidirectional linking
+- Run citation drift checks for `SOURCE:` references found in SKILL.md and skill reference files:
+  - Extract citation URLs via regex pattern `SOURCE:\s+\[([^\]]+)\]\(([^)]+)\)` (canonical citation format; literal regex escapes); use capture group 2 as the URL and capture group 1 as the link title. For every parsed citation, record provenance as `file:line` for Citation Drift reporting. If a `SOURCE:` line does not match this format, emit a WARNING for unparsable citation syntax with `file:line`.
+  - For each citation, capture the immediately preceding sentence as the claim phrase (split on `.`, `!`, `?`, or newline; search backward up to `citation_context_window_chars`, default: 300, max: 600). This is a heuristic: abbreviations/decimals (for example `Dr.`, `e.g.`, `v1.2.3`) may split imperfectly; if extracted phrase is empty or shorter than 20 characters, fallback to link title.
+  - Fetch each unique URL once using WebFetch with timeout `citation_timeout_seconds` (runtime setting; default: 15, max: 30). Do not hang on slow URLs.
+  - Continue assessment after fetch failures. Record failures as `Unreachable Citation` findings with reason, and treat network/access failures as potentially transient.
+  - Retry policy for non-success fetches (including 404/410): retry once after a 2-second delay; if still failing specifically with timeout/DNS/401/403/429 and the evaluator can use a second egress path (for example a configured VPN/proxy profile), retry from that path before final classification.
+  - Severity mapping:
+    - timeout/DNS/5xx/401/403/429 => WARNING (unreachable; possibly transient or access-gated)
+    - 404/410 that persist after retry policy => CRITICAL (persistently broken citation)
+    - 404/410 that succeed on retry => no finding
+    - URL reachable with fallback-title context only (no sentence-length claim phrase) => informational (`Drift: Unknown`, no finding/deduction)
+    - URL reachable but sentence-length claim phrase absent => RECOMMENDATION (drift suspected)
+    - phrase present => no finding
 - If any skill exceeds 4000 tokens: load `plugin-creator:optimize` and use it to identify specific reduction and reorganization opportunities. Include these as RECOMMENDATION findings in the report.
 
 **Phase 4 — Commands Analysis**: Validate frontmatter. Check argument documentation and example usage.
 
 **Phase 5 — Agents Analysis**: Validate frontmatter. Check delegation trigger keywords in description. Review tool restrictions.
+- Run citation drift checks for `SOURCE:` references in agent markdown using the same extraction, deduplication, timeout, and severity rules from Phase 3.
 - If any agent body exceeds 4000 tokens: load `plugin-creator:optimize` and use it to identify specific reduction and reorganization opportunities. Include these as RECOMMENDATION findings in the report.
 
 **Phase 6 — Hooks Validation**: If `hooks.json` exists or hooks in frontmatter, validate event names, handler fields, exit codes.
@@ -49,7 +63,7 @@ When a SKILL.md contains frontmatter keys outside the Claude Code standard set, 
 
 ## Assessment Rules
 
-READ every file completely. CITE specific file:line for all issues. ASSIGN priority levels (CRITICAL / WARNING / RECOMMENDATION) to every finding. DISTINGUISH required vs optional field violations. VERIFY all internal links resolve. CHECK bidirectional linking. PRODUCE complete report even for large plugins. Do NOT flag optional fields as critical. Do NOT suggest enhancements outside the plugin's stated purpose. Do NOT classify orphaned files without reading them first.
+READ every file completely. CITE specific file:line for all issues. ASSIGN priority levels (CRITICAL / WARNING / RECOMMENDATION) to every finding. DISTINGUISH required vs optional field violations. VERIFY all internal links resolve. CHECK bidirectional linking. PRODUCE complete report even for large plugins. Do NOT flag optional fields as critical. Do NOT suggest enhancements outside the plugin's stated purpose. Do NOT classify orphaned files without reading them first. Do NOT emit an empty Citation Drift section when no `SOURCE:` URLs exist.
 
 ## Output
 
