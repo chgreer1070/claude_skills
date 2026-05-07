@@ -11,7 +11,7 @@ Analyze failing test cases with a balanced, investigative approach.
 
 ## Context
 
-Consult `../python3-core/references/python3-standards.md` when shared testing or quality rules from this plugin apply; full standards, graphs, and amendment process are documented there.
+Load and follow the standards in `/python-engineering:standards-for-python-development` when shared testing or quality rules from this plugin apply.
 
 When tests fail, there are two primary possibilities:
 

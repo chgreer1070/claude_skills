@@ -11,7 +11,7 @@ Hatchling is a modern, standards-compliant Python build backend that replaces le
 
 ## Key Capabilities
 
-Consult `../python3-core/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
+Load and follow the standards in `/python-engineering:standards-for-python-development` when applying shared architecture, typing, testing, or CLI rules.
 
 - **Configuration via pyproject.toml**: Standards-compliant PEP 621 metadata with sensible defaults
 - **Build Targets**: Wheel and source distribution builds with extensive customization

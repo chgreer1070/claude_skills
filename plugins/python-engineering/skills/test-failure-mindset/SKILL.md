@@ -10,7 +10,7 @@ Establish a balanced investigative approach for all test failures encountered in
 
 ## Core Principle
 
-Consult `../python3-core/references/python3-standards.md` when shared testing or quality rules from this plugin apply; full standards, graphs, and amendment process are documented there.
+Load and follow the standards in `/python-engineering:standards-for-python-development` when shared testing or quality rules from this plugin apply.
 
 Tests are specifications - they define expected behavior. When they fail, it's a critical moment requiring balanced investigation, not automatic dismissal.
 

@@ -21,7 +21,7 @@ For test **implementation**, use the `python-engineering:python-pytest-architect
 
 ## Test Design Principles
 
-Consult `../python3-core/references/python3-standards.md` when aligning test strategy with shared plugin testing norms. The strategies below supplement that document; they do not replace it.
+Load and follow the standards in `/python-engineering:standards-for-python-development` when aligning test strategy with shared plugin testing norms. The strategies below supplement those standards; they do not replace them.
 
 ### Test Pyramid
 

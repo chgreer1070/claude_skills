@@ -18,7 +18,7 @@ Perform thorough test review for the specified test files or directories.
 
 ## Testing Standards
 
-Consult `../python3-core/references/python3-standards.md` when auditing against shared testing and quality rules. The checklist below summarizes this skill's focus; it does not replace the full standards document.
+Load and follow the standards in `/python-engineering:standards-for-python-development` when auditing against shared testing and quality rules. The checklist below summarizes this skill's focus; it does not replace those standards.
 
 **Coverage Requirements:**
 

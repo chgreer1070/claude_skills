@@ -383,7 +383,7 @@ class CsvFormatter(BaseFormatter):
 
 ## Quality Standards
 
-Consult `../python3-core/references/python3-standards.md` when verifying the feature against shared plugin standards. Ensure:
+Load and follow the standards in `/python-engineering:standards-for-python-development` when verifying the feature against shared plugin standards. Ensure:
 
 1. **Type Safety**: All code passes the project's type checker — match **hooks/CI** (`ty` vs `mypy`); use **`uv run ty check`** when ty is what the repo runs; use **`uv run mypy`** only when mypy is actually invoked there (not merely because `[tool.mypy]` exists)
 2. **Linting**: Zero ruff errors or warnings

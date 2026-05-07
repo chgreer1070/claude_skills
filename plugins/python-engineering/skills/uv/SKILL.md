@@ -54,7 +54,7 @@ For full step-by-step migration workflows, see `references/migration-guide.md`.
 
 ## Core Capabilities
 
-Consult `../python3-core/references/python3-standards.md` when applying shared architecture, typing, testing, or CLI rules; full standards, graphs, and amendment process are documented there.
+Load and follow the standards in `/python-engineering:standards-for-python-development` when applying shared architecture, typing, testing, or CLI rules.
 
 ### 1. Project Initialization and Management
 

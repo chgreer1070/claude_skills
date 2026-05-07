@@ -14,11 +14,11 @@ Task: $ARGUMENTS
 
 If no argument is supplied, derive the task from the active conversation.
 
-## Step 1 — Read the orchestration guide (MANDATORY)
+## Step 1 — Load the orchestration guide (MANDATORY)
 
-Read `../python3-core/references/python-development-orchestration.md`.
+Load and follow the guide in `/python-engineering:orchestrating-python-development`.
 
-Do not proceed to Step 2 until this file has been read. It contains agent selection criteria, workflow patterns, quality gates, and multi-agent chaining patterns needed for Step 2.
+Do not proceed to Step 2 until this skill has been loaded. It contains agent selection criteria, workflow patterns, quality gates, and multi-agent chaining patterns needed for Step 2.
 
 ## Step 2 — Route to track
 
