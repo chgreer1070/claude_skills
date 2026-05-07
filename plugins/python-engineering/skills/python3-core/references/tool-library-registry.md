@@ -3741,7 +3741,7 @@ uv run basedpyright .  # or mypy based on project config
 uv run pytest
 
 # Layer 5: PEP 723 (scripts only)
-/python3-development:shebangpython script.py
+/python-engineering:shebangpython script.py
 ```
 
 **Important - Scoped Operations**: Pre-commit runs on staged files by default, preventing formatting changes to unrelated code. Avoid `--all-files` unless explicitly requested by user for repository-wide cleanup, as it causes diff pollution and merge conflicts.

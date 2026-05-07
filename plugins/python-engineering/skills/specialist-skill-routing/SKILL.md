@@ -260,7 +260,7 @@ Skill(skill="python-engineering:review")
 
 Note: If you are an orchestrator reviewing a completed feature, use the `code-reviewer` agent instead.
 
-<!-- NOTE: p3d referenced `python3-development:python3-review`. PE uses `python-engineering:review` as the equivalent skill. -->
+<!-- NOTE: p3d referenced `python-engineering:python3-review`. PE uses `python-engineering:review` as the equivalent skill. -->
 
 ---
 

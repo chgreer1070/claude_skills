@@ -35,7 +35,7 @@ decisions, component templates, and integration patterns that go into `architect
 - Shebang: `#!/usr/bin/env -S uv --quiet run --active --script`
 - PEP 723 metadata block with `requires-python` and `dependencies`
 - Executable permissions required
-- Reference: activate `python3-development:shebangpython` for compliance
+- Reference: activate `python-engineering:shebangpython` for compliance
 
 **Strategy 2 — Python Package** (multi-file tools, complex logic):
 
