@@ -26,7 +26,8 @@
       "Bash(mkdir:*)",
       "Bash(uv run prek:*)",
       "Bash(uvx skilllint:*)",
-      "Bash(uv run fastmcp:*)"
+      "Bash(uv run fastmcp:*)",
+      "mcp__claude-in-chrome__read_console_messages"
     ],
     "deny": []
   },
