@@ -27,7 +27,6 @@ Skill(skill="python-engineering:python3-cli")
 
 Covers: Console class and markup syntax, style strings and color formats, renderables (Panel, Table, Tree, Columns, Layout), Progress and Live displays, Text class, Syntax/Markdown/Pretty/JSON rendering, RichHandler for stdlib logging, Traceback installation, `__rich_console__` and `__rich_repr__` protocols, RegexHighlighter.
 
-<!-- NOTE: p3d had a standalone `rich` skill. PE bundles all Rich content inside python3-cli references (rich-console-and-markup.md, rich-renderables.md, rich-progress-and-live.md, rich-text-and-syntax.md, rich-logging-and-tracebacks.md, rich-advanced-patterns.md). python3-cli is the correct PE target. -->
 
 ---
 
@@ -236,7 +235,6 @@ Skill(skill="python-engineering:create-feature-task")
 Skill(skill="python-engineering:python3-add-feature")
 ```
 
-<!-- NOTE: p3d had `use-command-template` (creates SKILL.md files from a template). Excluded from PE — this is a meta/plugin-creator capability. PE users who need this should use `/plugin-creator:skill-creator`. -->
 
 ---
 
@@ -260,7 +258,6 @@ Skill(skill="python-engineering:review")
 
 Note: If you are an orchestrator reviewing a completed feature, use the `code-reviewer` agent instead.
 
-<!-- NOTE: p3d referenced `python-engineering:python3-review`. PE uses `python-engineering:review` as the equivalent skill. -->
 
 ---
 
