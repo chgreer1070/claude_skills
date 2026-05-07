@@ -10,7 +10,7 @@ Opinionated Python 3.11+ engineering system. Establishes strong defaults and rou
 
 - `python-engineering:python3-core` — loads on every Python task, establishes defaults, routes to specialists
 
-### Manual Entrypoints (user-invoked only)
+### Entrypoints (user and model invocable)
 
 - `/python-engineering:orchestrate` — multi-step engineering workflow
 - `/python-engineering:review` — code review
@@ -75,7 +75,7 @@ All detailed reference material lives in `references/` subdirectories of special
 ## Key Design Decisions
 
 1. One automatic router, not multiple overlapping routers
-2. Manual entrypoints use `disable-model-invocation: true`
+2. Entrypoints are invocable by both user and model; `orchestrate` removed `disable-model-invocation`
 3. Specialist skills use `user-invocable: false` (auto-loaded only)
 4. Reference material is one level deep (no nested chains)
 5. SKILL.md stays under 500 lines; deep detail in references/

@@ -1,9 +1,7 @@
 ---
 name: orchestrate
-description: Orchestrates Python engineering tasks by routing to SAM track (feature additions, multi-step work spanning 2+ agents or files, durable progress tracking) or Direct track (single-focused tasks — bug fixes, test writing, code review, one-shot refactors). Use when implementing a Python feature, adding CLI commands, writing pytest suites, reviewing code, debugging, or any task requiring specialist agent coordination via python-cli-architect, python-pytest-architect, code-reviewer, or python-cli-design-spec.
-disable-model-invocation: true
+description: "Use when implementing a Python feature, adding CLI commands, writing pytest suites, reviewing Python code, debugging, or refactoring. The primary Python engineering workflow orchestrator — routes to SAM track (multi-step feature additions, work spanning 2+ agents or files, durable progress tracking) or Direct track (single-focused tasks: bug fix, tests for one file, one-shot refactor, code review). Delegates to python-cli-architect (implementation), python-pytest-architect (tests), code-reviewer (review), python-cli-design-spec (architecture). Triggers on any Python task requiring specialist agent coordination or multi-agent execution."
 argument-hint: '[task description]'
-tools: mcp__plugin_dh_sam__sam_create, mcp__plugin_dh_sam__sam_update
 ---
 
 # Orchestrate
@@ -101,9 +99,43 @@ Each delegation must include:
 - Known issues: error messages already in context (pass-through, not pre-gathered)
 - File paths: where to start looking — not what you found there
 
-Do NOT read source files before delegating. Agents search and read files themselves — pass file paths, not file contents.
+### Delegation Hard Rules
 
-### Delegation Rules
+These apply to all delegations — SAM and Direct:
+
+| Prohibited | Instead |
+|---|---|
+| Read files, grep, or run tools to gather context before delegating | See Pre-Gathering Alternatives below |
+| Hedging: "I think", "probably", "likely", "seems" | State observed facts: file path, exit code, exact error text |
+| Name a specific tool: "use Bash to…" | Describe the ecosystem; agent selects tools |
+| Invent constraints the user did not state | Include only user-specified constraints |
+| Fix one bug/smell instance | Treat as systemic — audit scope for all instances unless user said "only this one" |
+
+#### Pre-Gathering Alternatives
+
+Reading files then describing what you found to an agent (a) consumes orchestrator context on raw reads, (b) loses fidelity through paraphrase, (c) hands the agent your filtered interpretation rather than the source. When context is needed before work can proceed, choose one of:
+
+**1. Spawn an information-gathering agent** — sole job is exhaustive discovery across files, docs, and tooling:
+
+```text
+Find all occurrences of [X] in [codebase] and [docs/tooling locations].
+Return: file paths, line numbers, key observations.
+```
+
+The gathering agent reads more broadly than a few orchestrator greps can reach. You receive a structured report and synthesize from that — without having read anything yourself.
+
+**2. Embed discovery as the implementing agent's first steps** — pass the research actions as instructions, not keyword searches:
+
+```text
+Start by tracing [X] through the codebase: find all call sites, read how [Y] is used in
+[related files], consult the [module] docs/source at [URL or package repo], then implement [task].
+```
+
+"Finding" here means tracing — following call chains, reading usage patterns, consulting the module's documentation, its source on GitHub, its changelog, related RFCs or issues — not a grep for a keyword. The implementing agent does this with full task context, so it understands why it is looking and what to do with what it discovers. Research done in context of the implementation task produces higher-quality results than pre-filtered findings handed over from the orchestrator.
+
+Load `/agent-orchestration:agent-orchestration` for the full framework: delegation template, verification checklists, anti-patterns, and parallel dispatch patterns.
+
+### Delegation Routing Rules
 
 - Use specialist skills for guidance
 - Use subagents only when the task has separable parallelizable work or needs isolated analysis
