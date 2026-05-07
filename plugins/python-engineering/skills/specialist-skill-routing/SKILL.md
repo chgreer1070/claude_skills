@@ -1,6 +1,6 @@
 ---
 name: specialist-skill-routing
-description: Routes Python engineering tasks to specialist skills by matching trigger patterns before any architecture, plan, or code is written. Use when working with Typer CLI frameworks, Rich or Textual terminal UIs, FastMCP/MCP servers, ty type checker, uv package manager, Hatchling build backend, TOML editing, pre-commit/prek hooks, async Python, PyPI packaging, complex linting, technical debt modernization, testing workflows, feature development, or stdlib-only scripting.
+description: Routes Python engineering tasks to specialist skills by matching trigger patterns before any architecture, plan, or code is written. Use when working with Typer CLI frameworks, Rich or Textual terminal UIs, CLI UI/UX design, questionary prompts, FastMCP/MCP servers, ty type checker, uv package manager, Hatchling build backend, TOML editing, pre-commit/prek hooks, async Python, PyPI packaging, complex linting, technical debt modernization, testing workflows, feature development, or stdlib-only scripting.
 ---
 
 Scan your task description against the triggers below. For every match, call `Skill(skill="...")` **before** writing any architecture, plan, or code. Multiple matches → load all matching skills.
@@ -51,6 +51,20 @@ Skill(skill="python-engineering:typer-and-rich")
 ```
 
 Covers: non-TTY Console behavior (width defaults, color stripping, environment variables), Measurement protocol for renderable width, Progress/Live without TTY, testing Rich output in pytest (capture, export, snapshot), CliRunner with Rich, common assertion mistakes.
+
+---
+
+## CLI UI/UX Design
+
+**Triggers**: designing CLI user experience, CLI display patterns, output consistency across commands, user-facing output design, CLI UX review, `questionary`, `questionary.select`, `questionary.text`, `questionary.confirm`, `questionary.checkbox`, `questionary.prompt`, interactive prompts, CLI information architecture, designing how a CLI presents data to users
+
+```text
+Skill(skill="python-engineering:designing-ui-for-cli")
+```
+
+Load BEFORE writing any display, output, or interaction code. Produces a UI design plan that governs how output is structured and presented consistently across the whole CLI application.
+
+Covers: output hierarchy and visual language, colour and symbol conventions, progress and status patterns, interactive prompt design, error and feedback messaging, consistency across commands, TTY vs non-TTY output, questionary integration patterns.
 
 ---
 
