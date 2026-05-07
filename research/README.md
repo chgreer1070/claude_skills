@@ -13,6 +13,7 @@ research/
 ├── README.md                          # This index file
 ├── agent-frameworks/                  # Agent SDKs and orchestration frameworks
 │   ├── ai-agents-frameworks.md        # 10-framework comparative benchmark study
+│   ├── claude-code-harness.md         # Go-native guardrails and 5-verb workflow for Claude Code (MIT, v4.7.0)
 │   ├── copilotkit.md                  # React-first agentic frontend framework with bi-directional state sync and AG-UI protocol (28.9K stars)
 │   ├── liteagents.md                  # Multi-tool AI development toolkit with 11 agents and session memory
 │   ├── micro-agent.md                 # Lightweight Python ReAct agent framework with MCP multi-server support (MIT)
@@ -509,6 +510,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [browser-harness-js.md](./agent-frameworks/browser-harness-js.md)     | Browser Harness JS — 652 fully-typed CDP method wrappers from Chrome DevTools Protocol; zero convenience helpers; Persistent Session model with 56 CDP domains mounted; 16 interaction-skills recipes; HTTP REPL server for CLI binary (v0.1.0, sdk/package.json) | 2026-04-20   |
 | [orchestra.md](./agent-frameworks/orchestra.md)                       | Orchestra — context-optimized Claude Code plugin for DAG-based task orchestration; decomposes complex tasks into focused sub-agents with configurable token budgets, wave-based parallelism, git worktree isolation, and resumable state (v1.0.0, MIT) | 2026-04-20   |
 | [cursor-cookbook.md](./agent-frameworks/cursor-cookbook.md)           | Cursor Cookbook — 5 production-ready Cursor SDK examples: Quickstart, Coding Agent CLI (Bun TUI), Agent Kanban (Next.js), DAG Task Runner (Kahn's algorithm, parallel agents), App Builder (hot-reloading React preview); 3,407 stars | 2026-05-05   |
+| [claude-code-harness.md](./agent-frameworks/claude-code-harness.md)   | Claude Code Harness — Go-native guardrail engine (13 rules R01–R13), 5-verb workflow skills (setup/plan/work/review/release), 3 sub-agents, parallel Breezing execution, session memory via harness-mem (MIT, v4.7.0) | 2026-05-07   |
 
 **Key Topics**:
 
