@@ -30,7 +30,7 @@ Before starting any phase, check whether the feature request references a GitHub
 
 ```mermaid
 flowchart TD
-    Start([Parse feature_request]) --> Q{Contains "GitHub Issue: #N"<br>or "Issue: #N" or "#N"?}
+    Start([Parse feature_request]) --> Q{"Contains 'GitHub Issue: #N'<br>or 'Issue: #N' or '#N'?"}
     Q -->|Yes — issue number found| List["Call artifact_list(issue_number=N)<br>to discover registered artifacts"]
     Q -->|No — no issue reference| Skip[Skip artifact discovery<br>Proceed normally]
     List --> Found{Artifacts returned?}
@@ -206,7 +206,7 @@ flowchart TD
     Found -->|pyproject.toml| Py[Search Python language manifest]
     Found -->|package.json| TS[Search TypeScript language manifest]
     Found -->|Cargo.toml| Rust[Search Rust language manifest]
-    Found -->|None| FB[Fallback: dh:task-worker<br>(no specialist profile loaded)]
+    Found -->|None| FB["Fallback: dh:task-worker<br>(no specialist profile loaded)"]
     Py --> ManifestFound{Manifest exists?}
     TS --> ManifestFound
     Rust --> ManifestFound

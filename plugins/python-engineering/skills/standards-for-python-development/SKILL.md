@@ -159,28 +159,34 @@ flowchart TD
     classDef verify fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px;
 
     %% Nodes
-    Start([Feature Request / Tech Debt]) ::: trigger
+    Start([Feature Request / Tech Debt])
 
     subgraph Planning Phase
-        DesignSpec[python-cli-design-spec<br/>Create Architecture & Interfaces] ::: plan
-        StinkySnake[stinkysnake<br/>Analyze & Plan Refactoring] ::: plan
+        DesignSpec[python-cli-design-spec<br/>Create Architecture & Interfaces]
+        StinkySnake[stinkysnake<br/>Analyze & Plan Refactoring]
     end
 
     subgraph Test-Driven Phase
-        TestArch[python-pytest-architect<br/>Write Failing Tests] ::: implement
+        TestArch[python-pytest-architect<br/>Write Failing Tests]
     end
 
     subgraph Implementation Phase
-        CliArch[python-cli-architect<br/>Implement Core Logic] ::: implement
-        SnakePolish[snakepolish<br/>Iterative Implement & Test Loop] ::: implement
+        CliArch[python-cli-architect<br/>Implement Core Logic]
+        SnakePolish[snakepolish<br/>Iterative Implement & Test Loop]
     end
 
     subgraph Verification Phase
-        StaticAnalysis[Ruff + type checker<br/>ty default; mypy if configured] ::: verify
-        Review[code-reviewer / python3-review<br/>Holistic Quality & Pattern Check] ::: verify
+        StaticAnalysis[Ruff + type checker<br/>ty default; mypy if configured]
+        Review[code-reviewer / python3-review<br/>Holistic Quality & Pattern Check]
     end
 
-    Done([Ready for Merge]) ::: trigger
+    Done([Ready for Merge])
+
+    %% Class assignments
+    class Start,Done trigger
+    class DesignSpec,StinkySnake plan
+    class TestArch,CliArch,SnakePolish implement
+    class StaticAnalysis,Review verify
 
     %% Edges
     Start -->|New Feature| DesignSpec

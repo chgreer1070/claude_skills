@@ -24,9 +24,9 @@ flowchart TD
     Start([ty invoked]) --> Q1{--config-file flag set?}
     Q1 -->|Yes| UseFlag([Use ty.toml at specified path])
     Q1 -->|No| Q2{ty.toml found in current<br>or parent directory?}
-    Q2 -->|Yes| UseTyToml([Use ty.toml — omits [tool.ty] prefix])
-    Q2 -->|No| Q3{pyproject.toml found with<br>[tool.ty] table?}
-    Q3 -->|Yes| UsePyproject([Use [tool.ty] section in pyproject.toml])
+    Q2 -->|Yes| UseTyToml([Use ty.toml — omits tool.ty prefix])
+    Q2 -->|No| Q3{pyproject.toml found with<br>tool.ty table?}
+    Q3 -->|Yes| UsePyproject([Use tool.ty section in pyproject.toml])
     Q3 -->|No| Q4{User-level config exists?}
     Q4 -->|Yes| UseUser(["Use ~/.config/ty/ty.toml<br>or %APPDATA%\\ty\\ty.toml"])
     Q4 -->|No| NoConfig([No config — use all defaults])

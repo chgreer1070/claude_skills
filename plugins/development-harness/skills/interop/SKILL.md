@@ -182,7 +182,7 @@ For each `## Chunk N:` heading captured in Step 2:
 
 ```mermaid
 flowchart TD
-    ForEach([For each Chunk N captured]) --> HasTask{Does chunk number N<br>have a corresponding SAM task T{N}?}
+    ForEach([For each Chunk N captured]) --> HasTask{"Does chunk number N<br>have a corresponding SAM task T[N]?"}
     HasTask -->|No — chunk count exceeds task count| Skip[Skip this chunk — no annotation]
     HasTask -->|Yes| CheckExisting{Does the line immediately<br>following this heading already<br>contain a SAM annotation comment?}
     CheckExisting -->|Yes — re-run scenario| ReplaceAnnotation["Replace existing annotation in-place<br><!-- SAM: T{N} in {plan-address} -->"]
