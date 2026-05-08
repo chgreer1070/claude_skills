@@ -42,6 +42,10 @@ Prose above the diagram carries detail that would clutter the nodes. Before dele
 
 Before the Implement step, check whether the deployment environment is restricted (no internet, no uv). If yes, use `python-engineering:python3-stdlib-only` instead of `python-engineering:python-cli-architect`.
 
+When the task involves display/output/interaction code, step 1.5 invokes `python-engineering:designing-ui-for-cli` to produce a user-confirmed shape brief before tests are written. The brief inputs the architecture's command tree and outputs surface design (colour strategy, status vocabulary, output hierarchy) that the architect references during step 3. In SAM track, this gate must run during the Plan phase (interactive with user); the Execute phase receives the confirmed brief as a file path — the shape-brief AskUserQuestion cannot block automated execution.
+
+The adversarial design step reads the actual codebase, not the architecture spec, and challenges the approach against real code. It identifies gotchas, alternative approaches, and which specialist skills apply. Pass the architecture file path and affected module paths — the agent reads further from there. It produces a behavioral validation plan (Phases 1–3) that the architect receives alongside the implementation brief.
+
 ```mermaid
 flowchart TD
     S1["1. Design<br>subagent_type=python-engineering:python-cli-design-spec<br>Context: user requirements, any existing codebase paths<br>Output: component interfaces, module layout, CLI command tree"]
@@ -49,7 +53,14 @@ flowchart TD
     S3{"3. Implement<br>Default: python-engineering:python-cli-architect<br>Restricted env only: python-engineering:python3-stdlib-only<br>Context: tests/ path, load python-engineering:typer-and-rich for python-cli-demo.py<br>Output: implementation that makes all tests pass"}
     S4["4. Review<br>subagent_type=python-engineering:code-reviewer<br>Context: implementation file paths, tests/ path<br>Output: review findings with file:line references, improvement suggestions"]
     S5["5. Validate<br>Run: /python-engineering:shebangpython on each script<br>Run: Activate holistic-linting skill<br>Run: uv run pytest (verify >80% coverage)<br>Check: CI config for additional validators<br>Pass criteria: all tests green, linting clean, coverage threshold met"]
-    S1 -->|"Output: component interfaces, module layout, CLI command tree"| S2
+    S1Q{"Display, output, or<br>interaction code in scope?"}
+    S1B["1.5 UI Design<br>Skill: python-engineering:designing-ui-for-cli<br>Context: architecture file path, surfaces in scope<br>Output: shape brief (user-confirmed)"]
+    S1 -->|"Output: interfaces, layout, CLI command tree"| S1Q
+    S_AD["Adversarial Solution Design<br>subagent_type=python-engineering:adversarial-solution-design<br>Context: architecture file path, affected module paths<br>Output: solution brief + validation plan + TDD recommendation"]
+    S1Q -->|"No"| S_AD
+    S1Q -->|"Yes"| S1B
+    S1B -->|"Output: confirmed shape brief"| S_AD
+    S_AD -->|"Output: solution brief, validation plan"| S2
     S2 -->|"Output: tests/ with failing test suite"| S3
     S3 -->|"Output: implementation making all tests pass"| S4
     S4 -->|"Output: review findings, improvement list"| S5
@@ -98,8 +109,15 @@ flowchart TD
     S6["6. Review<br>subagent_type=python-engineering:code-reviewer<br>Context: changed file paths, requirements doc path<br>Output: quality assessment against acceptance criteria, improvement list"]
     S7["7. Validate<br>Run: uv run pytest (verify no regressions, >80% coverage)<br>Run: Activate holistic-linting skill<br>Run: /python-engineering:modernpython on changed files<br>Pass criteria: all tests green, no regressions, linting clean"]
     S1 -->|"Output: requirements doc, acceptance criteria"| S2
-    S2 -->|"Output: design with integration points"| S3
-    S3 -->|"Output: ordered task list with file targets"| S4
+    S2Q{"Display, output, or<br>interaction code in scope?"}
+    S2B["2.5 UI Design<br>Skill: python-engineering:designing-ui-for-cli<br>Context: architecture file path, surfaces in scope<br>Output: shape brief (user-confirmed)"]
+    S2 -->|"Output: design with integration points"| S2Q
+    S2Q -->|"No"| S3
+    S2Q -->|"Yes"| S2B
+    S2B -->|"Output: confirmed shape brief"| S3
+    S_AD2["Adversarial Solution Design<br>subagent_type=python-engineering:adversarial-solution-design<br>Context: implementation plan path, affected module paths<br>Output: solution brief + validation plan + TDD recommendation"]
+    S3 -->|"Output: ordered task list with file targets"| S_AD2
+    S_AD2 -->|"Output: solution brief, validation plan"| S4
     S4 -->|"Output: new feature implementation"| S5
     S5 -->|"Output: tests for new feature + integration tests"| S6
     S6 -->|"Output: quality assessment, improvement list"| S7
@@ -344,59 +362,11 @@ If answers indicate restrictions: python-engineering:python3-stdlib-only
 
 ### /python-engineering:modernpython
 
-**Apply to**: Load as reference guide (optional file path argument for context)
-
-**Use when**:
-
-- As reference guide when writing new code
-- Learning modern Python 3.11-3.14 features and patterns
-- Understanding official PEPs (585, 604, 695, etc.)
-- Identifying legacy patterns to avoid
-- Finding modern alternatives for old code
-
-**Note**: This is a reference document to READ, not an automated validation tool.
-
-**Usage**:
-
-<eg>
-/python-engineering:modernpython
-→ Loads comprehensive reference guide
-→ Provides Python 3.11+ pattern examples
-→ Includes PEP citations with WebFetch commands
-→ Shows legacy patterns to avoid
-→ Shows modern alternatives to use
-→ Framework-specific guides (Typer, Rich, pytest)
-</eg>
-
-**With file path**:
-
-<eg>
-/python-engineering:modernpython packages/mymodule.py
-→ Loads guide for reference while working on specified file
-→ Use guide to manually identify and refactor legacy patterns
-</eg>
+Reference guide for Python 3.11+ patterns and PEPs — load for context, not as an automated tool. Pass a file path to focus the guide: `/python-engineering:modernpython packages/mymodule.py`
 
 ### /python-engineering:shebangpython
 
-**Apply to**: Individual Python scripts
-
-**Use when**:
-
-- Creating new standalone scripts
-- Ensuring PEP 723 compliance
-- Correcting script configuration
-
-**Pattern**:
-
-<eg>
-/python-engineering:shebangpython scripts/deploy.py
-→ Analyzes imports to determine dependency type
-→ Corrects shebang to match script type (edits file if wrong)
-→ Adds PEP 723 metadata if external dependencies detected (edits file)
-→ Removes PEP 723 metadata if stdlib-only (edits file)
-→ Sets execute bit if needed
-→ Provides detailed verification report
-</eg>
+Analyzes imports, corrects shebang, adds/removes PEP 723 metadata, sets execute bit. Apply to individual Python scripts: `/python-engineering:shebangpython scripts/deploy.py`
 
 ## Integration with uv Skill
 
@@ -450,62 +420,7 @@ Use this as the reference implementation when creating CLI tools.
 
 ## Examples of Complete Workflows
 
-### Example: Building a CLI Tool
-
-<eg>
-User: "Build a CLI tool to validate YAML configurations"
-
-Orchestrator:
-1. Task is Architecture Design with subagent_type="python-engineering:python-cli-design-spec"
-   Context to include in the prompt: Design architecture for YAML validation CLI
-   Output: Architecture file with component list, validation rules, module layout
-
-2. Task is Write Tests with subagent_type="python-engineering:python-pytest-architect"
-   Context to include in the prompt: Architecture design file path from step 1
-   Output: tests/test_validator.py with fixtures (all tests fail initially)
-
-3. Task is Implement with subagent_type="python-engineering:python-cli-architect"
-   Context to include in the prompt: tests/ file paths; reference at
-     load Skill(skill="python-engineering:typer-and-rich") for python-cli-demo.py reference
-   Output: packages/validator.py with Typer+Rich UI — all tests pass
-
-4. Validation:
-   /python-engineering:shebangpython packages/validator.py
-   Activate holistic-linting skill on packages/validator.py tests/
-   uv run pytest — verify all pass, coverage >80%
-
-5. Task is Review with subagent_type="python-engineering:code-reviewer"
-   Context to include in the prompt: packages/validator.py and tests/ file paths
-   Output: Quality check findings with file:line references
-
-6. Fix any issues and re-validate
-</eg>
-
-### Example: Fixing a Bug
-
-<eg>
-User: "Fix bug where CSV parser fails on empty rows"
-
-Orchestrator:
-1. Task is Reproduce Bug with subagent_type="python-engineering:python-pytest-architect"
-   Context to include in the prompt: CSV parser bug — fails on empty rows, write a reproducing test
-   Output: tests/test_csv_parser.py::test_empty_rows (failing test)
-
-2. Task is Fix with subagent_type="python-engineering:python-cli-architect"
-   Context to include in the prompt: tests/test_csv_parser.py path, fix CSV parser to handle empty rows
-   Output: packages/csv_parser.py updated — test_empty_rows now passes
-
-3. Validation:
-   uv run pytest — verify bug test passes and no regression
-
-4. Task is Review with subagent_type="python-engineering:code-reviewer"
-   Context to include in the prompt: packages/csv_parser.py and tests/test_csv_parser.py paths
-   Output: Verification fix addresses root cause, not symptom
-
-5. Apply standards:
-   /python-engineering:modernpython packages/csv_parser.py
-   Activate holistic-linting skill on packages/csv_parser.py tests/
-</eg>
+Apply the Mermaid workflow diagrams above by substituting concrete file paths, task descriptions, and agent outputs. Each node in the diagram maps directly to one delegation step in the orchestrator's execution.
 
 ## Anti-Patterns to Avoid
 

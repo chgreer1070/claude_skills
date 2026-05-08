@@ -54,17 +54,21 @@ Covers: non-TTY Console behavior (width defaults, color stripping, environment v
 
 ---
 
-## CLI UI/UX Design
+## CLI UI/UX Design — 7-Stage Workflow
 
-**Triggers**: designing CLI user experience, CLI display patterns, output consistency across commands, user-facing output design, CLI UX review, `questionary`, `questionary.select`, `questionary.text`, `questionary.confirm`, `questionary.checkbox`, `questionary.prompt`, interactive prompts, CLI information architecture, designing how a CLI presents data to users
+**Triggers — before implementation**: designing CLI user experience, CLI display patterns, output consistency across commands, user-facing output design, CLI information architecture, shape brief, register decision (brand-cli vs product-cli), PRODUCT.md interview, DESIGN.TUI.md setup
+
+**Triggers — during implementation**: `questionary`, `questionary.select`, `questionary.text`, `questionary.confirm`, `questionary.checkbox`, `questionary.prompt`, interactive prompts, progress bars, spinners, status indicators, tables, panels, dashboard layout, splash screens, animated welcome sequences, PyFiglet banners
+
+**Triggers — evaluation and post-implementation**: CLI UX review, critique of existing CLI display code, UX heuristic evaluation, AI-slop check, accessibility review (NO_COLOR, non-TTY fallback, colour-blind safety), pre-ship polish pass, terminal-emulator portability check, column-alignment verification
 
 ```text
 Skill(skill="python-engineering:designing-ui-for-cli")
 ```
 
-Load BEFORE writing any display, output, or interaction code. Produces a UI design plan that governs how output is structured and presented consistently across the whole CLI application.
+Load before writing display/output/interaction code AND before declaring display work done. Runs a 7-stage discipline: Context → Register → Shape brief (user-confirmed gate) → Implement → Critique (Nielsen /40 + AI-slop) → Audit (P0–P3 severity) → Polish (22-item checklist). Any P0 audit finding blocks ship.
 
-Covers: output hierarchy and visual language, colour and symbol conventions, progress and status patterns, interactive prompt design, error and feedback messaging, consistency across commands, TTY vs non-TTY output, questionary integration patterns.
+Covers: per-project design system contracts (PRODUCT.md, DESIGN.TUI.md), colour strategy (Restrained → Drenched), theme via scene-sentence method, register-specific permissions and bans, shape brief with confirmation gate, Nielsen heuristic critique, 5-dimension audit, 22-item polish checklist, Textual/Rich/Typer/Questionary/PyFiglet patterns.
 
 ---
 

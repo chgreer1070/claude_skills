@@ -91,6 +91,10 @@ Agent routing — delegate rather than implement:
 - Architecture design → subagent_type="python-engineering:python-cli-design-spec"
 - Task breakdown → subagent_type="dh:swarm-task-planner"
 - Stdlib-only script → Skill(skill: "python-engineering:python3-stdlib-only")
+- CLI/TUI UI design, shape brief, critique, audit, or polish → Skill(skill: "python-engineering:designing-ui-for-cli")
+- Pre-implementation challenge → subagent_type="python-engineering:adversarial-solution-design"
+
+Before delegating any non-trivial implementation to `python-cli-architect`, route through `adversarial-solution-design` first. Skip only for one-line fixes where the correct change is unambiguous (typo, wrong variable name, trivial rename).
 
 Each delegation must include:
 
