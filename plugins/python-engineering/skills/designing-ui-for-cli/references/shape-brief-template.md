@@ -21,9 +21,9 @@ Discovery must include at least one user-answer round unless PRODUCT.md, DESIGN.
 - Use the harness's structured question tool when one exists. Otherwise, ask directly in chat and stop.
 - Ask **2-3 questions per round**, then wait for answers.
 - Treat PRODUCT.md and DESIGN.TUI.md / DESIGN.md as anchors; they reduce repeated questions but do **not** replace shape for craft. Shape is task-specific.
-- Round 1 should clarify purpose, audience/context, and success or emotional outcome.
-- Round 2 should clarify content/data/states and scope/fidelity.
-- Round 3 should clarify visual direction, constraints, and anti-goals when still unresolved.
+- Round 1 **covers**: purpose, audience/context, and success or emotional outcome.
+- Round 2 **covers**: content/data/states and scope/fidelity.
+- Round 3 **covers**: visual direction, constraints, and anti-goals when still unresolved.
 
 ### Purpose & Context
 
@@ -121,14 +121,7 @@ What copy, labels, empty-state messages, error messages, and microcopy are neede
 - **Verbosity levels mapped to content.** What appears at default, at `-v`, at `-vv`. What `--quiet` suppresses.
 
 **9. Recommended References**
-Based on the brief, list which `references/*.md` files from this skill the implementation should load. Examples:
-
-- `textual-styling.md` — when the surface uses TCSS theme variables
-- `textual-layout.md` — when layout type is grid / dock / complex composition
-- `render-patterns.md` — when Rich rendering of tables, panels, or progress is core
-- `questionary-patterns.md` — when interactive prompts drive the flow
-- `typer-ui-patterns.md` — when the surface is a Typer command tree
-- `colour-strategy.md` and `theme-decision.md` — always referenced via the Design Direction section
+List the `references/*.md` files the implementer should load for this brief. Select from the Stage 3 section of the SKILL.md Reference Loading Guide by matching the library stack identified in Section 4 (scope/libraries). Do not list all references — only those matching the actual library scope.
 
 **10. Open Questions**
 Anything unresolved that the implementer should resolve during build.

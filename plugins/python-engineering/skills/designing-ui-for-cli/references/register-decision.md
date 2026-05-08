@@ -5,7 +5,7 @@ The register names the stance the CLI takes toward its user. It is chosen before
 ## Core distinction
 
 - **brand-cli** — design IS the product. The CLI surface is the moment: an installer banner, a demo recording, a marketing CLI (`bun create`, `gh demo`), a one-shot welcome flow. The visitor's impression is the deliverable.
-- **product-cli** — design SERVES the product. The CLI surface is a tool the user operates: subcommand trees, dashboards, settings panels, data tables, authenticated/configured flows. The tool should disappear into the task.
+- **product-cli** — design SERVES the product. The CLI surface is a tool the user operates: subcommand trees, dashboards, settings panels, data tables, authenticated/configured flows. The tool disappears into the task.
 
 A CLI rarely sits in both registers at once. A product-cli MAY contain one brand-cli surface (a first-run welcome, a milestone celebration), but the product register is the floor.
 
@@ -31,7 +31,7 @@ No further tie-breaker is required. First match wins.
 | `uv init` first-run welcome (one-time) | none in task | one-shot welcome | product-cli | brand-cli |
 | Database migration tool TUI | "migrate", "manage" | dashboard-style | (absent) | product-cli |
 
-The fifth row shows the surface check overriding PRODUCT.md when the task itself produces a brand-cli surface inside an otherwise product-cli tool. First match wins; stage 2 fires before stage 3.
+The fifth row shows the surface check overriding PRODUCT.md when the task itself produces a brand-cli surface inside an otherwise product-cli tool. First match wins.
 
 ## brand-cli register summary
 

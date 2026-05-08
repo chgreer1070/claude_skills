@@ -42,11 +42,11 @@ The following web absolute bans from the impeccable system have no terminal equi
 - The hero-metric template (big number, small label, supporting stats) — no SaaS-cliche analogue
 - Modal-as-first-thought — the terminal modal pattern is `questionary.confirm` and is rare by default
 
-The CLI-native traps above replace these web-only entries. The eleven-row table is the authoritative match-and-rewrite list for terminal UI work.
+The CLI-native traps above replace these web-only entries. The twelve-row table is the authoritative match-and-rewrite list for terminal UI work.
 
 ## How to apply
 
 1. Before writing any output line, scan the table for a pattern match against the line about to be produced.
 2. On match, rewrite the structure using the right column. Do not patch around the pattern.
-3. After implementation, re-check by running the audit dimension "Anti-Patterns & Slop" (see audit-checklist when wave 4 lands) and the AI slop test (see [ai-slop-test.md](./ai-slop-test.md)). Both gates must pass.
+3. After implementation, re-check by running the audit dimension "Anti-Patterns & Slop" (see `./audit-checklist.md` Anti-Patterns & Slop dimension) and the AI slop test (see [ai-slop-test.md](./ai-slop-test.md)). Both gates must pass.
 4. The first-altitude reflex check is the single fastest filter: if the design's theme + palette is guessable from the CLI category alone, the design has landed in a banned pattern even when no individual row of the table matched. Rework the scene sentence and colour strategy.

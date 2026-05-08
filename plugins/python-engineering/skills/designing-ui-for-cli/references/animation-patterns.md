@@ -1,13 +1,7 @@
----
-name: animation-skill
-description: Create splash screens, ASCII art banners, and terminal animations. Use when building visual effects, loading screens, and branding elements.
-allowed-tools: Write, Read
----
-
 # Animation Skill
 
 ## Purpose
-Create eye-catching splash screens and animations for terminal apps.
+Create splash screens and loading animations for terminal apps.
 
 ## Instructions
 
@@ -23,7 +17,7 @@ import time
 console = Console()
 
 def show_splash_screen():
-    """Display animated splash screen with developer credit."""
+    """Display animated splash screen."""
     console.clear()
 
     # Generate ASCII art
@@ -33,12 +27,9 @@ def show_splash_screen():
     content = Text()
     content.append(logo, style="bold cyan")
     content.append("\n\n")
-    content.append("🎮 Retro Terminal Task Manager 🎮", style="bold magenta")
+    content.append("Terminal Task Manager", style="bold")
     content.append("\n\n")
     content.append("━" * 40, style="dim cyan")
-    content.append("\n\n")
-    content.append("Developer by: ", style="dim white")
-    content.append("maneeshanif", style="bold green")
     content.append("\n")
 
     # Create panel
@@ -46,7 +37,7 @@ def show_splash_screen():
         Align.center(content),
         border_style="bright_cyan",
         padding=(2, 4),
-        title="[bold yellow]✨ Welcome ✨[/bold yellow]",
+        title="[bold]Welcome[/bold]",
         subtitle="[dim]Press ENTER to continue[/dim]"
     )
 
@@ -110,25 +101,25 @@ def show_typing_effect(text: str, delay: float = 0.03):
 
 ### Animated Welcome
 ```python
+from rich.progress import Progress, SpinnerColumn, TextColumn
 import time
 
 def animated_welcome():
     """Animated welcome sequence."""
     console.clear()
 
-    frames = [
-        "🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"
-    ]
+    # Text-based spinner using SpinnerColumn (same pattern as show_loading)
+    with Progress(
+        SpinnerColumn("dots"),
+        TextColumn("[bold cyan]{task.description}[/bold cyan]"),
+        transient=True
+    ) as progress:
+        task = progress.add_task("Loading", total=None)
+        # NOTE: time.sleep() blocks the asyncio event loop in Textual apps.
+        # Use `await asyncio.sleep(duration)` in async handlers or @work coroutines.
+        time.sleep(1.0)
 
-    # Moon animation
-    for _ in range(2):
-        for frame in frames:
-            console.print(f"\r{frame} Loading...", end="")
-            # NOTE: time.sleep() blocks the asyncio event loop in Textual apps.
-            # Use `await asyncio.sleep(0.1)` in async handlers or @work coroutines.
-            time.sleep(0.1)
-
-    console.print("\r✨ Ready!     ")
+    console.print("· Ready")
     time.sleep(0.5)
 
     # Show main splash
@@ -151,7 +142,7 @@ def create_fancy_box(content: str, title: str = "") -> Panel:
 ### Full Splash Module
 ```python
 """
-splash.py - Splash screen and animations for Retro Todo CLI
+splash.py - Splash screen and animations for Task Manager CLI
 """
 
 from rich.console import Console
@@ -189,21 +180,16 @@ def show_splash():
     content = Text()
     content.append(logo, style="bold cyan")
     content.append("\n")
-    content.append("🎮 ", style="")
-    content.append("Retro Terminal Task Manager", style="bold magenta")
-    content.append(" 🎮", style="")
+    content.append("Terminal Task Manager", style="bold")
     content.append("\n\n")
     content.append("─" * 45, style="dim cyan")
-    content.append("\n\n")
-    content.append("Developer by: ", style="white")
-    content.append("maneeshanif", style="bold green underline")
     content.append("\n")
 
     panel = Panel(
         Align.center(content),
         border_style="bright_cyan",
         padding=(1, 4),
-        title="[bold yellow]★ WELCOME ★[/bold yellow]",
+        title="[bold]Welcome[/bold]",
         subtitle="[dim white][ Press ENTER to continue ][/dim white]"
     )
 
@@ -218,10 +204,10 @@ def show_goodbye():
 
     content = Text()
     content.append("\n")
-    content.append("👋 Goodbye!", style="bold cyan")
+    content.append("Goodbye", style="bold cyan")
     content.append("\n\n")
     content.append("Thanks for using ", style="white")
-    content.append("Retro Todo", style="bold magenta")
+    content.append("Task Manager", style="bold")
     content.append("\n\n")
     content.append("See you next time!", style="dim")
     content.append("\n")
@@ -241,7 +227,6 @@ if __name__ == "__main__":
 
 ## Best Practices
 
-- Always include developer credit in splash
 - Have fallback ASCII art if pyfiglet fails
 - Keep animations short (1-3 seconds)
 - Use transient progress bars for loading

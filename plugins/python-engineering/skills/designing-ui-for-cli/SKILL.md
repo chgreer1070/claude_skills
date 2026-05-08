@@ -5,18 +5,18 @@ user-invocable: false
 ---
 # CLI UI Design
 
-Before any display or output code is written, the agent runs a 7-stage design discipline rooted in per-project PRODUCT.md and DESIGN.TUI.md (or DESIGN.md fallback). The skill governs registration, shape brief, implementation, critique, audit, and polish for any Typer, Rich, Textual, or Questionary surface.
+Before any display or output code is written, the agent runs a 7-stage design discipline rooted in per-project PRODUCT.md, DESIGN.md (base design system — colours, tokens, typography, components), and DESIGN.TUI.md (TUI supplement — inherits from DESIGN.md, adds behavioural rules for output channels, symbols, and interaction). When both are present, load both: DESIGN.md provides the palette; DESIGN.TUI.md provides the terminal-specific contract. The skill governs registration, shape brief, implementation, critique, audit, and polish for any Typer, Rich, Textual, or Questionary surface.
 
 ## Setup Gates
 
 The agent MUST satisfy each gate before progressing past it. Check order is top-down.
 
-| Gate | Required check | If fail |
-|---|---|---|
-| Context | First turn invokes `scripts/load-design-context.py` to load PRODUCT.md, DESIGN.TUI.md, DESIGN.md from project root, `.claude/context/`, or `docs/` | Skip only if context already in conversation history; otherwise run loader |
-| Product | PRODUCT.md present, non-empty, no `[TODO]` placeholders, ≥200 chars | Run inline interview using `./references/product-md-schema.md` template, write file with user confirmation, re-run loader, resume original task |
-| Shape | Shape brief produced and user-confirmed before any display code is written | Stop. Do not write display code until brief is signed off |
-| Mutation | Any code change to display logic must trace to a confirmed shape brief or recorded follow-up deferral | Reject change. Loop back to Shape |
+| Gate | Required check | If fail | Hard Rule |
+|---|---|---|---|
+| Context | First turn invokes `scripts/load-design-context.py` to load PRODUCT.md, DESIGN.TUI.md, DESIGN.md from project root, `.claude/context/`, or `docs/` | Skip only if context already in conversation history; otherwise run loader | Stage 0 actor |
+| Product | PRODUCT.md present, non-empty, no `[TODO]` placeholders, ≥200 chars | Run inline interview using `./references/product-md-schema.md` template, write file with user confirmation, re-run loader, resume original task | PRODUCT.md absence re-entry |
+| Shape | Shape brief produced and user-confirmed before any display code is written | Stop. Do not write display code until brief is signed off | Stage 2 sign-off gate |
+| Mutation | Any code change to display logic must trace to a confirmed shape brief or recorded follow-up deferral | Reject change. Loop back to Shape | Stage 2 sign-off gate |
 
 ## Golden Path — 7 Stages
 
@@ -27,7 +27,7 @@ Stages run in order. Stages 4–6 also act as quality gates on existing UI code 
 | 0 — Context | Skill invoked, no PRODUCT/DESIGN context in conversation | JSON from loader, or written PRODUCT.md after interview | `./references/product-md-schema.md`, `./references/design-md-schema.md` |
 | 1 — Register | Stage 0 complete, target identified | Bare value `brand-cli` or `product-cli`, recorded against the target | `./references/register-decision.md` |
 | 2 — Shape | Register set, Stage 3 not yet started | 10-section shape brief, user-confirmed | `./references/shape-brief-template.md` |
-| 3 — Implement | Shape brief confirmed | Display code per the brief | `./references/render-patterns.md`, `./references/textual-styling.md`, `./references/typer-ui-patterns.md`, `./references/questionary-patterns.md` |
+| 3 — Implement | Shape brief confirmed | Display code per the brief | Conditional by library in scope — see Reference Loading Guide §Stage 3 below |
 | 4 — Critique | Invoked against any target (any stage) | Two-assessment report: Nielsen /40 score + AI-slop verdict + deterministic detector findings | `./references/critique-checklist.md`, `./references/ai-slop-test.md` |
 | 5 — Audit | Invoked against any target | Per-issue P0–P3 severity tags + 5-dimension /20 advisory rating | `./references/audit-checklist.md` |
 | 6 — Polish | Audit cleared (no P0); pre-ship check | 22-item checklist with each item checked or explicitly deferred with reason | `./references/polish-checklist.md` |
@@ -37,7 +37,7 @@ Stages run in order. Stages 4–6 also act as quality gates on existing UI code 
 These rules govern stage transitions and gate behaviour. Violations require a recorded deferral.
 
 - **Stage 0 actor** — agent invokes `scripts/load-design-context.py` on the first turn of any UI-touching task. Skip only when PRODUCT.md and DESIGN context are already in conversation history. Loader output JSON is read into context; no further file reads needed.
-- **Stage 1 register tie-breaker** — first-match-wins priority: (1) cue in the task itself ("marketing splash" → brand-cli; "database migration tool" → product-cli); (2) the surface in focus (welcome screen → brand-cli; subcommand processing data → product-cli); (3) `register` field in PRODUCT.md as bare value. First match wins. Default `product-cli` when nothing matches.
+- **Stage 1 register tie-breaker** — apply the four-step first-match-wins decision rule in `./references/register-decision.md`. Default `product-cli` when nothing matches.
 - **Stage 2 sign-off gate** — no display code is written until the shape brief is user-confirmed via AskUserQuestion. A shape run is incomplete until the brief is confirmed. If the user disagrees with any part, return to discovery questions for that part.
 - **Stage 4 critique scope** — runs whenever invoked against a target. There is no skip condition for "trivial outputs". After findings, the agent runs AskUserQuestion offering `Top 3 only`, `All issues`, or `Critical only`; recommended actions are filtered by the user's chosen scope.
 - **Stage 5 audit hard gate** — any P0 issue blocks ship. Zero P0 issues lets the work pass. Aggregate /20 score remains advisory only — Excellent / Good / Acceptable / Poor / Critical bands do not block. Severity tip: "Would a user contact support about this? If yes, it's at least P1."
@@ -65,6 +65,8 @@ Load only the files relevant to libraries in scope and the active stage. Do not 
 - `./references/colour-strategy.md` — Restrained / Committed / Full / Drenched levels with TUI mapping
 - `./references/theme-decision.md` — scene-sentence method for dark / light / auto / high-contrast
 - `./references/ai-slop-test.md` — two-altitude category-reflex check, used during Design Direction selection
+- `./references/design-principles.md` — progressive disclosure, density progression, status column rule, scene-sentence rule
+- `./references/anti-references.md` — twelve-row match-and-refuse table; check before finalising any colour or visual choice in the brief
 
 ### Stage 3 — Implement
 
@@ -91,7 +93,7 @@ Load by library in scope. Detect via pyproject.toml dependencies and imports.
 - `./references/textual-advanced.md` — `@on` decorator, reactive advanced, `@work`, screen modes, testing
 - `./references/textual-builder-skill.md` — textual-builder workflow guide
 - `./references/textual-tui-skill.md` — TUI skill with workers, modals, screens, testing
-- `./references/tui-layouts.md`, `./references/tui-styling.md`, `./references/tui-widgets.md`, `./references/tui-official-guides-index.md` — aperepel TUI reference
+- `./references/tui-layouts.md`, `./references/tui-styling.md`, `./references/tui-widgets.md`, `./references/tui-official-guides-index.md` — aperepel/textual-tui-skill reference set
 
 #### When Typer output or help text is in scope
 
@@ -123,16 +125,6 @@ Load by library in scope. Detect via pyproject.toml dependencies and imports.
 
 - `./references/code-quality-patterns.md` — naming, function design, error handling conventions
 
-## Design Principles — Cross-References
-
-The principles informing every stage live in dedicated reference files. Load them when the relevant stage runs.
-
-- `./references/design-principles.md` — progressive disclosure, status at a glance, scene-sentence theme rule, density progression, status-position rule, "match implementation complexity to aesthetic vision"
-- `./references/anti-references.md` — patterns to avoid (lolcat output, splash on every invocation, fake throbbers, decorative borders on every panel, hacker green-on-black, emoji-as-bullet for every list, gradient banners via 24-bit ANSI), each paired with a rewrite-as guidance
-- `./references/register-decision.md` — when to choose brand-cli (design IS the moment: installer banners, demo recordings, marketing CLIs) vs product-cli (design SERVES the task: default for developer tools)
-- `./references/theme-decision.md` — dark vs light is never a default; the scene sentence must force the answer
-- `./references/colour-strategy.md` — pick the commitment level (Restrained / Committed / Full / Drenched) BEFORE picking colours; the ≥10% accent rule applies only to Restrained
-- `./references/ai-slop-test.md` — two-altitude reflex check: theme + palette guessable from category alone (first-order) or from category + anti-references (second-order) signals AI slop
 
 ## Status Indicator Reference
 

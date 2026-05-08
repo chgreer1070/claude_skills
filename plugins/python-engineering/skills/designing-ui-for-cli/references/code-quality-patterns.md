@@ -1,3 +1,4 @@
+# Code Quality Patterns for CLI/TUI Display Logic
 
 ## Naming Conventions
 

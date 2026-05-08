@@ -45,13 +45,7 @@ This is a per-row rule. Multi-line output (e.g. an error block under a failed ro
 
 ## Scene-sentence theme rule
 
-Dark vs. light is never a default. Not dark "because tools look cool dark." Not light "to be safe."
-
-Before choosing, write one sentence of physical scene: who uses this, where, under what ambient light, in what mood. If the sentence doesn't force the answer, it's not concrete enough. Add detail until it does.
-
-"Database migration tool" does not force an answer. "DBA running a migration on the production replica from a 13-inch laptop on a packed train, screen at maximum brightness" forces light or auto. "SRE glancing at incident severity on a 27-inch monitor at 2am in a dim room" forces dark. Run the sentence, not the category.
-
-The scene sentence is part of the shape brief. For TUI scene examples and the full method, see [theme-decision.md](./theme-decision.md).
+Dark vs. light is never a default. Before choosing, write one sentence of physical scene — who uses this, where, under what ambient light, in what mood. If the sentence doesn't force the answer, it's not concrete enough. Add detail until it does. For the full method, worked TUI examples, and light-terminal considerations, see [theme-decision.md](./theme-decision.md).
 
 ## Match implementation complexity to the aesthetic vision
 

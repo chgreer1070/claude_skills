@@ -293,4 +293,4 @@ After polishing, ensure code quality:
 
 ## Source
 
-This checklist is ported from `impeccable@3.0.7/skills/impeccable/reference/polish.md` (lines 1-234) with TUI substitutions specified by the integration plan at `~/.claude/plans/luminous-imagining-teacup.md`. Distillation dimensions ported from `impeccable@3.0.7/skills/impeccable/reference/distill.md` lines 41-84. Eight interactive states from `interaction-design.md` lines 4-19. Squint test and hierarchy table from `spatial-design.md` lines 22-41. UX writing additions from `ux-writing.md` lines 4-86.
+This checklist is ported from `impeccable@3.0.7/skills/impeccable/reference/polish.md` (lines 1-234) with TUI substitutions applied. SOURCE: Adapted from impeccable design system `polish.md` lines 176–198 (TUI substitutions applied). Distillation dimensions ported from `impeccable@3.0.7/skills/impeccable/reference/distill.md` lines 41-84. Eight interactive states from `interaction-design.md` lines 4-19. Squint test and hierarchy table from `spatial-design.md` lines 22-41. UX writing additions from `ux-writing.md` lines 4-86.

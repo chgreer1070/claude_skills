@@ -1,9 +1,3 @@
----
-name: model-skill
-description: Create Pydantic v2 data models with validation, type hints, and proper configuration. Use when designing data structures or schemas.
-allowed-tools: Write, Read
----
-
 # Model Skill
 
 ## Purpose

@@ -1,9 +1,3 @@
----
-name: prompt-skill
-description: Create interactive terminal prompts using questionary for user input. Use when building forms, selection menus, and confirmation dialogs.
-allowed-tools: Write, Read
----
-
 # Prompt Skill
 
 ## Purpose
@@ -16,17 +10,15 @@ Create beautiful, interactive terminal prompts using questionary.
 import questionary
 from questionary import Style
 
-# Retro cyberpunk style
 PROMPT_STYLE = Style([
-    ('qmark', 'fg:#FF00FF bold'),       # Question mark
-    ('question', 'fg:#00FFFF bold'),     # Question text
-    ('answer', 'fg:#00FF00 bold'),       # Answer text
-    ('pointer', 'fg:#FF00FF bold'),      # Selection pointer
-    ('highlighted', 'fg:#00FFFF bold'),  # Highlighted option
-    ('selected', 'fg:#00FF00'),          # Selected checkbox
-    ('separator', 'fg:#888888'),         # Separator line
-    ('instruction', 'fg:#888888'),       # Instructions
-    ('text', 'fg:#FFFFFF'),              # Regular text
+    ("qmark", "bold cyan"),
+    ("question", "bold"),
+    ("answer", "cyan"),
+    ("pointer", "cyan bold"),
+    ("highlighted", "bold"),
+    ("selected", ""),
+    ("separator", "dim"),
+    ("instruction", "dim"),
 ])
 ```
 
@@ -54,10 +46,10 @@ def prompt_description() -> str:
 def prompt_priority() -> str:
     """Prompt for priority selection."""
     choices = [
-        questionary.Choice("🟢 Low", value="low"),
-        questionary.Choice("🟡 Medium", value="medium"),
-        questionary.Choice("🟠 High", value="high"),
-        questionary.Choice("🔴 Urgent", value="urgent"),
+        questionary.Choice("Low", value="low"),
+        questionary.Choice("Medium", value="medium"),
+        questionary.Choice("High", value="high"),
+        questionary.Choice("Urgent", value="urgent"),
     ]
     return questionary.select(
         "Priority level:",
@@ -69,13 +61,13 @@ def prompt_priority() -> str:
 def prompt_main_menu() -> str:
     """Main menu selection."""
     choices = [
-        questionary.Choice("📝 Add Task", value="add"),
-        questionary.Choice("📋 List Tasks", value="list"),
-        questionary.Choice("🔍 Search", value="search"),
-        questionary.Choice("✅ Complete Task", value="complete"),
-        questionary.Choice("🗑️ Delete Task", value="delete"),
-        questionary.Choice("⚙️ Settings", value="settings"),
-        questionary.Choice("👋 Exit", value="exit"),
+        questionary.Choice("Add Task", value="add"),
+        questionary.Choice("List Tasks", value="list"),
+        questionary.Choice("Search", value="search"),
+        questionary.Choice("Complete Task", value="complete"),
+        questionary.Choice("Delete Task", value="delete"),
+        questionary.Choice("Settings", value="settings"),
+        questionary.Choice("Exit", value="exit"),
     ]
     return questionary.select(
         "What would you like to do?",
@@ -154,10 +146,10 @@ def prompt_add_task(existing_tags: list = None) -> dict:
     priority = questionary.select(
         "Priority:",
         choices=[
-            questionary.Choice("🟢 Low", value="low"),
-            questionary.Choice("🟡 Medium", value="medium"),
-            questionary.Choice("🟠 High", value="high"),
-            questionary.Choice("🔴 Urgent", value="urgent"),
+            questionary.Choice("Low", value="low"),
+            questionary.Choice("Medium", value="medium"),
+            questionary.Choice("High", value="high"),
+            questionary.Choice("Urgent", value="urgent"),
         ],
         default="medium",
         style=PROMPT_STYLE
@@ -234,6 +226,5 @@ def prompt_select_task(tasks: list) -> int:
 - Use Choice objects for cleaner value mapping
 - Handle None returns (user cancellation)
 - Group related prompts into form functions
-- Use icons for visual appeal
 - Provide sensible defaults
 - Add confirmation for destructive actions

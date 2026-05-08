@@ -1,8 +1,3 @@
----
-name: textual-tui
-description: Build modern, interactive terminal user interfaces with Textual. Use when creating command-line applications, dashboard tools, monitoring interfaces, data viewers, or any terminal-based UI. Covers architecture, widgets, layouts, styling, event handling, reactive programming, workers for background tasks, and testing patterns.
----
-
 # Textual TUI Development
 
 Build production-quality terminal user interfaces using Textual, a modern Python framework for creating interactive TUI applications.

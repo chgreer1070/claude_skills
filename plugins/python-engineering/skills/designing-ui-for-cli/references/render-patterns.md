@@ -1,9 +1,3 @@
----
-name: render-skill
-description: Create beautiful Rich terminal output with tables, panels, progress bars, and styled text. Use when building terminal UI components.
-allowed-tools: Write, Read
----
-
 # Render Skill
 
 ## Purpose
@@ -40,7 +34,7 @@ def render_task_table(tasks: list) -> Table:
     """Render tasks in a beautiful table."""
 
     table = Table(
-        title="📋 Your Tasks",
+        title="Your Tasks",
         title_style="bold cyan",
         border_style="bright_blue",
         header_style="bold magenta",
@@ -60,17 +54,17 @@ def render_task_table(tasks: list) -> Table:
 
     # Priority styling
     priority_styles = {
-        "urgent": ("🔴", "bold red"),
-        "high": ("🟠", "bold orange1"),
-        "medium": ("🟡", "bold yellow"),
-        "low": ("🟢", "bold green"),
+        "urgent": "bold red",
+        "high": "bold orange1",
+        "medium": "bold yellow",
+        "low": "bold green",
     }
 
-    # Status icons
+    # Status display
     status_display = {
-        "pending": ("⏳", "white"),
-        "completed": ("✅", "green"),
-        "overdue": ("⚠️", "bold red"),
+        "pending": ("…", "white"),
+        "completed": ("✓", "green"),
+        "overdue": ("!", "bold red"),
     }
 
     for task in tasks:
@@ -81,13 +75,13 @@ def render_task_table(tasks: list) -> Table:
         if due and due != '-':
             due = due[:10]  # Just the date part
 
-        p_icon, p_style = priority_styles.get(priority, ("", ""))
+        p_style = priority_styles.get(priority, "")
         s_icon, s_style = status_display.get(status, ("", ""))
 
         table.add_row(
             str(task['id']),
             escape(task['title']),  # escape() prevents markup injection from user-controlled titles
-            Text(f"{p_icon} {priority.upper()}", style=p_style),
+            Text(priority.upper(), style=p_style),
             Text(f"{s_icon} {status.title()}", style=s_style),
             tags,
             due if due else "-"
@@ -168,19 +162,19 @@ def show_progress(items: list, description: str = "Processing"):
 ```python
 def print_success(message: str):
     """Print success message."""
-    console.print(f"✅ {message}", style="success")
+    console.print(f"✓ {message}", style="success")
 
 def print_error(message: str):
     """Print error message."""
-    console.print(f"❌ {message}", style="error")
+    console.print(f"✗ {message}", style="error")
 
 def print_warning(message: str):
     """Print warning message."""
-    console.print(f"⚠️ {message}", style="warning")
+    console.print(f"! {message}", style="warning")
 
 def print_info(message: str):
     """Print info message."""
-    console.print(f"ℹ️ {message}", style="info")
+    console.print(f"· {message}", style="info")
 ```
 
 ### Dashboard Layout
@@ -228,7 +222,7 @@ def render_empty_state():
                 "[cyan]Create your first task with:[/]\n"
                 "[bold white]todo add[/]"
             ),
-            title="📋 Empty",
+            title="Empty",
             border_style="dim"
         )
     )
@@ -237,7 +231,6 @@ def render_empty_state():
 ## Best Practices
 
 - Use consistent styling throughout the app
-- Include icons for visual cues
 - Handle empty states gracefully
 - Use color to convey meaning (red=error, green=success)
 - Add padding and spacing for readability

@@ -520,4 +520,4 @@ Skip items that would address zero issues. If the user chose a limited scope, on
 
 ## Re-run Loop
 
-Re-run `/impeccable critique` after fixes to see your score improve.
+Re-run this skill's Stage 4 critique pass after applying fixes.

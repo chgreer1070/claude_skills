@@ -112,18 +112,7 @@ Check for:
 
 ### 5. Anti-Patterns & Slop (CRITICAL)
 
-Run the two-altitude AI slop test from `./ai-slop-test.md`. Check against the banned patterns from `./anti-references.md`.
-
-Banned TUI patterns:
-
-- lolcat-style rainbow output as primary aesthetic
-- splash screen on every invocation (allowed once on first run; never sustained)
-- fake throbbers / spinners that do not reflect actual progress
-- decorative borders on every panel (borders should serve hierarchy, not decoration)
-- every list bulleted with emoji
-- generic "hacker green-on-black" matrix aesthetic when register does not call for it
-- gradient banners via 24-bit ANSI without a fallback
-- ASCII art that loads on every command and cannot be suppressed
+Run the two-altitude AI slop test from `./ai-slop-test.md`. Check against the full match-and-refuse table in `./anti-references.md`.
 
 Copy:
 
@@ -210,7 +199,7 @@ This rule is the gate. The /20 score is informational. A surface with score 18/2
 
 ## Re-run Loop
 
-> Re-run `/impeccable audit` after fixes to see your score improve.
+Re-run this skill's Stage 5 audit pass after applying fixes.
 
 After applying fixes recommended by an audit pass, re-run the audit against the same target. The audit is the single source of truth for whether ship is unblocked — there is no "return to Implement" or "return to Shape" transition. The recovery path is fix → re-run audit → re-evaluate P0 count.
 

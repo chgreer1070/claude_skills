@@ -1,8 +1,3 @@
----
-name: textual-builder
-description: Build Text User Interface (TUI) applications using the Textual Python framework (v8.x+). Use when creating terminal-based applications, prototyping card games or interactive CLIs, or when the user mentions Textual, TUI, or terminal UI. Includes comprehensive reference documentation, card game starter template, and styling guides.
----
-
 # Textual Builder
 
 ## Overview
