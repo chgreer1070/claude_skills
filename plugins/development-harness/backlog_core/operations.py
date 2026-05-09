@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, NotRequired, cast
 
 import dh_paths as _dh_paths
+from dispatch_schema.core.constants import MIN_CONFLICT_GROUP_SIZE
 from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject  # GithubObject used only by create_milestone (ADR-004)
 from ruamel.yaml import YAMLError
@@ -642,8 +643,10 @@ def _create_issue_and_update_item(item: BacklogItem, repo: str, output: Output |
         Issue number if created, None otherwise.
     """
     out = output or Output()
+    repository = try_get_github(repo)
+    if repository is None:
+        return None
     try:
-        repository = get_github(repo)
         issue_num = create_issue_for_item(repository, item, dry_run=False, output=out)
     except (GithubException, BacklogError) as e:
         out.warn(f"  WARNING: Issue creation failed: {e}")
@@ -3299,7 +3302,7 @@ def update_item(
         result["plan"] = plan
         _auto_register_plan_artifact(item, plan, repo, output=out)
 
-    if not item.issue:
+    if not item.issue and (not title or status or verified):
         issue_num = _create_issue_and_update_item(item, repo, output=out)
         if issue_num:
             out.info(f"  Issue: #{issue_num}")
@@ -4937,8 +4940,6 @@ def create_project(
 # ---------------------------------------------------------------------------
 # Impact Radius conflict analysis (pure — no GitHub calls)
 # ---------------------------------------------------------------------------
-
-MIN_CONFLICT_GROUP_SIZE = 2
 
 
 class _UnionFind:

@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from backlog_core.operations import MIN_CONFLICT_GROUP_SIZE
+from dispatch_schema.core.constants import MIN_CONFLICT_GROUP_SIZE
 
 if TYPE_CHECKING:
     from dispatch_schema.core.models import DispatchPlan
