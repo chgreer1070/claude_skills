@@ -287,6 +287,14 @@ export ECC_DISABLED_HOOKS="pre:bash:tmux-reminder,post:edit:typecheck"
 
 ---
 
+## Cross-References
+
+| Entry | Category | Relationship |
+|-------|----------|--------------|
+| [Agent Skills Eval](../evaluation-testing/agent-skills-eval.md) | evaluation-testing | referenced by Agent Skills Eval (evaluation-testing) |
+
+---
+
 ## Freshness Tracking
 
 | Field | Value |

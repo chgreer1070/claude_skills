@@ -252,6 +252,14 @@ SOURCE: Analysis of repository contents (2026-03-06); [Equipping agents for the 
 
 ---
 
+## Cross-References
+
+| Entry | Category | Relationship |
+|-------|----------|--------------|
+| [Agent Skills Eval](../evaluation-testing/agent-skills-eval.md) | evaluation-testing | referenced by Agent Skills Eval (evaluation-testing) |
+
+---
+
 ## Freshness Tracking
 
 | Field | Value |
