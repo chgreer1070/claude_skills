@@ -392,10 +392,15 @@ Tools and services that automate the creation of AI skills from documentation, c
 | [softaworks-agent-toolkit.md](./skill-generation-tools/softaworks-agent-toolkit.md) | Softaworks Agent Toolkit - 43 skills, 6 agents, 7 slash commands for Claude Code with multi-platform support (621 stars) | 2026-02-20   |
 | [mattpocock-skills.md](./skill-generation-tools/mattpocock-skills.md) | mattpocock/skills - 21 specialized skills encoding engineering disciplines (TDD, interface design, architectural refactoring, pre-commit setup) for Claude Code; battle-tested patterns for planning, development, tooling, and knowledge management (23.9K stars, MIT) | 2026-04-27   |
 | [obsidian-skills.md](./skill-generation-tools/obsidian-skills.md)     | Obsidian Skills - 5 modular Agent Skills for Obsidian (markdown, bases, JSON Canvas, CLI, defuddle) by Steph Ango (13.3K stars) | 2026-03-12   |
+| [paperjsx.md](./skill-generation-tools/paperjsx.md)                   | PaperJSX Document Generation Library - Node.js library generating PPTX, DOCX, XLSX, PDF documents from declarative JSON schemas; 4 format-specific npm packages, 8 PPTX slide types, 5 themes per format, local-only execution (no API keys) | 2026-05-10   |
 | [vercel-labs-skills.md](./skill-generation-tools/vercel-labs-skills.md) | Vercel Labs Skills - universal CLI for installing skills to 40+ AI coding agents with symlink-first design (6.3K stars) | 2026-02-20   |
 | [claude-scientific-skills.md](./skill-generation-tools/claude-scientific-skills.md) | Claude Scientific Skills - 170+ skills across 15 scientific domains (bioinformatics, cheminformatics, ML, physics, materials science); 250+ accessible databases; agentskills.io compliance for Cursor, Claude Code, Codex, Gemini CLI | 2026-03-16   |
 | [graphify.md](./skill-generation-tools/graphify.md)           | graphify v3 — dual AST+LLM extraction pipeline, 19-language tree-sitter support, confidence-tagged edges (EXTRACTED/INFERRED/AMBIGUOUS), 71.5x token reduction on mixed corpora, multi-format export (HTML/JSON/Markdown/SVG/GraphML/Cypher/Obsidian), PreToolUse hook integration | 2026-04-08   |
 | [waza.md](./skill-generation-tools/waza.md)                   | Waza (技) — 8 engineering-habit skills (think, check, hunt, design, read, write, learn, health) for Claude Code; multi-mode architecture, runtime project context extraction, smoke-tested packaging (4,369 stars, MIT) | 2026-05-04   |
+| [composio-codebase-migrate.md](./skill-generation-tools/composio-codebase-migrate.md) | Composio Codebase Migrate — Codex skill for large-scale multi-file refactors batched into ~25-file PRs with Composio CLI issue tracking, checkpoint validation, and parallel reviewable batches | 2026-05-10   |
+| [awesome-codex-skills-issue-triage.md](./skill-generation-tools/awesome-codex-skills-issue-triage.md) | Awesome Codex Skills Issue Triage — Codex skill for bulk issue triage and deduplication across Linear and Jira via Composio CLI; supports relabeling, reassignment, and summary posting | 2026-05-10   |
+| [codebase-recon-skill.md](./skill-generation-tools/codebase-recon-skill.md) | Codebase Recon Skill — git history analysis across seven dimensions (health, risk, team structure, momentum) before reading any code; multi-agent compatible, agent-skills-spec compliant | 2026-05-10   |
+| [agent-skills.md](./skill-generation-tools/agent-skills.md) | Agent Skills (Addy Osmani) — 37K-star production-grade skills library for AI coding agents; structured workflows following Google software engineering culture with senior engineer practices (MIT, v1.0.0) | 2026-05-10   |
 
 **Key Topics**:
 
@@ -512,6 +517,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [orchestra.md](./agent-frameworks/orchestra.md)                       | Orchestra — context-optimized Claude Code plugin for DAG-based task orchestration; decomposes complex tasks into focused sub-agents with configurable token budgets, wave-based parallelism, git worktree isolation, and resumable state (v1.0.0, MIT) | 2026-04-20   |
 | [cursor-cookbook.md](./agent-frameworks/cursor-cookbook.md)           | Cursor Cookbook — 5 production-ready Cursor SDK examples: Quickstart, Coding Agent CLI (Bun TUI), Agent Kanban (Next.js), DAG Task Runner (Kahn's algorithm, parallel agents), App Builder (hot-reloading React preview); 3,407 stars | 2026-05-05   |
 | [claude-code-harness.md](./agent-frameworks/claude-code-harness.md)   | Claude Code Harness — Go-native guardrail engine (13 rules R01–R13), 5-verb workflow skills (setup/plan/work/review/release), 3 sub-agents, parallel Breezing execution, session memory via harness-mem (MIT, v4.7.0) | 2026-05-07   |
+| [octogent.md](./agent-frameworks/octogent.md)                         | Octogent — web dashboard for orchestrating parallel Claude Code agent sessions; tentacle-scoped context in durable markdown files, todo-driven swarm delegation, worktree isolation, PTY terminals, WebSocket UI (921 stars, MIT, v0.1.0) | 2026-05-10   |
 
 **Key Topics**:
 
@@ -771,6 +777,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [pretext.md](./developer-tools/pretext.md) | Pretext v0.0.3 — DOM-free multiline text measurement and layout library; canvas-based measurement, pure arithmetic line breaking, 100% browser accuracy (7,680/7,680 tests), CJK/Arabic/Thai/BiDi support, ~19ms prepare() for 500-text batch, 0.09ms/call layout() (8K stars) | 2026-03-29   |
 | [pyscript.md](./developer-tools/pyscript.md) | PyScript 2026.3.1 — open-source platform bringing Python to web browsers via WebAssembly; dual interpreters (Pyodide + MicroPython 170KB); Python-JavaScript FFI; pyscript.web Pythonic DOM API; worker-based execution via Donkey/Bridge API (18.7K stars, Apache-2.0) | 2026-04-12   |
 | [wrkflw.md](./developer-tools/wrkflw.md) | wrkflw v0.8.0 — Rust CLI for local GitHub Actions and GitLab CI workflow validation and execution; 4 runtimes (Docker, Podman, emulation, secure emulation), TUI with DAG view, diff-aware filtering, matrix builds, reusable workflows, multi-provider secrets (MIT) | 2026-04-25   |
+| [gh-skill.md](./developer-tools/gh-skill.md) | GitHub CLI (gh) Skill — agent-ready GitHub CLI installer with SHA256 binary verification, GITHUB_TOKEN auth, proxy-remote `-R` flag patterns, 50+ documented commands, and Python automation scripts for label/milestone/Projects V2 setup | 2026-05-10   |
 
 **Key Topics**:
 
@@ -931,6 +938,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [hyperagents.md](./coding-agents/hyperagents.md) | HyperAgents — Meta research framework for self-referential self-improving agents; MetaAgent iteratively modifies codebase, TaskAgent solves domains (Balrog, Genesis, IMO, Polyglot, Paper Review, Search Arena); Docker-containerized evaluation, LiteLLM multi-model support, evolutionary optimization loop (CC BY-NC-SA 4.0) | 2026-03-29   |
 | [trigger-dev-examples.md](./coding-agents/trigger-dev-examples.md) | Trigger.dev Examples — 29 TypeScript/Python example projects covering 5 AI agent patterns (prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer); Next.js/Remix integrations; real-time streaming via Socket.io; OpenAI/Anthropic/Mastra integrations (Apache-2.0) | 2026-04-11   |
 | [raincast.md](./coding-agents/raincast.md) | Raincast v0.1.0 — AI-powered native desktop app generator: describe an app in plain English, receive a compiled React + Tauri binary (macOS/Windows/Linux) with real UI, file system access, and system integration; live preview with hot reload during generation (MIT) | 2026-04-25   |
+| [brooks-lint.md](./coding-agents/brooks-lint.md) | brooks-lint — AI code reviews grounded in twelve classic software engineering books (The Pragmatic Programmer, Clean Code, SICP, etc.); surfaces book-backed insights mapped to changed code | 2026-05-10   |
 
 **Key Topics**:
 
@@ -1004,6 +1012,7 @@ AI-powered task management systems designed for AI-driven development workflows.
 | [artifact-manifest-backend-providers.md](./task-management/artifact-manifest-backend-providers.md) | Cross-platform comparison of structured metadata capabilities (GitHub, Linear, GitLab, Supabase) for ArtifactBackend provider implementations | 2026-03-22   |
 | [xyops.md](./task-management/xyops.md)                                                             | xyOps - distributed job orchestration and fleet management platform with visual workflow editor, real-time monitoring, alerting, and remote satellite agent system | 2026-03-26   |
 | [beads.md](./task-management/beads.md) | Beads (bd) — Dolt-powered version-controlled issue tracker for distributed AI workflows: hash-based collision-free IDs, dependency DAG with 4 relationship types, semantic compaction for context window recovery, offline-first with S3/GCS/DoltHub sync (19,673 stars, v0.62.0) | 2026-03-25   |
+| [internal-comms-skill.md](./task-management/internal-comms-skill.md) | Internal-Comms Skill — Codex skill for six internal communication formats (3P updates, newsletters, FAQ, status reports, leadership updates, incident reports) via Composio CLI (Apache-2.0) | 2026-05-10   |
 
 **Key Topics**:
 
@@ -1374,6 +1383,7 @@ Automated content generation tools that produce changelogs, release notes, blog 
 | -------- | ----------- | ------------ |
 | [notra.md](./ai-writing-tools/notra.md) | Notra - SaaS tool that auto-generates publish-ready changelogs, blog posts, and social updates by monitoring GitHub, Linear, and Slack activity; drafts content matching configured brand voice (proprietary SaaS) | 2026-03-04 |
 | [stop-slop.md](./ai-writing-tools/stop-slop.md) | Stop Slop — editorial skill removing AI-generated writing patterns via 8 core rules + 60+ phrase catalog + structural anti-patterns + 5-dimensional scoring rubric; framework for prose clarity and authenticity (MIT) | 2026-04-03 |
+| [unslop.md](./ai-writing-tools/unslop.md) | unslop v0.6.2 — AI output humanization system removing AI-isms with byte-exact preservation of code, tables, and URLs; deterministic regex + optional LLM refinement; Claude Code, Cursor, Codex, Gemini CLI plugin (MIT) | 2026-05-10 |
 
 **Key Topics**:
 
