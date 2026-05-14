@@ -156,6 +156,20 @@ class TestFallbackChain:
         assert isinstance(provider, LocalFilesystemArtifactProvider)
         assert _server._artifact_provider_warning == _EXPECTED_WARNING
 
+    def test_explicit_local_backend_env_var_selects_local_provider(
+        self, isolated_state: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """BACKLOG_BACKEND=local selects the local provider directly without raising or falling back."""
+        monkeypatch.setenv("BACKLOG_BACKEND", "local")
+        monkeypatch.setattr(_server._models, "get_default_repo", lambda: "owner/repo")
+        monkeypatch.setattr(_server._models, "get_repo_root", lambda: isolated_state)
+        monkeypatch.setattr(_server._dh_paths, "git_project_root", lambda: isolated_state)
+
+        provider = _server._get_artifact_provider()
+
+        assert isinstance(provider, LocalFilesystemArtifactProvider)
+        assert _server._artifact_provider_warning == _EXPECTED_WARNING
+
     def test_singleton_cached_after_first_call(self, isolated_state: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Subsequent calls return the identical cached instance."""
         monkeypatch.setattr(_server._models, "get_default_repo", lambda: "owner/repo")
