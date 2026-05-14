@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beads Backend Integration — Feature Comparison &amp; Implementation Plan</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+mermaid.initialize({startOnLoad:true, theme:'dark', securityLevel:'loose'});
+</script>
+<style>
+  body { background:#0f172a; color:#e2e8f0; font-family:'Inter',system-ui,sans-serif; }
+  .mermaid { background:#1e293b; border-radius:8px; padding:16px; margin:16px 0; }
+  details > summary { cursor:pointer; user-select:none; }
+  details > summary:hover { opacity:0.85; }
+  .cell-green { background:#14532d; color:#86efac; }
+  .cell-yellow { background:#713f12; color:#fde68a; }
+  .cell-orange { background:#7c2d12; color:#fdba74; }
+  .cell-red { background:#450a0a; color:#fca5a5; }
+  .gap-card { border-left:4px solid; }
+  th { background:#1e293b; position:sticky; top:0; z-index:10; }
+  table { border-collapse:collapse; width:100%; }
+  td, th { padding:8px 12px; border:1px solid #334155; text-align:left; vertical-align:top; }
+  tr:hover td { background:#1e293b; }
+  code { background:#1e293b; padding:2px 6px; border-radius:4px; font-size:0.85em; font-family:'Fira Code',monospace; }
+  pre code { background:transparent; padding:0; }
+  pre { background:#1e293b; border:1px solid #334155; border-radius:8px; padding:16px; overflow-x:auto; font-size:0.85em; }
+  .callout { border:1px solid; border-radius:8px; padding:16px; margin:16px 0; }
+  .callout-warning { border-color:#d97706; background:#1c1207; }
+  .callout-info { border-color:#3b82f6; background:#0c1a2e; }
+  .callout-success { border-color:#22c55e; background:#071a0f; }
+  .section-header { border-bottom:2px solid #334155; padding-bottom:8px; margin-bottom:16px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.75em; font-weight:600; }
+  .badge-s { background:#1e3a5f; color:#93c5fd; }
+  .badge-m { background:#1a3320; color:#86efac; }
+  .badge-l { background:#3b1c08; color:#fdba74; }
+  .badge-xl { background:#3b0a0a; color:#fca5a5; }
+  input[type=checkbox] { accent-color:#6366f1; width:16px; height:16px; }
+  label { display:flex; gap:10px; align-items:flex-start; padding:6px 0; border-bottom:1px solid #1e293b; }
+  label:last-child { border-bottom:none; }
+  .toc a { color:#94a3b8; text-decoration:none; }
+  .toc a:hover { color:#e2e8f0; }
+  .toc li { margin:4px 0; }
+</style>
+</head>
+<body class="p-6 max-w-7xl mx-auto">
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<div class="mb-10 text-center">
+  <div class="inline-block bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-2 rounded-full text-sm font-semibold mb-4">DH Plugin · Backend Integration Design · 2026-05-14</div>
+  <h1 class="text-4xl font-bold text-white mb-3">Beads Backend Integration</h1>
+  <p class="text-xl text-slate-400">Feature Comparison &amp; Implementation Plan — Vision C (Universal Shim)</p>
+  <div class="mt-4 flex justify-center gap-6 text-sm text-slate-500">
+    <span>📅 2026-05-14</span>
+    <span>🎯 Scope: BacklogBackend Protocol + SAM Bridge + Dispatch Adapter</span>
+    <span>🏗️ Architecture: Vision C — Universal Shim via <code>bd</code> CLI subprocess</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TABLE OF CONTENTS ═══════════════════════════ -->
+<div class="callout callout-info mb-8">
+  <h2 class="text-lg font-semibold text-blue-300 mb-3">Contents</h2>
+  <ol class="toc list-decimal list-inside space-y-1 text-slate-300 columns-2">
+    <li><a href="#exec-summary">Executive Summary</a></li>
+    <li><a href="#open-decisions">Open Decisions Required</a></li>
+    <li><a href="#architecture">Backend Architecture Diagram</a></li>
+    <li><a href="#mcp-mapping">Backlog MCP Tool → bd Command Mapping</a></li>
+    <li><a href="#sam-mapping">SAM System → Beads Mapping</a></li>
+    <li><a href="#data-model">Three-Column Data Model Map</a></li>
+    <li><a href="#gaps">Gaps Requiring Bridges</a></li>
+    <li><a href="#checklist">Implementation Checklist</a></li>
+    <li><a href="#cli-wrapper">CLI Wrapper Specification</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════ 1. EXECUTIVE SUMMARY ═══════════════════════════ -->
+<section id="exec-summary" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">1. Executive Summary</h2>
+  <div class="bg-slate-800 rounded-xl p-6 text-slate-300 leading-relaxed space-y-4">
+    <p><strong class="text-white">Beads</strong> (<code>bd</code> CLI) is a Dolt-powered distributed graph issue tracker with 70+ commands, native JSON output on virtually every command, dependency-aware DAG execution, a molecule/formula workflow system, multi-assignee claim semantics, a persistent memory system, and bidirectional sync with GitHub, Linear, Jira, GitLab, ADO, and Notion. Its data model is significantly richer than GitHub Issues: first-class dependency typing (19 built-in edge types), custom statuses and types, structured metadata JSON blobs on every issue, async gate primitives, and Dolt-based version-controlled storage with federation.</p>
+    <p><strong class="text-white">Development-Harness (DH)</strong> is a Claude Code plugin that manages software project backlogs via GitHub Issues. It exposes a FastMCP server with three logical subsystems: backlog CRUD tools (<code>backlog_*</code>), artifact manifest management (<code>artifact_*</code>), and dispatch/wave orchestration (<code>dispatch_*</code>). The SAM (Structured Agent-Managed) system adds a fourth layer: YAML-based task plans with dependency graphs, atomic claiming, T0/TN bookend verification, and session-scoped active-task parking. GitHub Issues is currently the authoritative source of truth.</p>
+    <p><strong class="text-white">Why integrate?</strong> Teams using beads for issue tracking should not need to maintain a parallel GitHub Issues mirror. A beads backend eliminates the round-trip to GitHub (with its rate limits, authentication overhead, and network dependency), enables offline-first workflows, and lets agents operate on a richer native data model (typed dependencies, metadata blobs, DAG visualization, atomic claiming) without shimming those concepts through GitHub labels and issue-body conventions.</p>
+    <p><strong class="text-white">Chosen architecture — Vision C (Universal Shim):</strong> <code>BeadsBackend</code> implements the existing <code>BacklogBackend</code> Python Protocol via <code>bd</code> CLI subprocess calls. Agents continue using the same <code>backlog_*</code> MCP tools or the new <code>dh-backlog</code> CLI wrapper. The <code>bd</code> binary is an implementation detail inside the backend — no agent instruction rewrite is needed. Backend selection follows existing DH precedence: <code>BACKLOG_BACKEND</code> env var → <code>backend.toml</code> → <code>.beads/</code> auto-detect (new) → GitHub default.</p>
+    <p><strong class="text-white">What is immediately buildable:</strong> The core <code>BeadsBackend</code> class (Phase 1) can implement 18 of 38 MCP tools with direct or adapted mappings. Backlog CRUD (<code>backlog_add</code>, <code>list</code>, <code>view</code>, <code>update</code>, <code>close</code>, <code>resolve</code>), comments, labels, and read-only GitHub tools all map cleanly to <code>bd</code> subcommands with JSON output. <strong class="text-white">What needs bridging:</strong> Artifact management (no beads equivalent — needs filesystem + <code>bd remember</code>), dispatch/wave orchestration (needs a <code>BeadsDispatchAdapter</code> using beads molecules), SAM active-task parking (needs <code>bd remember</code> convention), and structured acceptance criteria with executable check commands (needs beads <code>notes</code> JSON blob storage).</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 2. OPEN DECISIONS ═══════════════════════════ -->
+<section id="open-decisions" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">2. Open Decisions Required</h2>
+  <div class="callout callout-warning">
+    <div class="flex items-center gap-2 mb-4">
+      <span class="text-2xl">⚠️</span>
+      <h3 class="text-lg font-semibold text-amber-300">Architectural Forks — Human Decision Required BEFORE Implementation Begins</h3>
+    </div>
+    <p class="text-slate-400 text-sm mb-4">The following decisions have multiple valid approaches. Each fork affects the implementation design of Phases 2–4. Resolve these before writing any code beyond Phase 1.</p>
+    <div class="space-y-4">
+
+      <div class="bg-slate-900 rounded-lg p-4 border border-amber-800">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="badge badge-l">DECISION 1</span>
+          <span class="text-white font-semibold">Plan ↔ Beads Representation</span>
+        </div>
+        <p class="text-slate-400 text-sm mb-2">How should SAM plans map to beads issues?</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-800 rounded p-3 border border-slate-600">
+            <div class="text-green-400 font-semibold text-sm mb-1">Option A: Epic + Sub-issues</div>
+            <p class="text-slate-400 text-xs">Plan = beads epic (<code>-t epic</code>). Each task = child bead via <code>--parent</code>. Native hierarchical IDs (<code>bd-abc.1</code>, <code>bd-abc.2</code>). DAG via <code>bd dep add</code>. No YAML files.</p>
+          </div>
+          <div class="bg-slate-800 rounded p-3 border border-slate-600">
+            <div class="text-blue-400 font-semibold text-sm mb-1">Option B: Plans Stay YAML + Leaf Tasks as Beads</div>
+            <p class="text-slate-400 text-xs">Plan = YAML on disk (existing format). Only leaf implementation tasks become beads issues (<code>bd create --type=task</code>). Metadata bead links YAML plan to beads. Less migration risk.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 rounded-lg p-4 border border-amber-800">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="badge badge-l">DECISION 2</span>
+          <span class="text-white font-semibold">Artifact Storage Backend</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-800 rounded p-3 border border-slate-600">
+            <div class="text-green-400 font-semibold text-sm mb-1">Option A: Beads notes JSON blob</div>
+            <p class="text-slate-400 text-xs">Store artifact metadata in <code>bd update bd-NNN --metadata '{"artifacts":[...]}'</code>. Content stored in issue notes field. Native to beads, but large content is awkward in notes.</p>
+          </div>
+          <div class="bg-slate-800 rounded p-3 border border-slate-600">
+            <div class="text-blue-400 font-semibold text-sm mb-1">Option B: Filesystem + bd remember</div>
+            <p class="text-slate-400 text-xs">Artifacts stay in <code>.dh/artifacts/{slug}/</code>. Path recorded via <code>bd remember "artifact:{name}:{path}" --key artifact-{id}</code>. Works offline, survives beads re-inits.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 rounded-lg p-4 border border-amber-800">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="badge badge-m">DECISION 3</span>
+          <span class="text-white font-semibold">sam_active_task Parking</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-800 rounded p-3 border border-slate-600">
+            <div class="text-green-400 font-semibold text-sm mb-1">Option A: bd remember per-session</div>
+            <p class="text-slate-400 text-xs"><code>bd remember "active-task: bd-NNN" --key active-task-{session_id}</code>. Persists across session boundaries. Cleared by <code>bd forget</code> on SubagentStop hook.</p>
+          </div>
+          <div class="bg-slate-800 rounded p-3 border border-slate-600">
+            <div class="text-blue-400 font-semibold text-sm mb-1">Option B: Local JSON file (existing pattern)</div>
+            <p class="text-slate-400 text-xs">Keep existing <code>~/.dh/projects/{slug}/context/active-task-{session_id}.json</code> format. No change to SubagentStop hook. Beads backend stores same JSON, different bead ID format.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 rounded-lg p-4 border border-amber-800">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="badge badge-m">DECISION 4</span>
+          <span class="text-white font-semibold">T0/TN Bookend Result Storage</span>
+        </div>
+        <p class="text-slate-400 text-sm">Beads has no verification artifact type. Options: (A) filesystem files at <code>.dh/bookends/{slug}/</code> with path recorded in <code>bd remember</code>, or (B) full YAML stored in beads issue <code>notes</code> JSON blob — searchable but size-limited.</p>
+      </div>
+
+      <div class="bg-slate-900 rounded-lg p-4 border border-amber-800">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="badge badge-m">DECISION 5</span>
+          <span class="text-white font-semibold">SAM Dispatch/Wave State</span>
+        </div>
+        <p class="text-slate-400 text-sm">Options: (A) Dedicated beads formulas as wave containers using <code>bd mol bond</code> for wave member linking — native beads concept, requires formula authoring. (B) Keep existing YAML dispatch plan files + beads tracking issues for wave status — minimal change, familiar pattern.</p>
+      </div>
+
+      <div class="bg-slate-900 rounded-lg p-4 border border-amber-800">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="badge badge-s">DECISION 6</span>
+          <span class="text-white font-semibold">CLI Wrapper Scope</span>
+        </div>
+        <p class="text-slate-400 text-sm">Options: (A) Thin passthrough — <code>dh-backlog</code> reads backend config and delegates 1:1 to MCP tool parameters, returning raw tool output. (B) Full routing shim with backend selection logic embedded in the wrapper, aware of both <code>bd</code> commands and GitHub API calls.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 3. ARCHITECTURE DIAGRAM ═══════════════════════════ -->
+<section id="architecture" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">3. Backend Architecture Diagram</h2>
+  <div class="mermaid">
+flowchart TD
+    Agent["🤖 Agent / Orchestrator"]
+    MCP["FastMCP Server\nbacklog_core/server.py"]
+    Factory["create_backend()\nbackend_protocol.py"]
+    Beads["BeadsBackend\nbeads_backend.py\n(bd CLI subprocess)"]
+    GitHub["GitHubBackend\ngithub_backend.py\n(PyGithub + GraphQL)"]
+    SQLite["SQLiteBackend\nsqlite_backend.py\n(Local SQLite)"]
+    Memory["InMemoryBackend\nmemory_backend.py\n(Test double)"]
+    BD["bd CLI binary\n(Dolt-powered)"]
+    ArtMgr["BeadsArtifactManager\n(outside Protocol)"]
+    DispAdapt["BeadsDispatchAdapter\n(outside Protocol)"]
+
+    Agent -->|"backlog_* artifact_* dispatch_*\nMCP tool calls"| MCP
+    MCP --> Factory
+    Factory -->|"BACKLOG_BACKEND=beads\nor backend.toml name=beads\nor .beads/ auto-detect"| Beads
+    Factory -->|default| GitHub
+    Factory -->|BACKLOG_BACKEND=sqlite| SQLite
+    Factory -->|BACKLOG_BACKEND=memory| Memory
+    Beads -->|"subprocess\nbd --json create/show/update/close/list"| BD
+    MCP -->|"artifact_* calls\nwhen backend=beads"| ArtMgr
+    MCP -->|"dispatch_* calls\nwhen backend=beads"| DispAdapt
+    ArtMgr -->|"bd remember\nfilesystem .dh/artifacts/"| BD
+    DispAdapt -->|"bd mol bond\nbd update --type=molecule"| BD
+
+    style Beads fill:#1e3a5f,stroke:#3b82f6
+    style BD fill:#0f2a1a,stroke:#22c55e
+    style ArtMgr fill:#2a1a0f,stroke:#f97316
+    style DispAdapt fill:#2a1a0f,stroke:#f97316
+    style GitHub fill:#1a1a2e,stroke:#6366f1
+  </div>
+
+  <div class="bg-slate-800 rounded-xl p-5 mt-4">
+    <h3 class="text-lg font-semibold text-white mb-3">Detection Precedence Flow</h3>
+    <div class="mermaid">
+flowchart LR
+    Start(["create_backend() called"])
+    E1{"BACKLOG_BACKEND\nenv var set?"}
+    E2{"backend.toml\n[backend] name set?"}
+    E3{"'.beads/' dir with\nproject files exists\nat git root?"}
+    GH["Default: github"]
+    Use["Use named backend\ngithub|sqlite|memory|beads"]
+
+    Start --> E1
+    E1 -->|yes| Use
+    E1 -->|no| E2
+    E2 -->|yes| Use
+    E2 -->|no| E3
+    E3 -->|yes| Beads2["beads (auto-detected)"]
+    E3 -->|no| GH
+
+    style Beads2 fill:#1e3a5f,stroke:#3b82f6
+    style GH fill:#1a1a2e,stroke:#6366f1
+    </div>
+    <p class="text-slate-400 text-sm mt-2">Note: <code>artifact_*</code> and <code>dispatch_*</code> tools are outside the <code>BacklogBackend</code> Protocol — they need separate bridge classes (<code>BeadsArtifactManager</code>, <code>BeadsDispatchAdapter</code>) routed by the MCP server layer when <code>backend == beads</code>.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 4. MCP TOOL MAPPING TABLE ═══════════════════════════ -->
+<section id="mcp-mapping" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">4. Backlog MCP Tool → <code>bd</code> Command Mapping</h2>
+  <div class="callout callout-info mb-4">
+    <span class="text-blue-300 font-semibold">Fidelity Key: </span>
+    <span class="cell-green rounded px-2 py-0.5 mr-2 text-sm">🟢 Direct</span> 1:1 mapping, no data loss &nbsp;|&nbsp;
+    <span class="cell-yellow rounded px-2 py-0.5 mr-2 text-sm">🟡 Adapted</span> parameter translation needed &nbsp;|&nbsp;
+    <span class="cell-orange rounded px-2 py-0.5 mr-2 text-sm">🟠 Bridge</span> wrapper logic required &nbsp;|&nbsp;
+    <span class="cell-red rounded px-2 py-0.5 text-sm">🔴 Missing</span> no beads equivalent
+  </div>
+  <details open>
+    <summary class="bg-slate-700 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-slate-600 mb-2">Backlog CRUD Tools (11 tools)</summary>
+    <div class="overflow-x-auto mt-2">
+      <table>
+        <thead><tr>
+          <th class="w-44">MCP Tool</th>
+          <th class="w-32">Operation</th>
+          <th>bd CLI Equivalent</th>
+          <th class="w-24">Fidelity</th>
+          <th>Notes</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><code>backlog_add</code></td><td>Create item</td><td><code>bd create "title" -t feature -p 2 -d "description" --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Priority mapping: DH P0→bd 0, P1→1, P2→2, Ideas→4. gate_token check is DH-layer concern, not beads. Need to map DH type (Feature/Bug/Chore) → beads type.</td></tr>
+          <tr><td><code>backlog_list</code></td><td>List items</td><td><code>bd list --status open --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Auto-pagination (4400-token budget) must be re-implemented in BeadsBackend. Filtering by label/section/type maps to <code>--label</code>, <code>--type</code>, <code>--priority</code> flags. Full-text search maps to <code>bd search "query"</code> or <code>bd query</code>.</td></tr>
+          <tr><td><code>backlog_view</code></td><td>View single item</td><td><code>bd show bd-NNN --json</code> or <code>bd show bd-NNN --long</code></td><td class="cell-yellow">🟡 Adapted</td><td>Progressive disclosure sections don't map to beads fields — description/notes/design are top-level fields. Section filtering (<code>section=</code> param) requires custom logic to parse structured beads fields. Over-budget auto-compact must be re-implemented.</td></tr>
+          <tr><td><code>backlog_sync</code></td><td>Sync to remote</td><td><code>bd dolt push</code> (for Dolt remote) or <code>bd github sync --push-only</code></td><td class="cell-orange">🟠 Bridge</td><td>DH sync = push local markdown to GitHub Issues. Beads sync = push Dolt data to Dolt remote. Semantics differ: beads has no "create missing issues" concept for sync — issues already exist in Dolt. Map to <code>bd dolt push</code>.</td></tr>
+          <tr><td><code>backlog_close</code></td><td>Dismiss item</td><td><code>bd close bd-NNN --reason "reason" --json</code></td><td class="cell-green">🟢 Direct</td><td>Beads has native close with reason. ADR-9 reason enum (duplicate/out_of_scope/superseded/wontfix/blocked) maps to beads <code>--reason</code> free text. <code>bd duplicate bd-NNN --of bd-XYZ</code> for duplicate reason.</td></tr>
+          <tr><td><code>backlog_resolve</code></td><td>Complete item</td><td><code>bd close bd-NNN --reason "completed: summary" --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>DH resolve has structured completion record (summary, method, findings, follow_ups). Store structured completion in beads <code>--notes</code> or as a final comment via <code>bd comment bd-NNN "completion: ..."</code>.</td></tr>
+          <tr><td><code>backlog_update</code></td><td>Update item</td><td><code>bd update bd-NNN --title "t" --description "d" --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>DH supports groomed content sections (markdown sections with entry-block tracking). Beads has <code>description</code>, <code>design</code>, <code>notes</code>, <code>acceptance_criteria</code> as structured top-level fields — no arbitrary sections. Section content must be mapped to nearest beads field.</td></tr>
+          <tr><td><code>backlog_groom</code></td><td>Write groomed content</td><td><code>bd update bd-NNN --notes "groomed content" --append-notes "..." --json</code></td><td class="cell-orange">🟠 Bridge</td><td>DH groom uses entry-block tracking with timestamp IDs and strike support. Beads has <code>--append-notes</code> (append) and <code>--notes</code> (replace). No entry-block concept. Implement a lightweight entry-block convention in the notes field using JSON metadata.</td></tr>
+          <tr><td><code>backlog_normalize</code></td><td>Normalize format</td><td>No direct equivalent</td><td class="cell-orange">🟠 Bridge</td><td>DH normalize is a one-off maintenance operation for local markdown files. In beads backend, run <code>bd list --json | jq ...</code> to audit and <code>bd update</code> to fix metadata. Implement as a <code>BeadsBackend.normalize()</code> method.</td></tr>
+          <tr><td><code>backlog_pull</code></td><td>Pull from remote</td><td><code>bd dolt pull</code> or <code>bd github sync --pull-only</code></td><td class="cell-orange">🟠 Bridge</td><td>DH pull = fetch GitHub Issue body into local markdown cache with entry-aware merge. Beads pull = sync Dolt data from remote. The "entry-aware merge" logic does not apply — beads handles conflict resolution at the Dolt level. Map to <code>bd dolt pull</code>.</td></tr>
+          <tr><td><code>backlog_strike_entry</code></td><td>Strike entry block</td><td><code>bd update bd-NNN --append-notes "~~struck: reason~~"</code></td><td class="cell-orange">🟠 Bridge</td><td>DH strike wraps an entry in a <code>&lt;details&gt;</code> HTML block. Beads has no equivalent UI. Implement as a convention in the notes field: append a struck-marker JSON object identifying the entry and reason.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-slate-700 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-slate-600 mb-2">SAM Task Tools (4 tools)</summary>
+    <div class="overflow-x-auto mt-2">
+      <table>
+        <thead><tr>
+          <th class="w-44">MCP Tool</th><th class="w-32">Operation</th><th>bd CLI Equivalent</th><th class="w-24">Fidelity</th><th>Notes</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><code>backlog_create_sam_task</code></td><td>Create SAM sub-task</td><td><code>bd create "title" -t task --parent bd-PARENT --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Beads parent-child via <code>--parent</code> flag creates hierarchical IDs. DH-specific fields (task_type, agent, skills, acceptance_criteria list) stored in <code>--metadata</code> JSON. Dependencies via <code>bd dep add</code>.</td></tr>
+          <tr><td><code>backlog_get_sam_tasks</code></td><td>Get sub-tasks</td><td><code>bd list --parent bd-PARENT --json</code></td><td class="cell-green">🟢 Direct</td><td>Beads <code>bd list --parent</code> returns children. Response must be mapped to DH task shape (id, name, agent, skills, issue_number, status).</td></tr>
+          <tr><td><code>backlog_update_sam_task_status</code></td><td>Update task status</td><td><code>bd update bd-NNN --status in_progress --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>DH status enum (not-started/in-progress/complete/blocked) maps to beads statuses (open/in_progress/closed/blocked). DH patches a YAML block in issue body; beads updates the status field directly.</td></tr>
+          <tr><td><code>backlog_get_ready_sam_tasks</code></td><td>Get ready tasks</td><td><code>bd ready --parent bd-PARENT --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Beads <code>bd ready</code> already computes dependency-aware ready issues. Filter by parent gives children that are unblocked. Response must be mapped to DH ready-task shape.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-slate-700 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-slate-600 mb-2">Read-Only GitHub Tools (10 tools)</summary>
+    <div class="overflow-x-auto mt-2">
+      <table>
+        <thead><tr>
+          <th class="w-44">MCP Tool</th><th class="w-32">Operation</th><th>bd CLI Equivalent</th><th class="w-24">Fidelity</th><th>Notes</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><code>backlog_comment_issue</code></td><td>Add comment</td><td><code>bd comment bd-NNN "body text" --json</code></td><td class="cell-green">🟢 Direct</td><td>Beads comments map directly. Author is actor (<code>--actor</code> flag or <code>BEADS_ACTOR</code>).</td></tr>
+          <tr><td><code>backlog_list_comments</code></td><td>List comments</td><td><code>bd comments bd-NNN --json</code></td><td class="cell-green">🟢 Direct</td><td>Returns array of comment objects. Pagination via <code>--limit/--offset</code> if available, else BeadsBackend slices the array.</td></tr>
+          <tr><td><code>backlog_read_comment</code></td><td>Read comment</td><td><code>bd comments bd-NNN --json | jq '.[] | select(.id=="UUID")'</code></td><td class="cell-yellow">🟡 Adapted</td><td>Beads comment IDs are UUIDs; DH uses integer REST comment IDs. BeadsBackend must maintain a local mapping or use UUID as comment_id.</td></tr>
+          <tr><td><code>backlog_list_labels</code></td><td>List labels</td><td><code>bd label list-all --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Beads labels are bare strings (no color/description). Response shape differs: DH returns <code>{name, color, description}</code>; beads returns string array. Fill color/description with defaults.</td></tr>
+          <tr><td><code>backlog_list_merged_prs</code></td><td>List merged PRs</td><td>No direct equivalent</td><td class="cell-red">🔴 Missing</td><td>Beads has no pull request concept. <code>bd gate --type=gh:pr</code> references GitHub PRs but doesn't list them. Return empty array or delegate to <code>bd github sync --pull-only</code> + query the synced data.</td></tr>
+          <tr><td><code>backlog_list_milestones</code></td><td>List milestones</td><td><code>bd list -t milestone --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Beads milestones are issues with <code>issue_type=milestone</code>. No due_on, open_issues, closed_issues aggregate fields. These must be computed by querying children.</td></tr>
+          <tr><td><code>backlog_get_soonest_milestone</code></td><td>Get next milestone</td><td><code>bd list -t milestone --sort due_at --json | jq '.[0]'</code></td><td class="cell-yellow">🟡 Adapted</td><td>Beads has per-issue <code>due_at</code> field. Filter milestone-type issues, sort by due_at, return first.</td></tr>
+          <tr><td><code>backlog_create_milestone</code></td><td>Create milestone</td><td><code>bd create "title" -t milestone --due "date" --json</code></td><td class="cell-green">🟢 Direct</td><td>Beads milestone type exists. <code>--due</code> accepts ISO dates.</td></tr>
+          <tr><td><code>backlog_list_issues</code></td><td>List issues direct</td><td><code>bd list --status open --json</code></td><td class="cell-green">🟢 Direct</td><td>With milestone filter: <code>bd list --parent bd-MILESTONE --json</code>. Label filter: <code>--label</code>.</td></tr>
+          <tr><td><code>backlog_list_projects</code></td><td>List GH Projects V2</td><td>No equivalent</td><td class="cell-red">🔴 Missing</td><td>GitHub Projects V2 is a UI/board concept. Beads has no projects/boards. Return empty list or raise <code>NotImplementedError</code> with a message explaining the gap.</td></tr>
+          <tr><td><code>backlog_create_project</code></td><td>Create GH Project</td><td>No equivalent</td><td class="cell-red">🔴 Missing</td><td>Same as above — no beads equivalent. Raise <code>NotImplementedError</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-slate-700 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-slate-600 mb-2">Artifact Management Tools (5 tools)</summary>
+    <div class="overflow-x-auto mt-2">
+      <table>
+        <thead><tr>
+          <th class="w-44">MCP Tool</th><th class="w-32">Operation</th><th>bd CLI Equivalent</th><th class="w-24">Fidelity</th><th>Notes</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><code>artifact_register</code></td><td>Register artifact</td><td><code>bd remember "artifact:{type}:{id}:{path}" --key art-{id}</code> + write file</td><td class="cell-red">🔴 Missing</td><td>Beads has no artifact concept. <code>BeadsArtifactManager</code> stores manifest in <code>bd remember</code> entries and content in <code>.dh/artifacts/{slug}/</code> filesystem. Separate class outside <code>BacklogBackend</code> Protocol.</td></tr>
+          <tr><td><code>artifact_list</code></td><td>List artifacts</td><td><code>bd memories "artifact:" --json</code> (search memories)</td><td class="cell-red">🔴 Missing</td><td><code>BeadsArtifactManager</code> queries memories by key prefix pattern to reconstruct artifact manifest.</td></tr>
+          <tr><td><code>artifact_get</code></td><td>Get artifact metadata</td><td><code>bd recall art-{id}</code></td><td class="cell-red">🔴 Missing</td><td>Returns structured metadata from the memory entry. <code>BeadsArtifactManager</code> parses the memory value.</td></tr>
+          <tr><td><code>artifact_read</code></td><td>Read artifact content</td><td>Read from <code>.dh/artifacts/{slug}/{path}</code></td><td class="cell-red">🔴 Missing</td><td>Content stored on local filesystem. Path retrieved from artifact memory entry. Cross-worktree access requires path-sharing convention.</td></tr>
+          <tr><td><code>artifact_migrate</code></td><td>Bulk migrate artifacts</td><td>Scan filesystem + <code>bd remember</code> for each found file</td><td class="cell-red">🔴 Missing</td><td><code>BeadsArtifactManager.migrate()</code> scans plan/ and research/ directories, matches filename patterns, registers each as a memory entry.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-slate-700 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-slate-600 mb-2">Dispatch / Wave Orchestration Tools (7 tools)</summary>
+    <div class="overflow-x-auto mt-2">
+      <table>
+        <thead><tr>
+          <th class="w-44">MCP Tool</th><th class="w-32">Operation</th><th>bd CLI Equivalent</th><th class="w-24">Fidelity</th><th>Notes</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><code>dispatch_read</code></td><td>Read dispatch plan</td><td>Read YAML file (existing pattern)</td><td class="cell-yellow">🟡 Adapted</td><td>Plans stay as YAML on disk. <code>BeadsDispatchAdapter</code> reads the YAML and optionally hydrates issue data from beads via <code>bd show</code> for each issue in the plan.</td></tr>
+          <tr><td><code>dispatch_validate</code></td><td>Validate plan</td><td>YAML validation + <code>bd dep cycles</code></td><td class="cell-orange">🟠 Bridge</td><td>Structural checks (duplicate issues, wave ordering) remain YAML-based. Dependency cycle check can use <code>bd dep cycles</code> if tasks are beads issues. <code>dispatch_stale_check</code> queries beads instead of GitHub milestone.</td></tr>
+          <tr><td><code>dispatch_stale_check</code></td><td>Check staleness</td><td><code>bd list --status open --json</code> + compare to plan</td><td class="cell-orange">🟠 Bridge</td><td>DH checks GitHub milestone for new/removed issues. Beads version checks open beads issues tagged with a milestone label or parent. Issue numbers become beads IDs (<code>bd-NNN</code>).</td></tr>
+          <tr><td><code>dispatch_create_plan</code></td><td>Create dispatch plan</td><td>Write YAML file + <code>bd remember "dispatch-plan:{milestone}:{path}"</code></td><td class="cell-orange">🟠 Bridge</td><td>Plan YAML format unchanged. Artifact registration via <code>bd remember</code> instead of GitHub issue comment.</td></tr>
+          <tr><td><code>dispatch_wave_start</code></td><td>Start wave</td><td>Write to SQLite dispatch-state.db (existing)</td><td class="cell-green">🟢 Direct</td><td>Wave state in SQLite is independent of the issue backend. No change needed — SQLite dispatch-state.db works regardless of beads/github backend.</td></tr>
+          <tr><td><code>dispatch_wave_status</code></td><td>Query wave status</td><td>Read from SQLite dispatch-state.db (existing)</td><td class="cell-green">🟢 Direct</td><td>Wave status query is SQLite-based and backend-independent.</td></tr>
+          <tr><td><code>dispatch_spawn</code></td><td>Spawn wave agents</td><td><code>uv run spawn.py</code> + <code>BACKLOG_BACKEND=beads</code></td><td class="cell-yellow">🟡 Adapted</td><td>Spawn command unchanged. Spawned sessions inherit <code>BACKLOG_BACKEND=beads</code> env var. <code>dispatch_item_status</code> calls work via SQLite regardless. Issue references in prompts use <code>bd-NNN</code> format instead of <code>#NNN</code>.</td></tr>
+          <tr><td><code>dispatch_conflicts</code></td><td>Analyze IR conflicts</td><td>Fetch issue bodies via <code>bd show</code>, parse Impact Radius sections</td><td class="cell-orange">🟠 Bridge</td><td>DH reads Impact Radius section from GitHub Issue bodies. In beads, read from <code>bd show bd-NNN --json | jq '.description'</code>. Parsing logic unchanged.</td></tr>
+          <tr><td><code>dispatch_item_status</code></td><td>Record item status</td><td>Write to SQLite dispatch-state.db (existing)</td><td class="cell-green">🟢 Direct</td><td>Backend-independent SQLite write. No change.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-slate-700 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-slate-600 mb-2">Profile Tool (2 tools)</summary>
+    <div class="overflow-x-auto mt-2">
+      <table>
+        <thead><tr>
+          <th class="w-44">MCP Tool</th><th class="w-32">Operation</th><th>bd CLI Equivalent</th><th class="w-24">Fidelity</th><th>Notes</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><code>profile_list</code></td><td>List profiles</td><td>DH internal (not beads-related)</td><td class="cell-green">🟢 Direct</td><td>Profile definitions are DH-internal config. No beads involvement. Unchanged.</td></tr>
+          <tr><td><code>profile_load</code></td><td>Load agent profile</td><td>DH internal (not beads-related)</td><td class="cell-green">🟢 Direct</td><td>Profile loading is DH-internal. No change needed for beads backend.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<!-- ═══════════════════════════ 5. SAM MAPPING ═══════════════════════════ -->
+<section id="sam-mapping" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">5. SAM System → Beads Mapping</h2>
+  <div class="overflow-x-auto mb-4">
+    <table>
+      <thead><tr>
+        <th class="w-44">SAM Concept</th>
+        <th>SAM MCP Tool / Action</th>
+        <th>Beads Equivalent</th>
+        <th class="w-24">Fidelity</th>
+        <th>Bridge / Notes</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><strong>Plan creation</strong></td><td><code>sam_plan(action='create', tasks=[...])</code></td><td><code>bd create "plan title" -t epic --json</code> + child tasks via <code>--parent</code></td><td class="cell-yellow">🟡 Adapted</td><td>Plan epic created first, then each task as a child bead. Plan YAML can optionally also exist on disk for compatibility.</td></tr>
+        <tr><td><strong>Plan listing</strong></td><td><code>sam_plan(action='list')</code></td><td><code>bd list -t epic --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Filter to plans by label (e.g. <code>sam-plan</code>) or type=epic. Response must be shaped to SAM plan list format.</td></tr>
+        <tr><td><strong>Plan status</strong></td><td><code>sam_plan(action='status', plan='P1')</code></td><td><code>bd show bd-EPIC --json</code> + <code>bd list --parent bd-EPIC --json</code> to compute counts</td><td class="cell-orange">🟠 Bridge</td><td>SAM returns completion_pct, ready_tasks count, by_status breakdown. Compute from child bead statuses. Autonomy mode stored in epic metadata.</td></tr>
+        <tr><td><strong>Task creation</strong></td><td><code>sam_plan(action='append_task', task={...})</code></td><td><code>bd create "task title" -t task --parent bd-EPIC --deps "bd-DEP1,bd-DEP2" --metadata '{"agent":"...","skills":[...]}' --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Agent name and skills stored in beads <code>metadata</code> JSON. Acceptance criteria in <code>--acceptance</code> field. Dependencies via <code>bd dep add</code>.</td></tr>
+        <tr><td><strong>Plan finalize</strong></td><td><code>sam_plan(action='finalize', plan='P1')</code></td><td><code>bd update bd-EPIC --remove-label drafting --add-label ready --json</code></td><td class="cell-orange">🟠 Bridge</td><td>Drafting state tracked via label convention (<code>sam-drafting</code> / <code>sam-ready</code>). Finalize removes drafting label.</td></tr>
+        <tr><td><strong>Task claiming</strong></td><td><code>sam_task(plan='P1', task='T3', config={'action':'claim'})</code></td><td><code>bd update bd-NNN --claim --json</code></td><td class="cell-green">🟢 Direct</td><td>Beads atomic <code>--claim</code> sets assignee + status=in_progress atomically. Race condition prevention is native. Return shape needs mapping to SAM claim response.</td></tr>
+        <tr><td><strong>Task read</strong></td><td><code>sam_task(action='read')</code></td><td><code>bd show bd-NNN --json</code> + <code>bd show bd-EPIC --json</code> for plan context</td><td class="cell-yellow">🟡 Adapted</td><td>SAM returns TaskAssignment = plan context + task details in one call. Two <code>bd show</code> calls needed (task + parent epic).</td></tr>
+        <tr><td><strong>Task state transitions</strong></td><td><code>sam_task(action='state', status='complete')</code></td><td><code>bd close bd-NNN --reason "complete" --json</code> (complete) or <code>bd update --status blocked</code></td><td class="cell-yellow">🟡 Adapted</td><td>complete → <code>bd close</code>. blocked/deferred → <code>bd update --status</code>. failed → <code>bd close</code> with failure reason. Downstream cascade on failure must be implemented in BeadsBackend (query children, set skipped).</td></tr>
+        <tr><td><strong>Active task parking</strong></td><td><code>sam_active_task(action='set', plan='P1', task='T3')</code></td><td><code>bd remember "active-task: bd-NNN plan: bd-EPIC" --key active-task-{session_id}</code></td><td class="cell-orange">🟠 Bridge</td><td>Or keep existing <code>~/.dh/.../context/active-task-{session_id}.json</code> file — SubagentStop hook reads it directly regardless of beads/github backend.</td></tr>
+        <tr><td><strong>Dependency declaration</strong></td><td><code>dependencies: [T1, T2]</code> in task YAML</td><td><code>bd dep add bd-TASK bd-DEP1 --type blocks</code></td><td class="cell-green">🟢 Direct</td><td>Beads has native blocking dependencies. Convert task IDs to bd IDs when wiring.</td></tr>
+        <tr><td><strong>DAG readiness</strong></td><td><code>sam_plan(action='ready')</code></td><td><code>bd ready --parent bd-EPIC --json</code></td><td class="cell-green">🟢 Direct</td><td>Beads <code>bd ready</code> already computes dependency-aware readiness with cycle detection. Filter by parent epic. This is beads' native strength.</td></tr>
+        <tr><td><strong>Acceptance criteria storage</strong></td><td><code>acceptance-criteria</code> field in plan YAML</td><td><code>bd create/update --acceptance "..." --json</code></td><td class="cell-yellow">🟡 Adapted</td><td>Free-form AC maps directly to beads <code>acceptance_criteria</code> field. Structured AC (with <code>check-command</code>) requires storing in <code>metadata</code> JSON blob.</td></tr>
+        <tr><td><strong>T0 baseline capture</strong></td><td><code>t0-baseline-capture</code> agent writes <code>T0-baseline-{slug}.yaml</code></td><td>Write file to <code>.dh/bookends/{slug}/T0-baseline.yaml</code> + <code>bd remember "bookend:t0:{path}"</code></td><td class="cell-red">🔴 Missing</td><td>Beads has no bookend concept. Bridge: filesystem artifact with memory pointer. T0 task is a beads issue with <code>--type=task --label=sam-bookend-t0</code>.</td></tr>
+        <tr><td><strong>TN verification</strong></td><td><code>tn-verification-gate</code> agent writes <code>TN-verification-{slug}.yaml</code></td><td>Write file + <code>bd remember "bookend:tn:{path}"</code> + <code>bd close bd-EPIC</code></td><td class="cell-red">🔴 Missing</td><td>Same as T0. TN task is last bead (depends on all non-bookend tasks). On pass, close parent epic via <code>bd close bd-EPIC</code>.</td></tr>
+        <tr><td><strong>Task-level skill routing</strong></td><td><code>agent:</code> field read by <code>task-worker</code> → <code>profile_load</code></td><td><code>bd show bd-NNN --json | jq '.metadata.agent'</code></td><td class="cell-green">🟢 Direct</td><td>Agent name stored in beads metadata. task-worker reads it via <code>sam_task(action='read')</code> response which includes metadata.</td></tr>
+        <tr><td><strong>Dispatch autonomy modes</strong></td><td><code>autonomy: full_auto|checkpoint|per_task</code></td><td>Stored in epic <code>metadata.autonomy</code> JSON</td><td class="cell-yellow">🟡 Adapted</td><td>Autonomy mode is an orchestrator concern, not beads-native. Store in epic metadata, read by DH implement-feature skill.</td></tr>
+        <tr><td><strong>SubagentStop hook</strong></td><td><code>task_status_hook.py</code> reads active-task JSON on agent exit</td><td>Hook reads same JSON file regardless of backend</td><td class="cell-green">🟢 Direct</td><td>SubagentStop hook reads filesystem JSON, then calls SAM MCP to update status. SAM MCP then delegates to <code>BeadsTaskBackend</code> which calls <code>bd update --status</code>. No hook change needed.</td></tr>
+        <tr><td><strong>Downstream cascade on failure</strong></td><td>Auto-cascade in <code>sam_task(action='state', status='failed')</code></td><td>Query <code>bd dep list bd-FAILED --direction up</code> + <code>bd batch</code> to close dependents</td><td class="cell-orange">🟠 Bridge</td><td>Beads does not auto-cascade. <code>BeadsTaskBackend</code> must implement cascade: on failure, walk dependents using <code>bd dep list</code>, filter not-started ones, call <code>bd update --status deferred</code> for each.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bg-slate-800 rounded-xl p-5 mt-4">
+    <h3 class="text-lg font-semibold text-white mb-3">SAM Gap Analysis — What Beads Lacks Natively</h3>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-slate-900 rounded-lg p-3 border-l-4 border-red-600">
+        <div class="text-red-400 font-semibold text-sm mb-1">Not in Beads (Needs Bridge)</div>
+        <ul class="text-slate-400 text-xs space-y-1">
+          <li>• <strong>Plan drafting state</strong> — use label convention</li>
+          <li>• <strong>Session-scoped active task</strong> — keep JSON file or use <code>bd remember</code></li>
+          <li>• <strong>Structured AC with check-command</strong> — store in metadata JSON</li>
+          <li>• <strong>T0/TN bookend lifecycle</strong> — filesystem + memory pointer bridge</li>
+          <li>• <strong>Downstream cascade on failure</strong> — implement in BeadsTaskBackend</li>
+          <li>• <strong>Autonomy mode gating</strong> — epic metadata + orchestrator logic</li>
+        </ul>
+      </div>
+      <div class="bg-slate-900 rounded-lg p-3 border-l-4 border-green-600">
+        <div class="text-green-400 font-semibold text-sm mb-1">Better in Beads Than GitHub</div>
+        <ul class="text-slate-400 text-xs space-y-1">
+          <li>• <strong>Atomic task claiming</strong> — <code>bd update --claim</code> is natively atomic</li>
+          <li>• <strong>DAG readiness</strong> — <code>bd ready</code> computes this natively</li>
+          <li>• <strong>Dependency graph</strong> — 19 typed edge types vs GitHub convention hacks</li>
+          <li>• <strong>Priority system</strong> — native P0-P4 numeric vs label convention</li>
+          <li>• <strong>Offline-first</strong> — Dolt embedded, no network required</li>
+          <li>• <strong>Metadata JSON</strong> — arbitrary structured data on every issue</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 6. DATA MODEL MAP ═══════════════════════════ -->
+<section id="data-model" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">6. Three-Column Data Model Map</h2>
+  <div class="callout callout-info mb-4">
+    <span class="cell-green rounded px-2 py-0.5 mr-2 text-sm">🟢 Green</span> Same semantic meaning across all three &nbsp;|&nbsp;
+    <span class="cell-yellow rounded px-2 py-0.5 mr-2 text-sm">🟡 Yellow</span> Exists in two, missing or different in one &nbsp;|&nbsp;
+    <span class="cell-red rounded px-2 py-0.5 text-sm">🔴 Red</span> Unique to one system only
+  </div>
+  <details open>
+    <summary class="bg-slate-700 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-slate-600 mb-2">Full Field Map (all frontmatter fields)</summary>
+    <div class="overflow-x-auto mt-2">
+      <table>
+        <thead><tr>
+          <th>DH BacklogItem Field</th>
+          <th>Beads Issue Field</th>
+          <th>GitHub Issue Field</th>
+          <th class="w-20">Match</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><code>name</code> / <code>title</code></td><td><code>title</code> (VARCHAR 500)</td><td><code>title</code></td><td class="cell-green">🟢</td></tr>
+          <tr><td><code>description</code> (one-line)</td><td><code>description</code> (TEXT, markdown)</td><td><code>body</code> preamble</td><td class="cell-green">🟢</td></tr>
+          <tr><td><code>metadata.priority</code> (P0/P1/P2/Ideas)</td><td><code>priority</code> (INT 0-4)</td><td>Label: <code>priority:p1</code></td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>metadata.type</code> (Feature/Bug/Chore)</td><td><code>issue_type</code> (enum)</td><td>Label: <code>type:feature</code></td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>metadata.status</code> (open/done/in-progress/needs-grooming)</td><td><code>status</code> (open/in_progress/blocked/closed/deferred)</td><td><code>state</code> (open/closed) + label</td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>metadata.issue</code> (<code>#N</code> GitHub number)</td><td><code>id</code> (<code>bd-NNN</code> nanoid)</td><td>Issue number <code>#N</code></td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>metadata.milestone</code> (GitHub milestone number)</td><td>Parent issue with <code>issue_type=milestone</code></td><td><code>milestone.number</code></td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>metadata.plan</code> (path to plan YAML)</td><td><code>metadata.plan_path</code> (JSON blob)</td><td>Referenced in body as <code>Plan: path</code></td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>metadata.groomed</code> (date)</td><td>Label: <code>sam-groomed</code> + <code>updated_at</code></td><td>Label: <code>status:groomed</code></td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>metadata.source</code> (observation/code review/etc)</td><td><code>metadata.source</code> (JSON blob)</td><td>Part of issue body</td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>metadata.added</code> (date)</td><td><code>created_at</code></td><td><code>created_at</code></td><td class="cell-green">🟢</td></tr>
+          <tr><td><code>metadata.topic</code> (slug)</td><td><code>metadata.topic</code> (JSON blob)</td><td>Part of title or label</td><td class="cell-yellow">🟡</td></tr>
+          <tr><td>Body sections (<code>## Heading</code>)</td><td><code>design</code>, <code>notes</code>, <code>acceptance_criteria</code> structured fields</td><td>Mirrored in issue body verbatim</td><td class="cell-yellow">🟡</td></tr>
+          <tr><td>Entry blocks (timestamp IDs)</td><td>No native concept — simulate in <code>notes</code> JSON</td><td>Embedded in issue body text</td><td class="cell-red">🔴</td></tr>
+          <tr><td>Struck entries (<code>&lt;details&gt;</code>)</td><td>No native concept — simulate in metadata</td><td>Embedded in issue body as HTML</td><td class="cell-red">🔴</td></tr>
+          <tr><td>Artifact manifest (HTML comment)</td><td>No native concept — <code>bd remember</code> entries</td><td><code>&lt;!-- dh-artifact-manifest … --&gt;</code> in body</td><td class="cell-red">🔴</td></tr>
+          <tr><td>SAM task sub-issues (<code>sam:task</code> YAML block)</td><td>Child beads with <code>metadata.agent</code> etc</td><td>GitHub sub-issues with body YAML</td><td class="cell-yellow">🟡</td></tr>
+          <tr><td>—</td><td><code>assignee</code> (single user)</td><td><code>assignees[]</code> (multiple users)</td><td class="cell-red">🔴 GH/Beads only</td></tr>
+          <tr><td>—</td><td><code>due_at</code> (per-issue deadline)</td><td><code>milestone.due_on</code> (milestone-level only)</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>defer_until</code> (hide until date)</td><td>No equivalent</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>design</code> (structured field)</td><td>Part of body only</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>acceptance_criteria</code> (structured field)</td><td>Part of body only</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>estimated_minutes</code></td><td>No equivalent</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>started_at</code></td><td>No equivalent</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>close_reason</code></td><td>Free-form comment only</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>external_ref</code> (<code>gh-9</code>, <code>jira-ABC</code>)</td><td>Cross-references only</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>metadata</code> (arbitrary JSON blob)</td><td>No equivalent (labels only)</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>dependencies[]</code> (19 typed edge types)</td><td>No native dependency graph</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td><code>ephemeral</code> / wisps</td><td>No equivalent</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td>Molecule / swarm types</td><td>No equivalent</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td>Async gate primitives</td><td>GitHub Actions separate (not Issues)</td><td class="cell-red">🔴 Beads only</td></tr>
+          <tr><td>—</td><td>—</td><td><code>labels[].color</code> + <code>labels[].description</code></td><td class="cell-red">🔴 GH only</td></tr>
+          <tr><td>—</td><td>—</td><td>Projects V2 / Kanban boards</td><td class="cell-red">🔴 GH only</td></tr>
+          <tr><td>—</td><td>—</td><td>Pull request references (<code>gh:pr</code>)</td><td class="cell-red">🔴 GH only</td></tr>
+          <tr><td><code>labels[]</code></td><td><code>labels[]</code> (bare strings, no color)</td><td><code>labels[]</code> (with color + description)</td><td class="cell-yellow">🟡</td></tr>
+          <tr><td><code>comments[]</code></td><td><code>comments[]</code> (UUID ID, author, text)</td><td><code>comments[]</code> (integer ID, REST)</td><td class="cell-green">🟢</td></tr>
+          <tr><td>—</td><td><code>created_at</code> / <code>updated_at</code> / <code>closed_at</code></td><td><code>created_at</code> / <code>updated_at</code> / <code>closed_at</code></td><td class="cell-green">🟢</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<!-- ═══════════════════════════ 7. GAPS ═══════════════════════════ -->
+<section id="gaps" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">7. Gaps Requiring Bridges</h2>
+  <div class="space-y-4">
+
+    <div class="gap-card callout callout-warning border-orange-500">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-2xl">📦</span>
+        <div>
+          <span class="badge badge-l mr-2">BRIDGE 1</span>
+          <span class="text-white font-bold">Artifact Management</span>
+        </div>
+      </div>
+      <p class="text-slate-400 text-sm mb-2">Beads has no artifact concept. DH stores artifact manifests in GitHub Issue body HTML comments and content in GitHub Issue comments.</p>
+      <p class="text-slate-300 text-sm"><strong>Bridge:</strong> Create <code>BeadsArtifactManager</code> outside the <code>BacklogBackend</code> Protocol. Artifacts stored in <code>.dh/artifacts/{slug}/{type}/</code> on the filesystem. Manifest entries stored as <code>bd remember</code> memories with key pattern <code>artifact:{issue_id}:{type}:{artifact_id}</code>. MCP server routes <code>artifact_*</code> calls to <code>BeadsArtifactManager</code> when <code>backend == beads</code>. Cross-worktree access: paths must be absolute or relative to a shared mount point.</p>
+      <pre><code>bd remember "artifact:{type}:{path}:{status}" --key "art-{issue}-{type}"
+bd recall art-bd123-architect    # retrieve artifact metadata
+# File content at: .dh/artifacts/{slug}/{type}/{filename}</code></pre>
+    </div>
+
+    <div class="gap-card callout callout-warning border-red-500">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-2xl">🌊</span>
+        <div>
+          <span class="badge badge-xl mr-2">BRIDGE 2</span>
+          <span class="text-white font-bold">Dispatch / Wave Orchestration</span>
+        </div>
+      </div>
+      <p class="text-slate-400 text-sm mb-2">DH dispatch is GitHub-milestone-centric: plans reference milestone numbers, staleness check queries GitHub. Beads has no milestone container object — milestones are issues.</p>
+      <p class="text-slate-300 text-sm"><strong>Bridge:</strong> Implement <code>BeadsDispatchAdapter</code>. Wave containers use beads molecule epics (<code>bd create -t epic --label sam-wave-N</code>). Wave membership via <code>bd mol bond A B --type parallel</code>. Dispatch plan YAML remains on disk unchanged (format compatible). <code>dispatch_stale_check</code> queries <code>bd list --parent bd-MILESTONE --status open --json</code> instead of GitHub milestone API. Wave state stays in existing SQLite <code>dispatch-state.db</code> (backend-independent).</p>
+    </div>
+
+    <div class="gap-card callout callout-warning border-yellow-500">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-2xl">🎯</span>
+        <div>
+          <span class="badge badge-m mr-2">BRIDGE 3</span>
+          <span class="text-white font-bold">Active Task Parking</span>
+        </div>
+      </div>
+      <p class="text-slate-400 text-sm mb-2">Beads has no per-session active-task concept. DH's SubagentStop hook reads <code>active-task-{session_id}.json</code> directly from the filesystem.</p>
+      <p class="text-slate-300 text-sm"><strong>Bridge:</strong> Keep existing filesystem JSON pattern (<code>~/.dh/projects/{slug}/context/active-task-{session_id}.json</code>). <code>BeadsContextBackend</code> implements the same <code>ContextBackend</code> Protocol but stores a beads bead ID (<code>bd-NNN</code>) in the <code>task_id</code> field instead of a SAM task ID (<code>T3</code>). SubagentStop hook unchanged — it reads the JSON file, then calls the SAM MCP which delegates to <code>BeadsTaskBackend</code> to update status via <code>bd update --status closed</code>. Alternatively use <code>bd remember</code> for cross-machine session continuity.</p>
+    </div>
+
+    <div class="gap-card callout callout-warning border-yellow-600">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-2xl">✅</span>
+        <div>
+          <span class="badge badge-m mr-2">BRIDGE 4</span>
+          <span class="text-white font-bold">Structured Acceptance Criteria with check_command</span>
+        </div>
+      </div>
+      <p class="text-slate-400 text-sm mb-2">Beads <code>acceptance_criteria</code> is free-form text. DH SAM has structured AC with <code>criterion-id</code>, <code>description</code>, <code>check-command</code>, <code>expected-baseline</code>, <code>expected-final</code> fields.</p>
+      <p class="text-slate-300 text-sm"><strong>Bridge:</strong> Store structured AC as JSON in the beads <code>metadata</code> blob: <code>bd update bd-NNN --metadata '{"acceptance_criteria_structured":[...]}'</code>. Free-form AC stays in <code>--acceptance</code> field for human readability. T0/TN agents read structured AC from <code>bd show bd-NNN --json | jq '.metadata.acceptance_criteria_structured'</code>.</p>
+    </div>
+
+    <div class="gap-card callout callout-warning border-orange-600">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-2xl">📸</span>
+        <div>
+          <span class="badge badge-l mr-2">BRIDGE 5</span>
+          <span class="text-white font-bold">T0/TN Bookend Lifecycle</span>
+        </div>
+      </div>
+      <p class="text-slate-400 text-sm mb-2">Beads has no verification artifact type. T0 captures pre-implementation baseline; TN proves acceptance criteria were met.</p>
+      <p class="text-slate-300 text-sm"><strong>Bridge:</strong> T0 and TN tasks become beads issues with labels <code>sam-bookend-t0</code> / <code>sam-bookend-tn</code>. T0 task: <code>dependencies:[]</code>, <code>priority:0</code> (maps to beads P0). TN task: depends on all non-bookend issues. Result YAML files stored at <code>.dh/bookends/{slug}/</code>, path registered via <code>bd remember "bookend:t0:{slug}:{path}"</code>. <code>complete-implementation</code> skill reads path via <code>bd recall</code>.</p>
+    </div>
+
+    <div class="gap-card callout callout-warning border-blue-500">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-2xl">👥</span>
+        <div>
+          <span class="badge badge-s mr-2">BRIDGE 6</span>
+          <span class="text-white font-bold">Multi-Assignee</span>
+        </div>
+      </div>
+      <p class="text-slate-400 text-sm mb-2">GitHub Issues supports <code>assignees[]</code> (multiple users). Beads has a single <code>assignee</code> string field.</p>
+      <p class="text-slate-300 text-sm"><strong>Bridge:</strong> Set primary assignee as <code>bd update bd-NNN --assignee alice</code>. Additional assignees stored in <code>metadata.co_assignees: ["bob","carol"]</code>. DH currently uses single assignee in practice — this gap is low priority.</p>
+    </div>
+
+    <div class="gap-card callout callout-warning border-purple-500">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-2xl">🏷️</span>
+        <div>
+          <span class="badge badge-s mr-2">BRIDGE 7</span>
+          <span class="text-white font-bold">Label / Tag Taxonomy</span>
+        </div>
+      </div>
+      <p class="text-slate-400 text-sm mb-2">GitHub has colored labels with descriptions. DH uses label conventions for priority (<code>priority:p1</code>), type (<code>type:bug</code>), status (<code>status:in-progress</code>). Beads has bare-string labels with no color/description.</p>
+      <p class="text-slate-300 text-sm"><strong>Bridge:</strong> Map DH label conventions directly to beads labels as strings. Priority is native in beads (numeric field), so <code>priority:p1</code> label becomes <code>--priority 1</code> flag. Type and status are also native beads fields. Labels in beads are used for custom DH metadata (<code>sam-groomed</code>, <code>sam-ready</code>, <code>sam-bookend-t0</code>). Response objects fill <code>color="#888888"</code> and <code>description=""</code> as defaults.</p>
+    </div>
+
+    <div class="gap-card callout callout-warning border-slate-500">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="text-2xl">🔢</span>
+        <div>
+          <span class="badge badge-s mr-2">BRIDGE 8</span>
+          <span class="text-white font-bold">GitHub Issue Numbers vs Beads IDs</span>
+        </div>
+      </div>
+      <p class="text-slate-400 text-sm mb-2">DH uses <code>#NNN</code> GitHub integer issue numbers as canonical IDs throughout (selectors, artifact references, dispatch plans). Beads uses <code>bd-NNN</code> nanoid format.</p>
+      <p class="text-slate-300 text-sm"><strong>Bridge:</strong> When backend=beads, use <code>bd-NNN</code> as the canonical ID. Store <code>bd_id</code> in local backlog cache frontmatter (<code>metadata.bd_id: "bd-a1b2"</code>). MCP tool selectors that accept <code>#N</code> or integer also accept <code>bd-NNN</code> via <code>BeadsBackend.resolve_selector()</code>. Dispatch plan YAML uses <code>bd-NNN</code> in the <code>issue</code> field instead of integer. Agent prompts generated by <code>dispatch_spawn</code> reference <code>bd-NNN</code> instead of <code>#N</code>.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════ 8. IMPLEMENTATION CHECKLIST ═══════════════════════════ -->
+<section id="checklist" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">8. Implementation Checklist</h2>
+  <div class="callout callout-info mb-4">
+    <p class="text-blue-300 text-sm">Items are grouped by phase. Complexity: <span class="badge badge-s">S</span> &lt;4h &nbsp; <span class="badge badge-m">M</span> 4–12h &nbsp; <span class="badge badge-l">L</span> 1–3d &nbsp; <span class="badge badge-xl">XL</span> 3d+</p>
+  </div>
+
+  <details open>
+    <summary class="bg-indigo-900 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-indigo-800 mb-3">Phase 1 — Backend Infrastructure (no agent changes required)</summary>
+    <div class="bg-slate-800 rounded-lg p-4 space-y-2">
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Add "beads" to <code>_VALID_BACKENDS</code> in <code>backlog_core/backend_protocol.py</code></span><br><span class="text-slate-400 text-sm">One-line change: add <code>"beads"</code> to the tuple. Update validation error message. <span class="badge badge-s">S</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Add <code>.beads/</code> auto-detect to <code>create_backend()</code></span><br><span class="text-slate-400 text-sm">Implement <code>_auto_detect_beads()</code> function that checks for <code>.beads/issues.jsonl</code> or <code>.beads/dolt/</code> at the git project root. Insert between <code>_load_backend_toml_name()</code> and the default. <span class="badge badge-s">S</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Create <code>backlog_core/backends/beads_backend.py</code> — <code>BeadsBackend</code> class</span><br><span class="text-slate-400 text-sm">Implement all <code>BacklogBackend</code> Protocol methods via <code>bd --json</code> subprocess calls. Cover: create, show/list, update, close, reopen, search, comments, labels. Handle JSON parsing, error mapping, and selector resolution (<code>bd-NNN</code> format). <span class="badge badge-l">L</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Add beads ID (<code>bd-NNN</code>) mapping to local backlog cache schema</span><br><span class="text-slate-400 text-sm">Add <code>metadata.bd_id</code> field to backlog item frontmatter. Update <code>backlog_add</code>, <code>backlog_sync</code> to write this field when backend=beads. Update selector resolution to accept <code>bd-NNN</code> strings. <span class="badge badge-m">M</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Write unit tests for <code>BeadsBackend</code> using <code>bd --json</code> output fixtures</span><br><span class="text-slate-400 text-sm">Create fixture JSONL files representing typical <code>bd show</code> / <code>bd list</code> / <code>bd create</code> responses. Mock subprocess calls. Test priority mapping, status mapping, selector resolution, error handling. <span class="badge badge-m">M</span></span></div></label>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-indigo-900 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-indigo-800 mb-3">Phase 2 — Artifact Bridge</summary>
+    <div class="bg-slate-800 rounded-lg p-4 space-y-2">
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Create <code>BeadsArtifactManager</code></span><br><span class="text-slate-400 text-sm">Implement <code>artifact_register</code>, <code>artifact_get</code>, <code>artifact_list</code>, <code>artifact_read</code>, <code>artifact_migrate</code> using filesystem storage at <code>.dh/artifacts/{slug}/</code> and <code>bd remember</code> for the manifest index. <span class="badge badge-m">M</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Update MCP server to route <code>artifact_*</code> calls to <code>BeadsArtifactManager</code> when backend=beads</span><br><span class="text-slate-400 text-sm">Add backend detection in the artifact tool handlers in <code>server.py</code>. When <code>BacklogConfig.backend_name == "beads"</code>, delegate to <code>BeadsArtifactManager</code> instead of GitHub comment storage. <span class="badge badge-m">M</span></span></div></label>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-indigo-900 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-indigo-800 mb-3">Phase 3 — SAM Bridge</summary>
+    <div class="bg-slate-800 rounded-lg p-4 space-y-2">
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Create <code>BeadsTaskBackend</code> implementing <code>TaskBackend</code> Protocol</span><br><span class="text-slate-400 text-sm">Maps <code>sam_plan create</code> → <code>bd create -t epic</code>. Maps <code>sam_task claim</code> → <code>bd update --claim</code>. Maps <code>sam_task state complete</code> → <code>bd close</code>. Implements cascade-on-failure via <code>bd dep list</code> walk. <span class="badge badge-l">L</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Create <code>BeadsContextBackend</code> implementing <code>ContextBackend</code> Protocol</span><br><span class="text-slate-400 text-sm">Implements active-task get/set/update/clear. Stores same JSON format as <code>LocalContextBackend</code> but with beads IDs. SubagentStop hook unchanged. <span class="badge badge-m">M</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Store structured AC in beads <code>metadata</code> JSON blob</span><br><span class="text-slate-400 text-sm">Update <code>BeadsTaskBackend.create_plan()</code> to store <code>acceptance_criteria_structured</code> in <code>bd update --metadata</code>. Update <code>BeadsTaskBackend.read_task()</code> to include it in the <code>TaskAssignment</code> response. <span class="badge badge-s">S</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Create beads formulas for common SAM plan templates</span><br><span class="text-slate-400 text-sm">Write TOML formula files: <code>sam-feature.formula.toml</code> (epic + T0 + impl tasks + TN), <code>sam-bug.formula.toml</code>, <code>sam-research.formula.toml</code>. Install to <code>.beads/formulas/</code>. <span class="badge badge-m">M</span></span></div></label>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-indigo-900 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-indigo-800 mb-3">Phase 4 — Dispatch / Wave</summary>
+    <div class="bg-slate-800 rounded-lg p-4 space-y-2">
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Design beads molecule-based wave representation</span><br><span class="text-slate-400 text-sm">Document: how waves map to beads molecules, how <code>dispatch_stale_check</code> queries beads instead of GitHub milestone, how wave item references use <code>bd-NNN</code>. Produce a design doc before implementing. <span class="badge badge-m">M</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Implement <code>BeadsDispatchAdapter</code></span><br><span class="text-slate-400 text-sm">Wraps <code>dispatch_read</code>, <code>dispatch_validate</code>, <code>dispatch_stale_check</code>, <code>dispatch_create_plan</code>, <code>dispatch_conflicts</code> with beads-aware logic. Wave start/status/item_status remain SQLite-based and are unaffected. <span class="badge badge-l">L</span></span></div></label>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-indigo-900 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-indigo-800 mb-3">Phase 5 — CLI Wrapper</summary>
+    <div class="bg-slate-800 rounded-lg p-4 space-y-2">
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Create <code>dh-backlog</code> CLI (<code>scripts/dh_backlog_router.py</code>)</span><br><span class="text-slate-400 text-sm">Thin Python PEP 723 script. Reads backend config, delegates each subcommand to the MCP server via <code>fastmcp call</code>. Accepts same parameters as MCP tools via CLI flags. Outputs JSON or formatted text. <span class="badge badge-m">M</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Create <code>dh-sam</code> CLI (<code>scripts/dh_sam_router.py</code>)</span><br><span class="text-slate-400 text-sm">Same pattern as <code>dh-backlog</code>. Wraps <code>sam_plan</code>, <code>sam_task</code>, <code>sam_active_task</code> MCP tools. <span class="badge badge-m">M</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Document CLI interface parity with MCP tools</span><br><span class="text-slate-400 text-sm">Add CLI reference to <code>docs/cli-reference.md</code>. Map each MCP tool to its CLI equivalent. Cover all flags and response formats. <span class="badge badge-s">S</span></span></div></label>
+    </div>
+  </details>
+
+  <details class="mt-3">
+    <summary class="bg-indigo-900 rounded-lg px-4 py-3 text-white font-semibold cursor-pointer hover:bg-indigo-800 mb-3">Phase 6 — Agent Instructions</summary>
+    <div class="bg-slate-800 rounded-lg p-4 space-y-2">
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Update DH CLAUDE.md: beads backend agent guidance</span><br><span class="text-slate-400 text-sm">When <code>BACKLOG_BACKEND=beads</code> or auto-detected, agents may call <code>bd</code> directly for read operations. Write operations must go through MCP tools. Document ID format difference (<code>bd-NNN</code> vs <code>#NNN</code>). <span class="badge badge-s">S</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Update <code>bd prime</code> integration to inject DH context</span><br><span class="text-slate-400 text-sm">When both beads and DH are active, <code>bd prime</code> hook should include the DH plugin MCP server URL and active task context. Coordinate with <code>bd setup claude</code> recipe. <span class="badge badge-s">S</span></span></div></label>
+      <label><input type="checkbox" class="mt-0.5 flex-shrink-0"> <div><span class="text-white font-medium">Add <code>active-task</code> convention to agent CLAUDE.md</span><br><span class="text-slate-400 text-sm">Document the active-task parking convention for beads backend. Agents set active task via <code>sam_active_task</code> MCP tool (unchanged). The stored JSON now contains <code>bd-NNN</code> IDs. Document lookup pattern. <span class="badge badge-s">S</span></span></div></label>
+    </div>
+  </details>
+</section>
+
+<!-- ═══════════════════════════ 9. CLI WRAPPER SPECIFICATION ═══════════════════════════ -->
+<section id="cli-wrapper" class="mb-10">
+  <h2 class="text-2xl font-bold text-white section-header">9. CLI Wrapper Specification</h2>
+  <p class="text-slate-400 mb-4">The <code>dh-backlog</code> and <code>dh-sam</code> CLIs are thin Python PEP 723 scripts in <code>plugins/development-harness/scripts/</code>. They accept the same parameters as the MCP tools, route to the correct backend, and return JSON or formatted text. When <code>BACKLOG_BACKEND=beads</code> (or auto-detected), <code>dh-backlog backlog_add</code> calls <code>bd create</code> internally.</p>
+
+  <div class="grid grid-cols-2 gap-4 mb-6">
+    <div>
+      <h3 class="text-white font-semibold mb-2"><code>dh-backlog</code> — Backlog Operations</h3>
+      <pre><code class="language-bash"># Add a backlog item
+dh-backlog backlog_add \
+  --title "Fix login bug" \
+  --description "OAuth token refresh fails" \
+  --priority P1 \
+  --type Bug
+
+# List open items
+dh-backlog backlog_list \
+  --status open \
+  --section P1
+
+# View a specific item (by title, bd-ID, or #N)
+dh-backlog backlog_view \
+  --selector "Fix login bug"
+
+dh-backlog backlog_view \
+  --selector bd-a1b2
+
+# Update item status
+dh-backlog backlog_update \
+  --selector "Fix login bug" \
+  --status in-progress
+
+# Close (dismiss) an item
+dh-backlog backlog_close \
+  --selector "Fix login bug" \
+  --reason wontfix
+
+# Resolve (complete) an item
+dh-backlog backlog_resolve \
+  --selector "Fix login bug" \
+  --summary "Fixed OAuth token refresh timing issue"
+
+# Groom an item section
+dh-backlog backlog_groom \
+  --selector "Fix login bug" \
+  --section "Acceptance Criteria" \
+  --content "- Login completes within 2s\n- Token refresh is transparent"
+
+# List comments
+dh-backlog backlog_list_comments \
+  --issue-number bd-a1b2
+
+# Add comment
+dh-backlog backlog_comment_issue \
+  --issue-number bd-a1b2 \
+  --body "Investigating the token refresh race condition"</code></pre>
+    </div>
+    <div>
+      <h3 class="text-white font-semibold mb-2"><code>dh-sam</code> — SAM Task Operations</h3>
+      <pre><code class="language-bash"># Create a plan
+dh-sam sam_plan \
+  --config '{"action":"create","feature":"auth","goal":"Implement token auth","slug":"auth-system"}' \
+  --plan P1
+
+# Check plan status
+dh-sam sam_plan \
+  --config '{"action":"status"}' \
+  --plan P1
+
+# Get ready tasks
+dh-sam sam_plan \
+  --config '{"action":"ready","full":false}' \
+  --plan P1
+
+# Read a specific task
+dh-sam sam_task \
+  --plan P1 --task T3 \
+  --config '{"action":"read"}'
+
+# Claim a task
+dh-sam sam_task \
+  --plan P1 --task T3 \
+  --config '{"action":"claim"}'
+
+# Mark task complete
+dh-sam sam_task \
+  --plan P1 --task T3 \
+  --config '{"action":"state","status":"complete"}'
+
+# Set active task
+dh-sam sam_active_task \
+  --config '{"action":"set","plan":"P1","task":"T3","parent_issue_number":42}' \
+  --session-id "abc123"
+
+# Get active task
+dh-sam sam_active_task \
+  --config '{"action":"get"}' \
+  --session-id "abc123"</code></pre>
+    </div>
+  </div>
+
+  <div class="bg-slate-800 rounded-xl p-5">
+    <h3 class="text-white font-semibold mb-3">Backend Routing — How It Works</h3>
+    <div class="mermaid">
+flowchart LR
+    CLI["dh-backlog backlog_add\n--title 'Fix login bug'\n--priority P1"]
+    Router["dh_backlog_router.py\n(PEP 723 script)"]
+    Config{"Backend?\nenv var / backend.toml\n/ .beads/ auto-detect"}
+    BeadsPath["BeadsBackend.create_item()\nbd create 'Fix login bug'\n-t bug -p 1 --json"]
+    GHPath["GitHubBackend.create_item()\nGitHub Issues API\nPyGithub create_issue()"]
+    BD2["bd binary\n(Dolt embedded)"]
+    GH2["github.com API"]
+
+    CLI --> Router
+    Router --> Config
+    Config -->|"BACKLOG_BACKEND=beads\nor .beads/ found"| BeadsPath
+    Config -->|default| GHPath
+    BeadsPath --> BD2
+    GHPath --> GH2
+
+    style BeadsPath fill:#1e3a5f,stroke:#3b82f6
+    style GHPath fill:#1a1a2e,stroke:#6366f1
+    </div>
+    <p class="text-slate-400 text-sm mt-3">The router is transparent to callers. The same <code>dh-backlog backlog_add</code> command works regardless of backend — output shape is identical. Only the underlying storage and ID format differ (<code>bd-NNN</code> vs <code>#NNN</code>).</p>
+  </div>
+
+  <div class="mt-4 bg-slate-800 rounded-xl p-5">
+    <h3 class="text-white font-semibold mb-3">Script Header (PEP 723)</h3>
+    <pre><code class="language-python">#!/usr/bin/env -S uv run --quiet
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "typer>=0.12",
+#   "fastmcp>=3.1",
+#   "rich>=13.0",
+# ]
+# ///
+"""dh-backlog — Thin CLI wrapper for DH backlog MCP tools.
+
+Routes to BeadsBackend or GitHubBackend based on backend config.
+Usage: uv run scripts/dh_backlog_router.py backlog_add --title "..." --priority P1
+"""
+import json
+import os
+import subprocess
+import typer
+from typing import Optional
+
+app = typer.Typer(name="dh-backlog", help="DH Backlog CLI")
+
+def _mcp_call(tool: str, **kwargs) -> dict:
+    """Call a backlog MCP tool via fastmcp."""
+    args = json.dumps({k: v for k, v in kwargs.items() if v is not None})
+    result = subprocess.run(
+        ["uv", "run", "fastmcp", "call",
+         "--command", "uv run --script plugins/development-harness/scripts/run_backlog_server.py",
+         tool, args],
+        capture_output=True, text=True, check=True
+    )
+    return json.loads(result.stdout)
+
+@app.command()
+def backlog_add(
+    title: str = typer.Option(..., help="Item title"),
+    description: str = typer.Option(..., help="Item description"),
+    priority: str = typer.Option("P2", help="P0|P1|P2|Ideas"),
+    type_: str = typer.Option("Feature", "--type", help="Feature|Bug|Refactor|Docs|Chore"),
+) -> None:
+    result = _mcp_call("backlog_add",
+        title=title, description=description,
+        priority=priority, type=type_,
+        gate_token="problems-not-solutions"
+    )
+    typer.echo(json.dumps(result))
+
+# ... additional commands follow same pattern ...</code></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ FOOTER ═══════════════════════════ -->
+<footer class="mt-12 border-t border-slate-700 pt-6 text-center text-slate-500 text-sm">
+  <p>Generated 2026-05-14 · Beads Backend Integration Design · Development-Harness Plugin</p>
+  <p class="mt-1">Sources: <code>01-beads-cli-commands.md</code> · <code>02-beads-data-model.md</code> · <code>03-dh-github-backlog.md</code> · <code>04-dh-sam-system.md</code> · <code>05-dh-config-architecture.md</code></p>
+  <p class="mt-1">Architecture: Vision C (Universal Shim) · <code>BeadsBackend</code> implements <code>BacklogBackend</code> Protocol via <code>bd</code> CLI subprocess</p>
+</footer>
+
+</body>
+</html>
