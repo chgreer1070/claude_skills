@@ -1346,6 +1346,14 @@ class ArtifactEntry(BaseModel):
     agent: str = Field(default="")
     """Name of the agent that produced the artifact, e.g. ``feature-researcher``."""
 
+    storage_tier: Literal["local", "remote"] = Field(
+        default="remote",
+        validation_alias=AliasChoices("storage_tier", "storage-tier"),
+        serialization_alias="storage-tier",
+    )
+    """Storage tier for this artifact.  ``'remote'`` for GitHub/GitLab/Linear providers (default).
+    ``'local'`` for LocalFilesystemArtifactProvider entries."""
+
 
 class ArtifactManifest(BaseModel):
     """Complete artifact inventory for a single GitHub Issue.
