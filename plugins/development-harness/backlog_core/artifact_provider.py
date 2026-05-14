@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 
 from github import Auth, Github, GithubException, InputFileContent
 
+from .artifact_provider_local import LocalFilesystemArtifactProvider
 from .artifact_registry import parse_manifest_section, render_manifest_section, replace_manifest_in_body
 from .gh_client import _fetch_issue_graphql, _update_issue_graphql, get_github
 from .gitlab_client import (
@@ -65,6 +66,7 @@ __all__ = [
     "GitHubGistArtifactProvider",
     "GitLabArtifactProvider",
     "LinearArtifactProvider",
+    "LocalFilesystemArtifactProvider",
     "create_artifact_provider",
     "parse_manifest_section",
     "render_manifest_section",
@@ -78,6 +80,7 @@ class BackendName(StrEnum):
     github = "github"
     linear = "linear"
     gitlab = "gitlab"
+    local = "local"
     sqlite = "sqlite"
     memory = "memory"
 
@@ -1285,6 +1288,10 @@ def create_artifact_provider(
             private_token=private_token,
             gitlab_url=gitlab_url,
             root_worktree=root_worktree,
+        )
+    if resolved in {BackendName.local, "local"}:
+        return LocalFilesystemArtifactProvider(
+            root_worktree=root_worktree or _dh_paths.git_project_root(), manifest_dir=None
         )
     if resolved in {BackendName.sqlite, BackendName.memory, "sqlite", "memory"}:
         raise BacklogError(f"Backend '{resolved}' does not support artifact storage. Use github, linear, or gitlab.")
