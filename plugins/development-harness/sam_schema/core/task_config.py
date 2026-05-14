@@ -6,7 +6,8 @@ pattern established in backlog_core.backend_protocol.
 
 Resolution order for backend selection:
     1. ``TASKBACKEND`` environment variable
-    2. ``[backend] name`` in ``taskbackend.toml`` (project root or ``~/.dh/``)
+    2. ``[backend] name`` in ``taskbackend.toml`` (project root, project
+       root ``/.dh/``, or ``~/.dh/``)
     3. Default: ``"local"``
 """
 
@@ -109,9 +110,10 @@ def reset_task_config() -> None:
 def _load_backend_toml_name() -> str | None:
     """Read backend name from taskbackend.toml if present.
 
-    Searches the project root (via dh_paths) then ``~/.dh/``. Missing files
-    are silently ignored. A present file that lacks the ``backend.name`` key
-    is also ignored.
+    Searches (in order): the project root (via dh_paths), the project root
+    ``/.dh/`` subdirectory, then ``~/.dh/``. Missing files are silently
+    ignored. A present file that lacks the ``backend.name`` key is also
+    ignored.
 
     Returns:
         Backend name string from ``[backend] name = "..."`` if found,
@@ -122,7 +124,7 @@ def _load_backend_toml_name() -> str | None:
     if _dh_paths is not None:
         with contextlib.suppress(FileNotFoundError, RuntimeError):
             project_root = _dh_paths.git_project_root()
-            search_paths.append(project_root / _BACKEND_TOML_FILENAME)
+            search_paths.extend((project_root / _BACKEND_TOML_FILENAME, project_root / ".dh" / _BACKEND_TOML_FILENAME))
 
     search_paths.append(Path.home() / ".dh" / _BACKEND_TOML_FILENAME)
 

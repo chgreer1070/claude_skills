@@ -981,7 +981,7 @@ def _load_backend_toml_name() -> str | None:
     if _dh_paths is not None:
         try:
             project_root = _dh_paths.git_project_root()
-            search_paths.append(project_root / _BACKEND_TOML_FILENAME)
+            search_paths.extend((project_root / _BACKEND_TOML_FILENAME, project_root / ".dh" / _BACKEND_TOML_FILENAME))
         except (FileNotFoundError, RuntimeError):
             pass
 
