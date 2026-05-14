@@ -2,9 +2,6 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#   "pydantic>=2.12.3",
-#   "pygithub>=2.8.1",
-#   "ruamel.yaml>=0.18.0",
 #   "typer>=0.21.2",
 # ]
 # ///
@@ -14,8 +11,8 @@ This hook script handles multiple hook events:
 - SubagentStop: Parse prompt for task info, set status to COMPLETE, add Completed timestamp
 - PostToolUse (Write|Edit|Bash): Update LastActivity timestamp using context file
 
-All task file I/O routes through sam_schema (ADR-001 exception: Python API, not CLI
-subprocess, because hooks fire on every tool call and latency matters).
+All task state WRITES route through the SAM MCP server via fastmcp CLI subprocess,
+making the hook backend-agnostic (ADR-001: hooks must not write directly to YAML).
 
 Context File Mechanism:
 - The /start-task command writes task context to ~/.dh/projects/{slug}/context/active-task-{session_id}.json
@@ -34,6 +31,7 @@ Exit Codes:
 
 from __future__ import annotations
 
+import contextlib
 import enum
 import json
 import os
@@ -66,24 +64,8 @@ if _HOOK_SAM_PACKAGES_DIR not in sys.path:
     sys.path.insert(0, _HOOK_SAM_PACKAGES_DIR)
 
 # Import directly from submodules for concrete types (avoids lazy __getattr__ object).
-import contextlib
-
-from sam_schema.core.dependencies import DependencyGraph
 from sam_schema.core.models import Task as SamTask, TaskStatus as SamTaskStatus
-from sam_schema.core.query import (
-    get_task as sam_get_task,
-    load_plan as sam_load_plan,
-    update_plan_fields as sam_update_plan_fields,
-    update_status as sam_update_status,
-)
-
-# Conditionally add backlog_core to sys.path for GitHub sync.
-# The hook script lives at:
-#   plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py
-# parents[5] resolves to the repo root (e.g. /home/user/claude_skills).
-_BACKLOG_CORE_HOOK = Path(__file__).resolve().parents[5] / ".claude" / "skills" / "backlog" / "backlog_core"
-if _BACKLOG_CORE_HOOK.exists():
-    sys.path.insert(0, str(_BACKLOG_CORE_HOOK.parent))
+from sam_schema.core.query import get_task as sam_get_task
 
 # Alphanumeric task ID pattern: "1", "1.1", "T1", "P0-T01", etc.
 _TASK_ID_RE = r"[A-Za-z0-9]+(?:[-.][\dA-Za-z]+)*"
@@ -493,6 +475,150 @@ def _call_sam_active_task_clear(session_id: str, timeout: int = 10) -> bool:
         return result.returncode == 0
 
 
+def _extract_plan_addr_from_path(task_file_path: Path) -> str | None:
+    """Extract plan address from a task file path.
+
+    Searches for a hex plan ID token (e.g. ``Pf4281187``) in the filename.
+
+    Args:
+        task_file_path: Path to the plan file.
+
+    Returns:
+        Plan address string (e.g. ``"Pf4281187"``) or ``None`` if not found.
+    """
+    m = re.search(r"(P[0-9a-f]+)", Path(task_file_path).name)
+    return m.group(1) if m else None
+
+
+def _call_sam_task_state(plan_addr: str, task_id: str, status: str, timeout: int = 15) -> bool:
+    """Update task status via fastmcp CLI call to sam_task(action='state').
+
+    Routes state writes through the SAM MCP server, keeping the hook
+    backend-agnostic. The server handles downstream skip cascades when
+    ``status="failed"``.
+
+    Args:
+        plan_addr: Plan address (e.g. ``"Pf4281187"``).
+        task_id: Task ID within the plan (e.g. ``"T1"``).
+        status: New task status string (e.g. ``"complete"``, ``"skipped"``).
+        timeout: Subprocess timeout in seconds.
+
+    Returns:
+        ``True`` if the MCP call succeeded, ``False`` on any failure.
+    """
+    uv = shutil.which("uv")
+    if uv is None or not _SAM_RUN_SERVER_PATH.exists():
+        return False
+
+    input_data = json.dumps({"plan": plan_addr, "task": task_id, "config": {"action": "state", "status": status}})
+    env = os.environ.copy()
+    env["FASTMCP_SHOW_SERVER_BANNER"] = "false"
+    env["FASTMCP_LOG_ENABLED"] = "false"
+
+    try:
+        result = subprocess.run(
+            [
+                uv,
+                "run",
+                "fastmcp",
+                "call",
+                "--command",
+                f"uv run --script {_SAM_RUN_SERVER_PATH}",
+                "--target",
+                "sam_task",
+                "--input-json",
+                input_data,
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
+        return False
+
+    if result.returncode != 0:
+        print(f"[hook] sam_task state={status} failed for {plan_addr}/{task_id}", file=sys.stderr)
+        return False
+
+    try:
+        outer = json.loads(result.stdout)
+        json.loads(outer["content"][0]["text"])
+    except (json.JSONDecodeError, KeyError, IndexError):
+        print(f"[hook] sam_task state: unexpected response for {plan_addr}/{task_id}", file=sys.stderr)
+        return False
+
+    return True
+
+
+def _call_sam_task_update(plan_addr: str, task_id: str, set_fields: dict[str, Any], timeout: int = 15) -> bool:
+    """Update task fields via fastmcp CLI call to sam_task(action='update').
+
+    Routes field writes through the SAM MCP server, keeping the hook
+    backend-agnostic.
+
+    Args:
+        plan_addr: Plan address (e.g. ``"Pf4281187"``).
+        task_id: Task ID within the plan (e.g. ``"T1"``).
+        set_fields: Field name/value pairs to patch on the task.
+        timeout: Subprocess timeout in seconds.
+
+    Returns:
+        ``True`` if the MCP call succeeded, ``False`` on any failure.
+    """
+    uv = shutil.which("uv")
+    if uv is None or not _SAM_RUN_SERVER_PATH.exists():
+        return False
+
+    input_data = json.dumps({
+        "plan": plan_addr,
+        "task": task_id,
+        "config": {"action": "update", "set_fields_json": set_fields},
+    })
+    env = os.environ.copy()
+    env["FASTMCP_SHOW_SERVER_BANNER"] = "false"
+    env["FASTMCP_LOG_ENABLED"] = "false"
+
+    try:
+        result = subprocess.run(
+            [
+                uv,
+                "run",
+                "fastmcp",
+                "call",
+                "--command",
+                f"uv run --script {_SAM_RUN_SERVER_PATH}",
+                "--target",
+                "sam_task",
+                "--input-json",
+                input_data,
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
+        return False
+
+    if result.returncode != 0:
+        print(f"[hook] sam_task update failed for {plan_addr}/{task_id}", file=sys.stderr)
+        return False
+
+    try:
+        outer = json.loads(result.stdout)
+        json.loads(outer["content"][0]["text"])
+    except (json.JSONDecodeError, KeyError, IndexError):
+        print(f"[hook] sam_task update: unexpected response for {plan_addr}/{task_id}", file=sys.stderr)
+        return False
+
+    return True
+
+
 def _cleanup_active_task_context(session_id: str | None, fallback_context_file: Path | None) -> None:
     """Clean up active task context after SubagentStop completes.
 
@@ -537,92 +663,6 @@ def _fallback_to_context_file(hook_input: dict[str, Any]) -> tuple[Path | None, 
     if session_id:
         return read_task_context(cwd, session_id)
     return None, None
-
-
-def get_parent_issue_number(hook_input: dict[str, Any]) -> int | None:
-    """Read parent_issue_number from the active-task context file.
-
-    Returns the integer issue number, or None if the field is absent or the
-    context file does not exist. Never raises — all failures return None.
-
-    Args:
-        hook_input: Parsed hook input from stdin.
-
-    Returns:
-        Parent issue number as int, or None if not found.
-    """
-    cwd = Path(hook_input.get("cwd", "."))
-    session_id = hook_input.get("session_id", "")
-    if not session_id:
-        return None
-    context_file = get_context_file_path(cwd, session_id)
-    if not context_file.exists():
-        return None
-    try:
-        data: dict[str, Any] = json.loads(context_file.read_text(encoding="utf-8"))
-        if "parent_issue_number" in data:
-            return int(data["parent_issue_number"])
-    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
-        pass
-    return None
-
-
-def sync_completion_to_github(task_file_path: Path, task_id: str, parent_issue_number: int | None) -> None:
-    """Sync task completion status to GitHub sub-issue.
-
-    Reads github_issue field from the task model via sam_schema. If absent,
-    logs a warning to stderr and returns without making any GitHub API call.
-    Wraps all GitHub operations in try/except — failure logs a warning to stderr
-    and returns without raising. This function is always called after the local
-    write succeeds; GitHub failure does not affect hook exit code.
-
-    Args:
-        task_file_path: Path to the plan file or directory.
-        task_id: Task ID being completed.
-        parent_issue_number: Optional parent story issue number from context file.
-    """
-    try:
-        # Read github_issue from the task model via sam_schema.
-        github_issue: int | None = None
-        with contextlib.suppress(KeyError, FileNotFoundError, ValueError, OSError):
-            github_issue = sam_get_task(task_file_path, task_id).github_issue
-
-        if github_issue is None:
-            print(f"[hook] No github_issue field in {task_file_path} — skipping GitHub sync", file=sys.stderr)
-            return
-
-        if not _BACKLOG_CORE_HOOK.exists():
-            print("[hook] backlog_core not found — skipping GitHub sync", file=sys.stderr)
-            return
-
-        # Conditional import — only after path guard
-        import backlog_core.gh_client as _bc_github  # noqa: PLC0415
-
-        try:
-            from backlog_core.models import BacklogError, GitHubUnavailableError  # noqa: PLC0415
-            from github import GithubException  # noqa: PLC0415
-
-            get_github_exc: tuple[type[BaseException], ...] = (GitHubUnavailableError, GithubException)
-            update_exc: tuple[type[BaseException], ...] = (BacklogError, GithubException, RuntimeError)
-        except ImportError:
-            get_github_exc = (RuntimeError,)
-            update_exc = (RuntimeError,)
-
-        try:
-            repo = _bc_github.get_github()
-        except get_github_exc as e:
-            print(f"[hook] GitHub unavailable — skipping GitHub sync: {e}", file=sys.stderr)
-            return
-
-        try:
-            _bc_github.update_task_status(repo, github_issue, "complete")
-        except update_exc as e:
-            print(f"[hook] GitHub sync update_task_status failed: {e}", file=sys.stderr)
-            return
-
-        print(f"[hook] Synced task {task_id} completion to GitHub issue #{github_issue}", file=sys.stderr)
-    except (ImportError, OSError, KeyError, ValueError) as e:
-        print(f"[hook] GitHub sync failed: {e}", file=sys.stderr)
 
 
 def _extract_text_from_user_record(record: dict[str, Any]) -> str | None:
@@ -908,9 +948,10 @@ def _cascade_failed_task(
 ) -> None:
     """Best-effort downstream skip cascade when a task is already in FAILED status.
 
-    Calls _mark_downstream_skipped_in_plan, absorbs all exceptions (SubagentStop
-    critical path — a network or write error must not prevent context cleanup),
-    then cleans up and exits 0.
+    Routes the cascade through the SAM MCP server via sam_task(action='state',
+    status='failed'). The server handles DependencyGraph construction and
+    downstream SKIPPED writes atomically. Absorbs all failures — SubagentStop
+    critical path must not be blocked by network or write errors.
 
     Args:
         full_path: Absolute path to the plan YAML file.
@@ -918,35 +959,15 @@ def _cascade_failed_task(
         sub_agent_session_id: Agent session ID for context cleanup.
         context_file: Context file path for cleanup.
     """
-    try:
-        _mark_downstream_skipped_in_plan(full_path, task_id)
-    except (OSError, ValueError, KeyError, FileNotFoundError) as e:
-        print(f"[hook] SubagentStop: downstream skip failed for {task_id} — {e}", file=sys.stderr)
+    plan_addr = _extract_plan_addr_from_path(full_path)
+    if plan_addr:
+        ok = _call_sam_task_state(plan_addr, task_id, "failed")
+        if not ok:
+            print(f"[hook] SubagentStop: downstream skip cascade failed for {task_id}", file=sys.stderr)
+    else:
+        print(f"[hook] SubagentStop: cannot extract plan address from {full_path} — skipping cascade", file=sys.stderr)
     _cleanup_active_task_context(sub_agent_session_id, context_file)
     sys.exit(0)
-
-
-def _mark_downstream_skipped_in_plan(plan_path: Path, failed_task_id: str) -> None:
-    """Mark all tasks transitively dependent on failed_task_id as SKIPPED.
-
-    Loads the plan, builds a DependencyGraph, calls mark_downstream_skipped
-    to obtain the list of tasks that must be auto-skipped, then writes
-    status=skipped and reason="skipped: upstream {failed_task_id} failed" for each.
-
-    Args:
-        plan_path: Absolute path to the plan YAML file.
-        failed_task_id: ID of the task that transitioned to FAILED.
-    """
-    read_result = sam_load_plan(plan_path)
-    graph = DependencyGraph(read_result.plan.tasks)
-    to_skip = graph.mark_downstream_skipped(failed_task_id)
-    for dep_id in to_skip:
-        sam_update_status(plan_path, dep_id, SamTaskStatus.SKIPPED)
-        # reason field write is best-effort — status update already succeeded
-        with contextlib.suppress(ValueError, KeyError, FileNotFoundError):
-            sam_update_plan_fields(
-                plan_path, dep_id, set_fields={"reason": f"skipped: upstream {failed_task_id} failed"}
-            )
 
 
 def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = HookProfile.STANDARD) -> None:
@@ -963,8 +984,8 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
     3. Fall back to ``active-task-{session_id}.json`` on disk if MCP call fails.
     4. After status update, call sam_active_task(action='clear') or delete file.
 
-    Delegates all file writes to sam_schema.core.query.update_status
-    (handles both .yaml and .md formats).
+    All status and field writes route through the SAM MCP server via fastmcp CLI,
+    making the hook backend-agnostic.
 
     When profile is STRICT, runs pre-completion validation checks and prints
     any warnings to stderr before completing (warnings do not prevent completion).
@@ -979,7 +1000,7 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
     if resolved is None:
         sys.exit(0)
 
-    sub_agent_session_id, task_file_path, task_id, parent_issue_number, context_file = resolved
+    sub_agent_session_id, task_file_path, task_id, _parent_issue_number, context_file = resolved
 
     if task_file_path is None or task_id is None:
         if context_file is not None:
@@ -1002,31 +1023,41 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
 
     if current_task.status == SamTaskStatus.FAILED:
         # Agent explicitly set task to FAILED before stopping.
-        # Cascade skip signals to all downstream dependents.
+        # Cascade skip signals to all downstream dependents via MCP.
         _cascade_failed_task(full_path, task_id, sub_agent_session_id, context_file)
 
     if profile == HookProfile.STRICT:
         for warning in run_strict_pre_completion_checks(full_path, task_id, hook_input):
             print(warning, file=sys.stderr)
 
-    try:
-        sam_update_status(full_path, task_id, SamTaskStatus.COMPLETE, timestamp_field="completed")
-    except (ValueError, KeyError, FileNotFoundError) as e:
-        print(str(e), file=sys.stderr)
-        sys.exit(2)
+    plan_addr = _extract_plan_addr_from_path(full_path)
+    if plan_addr is None:
+        print(
+            f"[hook] SubagentStop: cannot extract plan address from {full_path} — skipping MCP write", file=sys.stderr
+        )
+        _cleanup_active_task_context(sub_agent_session_id, context_file)
+        sys.exit(0)
+
+    timestamp = get_iso_timestamp()
+
+    # Write status=complete via MCP (state action).
+    state_ok = _call_sam_task_state(plan_addr, task_id, "complete")
+    if not state_ok:
+        print(f"[hook] SubagentStop: failed to mark {task_id} complete via MCP", file=sys.stderr)
+        _cleanup_active_task_context(sub_agent_session_id, context_file)
+        sys.exit(0)
+
+    # Write completed timestamp via MCP (update action) — best-effort.
+    _call_sam_task_update(plan_addr, task_id, {"completed": timestamp})
 
     _cleanup_active_task_context(sub_agent_session_id, context_file)
-
-    # Sync completion to GitHub — best-effort, never changes exit code.
-    sync_completion_to_github(full_path, task_id, parent_issue_number)
 
 
 def handle_activity_update(hook_input: dict[str, Any]) -> None:
     """Handle PostToolUse event - update LastActivity timestamp.
 
-    Reads task info from context file and updates the last-activity field.
-    Delegates all file writes to sam_schema.core.query.update_plan_fields
-    (handles both .yaml and .md formats via a single code path).
+    Reads task info from context file and updates the last-activity field
+    via the SAM MCP server (backend-agnostic write path).
 
     Args:
         hook_input: Parsed hook input from stdin.
@@ -1063,14 +1094,15 @@ def handle_activity_update(hook_input: dict[str, Any]) -> None:
     except (KeyError, FileNotFoundError, OSError):
         sys.exit(0)
 
+    plan_addr = _extract_plan_addr_from_path(full_path)
+    if plan_addr is None:
+        # Cannot determine plan address — skip silently (no plan address token in filename)
+        sys.exit(0)
+
     timestamp = get_iso_timestamp()
 
-    try:
-        # Single code path for all formats: sam_schema handles .yaml and .md uniformly.
-        sam_update_plan_fields(full_path, task_id, set_fields={"last-activity": timestamp})
-    except (ValueError, KeyError, FileNotFoundError):
-        # Task section not found or file unavailable, exit silently
-        sys.exit(0)
+    # Write last-activity field via MCP — best-effort, exit silently on failure.
+    _call_sam_task_update(plan_addr, task_id, {"last-activity": timestamp})
 
 
 def main() -> None:

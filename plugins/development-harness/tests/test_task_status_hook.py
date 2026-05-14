@@ -1,0 +1,511 @@
+"""Tests for task_status_hook.py — MCP write helpers and refactored handlers.
+
+Covers:
+- _call_sam_task_state: routes state writes through MCP subprocess
+- _call_sam_task_update: routes field writes through MCP subprocess
+- Both helpers fall back gracefully (return False) on subprocess failure
+- _extract_plan_addr_from_path: plan address extraction from filenames
+- handle_subagent_stop: calls MCP helpers instead of direct YAML writes
+- handle_activity_update: calls MCP helpers instead of direct YAML writes
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from subprocess import CompletedProcess, SubprocessError, TimeoutExpired
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+# Ensure hook script is importable from repo root.
+_plugin_dir = Path(__file__).parent.parent
+if str(_plugin_dir) not in sys.path:
+    sys.path.insert(0, str(_plugin_dir))
+
+# sam_schema must be on sys.path
+_repo_root = _plugin_dir.parent.parent
+_sam_packages = str(_repo_root / "packages")
+if _sam_packages not in sys.path:
+    sys.path.insert(0, _sam_packages)
+
+# Import the module under test (not the shebang — import directly)
+import importlib.util
+
+_hook_path = _plugin_dir / "skills" / "implementation-manager" / "scripts" / "task_status_hook.py"
+_spec = importlib.util.spec_from_file_location("task_status_hook", _hook_path)
+assert _spec is not None
+assert _spec.loader is not None
+_hook_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_hook_mod)  # type: ignore[union-attr]
+
+# Re-export symbols for clarity
+_call_sam_task_state = _hook_mod._call_sam_task_state
+_call_sam_task_update = _hook_mod._call_sam_task_update
+_extract_plan_addr_from_path = _hook_mod._extract_plan_addr_from_path
+handle_subagent_stop = _hook_mod.handle_subagent_stop
+handle_activity_update = _hook_mod.handle_activity_update
+HookProfile = _hook_mod.HookProfile
+_SAM_RUN_SERVER_PATH = _hook_mod._SAM_RUN_SERVER_PATH
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _mcp_success_response(data: dict[str, Any]) -> CompletedProcess[str]:
+    """Build a successful fastmcp CLI response wrapping inner JSON."""
+    outer = {"content": [{"text": json.dumps(data)}]}
+    return CompletedProcess(args=[], returncode=0, stdout=json.dumps(outer), stderr="")
+
+
+def _mcp_error_response(returncode: int = 1) -> CompletedProcess[str]:
+    """Build a failed fastmcp CLI response."""
+    return CompletedProcess(args=[], returncode=returncode, stdout="", stderr="error")
+
+
+# ---------------------------------------------------------------------------
+# _extract_plan_addr_from_path
+# ---------------------------------------------------------------------------
+
+
+def test_extract_plan_addr_from_path_returns_hex_address() -> None:
+    """A filename containing a hex plan token returns that token."""
+    # Arrange
+    path = Path("/home/user/.dh/projects/foo/plan/Pf4281187-my-feature.yaml")
+
+    # Act
+    result = _extract_plan_addr_from_path(path)
+
+    # Assert
+    assert result == "Pf4281187"
+
+
+def test_extract_plan_addr_from_path_returns_none_when_no_token() -> None:
+    """A filename without a plan address token returns None."""
+    # Arrange
+    path = Path("/tmp/some-plan-file.yaml")
+
+    # Act
+    result = _extract_plan_addr_from_path(path)
+
+    # Assert
+    assert result is None
+
+
+def test_extract_plan_addr_from_path_short_address() -> None:
+    """Short hex plan IDs are also matched."""
+    # Arrange
+    path = Path("P1a2b3c4-slug.yaml")
+
+    # Act
+    result = _extract_plan_addr_from_path(path)
+
+    # Assert
+    assert result == "P1a2b3c4"
+
+
+# ---------------------------------------------------------------------------
+# _call_sam_task_state — success path
+# ---------------------------------------------------------------------------
+
+
+def test_call_sam_task_state_routes_through_mcp_subprocess(tmp_path: Path) -> None:
+    """_call_sam_task_state calls fastmcp CLI with correct input JSON."""
+    # Arrange
+    plan_addr = "Pf4281187"
+    task_id = "T1"
+    status = "complete"
+    response = _mcp_success_response({"id": task_id, "status": status})
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", return_value=response) as mock_run,
+    ):
+        # Act
+        result = _call_sam_task_state(plan_addr, task_id, status)
+
+    # Assert
+    assert result is True
+    mock_run.assert_called_once()
+    call_kwargs = mock_run.call_args
+    cmd = call_kwargs[0][0]
+    assert "--target" in cmd
+    assert "sam_task" in cmd
+    assert "--input-json" in cmd
+    # Verify input JSON contains expected fields
+    input_json_idx = cmd.index("--input-json") + 1
+    input_data = json.loads(cmd[input_json_idx])
+    assert input_data["plan"] == plan_addr
+    assert input_data["task"] == task_id
+    assert input_data["config"]["action"] == "state"
+    assert input_data["config"]["status"] == status
+
+
+def test_call_sam_task_state_sets_env_suppression_flags(tmp_path: Path) -> None:
+    """_call_sam_task_state passes FASTMCP env vars to suppress banner and logs."""
+    # Arrange
+    response = _mcp_success_response({"id": "T1", "status": "complete"})
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", return_value=response) as mock_run,
+    ):
+        # Act
+        _call_sam_task_state("Pabc123", "T1", "complete")
+
+    # Assert
+    env_passed = mock_run.call_args[1]["env"]
+    assert env_passed["FASTMCP_SHOW_SERVER_BANNER"] == "false"
+    assert env_passed["FASTMCP_LOG_ENABLED"] == "false"
+
+
+# ---------------------------------------------------------------------------
+# _call_sam_task_state — failure paths
+# ---------------------------------------------------------------------------
+
+
+def test_call_sam_task_state_returns_false_when_uv_missing() -> None:
+    """_call_sam_task_state returns False gracefully when uv is not on PATH."""
+    # Arrange
+    with patch("shutil.which", return_value=None):
+        # Act
+        result = _call_sam_task_state("Pabc123", "T1", "complete")
+
+    # Assert
+    assert result is False
+
+
+def test_call_sam_task_state_returns_false_when_server_script_missing() -> None:
+    """_call_sam_task_state returns False when the SAM server script does not exist."""
+    # Arrange
+    with patch("shutil.which", return_value="/usr/bin/uv"), patch.object(Path, "exists", return_value=False):
+        # Act
+        result = _call_sam_task_state("Pabc123", "T1", "complete")
+
+    # Assert
+    assert result is False
+
+
+def test_call_sam_task_state_returns_false_on_nonzero_returncode() -> None:
+    """_call_sam_task_state returns False when subprocess exits with error code."""
+    # Arrange
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", return_value=_mcp_error_response()),
+    ):
+        # Act
+        result = _call_sam_task_state("Pabc123", "T1", "complete")
+
+    # Assert
+    assert result is False
+
+
+def test_call_sam_task_state_returns_false_on_timeout() -> None:
+    """_call_sam_task_state returns False when subprocess times out."""
+    # Arrange
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", side_effect=TimeoutExpired(cmd="uv", timeout=15)),
+    ):
+        # Act
+        result = _call_sam_task_state("Pabc123", "T1", "complete")
+
+    # Assert
+    assert result is False
+
+
+def test_call_sam_task_state_returns_false_on_subprocess_error() -> None:
+    """_call_sam_task_state returns False on a general subprocess error."""
+    # Arrange
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", side_effect=SubprocessError("broken pipe")),
+    ):
+        # Act
+        result = _call_sam_task_state("Pabc123", "T1", "complete")
+
+    # Assert
+    assert result is False
+
+
+def test_call_sam_task_state_returns_false_on_malformed_json_response() -> None:
+    """_call_sam_task_state returns False when subprocess stdout is not valid JSON."""
+    # Arrange
+    bad_response = CompletedProcess(args=[], returncode=0, stdout="not json", stderr="")
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", return_value=bad_response),
+    ):
+        # Act
+        result = _call_sam_task_state("Pabc123", "T1", "complete")
+
+    # Assert
+    assert result is False
+
+
+# ---------------------------------------------------------------------------
+# _call_sam_task_update — success path
+# ---------------------------------------------------------------------------
+
+
+def test_call_sam_task_update_routes_through_mcp_subprocess() -> None:
+    """_call_sam_task_update calls fastmcp CLI with correct set_fields_json."""
+    # Arrange
+    plan_addr = "Pf4281187"
+    task_id = "T2"
+    fields = {"last-activity": "2026-05-14T18:00:00+00:00"}
+    response = _mcp_success_response({"updated": True, "address": f"{plan_addr}/{task_id}"})
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", return_value=response) as mock_run,
+    ):
+        # Act
+        result = _call_sam_task_update(plan_addr, task_id, fields)
+
+    # Assert
+    assert result is True
+    cmd = mock_run.call_args[0][0]
+    input_json_idx = cmd.index("--input-json") + 1
+    input_data = json.loads(cmd[input_json_idx])
+    assert input_data["plan"] == plan_addr
+    assert input_data["task"] == task_id
+    assert input_data["config"]["action"] == "update"
+    assert input_data["config"]["set_fields_json"] == fields
+
+
+def test_call_sam_task_update_sets_env_suppression_flags() -> None:
+    """_call_sam_task_update passes FASTMCP env vars to suppress banner and logs."""
+    # Arrange
+    response = _mcp_success_response({"updated": True, "address": "Pabc/T1"})
+
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", return_value=response) as mock_run,
+    ):
+        # Act
+        _call_sam_task_update("Pabc123", "T1", {"last-activity": "2026-05-14T00:00:00+00:00"})
+
+    # Assert
+    env_passed = mock_run.call_args[1]["env"]
+    assert env_passed["FASTMCP_SHOW_SERVER_BANNER"] == "false"
+    assert env_passed["FASTMCP_LOG_ENABLED"] == "false"
+
+
+# ---------------------------------------------------------------------------
+# _call_sam_task_update — failure paths
+# ---------------------------------------------------------------------------
+
+
+def test_call_sam_task_update_returns_false_when_uv_missing() -> None:
+    """_call_sam_task_update returns False gracefully when uv is not on PATH."""
+    # Arrange
+    with patch("shutil.which", return_value=None):
+        # Act
+        result = _call_sam_task_update("Pabc123", "T1", {"last-activity": "ts"})
+
+    # Assert
+    assert result is False
+
+
+def test_call_sam_task_update_returns_false_on_nonzero_returncode() -> None:
+    """_call_sam_task_update returns False when subprocess exits with error code."""
+    # Arrange
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", return_value=_mcp_error_response()),
+    ):
+        # Act
+        result = _call_sam_task_update("Pabc123", "T1", {"last-activity": "ts"})
+
+    # Assert
+    assert result is False
+
+
+def test_call_sam_task_update_returns_false_on_timeout() -> None:
+    """_call_sam_task_update returns False when subprocess times out."""
+    # Arrange
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", side_effect=TimeoutExpired(cmd="uv", timeout=15)),
+    ):
+        # Act
+        result = _call_sam_task_update("Pabc123", "T1", {"last-activity": "ts"})
+
+    # Assert
+    assert result is False
+
+
+def test_call_sam_task_update_returns_false_on_malformed_json() -> None:
+    """_call_sam_task_update returns False when subprocess stdout is not valid JSON."""
+    # Arrange
+    bad_response = CompletedProcess(args=[], returncode=0, stdout="not-json", stderr="")
+    with (
+        patch("shutil.which", return_value="/usr/bin/uv"),
+        patch.object(Path, "exists", return_value=True),
+        patch("subprocess.run", return_value=bad_response),
+    ):
+        # Act
+        result = _call_sam_task_update("Pabc123", "T1", {"x": "y"})
+
+    # Assert
+    assert result is False
+
+
+# ---------------------------------------------------------------------------
+# handle_activity_update — MCP call path
+# ---------------------------------------------------------------------------
+
+
+def test_handle_activity_update_calls_mcp_update(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """handle_activity_update calls _call_sam_task_update for last-activity field."""
+    # Arrange — create a plan file with plan address in the name
+    plan_file = tmp_path / "Pf4281187-feature.yaml"
+    plan_file.write_text("tasks:\n- id: T1\n  status: in-progress\n  title: Test\n")
+
+    # Set up context file
+    monkeypatch.setenv("DH_STATE_HOME", str(tmp_path / "dh_state"))
+    import dh_paths
+
+    context_dir = dh_paths.context_dir()
+    context_dir.mkdir(parents=True, exist_ok=True)
+    session_id = "sess-abc"
+    context_file = context_dir / f"active-task-{session_id}.json"
+    context_file.write_text(json.dumps({"task_file_path": str(plan_file), "task_id": "T1"}))
+
+    hook_input = {"cwd": str(tmp_path), "session_id": session_id, "hook_event_name": "PostToolUse"}
+
+    from sam_schema.core.models import Task, TaskStatus
+
+    mock_task = MagicMock(spec=Task)
+    mock_task.status = TaskStatus.IN_PROGRESS
+
+    with (
+        patch.object(_hook_mod, "sam_get_task", return_value=mock_task),
+        patch.object(_hook_mod, "_call_sam_task_update", return_value=True) as mock_update,
+    ):
+        # Act
+        handle_activity_update(hook_input)
+
+    # Assert
+    mock_update.assert_called_once()
+    call_args = mock_update.call_args
+    assert call_args[0][0] == "Pf4281187"  # plan_addr
+    assert call_args[0][1] == "T1"  # task_id
+    assert "last-activity" in call_args[0][2]  # set_fields has last-activity key
+
+
+def test_handle_activity_update_skips_when_no_plan_addr(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """handle_activity_update exits silently when filename has no plan address token."""
+    # Arrange — plan file with no plan address in name
+    plan_file = tmp_path / "my-plan-without-address.yaml"
+    plan_file.write_text("tasks:\n- id: T1\n  status: in-progress\n  title: Test\n")
+
+    monkeypatch.setenv("DH_STATE_HOME", str(tmp_path / "dh_state"))
+    import dh_paths
+
+    context_dir = dh_paths.context_dir()
+    context_dir.mkdir(parents=True, exist_ok=True)
+    session_id = "sess-xyz"
+    context_file = context_dir / f"active-task-{session_id}.json"
+    context_file.write_text(json.dumps({"task_file_path": str(plan_file), "task_id": "T1"}))
+
+    hook_input = {"cwd": str(tmp_path), "session_id": session_id, "hook_event_name": "PostToolUse"}
+
+    from sam_schema.core.models import Task, TaskStatus
+
+    mock_task = MagicMock(spec=Task)
+    mock_task.status = TaskStatus.IN_PROGRESS
+
+    with (
+        patch.object(_hook_mod, "sam_get_task", return_value=mock_task),
+        patch.object(_hook_mod, "_call_sam_task_update", return_value=True) as mock_update,
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        # Act
+        handle_activity_update(hook_input)
+
+    # Assert — exited cleanly without calling MCP update
+    assert exc_info.value.code == 0
+    mock_update.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# handle_subagent_stop — MCP write path
+# ---------------------------------------------------------------------------
+
+
+def test_handle_subagent_stop_calls_state_and_update(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """handle_subagent_stop calls sam_task state=complete then update with timestamp."""
+    # Arrange
+    plan_file = tmp_path / "Pf4281187-feature.yaml"
+    plan_file.write_text("tasks:\n- id: T1\n  status: in-progress\n  title: Test\n")
+
+    from sam_schema.core.models import Task, TaskStatus
+
+    mock_task = MagicMock(spec=Task)
+    mock_task.status = TaskStatus.IN_PROGRESS
+
+    hook_input: dict[str, Any] = {"cwd": str(tmp_path), "hook_event_name": "SubagentStop", "agent_transcript_path": ""}
+
+    with (
+        patch.object(_hook_mod, "_resolve_active_task_context", return_value=(None, plan_file, "T1", None, None)),
+        patch.object(_hook_mod, "sam_get_task", return_value=mock_task),
+        patch.object(_hook_mod, "_call_sam_task_state", return_value=True) as mock_state,
+        patch.object(_hook_mod, "_call_sam_task_update", return_value=True) as mock_update,
+        patch.object(_hook_mod, "_cleanup_active_task_context"),
+    ):
+        # Act
+        handle_subagent_stop(hook_input)
+
+    # Assert
+    mock_state.assert_called_once_with("Pf4281187", "T1", "complete")
+    mock_update.assert_called_once()
+    update_args = mock_update.call_args[0]
+    assert update_args[0] == "Pf4281187"
+    assert update_args[1] == "T1"
+    assert "completed" in update_args[2]
+
+
+def test_handle_subagent_stop_exits_cleanly_when_state_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """handle_subagent_stop exits 0 (not 2) when MCP state call fails."""
+    # Arrange
+    plan_file = tmp_path / "Pf4281187-feature.yaml"
+    plan_file.write_text("tasks:\n- id: T1\n  status: in-progress\n  title: Test\n")
+
+    from sam_schema.core.models import Task, TaskStatus
+
+    mock_task = MagicMock(spec=Task)
+    mock_task.status = TaskStatus.IN_PROGRESS
+
+    hook_input: dict[str, Any] = {"cwd": str(tmp_path), "hook_event_name": "SubagentStop", "agent_transcript_path": ""}
+
+    with (
+        patch.object(_hook_mod, "_resolve_active_task_context", return_value=(None, plan_file, "T1", None, None)),
+        patch.object(_hook_mod, "sam_get_task", return_value=mock_task),
+        patch.object(_hook_mod, "_call_sam_task_state", return_value=False),
+        patch.object(_hook_mod, "_call_sam_task_update") as mock_update,
+        patch.object(_hook_mod, "_cleanup_active_task_context"),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        # Act
+        handle_subagent_stop(hook_input)
+
+    # Assert — exit 0, not 2 (best-effort, not fatal)
+    assert exc_info.value.code == 0
+    # Update should not be called if state failed
+    mock_update.assert_not_called()
