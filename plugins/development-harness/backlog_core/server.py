@@ -29,6 +29,7 @@ from ruamel.yaml import YAML as _YAML, YAMLError as _YAMLError
 
 from . import models as _models, operations
 from .artifact_provider import ArtifactBackend, create_artifact_provider
+from .artifact_provider_local import LocalFilesystemArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .backend_protocol import IssueNode as _IssueNode, get_config as _get_config
 from .dispatch_state import DispatchStateManager as _DispatchStateManager
@@ -2342,6 +2343,7 @@ async def backlog_update_sam_task_status(
 _artifact_registry = ArtifactRegistry()
 # TODO(H05): Move to FastMCP lifespan context — eliminate module-level singleton.
 _artifact_provider: ArtifactBackend | None = None
+_artifact_provider_warning: str | None = None
 
 
 def _require_artifact_entries(entries: list, label: str) -> None:
@@ -2364,18 +2366,31 @@ def _get_artifact_provider() -> ArtifactBackend:
     Deferred so the provider is created after ``_init_models()`` has resolved
     the repo slug and project root from the ``--project-dir`` argument.
 
-    Returns:
-        Initialised ``ArtifactBackend`` instance.
+    When the configured remote backend is unavailable or unconfigured, falls
+    back to :class:`~backlog_core.artifact_provider_local.LocalFilesystemArtifactProvider`
+    and sets ``_artifact_provider_warning`` so every artifact MCP tool surfaces
+    the degraded-mode notice to callers.
 
-    Raises:
-        GitHubUnavailableError: When GitHub credentials or repo slug are missing.
+    Returns:
+        Initialised ``ArtifactBackend`` instance.  Never raises — falls back
+        to the local filesystem provider when the remote backend fails to
+        initialise.
     """
-    global _artifact_provider  # noqa: PLW0603
-    if _artifact_provider is None:
-        repo = _models.get_default_repo()
-        if not repo:
-            raise GitHubUnavailableError("DEFAULT_REPO not set — GitHub credentials or repo slug missing")
-        _artifact_provider = create_artifact_provider(repo=repo, root_worktree=_models.get_repo_root())
+    global _artifact_provider, _artifact_provider_warning  # noqa: PLW0603
+    if _artifact_provider is not None:
+        return _artifact_provider
+    provider: ArtifactBackend
+    repo = _models.get_default_repo()
+    if not repo:
+        provider = LocalFilesystemArtifactProvider(root_worktree=_dh_paths.git_project_root())
+    else:
+        try:
+            provider = create_artifact_provider(repo=repo, root_worktree=_models.get_repo_root())
+        except (GitHubUnavailableError, BacklogError):
+            provider = LocalFilesystemArtifactProvider(root_worktree=_dh_paths.git_project_root())
+    _artifact_provider = provider
+    if isinstance(provider, LocalFilesystemArtifactProvider):
+        _artifact_provider_warning = "Artifacts stored in local filesystem provider. Remote sync unavailable."
     return _artifact_provider
 
 
@@ -2444,6 +2459,8 @@ async def artifact_register(
     out = Output()
     try:
         provider = _get_artifact_provider()
+        if _artifact_provider_warning is not None:
+            out.warnings.append(_artifact_provider_warning)
         artifact_type_enum = ArtifactType(artifact_type)
         status_enum = ArtifactStatus(status)
         entry = ArtifactEntry(
@@ -2518,6 +2535,8 @@ async def artifact_list(
     out = Output()
     try:
         provider = _get_artifact_provider()
+        if _artifact_provider_warning is not None:
+            out.warnings.append(_artifact_provider_warning)
         type_filter: ArtifactType | None = ArtifactType(artifact_type) if artifact_type else None
 
         def _run() -> list[dict]:
@@ -2557,6 +2576,8 @@ async def artifact_get(
     out = Output()
     try:
         provider = _get_artifact_provider()
+        if _artifact_provider_warning is not None:
+            out.warnings.append(_artifact_provider_warning)
         type_enum = ArtifactType(artifact_type)
 
         def _run() -> list[dict]:
@@ -2604,6 +2625,8 @@ async def artifact_read(
     out = Output()
     try:
         provider = _get_artifact_provider()
+        if _artifact_provider_warning is not None:
+            out.warnings.append(_artifact_provider_warning)
         type_enum = ArtifactType(artifact_type)
 
         def _run() -> ArtifactContent:
