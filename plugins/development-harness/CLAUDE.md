@@ -532,6 +532,21 @@ Select via `TASKBACKEND` env var or `[backend] name` in `taskbackend.toml` (proj
 name = "local"   # valid: "local", "github", "memory"
 ```
 
+### ArtifactBackend Protocol
+
+Stores artifact manifest metadata (distinct from `BacklogBackend` coordination state). Defined in `backlog_core/artifact_provider.py`.
+
+Four implementations:
+
+- `GitHubGistArtifactProvider` (default) — manifests in a private GitHub Gist linked from the issue body. Requires `GITHUB_TOKEN` with `gist` scope.
+- `LinearArtifactProvider` — manifests in Linear Attachment metadata.
+- `GitLabArtifactProvider` — manifests in a private GitLab Snippet linked via issue note.
+- `LocalFilesystemArtifactProvider` — manifests at `~/.dh/projects/{slug}/artifacts/{issue_number}.json`; content at `{git_project_root}/{artifact_id}`.
+
+**Fallback behavior**: `_get_artifact_provider()` in `server.py` attempts the configured remote backend. On `GitHubUnavailableError` or `BacklogError`, it silently activates `LocalFilesystemArtifactProvider`. Callers receive the same response shape; a `warnings` entry reading `"Artifacts stored in local filesystem provider. Remote sync unavailable."` is added when fallback is active.
+
+**Explicit local selection**: Set `BACKLOG_BACKEND=local` or add `[backend]\nname = "local"` in `{project_root}/.dh/backend.toml` to always use local storage.
+
 ---
 
 ## References

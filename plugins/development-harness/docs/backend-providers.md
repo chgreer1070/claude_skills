@@ -94,10 +94,11 @@ The development harness uses three subsystems. The backlog MCP now uses a plugga
 ### Artifact Manifest (backlog MCP artifact tools)
 
 - **Source of truth**: Determined by the active artifact backend (default: GitHub Gist linked from issue body)
-- **Implementation**: `backlog_core/artifact_provider.py` defines the `ArtifactBackend` Protocol, `GitHubGistArtifactProvider` (default), `LinearArtifactProvider`, and `GitLabArtifactProvider`
+- **Implementation**: `backlog_core/artifact_provider.py` defines the `ArtifactBackend` Protocol, `GitHubGistArtifactProvider` (default), `LinearArtifactProvider`, `GitLabArtifactProvider`, and `LocalFilesystemArtifactProvider` (automatic fallback)
 - **Operations**: `get_manifest`, `set_manifest`, `read_artifact_content`
 - **File content**: Always served from local filesystem regardless of manifest backend
-- **Backend selection**: `BACKLOG_BACKEND` env var → default `github`
+- **Backend selection**: `BACKLOG_BACKEND` env var → default `github`; set `BACKLOG_BACKEND=local` or `[backend] name = "local"` in `backend.toml` to always use local storage
+- **Fallback**: When the configured remote backend raises `GitHubUnavailableError` or `BacklogError` during initialisation, `_get_artifact_provider()` in `server.py` silently activates `LocalFilesystemArtifactProvider`; callers receive the same response shape with a `warnings` entry: `"Artifacts stored in local filesystem provider. Remote sync unavailable."`
 - **Factory**: `create_artifact_provider(backend_name=None, repo=None, root_worktree=None)` in `backlog_core/artifact_provider.py`
 
 ## BacklogBackend Protocol
@@ -229,7 +230,7 @@ The development harness uses Protocol-based abstraction to decouple MCP tools fr
 | Protocol | Primitive | Backlog item | Current state |
 |---|---|---|---|
 | `IssueBackend` | Work Items + Sub-items | #389 (P2, groomed) | Operations hardcoded to GitHub in `backlog_core/gh_client.py` |
-| `DocumentBackend` | Documents (durable handoff content) | #984 (P2, complete) | `ArtifactBackend` Protocol in `backlog_core/artifact_provider.py`; `GitHubGistArtifactProvider`, `LinearArtifactProvider`, `GitLabArtifactProvider` all implemented |
+| `DocumentBackend` | Documents (durable handoff content) | #984 (P2, complete) | `ArtifactBackend` Protocol in `backlog_core/artifact_provider.py`; `GitHubGistArtifactProvider`, `LinearArtifactProvider`, `GitLabArtifactProvider`, `LocalFilesystemArtifactProvider` all implemented |
 | `TaskBackend` | SAM orchestration over IssueBackend + DocumentBackend | #912 (P1, complete) | Protocol in `sam_schema/core/task_backend.py`, three backends: LocalYaml, GitHub, InMemory |
 
 `TaskBackend` is a SAM-specific orchestration layer. It does not own its own storage — it composes over `IssueBackend` (for coordination state: create work items, create/claim/update sub-items) and `DocumentBackend` (for handoff content: store/read stage artifacts). This keeps SAM's semantic operations (readiness, dependency resolution, atomic claiming) separate from the storage primitives.
@@ -309,7 +310,7 @@ Three Protocol abstractions are needed, one per subsystem:
 
 ### DocumentBackend Protocol (#984 — implemented)
 
-Defined as `ArtifactBackend` in `backlog_core/artifact_provider.py`. Three provider implementations are available: `GitHubGistArtifactProvider` (default), `LinearArtifactProvider`, and `GitLabArtifactProvider`. The factory function `create_artifact_provider()` selects the provider based on `BACKLOG_BACKEND` env var or `backend_name` argument. Future evolution to `DocumentBackend` will reflect the full SAM storage model for durable handoff content between agents and stages.
+Defined as `ArtifactBackend` in `backlog_core/artifact_provider.py`. Four provider implementations are available: `GitHubGistArtifactProvider` (default), `LinearArtifactProvider`, `GitLabArtifactProvider`, and `LocalFilesystemArtifactProvider` (automatic fallback when the remote backend is unreachable). The factory function `create_artifact_provider()` selects the provider based on `BACKLOG_BACKEND` env var or `backend_name` argument. Future evolution to `DocumentBackend` will reflect the full SAM storage model for durable handoff content between agents and stages.
 
 **What a backend must provide to be pluggable**: durable, versioned content storage addressable by a backend-opaque `content_ref`. Content must be accessible from any environment with valid credentials. The backend must support querying documents by owner (work item or sub-item), type, and stage.
 
@@ -448,7 +449,7 @@ Source: `backlog_core/artifact_provider.py` — `GitLabArtifactProvider`
 2. `BACKLOG_BACKEND` environment variable
 3. Default: `github`
 
-**Supported values**: `github`, `linear`, `gitlab`. Values `sqlite` and `memory` raise `BacklogError` — those backends do not support artifact storage.
+**Supported values**: `github`, `linear`, `gitlab`, `local`. Values `sqlite` and `memory` raise `BacklogError` — those backends do not support artifact storage.
 
 **Environment variables summary**:
 
@@ -714,7 +715,8 @@ Backend selection is configured via a config file at server startup. Each MCP se
 - `~/.dh/projects/{slug}/plan/architect-artifact-manifest.md` -- architecture spec for ArtifactBackend Protocol (access via `artifact_read`)
 - `~/.dh/projects/{slug}/plan/feature-context-artifact-manifest.md` -- problem space and desired outcomes (access via `artifact_read`)
 - [artifact-manifest-backends.md](./artifact-manifest-backends.md) -- artifact-specific backend details
-- [backlog_core/artifact_provider.py](../backlog_core/artifact_provider.py) -- ArtifactBackend Protocol definition; GitHubGistArtifactProvider, LinearArtifactProvider, GitLabArtifactProvider implementations; create_artifact_provider factory
+- [backlog_core/artifact_provider.py](../backlog_core/artifact_provider.py) -- ArtifactBackend Protocol definition; GitHubGistArtifactProvider, LinearArtifactProvider, GitLabArtifactProvider, LocalFilesystemArtifactProvider implementations; create_artifact_provider factory
+- [backlog_core/artifact_provider_local.py](../backlog_core/artifact_provider_local.py) -- LocalFilesystemArtifactProvider implementation; atomic manifest writes with fcntl advisory locking
 - [backlog_core/linear_client.py](../backlog_core/linear_client.py) -- Linear Attachments API client (linear_get_attachments, linear_create_attachment)
 - [backlog_core/gitlab_client.py](../backlog_core/gitlab_client.py) -- GitLab Snippets and Notes API client (gitlab_create_snippet, gitlab_get_snippet, gitlab_update_snippet, gitlab_create_issue_note, gitlab_list_issue_notes)
 - [backlog_core/gh_client.py](../backlog_core/gh_client.py) -- current GitHub-specific issue operations
