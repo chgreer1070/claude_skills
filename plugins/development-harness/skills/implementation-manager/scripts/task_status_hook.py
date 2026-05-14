@@ -2,7 +2,8 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#   "typer>=0.21.2",
+#   "pydantic>=2.12.3",
+#   "ruamel.yaml>=0.18.0",
 # ]
 # ///
 """Task Status Hook - Update task status and timestamps automatically.
