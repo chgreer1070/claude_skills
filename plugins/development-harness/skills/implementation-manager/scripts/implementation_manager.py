@@ -22,6 +22,8 @@ from __future__ import annotations
 import io
 import json
 import re
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -131,6 +133,11 @@ _TERMINAL_STATUSES: frozenset[TaskStatus] = frozenset({
     TaskStatus.SKIPPED,
     TaskStatus.FAILED,
 })
+
+# Beads nanoid pattern: lowercase letter, then lowercase letters/digits/hyphens/underscores,
+# then a hyphen, then alphanumeric/dot characters.
+# Examples: "bd-a3f8", "feat-Abc123", "epic-x.1"
+_BEADS_ID_RE: re.Pattern[str] = re.compile(r"^[a-z][a-z0-9_-]*-[A-Za-z0-9.]+$")
 
 
 class TaskPriority(IntEnum):
@@ -909,6 +916,124 @@ def fetch_tasks_from_github(parent_issue_number: int, feature_slug: str, cache_p
         sys.stderr.write(f"WARNING: Could not write cache file: {exc}\n")
 
     return tasks
+
+
+def fetch_tasks_from_beads(parent_issue_number: str, feature_slug: str, cache_path: Path) -> list[Task] | None:
+    """Fetch sub-issues from a beads parent and return them as Task objects.
+
+    Invokes ``bd list --parent <id> --json`` via subprocess.  Returns ``None``
+    if ``bd`` is not installed or if the invocation fails, writing a warning to
+    stderr in each case.  Does not raise on subprocess failures — the caller
+    should fall back to the cache when this returns ``None``.
+
+    Args:
+        parent_issue_number: Beads nanoid string (e.g. ``"bd-a3f8"``).
+        feature_slug: Feature slug used as the cache key.
+        cache_path: Path to the JSON cache file for offline fallback.
+
+    Returns:
+        List of :class:`Task` objects on success, ``None`` on failure.
+    """
+    bd = shutil.which("bd")
+    if bd is None:
+        sys.stderr.write("WARNING: bd not found on PATH — cannot fetch tasks from beads.\n")
+        return None
+
+    try:
+        result = subprocess.run(
+            [bd, "list", "--parent", parent_issue_number, "--json"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except FileNotFoundError:
+        sys.stderr.write("WARNING: bd not found — cannot fetch tasks from beads.\n")
+        return None
+    except subprocess.TimeoutExpired:
+        sys.stderr.write("WARNING: bd list timed out after 30 s — cannot fetch tasks from beads.\n")
+        return None
+
+    if result.returncode != 0:
+        sys.stderr.write(
+            f"WARNING: bd list exited {result.returncode} — cannot fetch tasks from beads: {result.stderr}\n"
+        )
+        return None
+
+    try:
+        raw_issues: list[dict[str, object]] = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        sys.stderr.write(f"WARNING: bd list output is not valid JSON: {exc}\n")
+        return None
+
+    tasks: list[Task] = []
+    for raw in raw_issues:
+        try:
+            task_status = _parse_yaml_status(str(raw.get("status", "not-started")))
+            raw_priority = raw.get("priority", 2)
+            task_priority = TaskPriority(int(raw_priority)) if raw_priority is not None else TaskPriority.MEDIUM
+            issue_id = str(raw.get("id", ""))
+            metadata: dict[str, object] = raw.get("metadata", {}) or {}  # type: ignore[assignment]
+            tasks.append(
+                Task(
+                    id=issue_id,
+                    name=str(raw.get("title", issue_id)),
+                    status=task_status,
+                    dependencies=[str(d) for d in raw.get("dependencies", []) or []],
+                    agent=str(metadata.get("dh.agent")) if metadata.get("dh.agent") else None,
+                    priority=task_priority,
+                    complexity="Medium",
+                    started=None,
+                    completed=None,
+                    skills=[],
+                )
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            sys.stderr.write(f"WARNING: Skipping malformed beads issue: {exc}\n")
+
+    return tasks
+
+
+def fetch_tasks_from_backend(parent_issue_number: str | int, feature_slug: str, cache_path: Path) -> list[Task] | None:
+    """Route task fetching to the appropriate backend based on ID type.
+
+    Dispatches integer IDs to GitHub via :func:`fetch_tasks_from_github` and
+    beads nanoid string IDs (matching ``^[a-z][a-z0-9_-]*-[A-Za-z0-9.]+$``) to
+    the beads ``bd`` CLI via :func:`fetch_tasks_from_beads`.
+
+    Args:
+        parent_issue_number: ``int`` for GitHub issue numbers; beads nanoid
+            ``str`` for beads sub-issue parents (e.g. ``"bd-a3f8"``).
+            ``bool`` is accepted as ``int`` (Python subtype semantics).
+        feature_slug: Feature slug used as the cache key.
+        cache_path: Path to the JSON cache file.
+
+    Returns:
+        List of :class:`Task` objects on success, ``None`` when the backend is
+        unavailable (e.g. ``bd`` not installed, network unreachable).
+
+    Raises:
+        TypeError: If ``parent_issue_number`` is neither ``str`` nor ``int``
+            (e.g. ``float``).
+        ValueError: If ``parent_issue_number`` is a ``str`` that does not match
+            the beads nanoid pattern.
+    """
+    if not isinstance(parent_issue_number, int | str):
+        raise TypeError(
+            f"parent_issue_number must be int (GitHub) or str (beads nanoid), "
+            f"got {type(parent_issue_number).__name__!r}"
+        )
+    match parent_issue_number:
+        case int():
+            return fetch_tasks_from_github(parent_issue_number, feature_slug, cache_path)
+        case str() if _BEADS_ID_RE.match(parent_issue_number):
+            return fetch_tasks_from_beads(parent_issue_number, feature_slug, cache_path)
+        case str():
+            raise ValueError(
+                f"Unrecognized parent_issue_number format: {parent_issue_number!r}. "
+                "Expected int (GitHub issue number) or beads nanoid string "
+                r"(pattern: ^[a-z][a-z0-9_-]*-[A-Za-z0-9.]+$, e.g. 'bd-a3f8')."
+            )
 
 
 # =============================================================================

@@ -995,6 +995,12 @@ def handle_subagent_stop(hook_input: dict[str, Any], profile: HookProfile = Hook
         sys.exit(0)
 
     sub_agent_session_id, task_file_path, task_id, _parent_issue_number, context_file = resolved
+    # NOTE: _parent_issue_number is intentionally unused here (underscore prefix).
+    # If a future version of this hook needs to fetch sub-tasks from the backend
+    # (e.g. to update sibling task statuses after completion), call
+    # fetch_tasks_from_backend(parent_issue_number, feature_slug, cache_path)
+    # from implementation_manager.py.  That router handles both int GitHub IDs
+    # and beads nanoid strings transparently.
 
     if task_file_path is None or task_id is None:
         if context_file is not None:
