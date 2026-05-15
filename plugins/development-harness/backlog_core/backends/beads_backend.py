@@ -8,11 +8,17 @@ issues, milestone/project management) raise :exc:`NotImplementedError` with a
 reference to ADR-001.  These methods require a PyGithub ``Repository`` transport
 that has no beads equivalent.
 
-ADR-002: :meth:`BeadsBackend.fetch_open_issues_by_title` raises
-:exc:`NotImplementedError` because the Protocol signature returns
-``dict[str, int]`` (title → GitHub issue *number*) but beads issue IDs are
-strings.  Use the beads-native shadow method
-:meth:`BeadsBackend.fetch_open_issues_by_title_str` instead.
+ADR-002: Methods whose Protocol signature uses GitHub issue *numbers* (``int``)
+as keys cannot be implemented for beads because beads IDs are strings with no
+meaningful integer representation.  Affected methods raise
+:exc:`NotImplementedError` with a reference to ADR-002:
+
+- :meth:`BeadsBackend.fetch_open_issues_by_title` — returns ``dict[str, int]``
+  (title → issue number); use the beads-native shadow method
+  :meth:`BeadsBackend.fetch_open_issues_by_title_str` instead.
+- :meth:`BeadsBackend.batch_fetch_statuses` — returns ``dict[int, IssueStatus]``
+  (issue number → status); use :meth:`BeadsBackend.fetch_item_status` for
+  individual beads issue status lookups instead.
 """
 
 from __future__ import annotations
@@ -59,6 +65,12 @@ _ADR_001_NOTE = (
 _ADR_002_NOTE = (
     "fetch_open_issues_by_title returns dict[str, int] but beads issue IDs are strings. "
     "Use fetch_open_issues_by_title_str() for beads-native title lookup. See ADR-002."
+)
+
+_ADR_002_BATCH_NOTE = (
+    "batch_fetch_statuses returns dict[int, IssueStatus] but beads issue IDs are strings "
+    "with no meaningful integer representation. "
+    "Use fetch_item_status() for individual beads issue status lookups. See ADR-002."
 )
 
 
@@ -290,21 +302,22 @@ class BeadsBackend:
         return []
 
     def batch_fetch_statuses(self, items: list[BacklogItem], repo: str = "") -> dict[int, IssueStatus]:
-        """Return an empty dict — beads IDs are strings and cannot map to int keys.
+        """Raise NotImplementedError — beads IDs are strings; see ADR-002.
 
         The Protocol signature uses ``int`` keys (GitHub issue numbers).
-        Beads issue IDs are strings; there is no meaningful int representation.
-        Callers working with beads issues should fetch statuses individually
-        via :meth:`fetch_item_status`.
+        Beads issue IDs are strings with no meaningful integer representation,
+        so this operation cannot be implemented.  Use :meth:`fetch_item_status`
+        for individual beads issue status lookups instead.
 
         Args:
             items: Ignored.
             repo: Ignored.
 
-        Returns:
-            Always an empty dict.
+        Raises:
+            NotImplementedError: Always — this operation is not supported for
+                the beads backend.
         """
-        return {}
+        raise NotImplementedError(_ADR_002_BATCH_NOTE)  # type: ignore[return]
 
     def fetch_item_status(self, item: BacklogItem, repo: str = "", output: Output | None = None) -> str:
         """Return the current status string for a beads issue.
