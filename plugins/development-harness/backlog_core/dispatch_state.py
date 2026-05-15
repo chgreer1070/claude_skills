@@ -10,15 +10,22 @@ in ``asyncio.to_thread()``.
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import sqlite3
 from typing import TYPE_CHECKING
 
+from backlog_core.backends.bd_runner import BdRunner
+from backlog_core.backends.beads_models import parse_issue, parse_issue_list
 from backlog_core.models import DispatchItemRecord, DispatchWaveRecord
 from backlog_core.parsing import now_iso as _now_iso
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+_WAVE_MAP_FILENAME: str = "dispatch-beads-wave-map.json"
+_log = logging.getLogger(__name__)
 
 
 class DispatchStateManager:
@@ -101,6 +108,11 @@ class DispatchStateManager:
     def close(self) -> None:
         """Close the underlying SQLite connection."""
         self._conn.close()
+
+    @property
+    def db_path(self) -> Path:
+        """Return the filesystem path to the SQLite database."""
+        return self._db_path
 
     # ------------------------------------------------------------------
     # Wave operations
@@ -482,6 +494,235 @@ class DispatchStateManager:
                 (_now_iso(), milestone, wave_num),
             )
             self._conn.commit()
+
+
+class BeadsDispatchAdapter:
+    """Thin adapter that records wave membership in beads molecule epics.
+
+    SQLite remains the authority for all wave state (PIDs, completion status,
+    timing). This adapter only binds/queries beads for the membership dimension.
+
+    The wave→beads-molecule mapping is persisted in a JSON sidecar file
+    (``dispatch-beads-wave-map.json``) alongside the SQLite database because
+    the existing ``waves`` table has no column for a beads molecule ID and the
+    task constrains us to no schema changes.
+
+    Args:
+        db_path: Filesystem path to the SQLite database. The sidecar file is
+            written to the same parent directory.
+    """
+
+    def __init__(self, db_path: Path) -> None:
+        """Initialise adapter and load the wave→molecule ID sidecar.
+
+        Args:
+            db_path: Path to the SQLite database; sidecar lives alongside it.
+        """
+        self._map_path = db_path.parent / _WAVE_MAP_FILENAME
+        self._map: dict[str, str] = self._load_map()
+
+    # ------------------------------------------------------------------
+    # Sidecar helpers
+    # ------------------------------------------------------------------
+
+    def _map_key(self, milestone: int, wave_num: int) -> str:
+        """Return the sidecar dict key for a (milestone, wave_num) pair."""
+        return f"{milestone}:{wave_num}"
+
+    def _load_map(self) -> dict[str, str]:
+        """Read the sidecar JSON file into a mapping.
+
+        Returns:
+            Mapping of ``"milestone:wave_num"`` keys to beads molecule IDs.
+            Returns an empty dict when the sidecar file does not exist or
+            contains non-object JSON.
+        """
+        if not self._map_path.exists():
+            return {}
+        text = self._map_path.read_text(encoding="utf-8")
+        data = json.loads(text)
+        if not isinstance(data, dict):
+            _log.warning("beads wave map is not a JSON object; resetting: %s", self._map_path)
+            return {}
+        return {str(k): str(v) for k, v in data.items()}
+
+    def _save_map(self) -> None:
+        """Persist the in-memory wave→molecule map to the sidecar file."""
+        self._map_path.write_text(json.dumps(self._map), encoding="utf-8")
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def get_wave_id(self, milestone: int, wave_num: int) -> str | None:
+        """Return the beads molecule ID for a wave, or ``None`` if not bonded.
+
+        Args:
+            milestone: GitHub milestone number.
+            wave_num: Wave number (1-based).
+
+        Returns:
+            Beads nanoid string (e.g. ``"bd-a3f8"``), or ``None``.
+        """
+        return self._map.get(self._map_key(milestone, wave_num))
+
+    def create_wave_molecule(self, milestone: int, wave_num: int, title: str) -> str:
+        """Create a beads molecule epic for the wave and store its ID.
+
+        Runs ``bd create --type molecule --title <title> --json`` via
+        ``BdRunner``. The returned beads ID is written to the JSON sidecar.
+
+        Args:
+            milestone: GitHub milestone number.
+            wave_num: Wave number (1-based).
+            title: Human-readable title for the molecule epic.
+
+        Returns:
+            The beads nanoid string (e.g. ``"bd-a3f8"``) for the new molecule.
+
+        Raises:
+            BdNotInstalledError: If the ``bd`` binary is not on PATH.
+            BdInvocationError: If ``bd create`` returns a non-zero exit code.
+            BdJsonDecodeError: If the JSON response cannot be decoded.
+            pydantic.ValidationError: If the response does not match the
+                ``BeadsIssueRaw`` schema.
+        """
+        runner = BdRunner()
+        data = runner.run_json(["create", "--type", "molecule", "--title", title])
+        issue = parse_issue(data)
+        beads_id: str = issue.id
+        self._map[self._map_key(milestone, wave_num)] = beads_id
+        self._save_map()
+        _log.info("Created beads molecule %s for wave %d:%d", beads_id, milestone, wave_num)
+        return beads_id
+
+    def bond_item(self, milestone: int, wave_num: int, beads_item_id: str) -> None:
+        """Bond a beads issue into the wave's molecule epic.
+
+        Runs ``bd mol bond <molecule_id> <item_id>``. No-op when no molecule
+        ID is recorded for this wave (the wave was never bonded to beads).
+
+        Args:
+            milestone: GitHub milestone number.
+            wave_num: Wave number (1-based).
+            beads_item_id: Beads nanoid of the child issue to bond.
+
+        Raises:
+            BdNotInstalledError: If the ``bd`` binary is not on PATH.
+            BdInvocationError: If ``bd mol bond`` returns a non-zero exit code.
+        """
+        wave_id = self.get_wave_id(milestone, wave_num)
+        if wave_id is None:
+            _log.debug("No molecule for wave %d:%d — skipping bond for %s", milestone, wave_num, beads_item_id)
+            return
+        runner = BdRunner()
+        runner.run_text(["mol", "bond", wave_id, beads_item_id])
+        _log.debug("Bonded %s to molecule %s", beads_item_id, wave_id)
+
+    def check_stale_members(
+        self, milestone: int, wave_num: int, state_manager: DispatchStateManager
+    ) -> list[DispatchItemRecord]:
+        """Reconcile beads wave members against SQLite state.
+
+        Queries ``bd list --parent <molecule_id> --json`` to discover all
+        issues bonded to the wave's molecule, then checks in-progress SQLite
+        items for the same wave for PID liveness. Dead PIDs are marked failed
+        via the state manager.
+
+        This method scopes PID liveness checks to the specific wave rather
+        than scanning all in-progress items globally (contrast with
+        ``DispatchStateManager.check_stale_pids()``).
+
+        Args:
+            milestone: GitHub milestone number.
+            wave_num: Wave number (1-based).
+            state_manager: Live ``DispatchStateManager`` for state updates.
+
+        Returns:
+            List of ``DispatchItemRecord`` instances newly marked failed.
+            Empty if no molecule is recorded for this wave or no stale PIDs.
+
+        Raises:
+            BdNotInstalledError: If the ``bd`` binary is not on PATH.
+            BdInvocationError: If ``bd list`` returns a non-zero exit code.
+            BdJsonDecodeError: If the JSON response cannot be decoded.
+        """
+        wave_id = self.get_wave_id(milestone, wave_num)
+        if wave_id is None:
+            return []
+
+        runner = BdRunner()
+        data = runner.run_json(["list", "--parent", wave_id])
+        # Validate the response as a list of beads issues (raises on bad JSON).
+        parse_issue_list(data)
+
+        wave_items = state_manager.get_wave_items(milestone, wave_num)
+        stale: list[DispatchItemRecord] = []
+        for item in wave_items:
+            if item.status != "in-progress" or item.pid is None:
+                continue
+            try:
+                os.kill(item.pid, 0)
+            except OSError as exc:
+                if isinstance(exc, PermissionError):
+                    # Process alive but we lack permission to signal — skip.
+                    pass
+                else:
+                    # ProcessLookupError or other OSError: PID is dead.
+                    error_msg = f"Process died unexpectedly (PID {item.pid})"
+                    state_manager.set_item_failed(
+                        milestone=milestone, wave_num=wave_num, issue=item.issue, error=error_msg
+                    )
+                    stale.append(
+                        DispatchItemRecord(
+                            milestone=item.milestone,
+                            wave_num=item.wave_num,
+                            issue=item.issue,
+                            title=item.title,
+                            status="failed",
+                            pid=item.pid,
+                            started_at=item.started_at,
+                            completed_at="",
+                            result="",
+                            error=error_msg,
+                            cost=None,
+                            result_file=item.result_file,
+                            error_file=item.error_file,
+                        )
+                    )
+        return stale
+
+
+def dispatch_stale_check(
+    state_manager: DispatchStateManager, milestone: int | None = None, wave_num: int | None = None
+) -> list[DispatchItemRecord]:
+    """Route stale-PID detection through beads or SQLite based on BACKLOG_BACKEND.
+
+    When ``BACKLOG_BACKEND=beads`` and both *milestone* and *wave_num* are
+    supplied, stale checking is scoped to a specific wave via
+    ``BeadsDispatchAdapter.check_stale_members()``, which queries beads for
+    wave members before checking PID liveness. For all other backends (or
+    when milestone/wave_num are absent), falls back to
+    ``DispatchStateManager.check_stale_pids()``, which scans all in-progress
+    items globally.
+
+    Note: this function operates on PID liveness and item completion state.
+    It is distinct from the ``dispatch_stale_check`` MCP tool in
+    ``server.py``, which checks plan freshness relative to a GitHub milestone.
+
+    Args:
+        state_manager: Live ``DispatchStateManager`` instance.
+        milestone: Milestone number to scope the check (required for beads).
+        wave_num: Wave number to scope the check (required for beads).
+
+    Returns:
+        List of ``DispatchItemRecord`` instances newly marked failed.
+    """
+    backend = os.environ.get("BACKLOG_BACKEND", "github")
+    if backend == "beads" and milestone is not None and wave_num is not None:
+        adapter = BeadsDispatchAdapter(state_manager.db_path)
+        return adapter.check_stale_members(milestone, wave_num, state_manager)
+    return state_manager.check_stale_pids()
 
 
 def _row_to_item(row: sqlite3.Row) -> DispatchItemRecord:
