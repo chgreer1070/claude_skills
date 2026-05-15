@@ -118,7 +118,7 @@ class GitHubContextBackend:
         self._repo_name = repo_name
         # In-process mapping: session_id → parent_issue_number.
         # Populated by set_active_task; consulted by get/clear_active_task.
-        self._session_issues: dict[str, int] = {}
+        self._session_issues: dict[str, str | int] = {}
 
     # ------------------------------------------------------------------
     # Protocol methods
@@ -144,7 +144,7 @@ class GitHubContextBackend:
         return _parse_comment_body(comment.body)
 
     def set_active_task(
-        self, session_id: str, plan: str, task: str, plan_dir: str, parent_issue_number: int | None = None
+        self, session_id: str, plan: str, task: str, plan_dir: str, parent_issue_number: str | int | None = None
     ) -> ActiveTaskContext:
         """Create or update a GitHub issue comment storing the session context.
 
@@ -153,19 +153,26 @@ class GitHubContextBackend:
             plan: Plan address (e.g., ``"P1601"``).
             task: Task ID within the plan (e.g., ``"T02"``).
             plan_dir: Plan directory sentinel ``"plan"`` or an absolute path.
-            parent_issue_number: GitHub issue number to store the comment on.
-                Required for ``GitHubContextBackend``; raises if absent.
+            parent_issue_number: GitHub integer issue number to store the comment on.
+                Required for ``GitHubContextBackend``; raises if absent or a beads string.
 
         Returns:
             The stored ``ActiveTaskContext`` instance.
 
         Raises:
             ValueError: If ``parent_issue_number`` is ``None``.
+            TypeError: If ``parent_issue_number`` is a beads nanoid string; GitHub requires int.
         """
         if parent_issue_number is None:
             raise ValueError(
                 "GitHubContextBackend.set_active_task requires parent_issue_number. "
                 "Provide the GitHub issue number for the parent story."
+            )
+        if isinstance(parent_issue_number, str):
+            raise TypeError(
+                f"GitHubContextBackend.set_active_task requires an integer issue number; "
+                f"got beads nanoid {parent_issue_number!r}. "
+                f"Use a local or memory backend for beads-tracked tasks."
             )
 
         self._session_issues[session_id] = parent_issue_number
@@ -257,16 +264,20 @@ class GitHubContextBackend:
         gh = Github(auth=Auth.Token(self._github_token), timeout=30)
         return gh.get_repo(self._repo_name)
 
-    def _find_comment(self, issue_number: int, session_id: str) -> IssueComment | None:
+    def _find_comment(self, issue_number: str | int, session_id: str) -> IssueComment | None:
         """Search issue comments for the session_id opening marker.
 
         Args:
-            issue_number: GitHub issue number to search.
+            issue_number: GitHub integer issue number to search. Returns ``None`` immediately
+                for non-int values (e.g. beads nanoid strings) — GitHub requires an int.
             session_id: Session identifier whose marker to look for.
 
         Returns:
             Matching ``IssueComment`` if found, else ``None``.
         """
+        if not isinstance(issue_number, int):
+            logger.debug("_find_comment: issue_number %r is not an int — skipping GitHub lookup", issue_number)
+            return None
         opening = _opening_tag(session_id)
         try:
             issue = self._repo.get_issue(issue_number)

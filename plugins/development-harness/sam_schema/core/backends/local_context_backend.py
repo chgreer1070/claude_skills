@@ -51,7 +51,7 @@ class LocalContextBackend:
         return ActiveTaskContext.model_validate(data)
 
     def set_active_task(
-        self, session_id: str, plan: str, task: str, plan_dir: str, parent_issue_number: int | None = None
+        self, session_id: str, plan: str, task: str, plan_dir: str, parent_issue_number: str | int | None = None
     ) -> ActiveTaskContext:
         """Write active task context to the filesystem as JSON.
 
@@ -60,7 +60,7 @@ class LocalContextBackend:
             plan: Plan address (e.g., 'P1' or slug).
             task: Task ID within the plan (e.g., 'T3').
             plan_dir: Plan directory sentinel 'plan' or an absolute path.
-            parent_issue_number: Optional GitHub issue number for the parent story.
+            parent_issue_number: Optional GitHub issue number or beads nanoid for the parent story.
 
         Returns:
             The stored ActiveTaskContext instance.

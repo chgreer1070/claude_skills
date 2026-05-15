@@ -20,6 +20,9 @@ if TYPE_CHECKING:
 # letter-suffixed (T10a, T10b), and slash-separated compound IDs (P1/T3, T10a/T10b).
 TASK_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z]?\d+(\.\d+)?[A-Za-z]?(/[A-Za-z]?\d+(\.\d+)?[A-Za-z]?)?$")
 
+# Beads nanoid pattern — matches IDs like "bd-a3f8", "bd-x1y2z3.4", "issue-abc.1"
+_BEADS_ID_PATTERN: re.Pattern[str] = re.compile(r"^[a-z][a-z0-9_-]*-[A-Za-z0-9.]+$")
+
 # Status normalization map — maps human-readable and emoji variants to canonical values.
 # Sourced from task_format.py:28-45 (plugins/python3-development/skills/implementation-manager/scripts/)
 STATUS_MAP: dict[str, str] = {
@@ -552,8 +555,9 @@ class ActiveTaskContext(BaseModel):
 
     task_file_path: str = Field(description="Absolute path to the plan YAML file containing this task.")
     task_id: str = Field(description="Task identifier within the plan (e.g., 'T3').")
-    parent_issue_number: int | None = Field(
-        default=None, description="GitHub issue number for the parent story/feature."
+    parent_issue_number: str | int | None = Field(
+        default=None,
+        description="GitHub issue number (int) or beads nanoid (str, e.g. 'bd-a3f8') for the parent story/feature.",
     )
     session_id: str | None = Field(
         default=None,
@@ -561,6 +565,40 @@ class ActiveTaskContext(BaseModel):
     )
     feature_slug: str | None = Field(default=None, description="Feature slug from the plan filename.")
     started_at: str | None = Field(default=None, description="ISO 8601 timestamp when the task was started.")
+
+    @field_validator("parent_issue_number", mode="before")
+    @classmethod
+    def validate_parent_issue_number(cls, v: object) -> str | int | None:
+        """Accept None, int >= 0, or a beads nanoid string; reject everything else.
+
+        Returns:
+            The validated value: ``None``, a non-negative ``int``, or a beads nanoid ``str``.
+
+        Raises:
+            TypeError: If the value is a ``bool`` or a type other than ``int``, ``str``, or ``None``.
+            ValueError: If an ``int`` is negative or a ``str`` does not match the beads ID pattern.
+        """
+        if v is None:
+            return None
+        # bool is a subclass of int — must check first to prevent True/False passing as 0/1.
+        if isinstance(v, bool):
+            msg = f"parent_issue_number must be int >= 0, a beads ID string, or None; got bool {v!r}"
+            raise TypeError(msg)
+        if isinstance(v, int):
+            if v < 0:
+                msg = f"parent_issue_number int must be >= 0, got {v!r}"
+                raise ValueError(msg)
+            return v
+        if isinstance(v, str):
+            if not _BEADS_ID_PATTERN.match(v):
+                msg = (
+                    f"parent_issue_number string must match beads ID pattern "
+                    f"^[a-z][a-z0-9_-]*-[A-Za-z0-9.]+$, got {v!r}"
+                )
+                raise ValueError(msg)
+            return v
+        msg = f"parent_issue_number must be int, str (beads ID), or None; got {type(v).__name__!r}"
+        raise TypeError(msg)
 
 
 # Rebuild models that reference TYPE_CHECKING-guarded types (datetime, Path).

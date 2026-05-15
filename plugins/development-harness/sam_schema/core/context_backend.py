@@ -50,7 +50,7 @@ class ContextBackend(Protocol):
         ...
 
     def set_active_task(
-        self, session_id: str, plan: str, task: str, plan_dir: str, parent_issue_number: int | None = None
+        self, session_id: str, plan: str, task: str, plan_dir: str, parent_issue_number: str | int | None = None
     ) -> ActiveTaskContext:
         """Store the active task context for a session.
 

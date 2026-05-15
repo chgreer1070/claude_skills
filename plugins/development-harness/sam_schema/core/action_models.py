@@ -17,9 +17,9 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from sam_schema.core.models import Task
+from sam_schema.core.models import _BEADS_ID_PATTERN, Task
 
 # ---------------------------------------------------------------------------
 # Shared base — eliminates 17x repeated model_config boilerplate
@@ -352,10 +352,44 @@ class SetActiveTaskConfig(_ActionConfigBase):
             "Stored alongside plan/task so retrieval uses the same backend."
         ),
     )
-    parent_issue_number: int | None = Field(
+    parent_issue_number: str | int | None = Field(
         default=None,
-        description="Optional GitHub issue number for the parent story. Used by the SubagentStop hook for GitHub sync and issue linking.",
+        description="Optional GitHub issue number (int) or beads nanoid (str, e.g. 'bd-a3f8') for the parent story. Used by the SubagentStop hook for backend sync and issue linking.",
     )
+
+    @field_validator("parent_issue_number", mode="before")
+    @classmethod
+    def validate_parent_issue_number(cls, v: object) -> str | int | None:
+        """Accept None, int >= 0, or a beads nanoid string; reject everything else.
+
+        Returns:
+            The validated value: ``None``, a non-negative ``int``, or a beads nanoid ``str``.
+
+        Raises:
+            TypeError: If the value is a ``bool`` or a type other than ``int``, ``str``, or ``None``.
+            ValueError: If an ``int`` is negative or a ``str`` does not match the beads ID pattern.
+        """
+        if v is None:
+            return None
+        # bool is a subclass of int — must check first to prevent True/False passing as 0/1.
+        if isinstance(v, bool):
+            msg = f"parent_issue_number must be int >= 0, a beads ID string, or None; got bool {v!r}"
+            raise TypeError(msg)
+        if isinstance(v, int):
+            if v < 0:
+                msg = f"parent_issue_number int must be >= 0, got {v!r}"
+                raise ValueError(msg)
+            return v
+        if isinstance(v, str):
+            if not _BEADS_ID_PATTERN.match(v):
+                msg = (
+                    f"parent_issue_number string must match beads ID pattern "
+                    f"^[a-z][a-z0-9_-]*-[A-Za-z0-9.]+$, got {v!r}"
+                )
+                raise ValueError(msg)
+            return v
+        msg = f"parent_issue_number must be int, str (beads ID), or None; got {type(v).__name__!r}"
+        raise TypeError(msg)
 
 
 class UpdateActiveTaskConfig(_ActionConfigBase):
