@@ -155,6 +155,7 @@ class BeadsIssueRaw(BaseModel):
     description: str | None = None
     notes: str | None = None
     metadata: dict[str, object] | None = None
+    labels: list[str] | None = None
     assignee: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
