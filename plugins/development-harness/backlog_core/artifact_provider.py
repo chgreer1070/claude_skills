@@ -80,6 +80,7 @@ class BackendName(StrEnum):
     github = "github"
     linear = "linear"
     gitlab = "gitlab"
+    beads = "beads"
     local = "local"
     sqlite = "sqlite"
     memory = "memory"
@@ -1289,6 +1290,10 @@ def create_artifact_provider(
             gitlab_url=gitlab_url,
             root_worktree=root_worktree,
         )
+    if resolved in {BackendName.beads, "beads"}:
+        from .backends.beads_artifact_provider import BeadsArtifactProvider  # noqa: PLC0415
+
+        return BeadsArtifactProvider(root_worktree=root_worktree)
     if resolved in {BackendName.local, "local"}:
         return LocalFilesystemArtifactProvider(
             root_worktree=root_worktree or _dh_paths.git_project_root(), manifest_dir=None
