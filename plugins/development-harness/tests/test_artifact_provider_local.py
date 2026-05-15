@@ -374,3 +374,75 @@ def test_validate_artifact_path_never_escapes_root_worktree(tmp_path: Path, path
         result.relative_to(worktree.resolve())  # raises ValueError if escaped
     except (ValueError, OSError):
         pass  # Both are acceptable outcomes for invalid or unsafe paths
+
+
+# ---------------------------------------------------------------------------
+# TestBeadsStyleStringIds — beads-style string IDs in the local provider
+# ---------------------------------------------------------------------------
+
+
+class TestBeadsStyleStringIds:
+    """Verify LocalFilesystemArtifactProvider handles beads-style string issue IDs.
+
+    The beads backend uses nanoid-prefixed string identifiers (e.g. ``bd-a3f8``) instead of
+    GitHub integer issue numbers.  LocalFilesystemArtifactProvider derives the manifest file
+    path via ``f"{issue_number}.json"``, so string IDs work as filename stems without any
+    special handling.  These tests document that contract.
+    """
+
+    def test_beads_id_manifest_path_stem_matches_string(
+        self, provider: LocalFilesystemArtifactProvider, manifest_dir: Path
+    ) -> None:
+        """_manifest_path with a beads-style ID produces a JSON file named after that string."""
+        path = provider._manifest_path("bd-a3f8")  # type: ignore[arg-type]
+        assert path.name == "bd-a3f8.json"
+        assert path.parent == manifest_dir
+
+    def test_beads_id_set_manifest_creates_named_file(
+        self, provider: LocalFilesystemArtifactProvider, manifest_dir: Path
+    ) -> None:
+        """set_manifest with a beads-style string ID creates ``bd-a3f8.json`` in manifest_dir."""
+        manifest = ArtifactManifest(issue_number=0, artifacts=[])
+        provider.set_manifest("bd-a3f8", manifest)  # type: ignore[arg-type]
+        assert (manifest_dir / "bd-a3f8.json").exists()
+
+    def test_beads_id_set_get_manifest_roundtrip_preserves_artifacts(
+        self, provider: LocalFilesystemArtifactProvider
+    ) -> None:
+        """set_manifest/get_manifest with a beads string ID roundtrips artifact entries intact."""
+        entry = _make_entry()
+        manifest = ArtifactManifest(issue_number=0, artifacts=[entry])
+        provider.set_manifest("bd-a3f8", manifest)  # type: ignore[arg-type]
+
+        result = provider.get_manifest("bd-a3f8")  # type: ignore[arg-type]
+
+        assert len(result.artifacts) == 1
+        assert result.artifacts[0].artifact_type == ArtifactType.ARCHITECT
+
+    def test_beads_id_set_get_manifest_roundtrip_storage_tier_coerced(
+        self, provider: LocalFilesystemArtifactProvider
+    ) -> None:
+        """storage_tier is coerced to 'local' when written via a beads string ID."""
+        entry = _make_entry(storage_tier="remote")
+        manifest = ArtifactManifest(issue_number=0, artifacts=[entry])
+        provider.set_manifest("bd-a3f8", manifest)  # type: ignore[arg-type]
+
+        result = provider.get_manifest("bd-a3f8")  # type: ignore[arg-type]
+
+        assert result.artifacts[0].storage_tier == "local"
+
+    def test_beads_id_distinct_ids_write_distinct_files(
+        self, provider: LocalFilesystemArtifactProvider, manifest_dir: Path
+    ) -> None:
+        """Two different beads IDs produce two independent manifest files."""
+        manifest_a = ArtifactManifest(issue_number=0, artifacts=[_make_entry()])
+        manifest_b = ArtifactManifest(issue_number=0, artifacts=[])
+        provider.set_manifest("bd-a3f8", manifest_a)  # type: ignore[arg-type]
+        provider.set_manifest("bd-zz99", manifest_b)  # type: ignore[arg-type]
+
+        assert (manifest_dir / "bd-a3f8.json").exists()
+        assert (manifest_dir / "bd-zz99.json").exists()
+        result_a = provider.get_manifest("bd-a3f8")  # type: ignore[arg-type]
+        result_b = provider.get_manifest("bd-zz99")  # type: ignore[arg-type]
+        assert len(result_a.artifacts) == 1
+        assert len(result_b.artifacts) == 0

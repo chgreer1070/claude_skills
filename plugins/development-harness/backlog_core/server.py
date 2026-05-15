@@ -2239,7 +2239,12 @@ async def backlog_pull(
     )
 )
 async def backlog_create_sam_task(
-    parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
+    parent_issue_number: Annotated[
+        str | int,
+        Field(
+            description="Parent story issue number (integer for GitHub; beads IDs not supported for SAM task operations)"
+        ),
+    ],
     task_id: Annotated[str, Field(description="Feature-scoped task ID, e.g. 'T1'")],
     feature: Annotated[str, Field(description="Feature slug, e.g. 'my-feature'")],
     task_type: Annotated[str, Field(description="Task category: research | implement | review | fix | docs")],
@@ -2259,6 +2264,11 @@ async def backlog_create_sam_task(
         Dict with issue_number, title, url, and output messages. On error, returns error key.
     """
     out = Output()
+    if isinstance(parent_issue_number, str):
+        return {
+            "error": f"backlog_create_sam_task requires an integer issue number, got {parent_issue_number!r}",
+            **out.to_dict(),
+        }
     try:
         result = await asyncio.to_thread(
             operations.create_sam_task,
@@ -2286,7 +2296,12 @@ async def backlog_create_sam_task(
     )
 )
 async def backlog_get_sam_tasks(
-    parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
+    parent_issue_number: Annotated[
+        str | int,
+        Field(
+            description="Parent story issue number (integer for GitHub; beads IDs not supported for SAM task operations)"
+        ),
+    ],
     refresh_cache: Annotated[bool, Field(description="Write updated cache after fetching")] = True,
 ) -> dict:
     """Return all SAM task sub-issues for a parent story issue.
@@ -2296,6 +2311,11 @@ async def backlog_get_sam_tasks(
     Use to inspect per-task status from the GitHub source of truth.
     """
     out = Output()
+    if isinstance(parent_issue_number, str):
+        return {
+            "error": f"backlog_get_sam_tasks requires an integer issue number, got {parent_issue_number!r}",
+            **out.to_dict(),
+        }
     try:
         result = await asyncio.to_thread(
             operations.get_sam_tasks, parent_issue_number=parent_issue_number, refresh_cache=refresh_cache, output=out
@@ -2315,7 +2335,12 @@ async def backlog_get_sam_tasks(
     )
 )
 async def backlog_update_sam_task_status(
-    issue_number: Annotated[int, Field(description="Task sub-issue number (without #)")],
+    issue_number: Annotated[
+        str | int,
+        Field(
+            description="Task sub-issue number (integer for GitHub; beads IDs not supported for SAM task operations)"
+        ),
+    ],
     new_status: Annotated[str, Field(description="Target status: not-started | in-progress | complete | blocked")],
 ) -> dict:
     """Update the status field in a SAM task sub-issue.
@@ -2327,6 +2352,11 @@ async def backlog_update_sam_task_status(
         On error, returns error key.
     """
     out = Output()
+    if isinstance(issue_number, str):
+        return {
+            "error": f"backlog_update_sam_task_status requires an integer issue number, got {issue_number!r}",
+            **out.to_dict(),
+        }
     try:
         result = await asyncio.to_thread(
             operations.update_sam_task_status, issue_number=issue_number, new_status=new_status, output=out
@@ -2400,7 +2430,9 @@ def _get_artifact_provider() -> ArtifactBackend:
     )
 )
 async def artifact_register(
-    issue_number: Annotated[int, Field(description="GitHub issue number")],
+    issue_number: Annotated[
+        str | int, Field(description="GitHub issue number or beads nanoid string (e.g. 'bd-a3f8')")
+    ],
     artifact_type: Annotated[
         str,
         Field(
@@ -2520,7 +2552,9 @@ async def artifact_register(
     )
 )
 async def artifact_list(
-    issue_number: Annotated[int, Field(description="GitHub issue number")],
+    issue_number: Annotated[
+        str | int, Field(description="GitHub issue number or beads nanoid string (e.g. 'bd-a3f8')")
+    ],
     artifact_type: Annotated[str | None, Field(description="Filter by artifact type (optional)")] = None,
 ) -> dict:
     """Return all artifacts registered for a GitHub issue.
@@ -2561,7 +2595,9 @@ async def artifact_list(
     )
 )
 async def artifact_get(
-    issue_number: Annotated[int, Field(description="GitHub issue number")],
+    issue_number: Annotated[
+        str | int, Field(description="GitHub issue number or beads nanoid string (e.g. 'bd-a3f8')")
+    ],
     artifact_type: Annotated[str, Field(description="Artifact type to retrieve")],
 ) -> dict:
     """Return metadata for a specific artifact type registered on a GitHub issue.
@@ -2601,7 +2637,9 @@ async def artifact_get(
     )
 )
 async def artifact_read(
-    issue_number: Annotated[int, Field(description="GitHub issue number")],
+    issue_number: Annotated[
+        str | int, Field(description="GitHub issue number or beads nanoid string (e.g. 'bd-a3f8')")
+    ],
     artifact_type: Annotated[str, Field(description="Artifact type whose content to read")],
 ) -> dict:
     """Read the file content for an artifact registered on a GitHub issue.
@@ -2677,7 +2715,12 @@ async def artifact_read(
     )
 )
 async def backlog_get_ready_sam_tasks(
-    parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
+    parent_issue_number: Annotated[
+        str | int,
+        Field(
+            description="Parent story issue number (integer for GitHub; beads IDs not supported for SAM task operations)"
+        ),
+    ],
 ) -> dict:
     """Return SAM tasks ready for execution from GitHub sub-issues.
 
@@ -2688,6 +2731,11 @@ async def backlog_get_ready_sam_tasks(
     Falls back to local cache if GitHub is unavailable.
     """
     out = Output()
+    if isinstance(parent_issue_number, str):
+        return {
+            "error": f"backlog_get_ready_sam_tasks requires an integer issue number, got {parent_issue_number!r}",
+            **out.to_dict(),
+        }
     try:
         result = await asyncio.to_thread(
             operations.get_ready_sam_tasks, parent_issue_number=parent_issue_number, output=out
@@ -2908,7 +2956,10 @@ async def backlog_list_issues(
     )
 )
 async def backlog_comment_issue(
-    issue_number: Annotated[int, Field(description="GitHub issue number (without #)")],
+    issue_number: Annotated[
+        str | int,
+        Field(description="Issue number (integer for GitHub; beads IDs not supported for comment operations)"),
+    ],
     body: Annotated[str, Field(description="Comment body (Markdown)")],
 ) -> dict:
     """Add a comment to a GitHub issue.
@@ -2918,6 +2969,11 @@ async def backlog_comment_issue(
         On error, dict contains an error key.
     """
     out = Output()
+    if isinstance(issue_number, str):
+        return {
+            "error": f"backlog_comment_issue requires an integer issue number, got {issue_number!r}",
+            **out.to_dict(),
+        }
     try:
         result = await asyncio.to_thread(operations.comment_issue, issue_number=issue_number, body=body, output=out)
         return {**result, **out.to_dict()}
@@ -2931,7 +2987,10 @@ async def backlog_comment_issue(
     )
 )
 async def backlog_list_comments(
-    issue_number: Annotated[int, Field(description="GitHub issue number (without #)")],
+    issue_number: Annotated[
+        str | int,
+        Field(description="Issue number (integer for GitHub; beads IDs not supported for comment operations)"),
+    ],
     limit: Annotated[int, Field(description="Maximum comments to return")] = 20,
     offset: Annotated[int, Field(description="Number of comments to skip")] = 0,
 ) -> dict:
@@ -2943,6 +3002,11 @@ async def backlog_list_comments(
         On error, dict contains an error key.
     """
     out = Output()
+    if isinstance(issue_number, str):
+        return {
+            "error": f"backlog_list_comments requires an integer issue number, got {issue_number!r}",
+            **out.to_dict(),
+        }
     try:
         result = await asyncio.to_thread(
             operations.list_comments, issue_number=issue_number, limit=limit, offset=offset, output=out
@@ -2958,7 +3022,10 @@ async def backlog_list_comments(
     )
 )
 async def backlog_read_comment(
-    issue_number: Annotated[int, Field(description="GitHub issue number (without #)")],
+    issue_number: Annotated[
+        str | int,
+        Field(description="Issue number (integer for GitHub; beads IDs not supported for comment operations)"),
+    ],
     comment_id: Annotated[
         int,
         Field(
@@ -2974,6 +3041,11 @@ async def backlog_read_comment(
         On error, dict contains an error key.
     """
     out = Output()
+    if isinstance(issue_number, str):
+        return {
+            "error": f"backlog_read_comment requires an integer issue number, got {issue_number!r}",
+            **out.to_dict(),
+        }
     try:
         result = await asyncio.to_thread(
             operations.read_comment, issue_number=issue_number, comment_id=comment_id, output=out
@@ -3890,7 +3962,10 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
 )
 async def artifact_migrate(
     issue_number: Annotated[
-        int | None, Field(description="Migrate artifacts for a specific issue number only. Omit to scan all issues.")
+        str | int | None,
+        Field(
+            description="Migrate artifacts for a specific issue number only (integer for GitHub, beads nanoid string for beads backend). Omit to scan all issues."
+        ),
     ] = None,
     dry_run: Annotated[
         bool, Field(description="When true, report what would be migrated without making any API calls.")
@@ -3919,6 +3994,18 @@ async def artifact_migrate(
         On error, dict contains an ``error`` key.
     """
     out = Output()
+
+    # artifact_migrate scans plan/research directories by GitHub issue number.
+    # Beads string IDs are not supported by the migration scanner — reject early
+    # so the caller gets a clear message rather than a type error downstream.
+    if isinstance(issue_number, str):
+        return {
+            "error": (
+                f"artifact_migrate requires an integer issue number, got {issue_number!r}. "
+                "Beads string ID filtering is not supported by the migration scanner."
+            ),
+            **out.to_dict(),
+        }
 
     if dry_run:
         try:

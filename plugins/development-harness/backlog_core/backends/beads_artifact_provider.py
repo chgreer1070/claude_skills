@@ -217,7 +217,7 @@ class BeadsArtifactProvider:
     # ArtifactBackend Protocol implementation
     # -----------------------------------------------------------------------
 
-    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+    def get_manifest(self, issue_number: str | int) -> ArtifactManifest:
         """Retrieve the artifact manifest.
 
         Accepts a beads string ID at runtime (ADR-002 type widening).
@@ -243,7 +243,7 @@ class BeadsArtifactProvider:
             "Call get_manifest_bd(issue_id: str) with a beads ID instead."
         )
 
-    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+    def set_manifest(self, issue_number: str | int, manifest: ArtifactManifest) -> None:
         """Persist *manifest*.
 
         Accepts a beads string ID at runtime (ADR-002 type widening).
@@ -285,7 +285,7 @@ class BeadsArtifactProvider:
         resolved = (self._resolved_root_worktree / path).resolve()
         return resolved.read_text(encoding="utf-8")
 
-    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+    def store_artifact_content(self, issue_number: str | int, artifact_type: str, path: str, content: str) -> None:
         """Store artifact content in bd notes as a sentinel-delimited block.
 
         Accepts a beads string ID at runtime (ADR-002 type widening).
@@ -309,7 +309,7 @@ class BeadsArtifactProvider:
             "Call store_artifact_content_bd(issue_id: str, ...) with a beads ID instead."
         )
 
-    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: str | int, artifact_type: str, path: str) -> str | None:
         """Search bd notes for a stored artifact content block.
 
         Accepts a beads string ID at runtime (ADR-002 type widening).

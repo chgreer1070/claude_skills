@@ -247,11 +247,12 @@ class ArtifactBackend(Protocol):
     ``asyncio.to_thread()`` when needed.
     """
 
-    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+    def get_manifest(self, issue_number: str | int) -> ArtifactManifest:
         """Retrieve the artifact manifest for *issue_number*.
 
         Args:
-            issue_number: GitHub Issue number (positive integer).
+            issue_number: Issue number — positive integer for GitHub backends
+                or beads nanoid string (e.g. ``"bd-a3f8"``) for the beads backend.
 
         Returns:
             ``ArtifactManifest`` for the issue.  Returns an empty manifest
@@ -260,13 +261,14 @@ class ArtifactBackend(Protocol):
         """
         ...
 
-    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+    def set_manifest(self, issue_number: str | int, manifest: ArtifactManifest) -> None:
         """Persist *manifest* for *issue_number*.
 
         Replaces any existing manifest section; creates one if absent.
 
         Args:
-            issue_number: GitHub Issue number (positive integer).
+            issue_number: Issue number — positive integer for GitHub backends
+                or beads nanoid string (e.g. ``"bd-a3f8"``) for the beads backend.
             manifest: Updated manifest to persist.
         """
         ...
@@ -291,7 +293,7 @@ class ArtifactBackend(Protocol):
         """
         ...
 
-    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+    def store_artifact_content(self, issue_number: str | int, artifact_type: str, path: str, content: str) -> None:
         """Store artifact content as a GitHub issue comment.
 
         Creates a structured collapsible comment identified by
@@ -304,21 +306,23 @@ class ArtifactBackend(Protocol):
         notice is appended.
 
         Args:
-            issue_number: GitHub Issue number (positive integer).
+            issue_number: Issue number — positive integer for GitHub backends
+                or beads nanoid string for the beads backend.
             artifact_type: Artifact type string, e.g. ``"research"``.
             path: Repo-relative path used as the comment identifier.
             content: Full artifact content to store.
         """
         ...
 
-    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: str | int, artifact_type: str, path: str) -> str | None:
         """Search issue comments for stored artifact content.
 
         Scans the issue's comments for an artifact content block whose
         ``type`` and ``path`` match the given arguments.
 
         Args:
-            issue_number: GitHub Issue number (positive integer).
+            issue_number: Issue number — positive integer for GitHub backends
+                or beads nanoid string for the beads backend.
             artifact_type: Artifact type string to match.
             path: Repo-relative path to match.
 
@@ -403,7 +407,7 @@ class GitHubGistArtifactProvider:
     # ArtifactBackend implementation
     # ------------------------------------------------------------------
 
-    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+    def get_manifest(self, issue_number: str | int) -> ArtifactManifest:
         """Retrieve the artifact manifest for *issue_number*.
 
         Fetches the issue body via GraphQL and checks for a Gist sentinel
@@ -424,6 +428,11 @@ class GitHubGistArtifactProvider:
             backlog_core.models.BacklogError: On GraphQL API or gist-scope
                 failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"GitHubGistArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         repo = get_github(self._repo)
         owner, repo_name = self._repo.split("/", 1)
         issue = _fetch_issue_graphql(repo, owner, repo_name, issue_number)
@@ -448,7 +457,7 @@ class GitHubGistArtifactProvider:
 
         return ArtifactManifest(issue_number=issue_number)
 
-    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+    def set_manifest(self, issue_number: str | int, manifest: ArtifactManifest) -> None:
         """Persist *manifest* by writing it to the linked Gist.
 
         If no Gist exists yet, one is created and the issue body is updated
@@ -464,6 +473,11 @@ class GitHubGistArtifactProvider:
             backlog_core.models.BacklogError: On GraphQL API or gist-scope
                 failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"GitHubGistArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         repo = get_github(self._repo)
         owner, repo_name = self._repo.split("/", 1)
         issue = _fetch_issue_graphql(repo, owner, repo_name, issue_number)
@@ -504,7 +518,7 @@ class GitHubGistArtifactProvider:
         resolved = (self._root_worktree / path).resolve()
         return resolved.read_text(encoding="utf-8")
 
-    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+    def store_artifact_content(self, issue_number: str | int, artifact_type: str, path: str, content: str) -> None:
         """Store artifact content as a file in the linked Gist.
 
         The artifact *path* is sanitised for use as a Gist filename by
@@ -518,6 +532,11 @@ class GitHubGistArtifactProvider:
             path: Repo-relative artifact path, e.g. ``plan/architect-foo.md``.
             content: Full artifact content to store.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"GitHubGistArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         repo = get_github(self._repo)
         owner, repo_name = self._repo.split("/", 1)
         issue = _fetch_issue_graphql(repo, owner, repo_name, issue_number)
@@ -532,7 +551,7 @@ class GitHubGistArtifactProvider:
         filename = _sanitize_gist_filename(path)
         gist.edit(files={filename: InputFileContent(content)})
 
-    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: str | int, artifact_type: str, path: str) -> str | None:
         """Read artifact content from the linked Gist.
 
         Sanitises *path* to a Gist filename and looks it up in the Gist file
@@ -548,6 +567,11 @@ class GitHubGistArtifactProvider:
         Returns:
             Stored content string, or ``None`` when not found.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"GitHubGistArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         repo = get_github(self._repo)
         owner, repo_name = self._repo.split("/", 1)
         issue = _fetch_issue_graphql(repo, owner, repo_name, issue_number)
@@ -750,7 +774,7 @@ class LinearArtifactProvider:
     # ArtifactBackend implementation
     # ------------------------------------------------------------------
 
-    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+    def get_manifest(self, issue_number: str | int) -> ArtifactManifest:
         """Retrieve the artifact manifest for *issue_number*.
 
         Fetches all Linear attachments for the issue and looks for one
@@ -768,6 +792,11 @@ class LinearArtifactProvider:
         Raises:
             backlog_core.models.BacklogError: On Linear API failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"LinearArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         target_url = f"dh://artifact-manifest/{issue_number}"
         nodes = linear_get_attachments(self._api_key, str(issue_number))
         for node in nodes:
@@ -780,7 +809,7 @@ class LinearArtifactProvider:
                         return ArtifactManifest.model_validate_json(manifest_json)
         return ArtifactManifest(issue_number=issue_number)
 
-    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+    def set_manifest(self, issue_number: str | int, manifest: ArtifactManifest) -> None:
         """Persist *manifest* as a Linear attachment on *issue_number*.
 
         Serialises the manifest to JSON and creates (or upserts) a Linear
@@ -799,6 +828,11 @@ class LinearArtifactProvider:
         Raises:
             backlog_core.models.BacklogError: On Linear API failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"LinearArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         manifest_json = manifest.model_dump_json(by_alias=True)
         if len(manifest_json) > _LINEAR_MANIFEST_WARN_CHARS:
             logger.warning("Linear manifest exceeds 10K chars; truncation risk (size=%d)", len(manifest_json))
@@ -810,7 +844,7 @@ class LinearArtifactProvider:
             metadata={"manifest_json": manifest_json},
         )
 
-    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+    def store_artifact_content(self, issue_number: str | int, artifact_type: str, path: str, content: str) -> None:
         """Store artifact content as a Linear attachment on *issue_number*.
 
         Creates (or upserts) a Linear attachment using the URL scheme
@@ -827,6 +861,11 @@ class LinearArtifactProvider:
         Raises:
             backlog_core.models.BacklogError: On Linear API failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"LinearArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         safe_path = path.replace("/", "--")
         url = f"dh://artifact-content/{issue_number}/{artifact_type}/{safe_path}"
         linear_create_attachment(
@@ -837,7 +876,7 @@ class LinearArtifactProvider:
             metadata={"content": content},
         )
 
-    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: str | int, artifact_type: str, path: str) -> str | None:
         """Read artifact content from a Linear attachment.
 
         Sanitises *path* to the ``dh://`` URL form and scans all
@@ -856,6 +895,11 @@ class LinearArtifactProvider:
         Raises:
             backlog_core.models.BacklogError: On Linear API failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"LinearArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         safe_path = path.replace("/", "--")
         target_url = f"dh://artifact-content/{issue_number}/{artifact_type}/{safe_path}"
         nodes = linear_get_attachments(self._api_key, str(issue_number))
@@ -1004,7 +1048,7 @@ class GitLabArtifactProvider:
     # ArtifactBackend implementation
     # ------------------------------------------------------------------
 
-    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+    def get_manifest(self, issue_number: str | int) -> ArtifactManifest:
         """Retrieve the artifact manifest for *issue_number*.
 
         Lists issue notes and scans for a snippet sentinel comment.  If found,
@@ -1020,6 +1064,11 @@ class GitLabArtifactProvider:
         Raises:
             backlog_core.models.BacklogError: On GitLab API failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"GitLabArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         snippet_id = self._get_snippet_id_from_notes(issue_number)
         if snippet_id is None:
             return ArtifactManifest(issue_number=issue_number)
@@ -1031,7 +1080,7 @@ class GitLabArtifactProvider:
             return ArtifactManifest(issue_number=issue_number)
         return ArtifactManifest.model_validate_json(manifest_json)
 
-    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+    def set_manifest(self, issue_number: str | int, manifest: ArtifactManifest) -> None:
         """Persist *manifest* by writing it to the linked snippet.
 
         If no snippet exists yet, one is created and a sentinel note is posted
@@ -1044,6 +1093,11 @@ class GitLabArtifactProvider:
         Raises:
             backlog_core.models.BacklogError: On GitLab API failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"GitLabArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         manifest_json = manifest.model_dump_json(by_alias=True)
         snippet_id = self._get_or_create_snippet(issue_number)
         gitlab_update_snippet(
@@ -1054,7 +1108,7 @@ class GitLabArtifactProvider:
             files=[{"action": "update", "file_path": "manifest.json", "content": manifest_json}],
         )
 
-    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+    def store_artifact_content(self, issue_number: str | int, artifact_type: str, path: str, content: str) -> None:
         """Store artifact content as a file in the linked snippet.
 
         The artifact *path* is sanitised for use as a snippet filename by
@@ -1072,6 +1126,11 @@ class GitLabArtifactProvider:
         Raises:
             backlog_core.models.BacklogError: On GitLab API failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"GitLabArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         safe_path = path.replace("/", "--") + ".txt"
         snippet_id = self._get_or_create_snippet(issue_number)
         # Attempt update; if the file does not yet exist, create it instead.
@@ -1092,7 +1151,7 @@ class GitLabArtifactProvider:
                 files=[{"action": "create", "file_path": safe_path, "content": content}],
             )
 
-    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: str | int, artifact_type: str, path: str) -> str | None:
         """Read artifact content from the linked snippet.
 
         Sanitises *path* to the snippet filename form and looks it up in the
@@ -1111,6 +1170,11 @@ class GitLabArtifactProvider:
         Raises:
             backlog_core.models.BacklogError: On GitLab API failures.
         """
+        if isinstance(issue_number, str):
+            raise TypeError(
+                f"GitLabArtifactProvider requires an integer issue number, got {issue_number!r}. "
+                "Use BeadsArtifactProvider for string (beads) issue identifiers."
+            )
         safe_path = path.replace("/", "--") + ".txt"
         snippet_id = self._get_snippet_id_from_notes(issue_number)
         if snippet_id is None:

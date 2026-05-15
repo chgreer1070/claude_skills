@@ -90,7 +90,7 @@ class LocalFilesystemArtifactProvider:
     # ArtifactBackend protocol implementation
     # ------------------------------------------------------------------
 
-    def get_manifest(self, issue_number: int) -> ArtifactManifest:
+    def get_manifest(self, issue_number: str | int) -> ArtifactManifest:
         """Retrieve the artifact manifest for *issue_number*.
 
         Returns an empty manifest when no manifest file exists for the issue —
@@ -110,14 +110,17 @@ class LocalFilesystemArtifactProvider:
         """
         manifest_path = self._manifest_path(issue_number)
         if not manifest_path.exists():
-            return ArtifactManifest(issue_number=issue_number)
+            # Use 0 as a sentinel when issue_number is a beads string — the manifest
+            # field is typed int, but the local provider stores by filename stem only.
+            issue_int = issue_number if isinstance(issue_number, int) else 0
+            return ArtifactManifest(issue_number=issue_int)
         content = manifest_path.read_text(encoding="utf-8")
         # json.loads raises json.JSONDecodeError (a ValueError subclass) for corrupt JSON.
         # Using two-step parse so corrupt JSON raises ValueError, not pydantic.ValidationError.
         data = json.loads(content)
         return ArtifactManifest.model_validate(data)
 
-    def set_manifest(self, issue_number: int, manifest: ArtifactManifest) -> None:
+    def set_manifest(self, issue_number: str | int, manifest: ArtifactManifest) -> None:
         """Persist *manifest* for *issue_number* atomically.
 
         Acquires an exclusive advisory lock on the per-issue lock file before
@@ -187,7 +190,7 @@ class LocalFilesystemArtifactProvider:
         resolved = self._validate_artifact_path(path)
         return resolved.read_text(encoding="utf-8")
 
-    def store_artifact_content(self, issue_number: int, artifact_type: str, path: str, content: str) -> None:
+    def store_artifact_content(self, issue_number: str | int, artifact_type: str, path: str, content: str) -> None:
         """Store artifact content as a file in the repository worktree.
 
         Writes content only when the target file does **not** already exist.
@@ -195,7 +198,7 @@ class LocalFilesystemArtifactProvider:
         Manifest updates are the caller's responsibility via :meth:`set_manifest`.
 
         Args:
-            issue_number: Issue number (positive integer).  Not used by this
+            issue_number: Issue number (positive integer or beads string).  Not used by this
                 provider — included to satisfy the :class:`ArtifactBackend`
                 protocol.
             artifact_type: Artifact type string (e.g. ``"research"``).  Not
@@ -212,14 +215,14 @@ class LocalFilesystemArtifactProvider:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
-    def read_artifact_content_from_remote(self, issue_number: int, artifact_type: str, path: str) -> str | None:
+    def read_artifact_content_from_remote(self, issue_number: str | int, artifact_type: str, path: str) -> str | None:
         """Read artifact content.
 
         This provider has no remote backend.  Delegates to
         :meth:`read_local_artifact_content`.
 
         Args:
-            issue_number: Issue number (positive integer).  Not used.
+            issue_number: Issue number (positive integer or beads string).  Not used.
             artifact_type: Artifact type string.  Not used.
             path: Repo-relative path to the artifact file.
 
@@ -271,18 +274,18 @@ class LocalFilesystemArtifactProvider:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _manifest_path(self, issue_number: int) -> Path:
+    def _manifest_path(self, issue_number: str | int) -> Path:
         """Return the path to the manifest JSON file for *issue_number*.
 
         Args:
-            issue_number: Issue number.
+            issue_number: Issue number (integer or beads string — used as filename stem).
 
         Returns:
             Absolute path: ``{manifest_dir}/{issue_number}.json``.
         """
         return self._manifest_dir / f"{issue_number}.json"
 
-    def _lock_path(self, issue_number: int) -> Path:
+    def _lock_path(self, issue_number: str | int) -> Path:
         """Return the path to the advisory lock file for *issue_number*.
 
         Lock files are created on first acquire and **never** deleted
