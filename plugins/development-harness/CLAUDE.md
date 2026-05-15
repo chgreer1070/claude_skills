@@ -510,9 +510,9 @@ The backlog MCP server uses a `BacklogBackend` Protocol (`backlog_core/backend_p
 - `github` (default) — GitHub Issues via GraphQL + PyGithub REST. Requires `GITHUB_TOKEN`.
 - `sqlite` — local 6-table SQLite schema, WAL mode. No external credentials.
 - `memory` — in-memory test double. No persistence.
-- `beads` — routes to `bd` CLI via lazy subprocess wrapper. Auto-detected when `.beads/` directory exists at project root. `bd` binary validated on first use; raises `BdNotInstalledError` on failure with no silent fallback.
+- `beads` — routes to `bd` CLI via lazy subprocess wrapper. Auto-detected when `.beads/dh-backend` marker file exists at project root (explicit opt-in required). `bd` binary validated on first use; raises `BdNotInstalledError` on failure with no silent fallback.
 
-Select via `BACKLOG_BACKEND` env var, `[backend] name` in `backend.toml` (`.dh/` project config dir or `~/.dh/`), or auto-detected from `.beads/` directory presence. Default is `github` when no selector matches — existing deployments require no changes.
+Select via `BACKLOG_BACKEND` env var, `backlog.backend` key in `.dh/config.yaml` (project config dir or `~/.dh/`), or auto-detected from `.beads/dh-backend` marker file presence. Default is `github` when no selector matches — existing deployments require no changes.
 
 Future platform backends (GitLab, Linear, Supabase) will implement the same Protocol. See [docs/backend-providers.md](./docs/backend-providers.md) for the full Protocol reference, method groups, configuration examples, and platform capability comparison.
 
@@ -547,7 +547,7 @@ Four implementations:
 
 **Fallback behavior**: `_get_artifact_provider()` in `server.py` attempts the configured remote backend. On `GitHubUnavailableError` or `BacklogError`, it silently activates `LocalFilesystemArtifactProvider`. Callers receive the same response shape; a `warnings` entry reading `"Artifacts stored in local filesystem provider. Remote sync unavailable."` is added when fallback is active.
 
-**Explicit local selection**: Set `BACKLOG_BACKEND=local` or add `[backend]\nname = "local"` in `.dh/backend.toml` (project config dir) to always use local storage.
+**Explicit local selection**: Set `BACKLOG_BACKEND=local` or add `backlog:\n  backend: local` in `.dh/config.yaml` (project config dir) to always use local storage.
 
 ---
 

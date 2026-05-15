@@ -79,7 +79,7 @@ The development harness uses three subsystems. The backlog MCP now uses a plugga
 - **Local cache**: `~/.dh/projects/{slug}/backlog/` per-item markdown files (resolved via `dh_paths.backlog_dir()`)
 - **Implementation**: `backlog_core/` package with pluggable `BacklogBackend` Protocol, exposed as FastMCP 3.x server (`mcp__plugin_dh_backlog__*`)
 - **Operations**: CRUD on issues, label management, grooming, syncing, milestone/project management
-- **Backend selection**: `BACKLOG_BACKEND` env var → `backend.toml` → default `github`
+- **Backend selection**: `BACKLOG_BACKEND` env var → `backlog.backend` in `.dh/config.yaml` → `.beads/dh-backend` marker file auto-detect → default `github`
 - **GitHub backend**: GitHub Issues canonical; local files are derived cache updated by `backlog_sync` and `backlog_pull`. Bulk sync via `sync_issues_graphql` in `backlog_core/gh_client.py` — GraphQL cursor-paginated fetch with optional `since` filter. Full sync ~12s for 245 issues; incremental sync ~0.7s. `create_milestone` and `create_label` remain REST-only (no GraphQL mutations — ADR-004).
 
 ### Plans/Tasks (SAM MCP)
@@ -97,7 +97,7 @@ The development harness uses three subsystems. The backlog MCP now uses a plugga
 - **Implementation**: `backlog_core/artifact_provider.py` defines the `ArtifactBackend` Protocol, `GitHubGistArtifactProvider` (default), `LinearArtifactProvider`, `GitLabArtifactProvider`, and `LocalFilesystemArtifactProvider` (automatic fallback)
 - **Operations**: `get_manifest`, `set_manifest`, `read_artifact_content`
 - **File content**: Always served from local filesystem regardless of manifest backend
-- **Backend selection**: `BACKLOG_BACKEND` env var → default `github`; set `BACKLOG_BACKEND=local` or `[backend] name = "local"` in `backend.toml` to always use local storage
+- **Backend selection**: `BACKLOG_BACKEND` env var → default `github`; set `BACKLOG_BACKEND=local` or `backlog:\n  backend: local` in `.dh/config.yaml` to always use local storage
 - **Fallback**: When the configured remote backend raises `GitHubUnavailableError` or `BacklogError` during initialisation, `_get_artifact_provider()` in `server.py` silently activates `LocalFilesystemArtifactProvider`; callers receive the same response shape with a `warnings` entry: `"Artifacts stored in local filesystem provider. Remote sync unavailable."`
 - **Factory**: `create_artifact_provider(backend_name=None, repo=None, root_worktree=None)` in `backlog_core/artifact_provider.py`
 
@@ -126,15 +126,15 @@ All protocol methods are synchronous. The MCP layer wraps calls in `asyncio.to_t
 | `GitHubBackend` | `github` | Default. Delegates to `gh_client.py`, `github_sync.py`, `github_branches.py`. Requires `GITHUB_TOKEN`. |
 | `SQLiteBackend` | `sqlite` | Local 6-table schema via stdlib `sqlite3`, WAL mode. No external credentials required. |
 | `InMemoryBackend` | `memory` | In-memory test double. No persistence. Use in tests and CI where GitHub is unavailable. |
-| `BeadsBackend` | `beads` | Routes to `bd` CLI via lazy subprocess wrapper (`backlog_core/backends/bd_runner.py`). Auto-detected when `.beads/` directory exists at project root. `bd` binary is NOT probed at server startup — validated on first `run_json()` call. Failure raises `BdNotInstalledError`; no silent fallback to `github`. |
+| `BeadsBackend` | `beads` | Routes to `bd` CLI via lazy subprocess wrapper (`backlog_core/backends/bd_runner.py`). Auto-detected when `.beads/dh-backend` marker file exists at project root (explicit opt-in required). `bd` binary is NOT probed at server startup — validated on first `run_json()` call. Failure raises `BdNotInstalledError`; no silent fallback to `github`. |
 
 ### Configuration
 
 Backend selection uses this resolution order:
 
 1. `BACKLOG_BACKEND` environment variable
-2. `[backend] name` key in `backend.toml` (project root searched first, then `~/.dh/`)
-3. Auto-detect: `beads` when a `.beads/` directory exists at the project root
+2. `backlog.backend` key in `.dh/config.yaml` (project root searched first, then `~/.dh/`)
+3. Auto-detect: `beads` when `.beads/dh-backend` marker file exists at the project root (explicit opt-in)
 4. Default: `github`
 
 **Environment variable:**
@@ -144,20 +144,20 @@ BACKLOG_BACKEND=sqlite uv run --script plugins/development-harness/scripts/run_b
 BACKLOG_BACKEND=beads uv run --script plugins/development-harness/scripts/run_backlog_server.py
 ```
 
-**Beads auto-detection and lazy `bd` validation**: When `BACKLOG_BACKEND` is not set and no `backend.toml` exists, the server inspects the project root for a `.beads/` directory. If found, `beads` is selected automatically — no explicit configuration is required in a beads workspace. The `bd` binary is **not** probed at startup; it is validated on the first `run_json()` call. If `bd` is absent or not executable at that point, `BdNotInstalledError` is raised. There is no silent fallback to `github`.
+**Beads auto-detection and lazy `bd` validation**: When `BACKLOG_BACKEND` is not set and no `.dh/config.yaml` `backlog.backend` key exists, the server inspects the project root for a `.beads/dh-backend` marker file. If the marker file is present, `beads` is selected automatically — this is the explicit opt-in mechanism for beads workspaces. The `bd` binary is **not** probed at startup; it is validated on the first `run_json()` call. If `bd` is absent or not executable at that point, `BdNotInstalledError` is raised. There is no silent fallback to `github`.
 
-**`backend.toml` file:**
+**`.dh/config.yaml` backend configuration:**
 
-```toml
-[backend]
-name = "sqlite"
+```yaml
+backlog:
+  backend: sqlite
 ```
 
-Place `backend.toml` in the project root or `~/.dh/` for a persistent override. Project root takes precedence over `~/.dh/`. Call `reset_config()` between tests to force re-resolution.
+Place `.dh/config.yaml` in the project root or `~/.dh/` for a persistent override. Project root takes precedence over `~/.dh/`. Call `reset_config()` between tests to force re-resolution.
 
 ### Migration Guide
 
-Existing users are unaffected. When no `BACKLOG_BACKEND` variable and no `backend.toml` file exist, the server selects `github` — identical behavior to before the pluggable architecture was introduced. No configuration changes are required unless switching backends.
+Existing users are unaffected. When no `BACKLOG_BACKEND` variable, no `.dh/config.yaml` `backlog.backend` key, and no `.beads/dh-backend` marker file exist, the server selects `github` — identical behavior to before the pluggable architecture was introduced. No configuration changes are required unless switching backends.
 
 ---
 
