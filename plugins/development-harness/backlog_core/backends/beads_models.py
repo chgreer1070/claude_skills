@@ -1,12 +1,17 @@
 """Pydantic v2 boundary models for ``bd --json`` output validation.
 
 This module defines Pydantic boundary models for every JSON shape produced
-by the ``bd`` CLI.  All models use ``ConfigDict(extra="ignore")`` so that:
+by the ``bd`` CLI.  All models use ``ConfigDict(strict=True, extra="ignore")``
+so that:
 
 - Unknown JSON fields are dropped silently, keeping models resilient to
   future ``bd`` schema additions.
-- Enum fields accept their string/int values from JSON (Pydantic v2 lax
-  mode) rather than requiring pre-constructed enum instances.
+- Strict mode rejects unexpected type coercions (e.g. ``int`` → ``str``),
+  catching upstream schema drift early.
+- Enum fields (``BeadsStatus``, ``BeadsIssueType``, ``BeadsPriority``) are
+  individually annotated with ``Field(strict=False)`` so that the plain
+  JSON string and integer values produced by ``bd`` are coerced to enum
+  instances without loosening strictness for non-enum fields.
 
 The :func:`parse_*` functions are the **only** public entry points for
 consuming raw ``bd`` output.  Downstream code must not call
@@ -28,7 +33,7 @@ from __future__ import annotations
 from enum import IntEnum, StrEnum
 from typing import Annotated, Final, NewType
 
-from pydantic import BaseModel, ConfigDict, StringConstraints, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
 
 __all__ = [
     "BeadsCommentRaw",
@@ -121,40 +126,27 @@ class BeadsIssueRaw(BaseModel):
 
     Detailed issue shape from the beads CLI JSON output.
 
-    Fields
-    ------
-    id:
-        Beads nanoid-prefixed identifier, e.g. ``bd-a3f8``.
-    title:
-        Short human-readable summary.
-    status:
-        Current lifecycle status.
-    type:
-        Issue classification.
-    priority:
-        Numeric priority (0 = critical, 4 = backlog).
-    description:
-        Long-form description body, may be absent.
-
-    Notes:
-        Supplementary notes, may be absent.
-    assignee:
-        Username of the assigned user, may be absent.
-    created_at:
-        ISO-8601 creation timestamp, may be absent.
-    updated_at:
-        ISO-8601 last-update timestamp, may be absent.
-    closed_at:
-        ISO-8601 closure timestamp, absent when issue is open.
+    Attributes:
+        id: Beads nanoid-prefixed identifier, e.g. ``bd-a3f8``.
+        title: Short human-readable summary.
+        status: Current lifecycle status.
+        type: Issue classification.
+        priority: Numeric priority (0 = critical, 4 = backlog).
+        description: Long-form description body, may be absent.
+        notes: Supplementary notes, may be absent.
+        assignee: Username of the assigned user, may be absent.
+        created_at: ISO-8601 creation timestamp, may be absent.
+        updated_at: ISO-8601 last-update timestamp, may be absent.
+        closed_at: ISO-8601 closure timestamp, absent when issue is open.
     """
 
     model_config = ConfigDict(strict=True, extra="ignore")
 
     id: _BeadsIdField
     title: str
-    status: BeadsStatus
-    type: BeadsIssueType
-    priority: BeadsPriority
+    status: Annotated[BeadsStatus, Field(strict=False)]
+    type: Annotated[BeadsIssueType, Field(strict=False)]
+    priority: Annotated[BeadsPriority, Field(strict=False)]
     description: str | None = None
     notes: str | None = None
     assignee: str | None = None
@@ -166,36 +158,27 @@ class BeadsIssueRaw(BaseModel):
 class BeadsDependencyRaw(BaseModel):
     """Raw representation of a dependency entry from ``bd dep --json``.
 
-    Fields
-    ------
-    id:
-        Beads nanoid-prefixed identifier of the depended-on issue.
-    title:
-        Short summary, may be absent in compact list responses.
-    status:
-        Lifecycle status of the depended-on issue, may be absent.
+    Attributes:
+        id: Beads nanoid-prefixed identifier of the depended-on issue.
+        title: Short summary, may be absent in compact list responses.
+        status: Lifecycle status of the depended-on issue, may be absent.
     """
 
     model_config = ConfigDict(strict=True, extra="ignore")
 
     id: _BeadsIdField
     title: str | None = None
-    status: BeadsStatus | None = None
+    status: Annotated[BeadsStatus, Field(strict=False)] | None = None
 
 
 class BeadsCommentRaw(BaseModel):
     """Raw representation of a comment from ``bd comments <id> --json``.
 
-    Fields
-    ------
-    id:
-        Opaque comment identifier (not a beads nanoid; format varies).
-    body:
-        Comment text.
-    author:
-        Username of the comment author, may be absent.
-    created_at:
-        ISO-8601 creation timestamp, may be absent.
+    Attributes:
+        id: Opaque comment identifier (not a beads nanoid; format varies).
+        body: Comment text.
+        author: Username of the comment author, may be absent.
+        created_at: ISO-8601 creation timestamp, may be absent.
     """
 
     model_config = ConfigDict(strict=True, extra="ignore")
@@ -209,14 +192,10 @@ class BeadsCommentRaw(BaseModel):
 class BeadsLabelRaw(BaseModel):
     """Raw representation of a label from ``bd labels --json``.
 
-    Fields
-    ------
-    name:
-        Label name (e.g. ``status:open``, ``priority:2``).
-    color:
-        Hex colour string, may be absent.
-    description:
-        Human-readable description, may be absent.
+    Attributes:
+        name: Label name (e.g. ``status:open``, ``priority:2``).
+        color: Hex colour string, may be absent.
+        description: Human-readable description, may be absent.
     """
 
     model_config = ConfigDict(strict=True, extra="ignore")
