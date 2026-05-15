@@ -93,8 +93,8 @@ Write the analysis to `section="Root-Cause Analysis"` with this format:
 **Method**: 6-sigma frequency analysis via backlog history search
 **Frequency**: <N occurrences across <M> items
 **Matches**:
-- #<issue> — <title> — <year-month closed>
-- #<issue> — <title> — <year-month closed>
+- <item_ref> — <title> — <year-month closed>
+- <item_ref> — <title> — <year-month closed>
 ...
 **Pattern**: <one sentence describing the common failure mode>
 **Improvement**: <one sentence describing what would prevent all N occurrences>

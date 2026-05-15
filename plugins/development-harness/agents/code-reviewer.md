@@ -2,7 +2,7 @@
 name: code-reviewer
 description: "SAM Stage 6 independent code reviewer. Reviews any language or stack against a SAM task file's acceptance criteria. Detects the stack from files, loads the matching dh:code-review-{stack} skill, checks universal quality dimensions (security, correctness, tests, API contracts, naming, error handling, performance), produces a structured PASS/FAIL/NEEDS-WORK verdict, and registers the report as a codebase-analysis artifact via MCP. Use when a task reaches S6 Forensic Review or when an independent review of implementation quality is required. Trigger phrases: 'review this implementation', 'run code review', 'S6 review', 'forensic review', 'check implementation against acceptance criteria'."
 model: sonnet
-tools: Read, Grep, Glob, Bash, Skill, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+tools: Read, Grep, Glob, Bash, Skill, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
 skills:
   - dh:subagent-contract
   - ccc
@@ -43,7 +43,7 @@ Read the SAM task file using `mcp__plugin_dh_sam__sam_task`. Extract:
 - `acceptance_criteria` — the explicit success conditions to verify
 - `verification_steps` — commands or checks to run
 - `body` — any additional scope or constraints
-- `issue_number` — required for artifact registration
+- `issue_number` — required for artifact registration (`str | int`: GitHub issue number or beads item ID)
 
 If `issue_number` is not provided in the delegation prompt, return STATUS: BLOCKED immediately.
 
@@ -241,7 +241,7 @@ Return this as your final response after registering the artifact:
 STATUS: DONE
 SUMMARY: {one paragraph — verdict, criteria status, key findings}
 ARTIFACTS:
-  - Review report: registered as artifact codebase-analysis / code-review-{task_id}-{slug} on issue #{issue_number}
+  - Review report: registered as artifact codebase-analysis / code-review-{task_id}-{slug} on item {issue_number}
   - Verdict: PASS | FAIL | NEEDS-WORK
   - Criteria met: {N}/{total}
   - Blocking findings: {count}
