@@ -921,7 +921,8 @@ def get_config() -> BacklogConfig:
 
     1. ``BACKLOG_BACKEND`` environment variable.
     2. ``[backend] name`` key in ``backend.toml`` (project root or ``~/.dh/``).
-    3. Default: ``"github"``.
+    3. Auto-detect: ``"beads"`` when ``.beads/`` exists at the project root.
+    4. Default: ``"github"``.
 
     The result is cached as a module-level singleton.  Call :func:`reset_config`
     to clear the cache (useful in tests).
@@ -962,7 +963,7 @@ def reset_config() -> None:
 # Backend factory
 # ---------------------------------------------------------------------------
 
-_VALID_BACKENDS: tuple[str, ...] = ("github", "memory", "sqlite")
+_VALID_BACKENDS: tuple[str, ...] = ("github", "memory", "sqlite", "beads")
 _BACKEND_TOML_FILENAME = "backend.toml"
 
 
@@ -1000,6 +1001,25 @@ def _load_backend_toml_name() -> str | None:
     return None
 
 
+def _auto_detect_beads() -> str | None:
+    """Return ``"beads"`` when ``.beads/`` exists at the project root.
+
+    Uses dh_paths to resolve the project root.  Falls through silently
+    (returns ``None``) when dh_paths is absent, the project root cannot
+    be determined, or ``.beads/`` does not exist.
+
+    Returns:
+        ``"beads"`` when the auto-detect marker is present, otherwise ``None``.
+    """
+    if _dh_paths is None:
+        return None
+    try:
+        project_root = _dh_paths.git_project_root()
+    except (FileNotFoundError, RuntimeError):
+        return None
+    return "beads" if (project_root / ".beads").is_dir() else None
+
+
 def create_backend(name: str | None = None) -> BacklogBackend:
     """Instantiate and return a BacklogBackend by name.
 
@@ -1007,7 +1027,8 @@ def create_backend(name: str | None = None) -> BacklogBackend:
 
     1. ``BACKLOG_BACKEND`` environment variable.
     2. ``[backend] name`` in ``backend.toml`` (project root or ``~/.dh/``).
-    3. Default: ``"github"``.
+    3. Auto-detect: ``"beads"`` when ``.beads/`` exists at the project root.
+    4. Default: ``"github"``.
 
     Args:
         name: Backend identifier to instantiate.  Pass ``None`` to trigger
@@ -1020,7 +1041,9 @@ def create_backend(name: str | None = None) -> BacklogBackend:
         ValueError: When *name* (or the resolved name) is not a recognised
             backend identifier.  The message lists all valid options.
     """
-    resolved = name or os.environ.get("BACKLOG_BACKEND") or _load_backend_toml_name() or "github"
+    resolved = (
+        name or os.environ.get("BACKLOG_BACKEND") or _load_backend_toml_name() or _auto_detect_beads() or "github"
+    )
 
     if resolved == "github":
         # Deferred import: backends import TypedDicts from this module — circular at top level.
@@ -1039,6 +1062,12 @@ def create_backend(name: str | None = None) -> BacklogBackend:
         from backlog_core.backends.sqlite_backend import SQLiteBackend  # noqa: PLC0415
 
         return cast("BacklogBackend", SQLiteBackend())
+
+    if resolved == "beads":
+        # Deferred import: BeadsBackend is added in T05/T06 — circular at top level.
+        from backlog_core.backends.beads_backend import BeadsBackend  # noqa: PLC0415
+
+        return cast("BacklogBackend", BeadsBackend())
 
     msg = f"Unknown backend {resolved!r}. Valid options: {', '.join(sorted(_VALID_BACKENDS))}"
     raise ValueError(msg)
