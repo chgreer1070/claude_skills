@@ -116,12 +116,12 @@ $ARGUMENTS
    ```
 
    Omit `parent_issue_number` from the config if the story issue number is not known. The hook
-   treats absence as `None` and skips GitHub sync.
+   treats absence as `None` and skips backend sync. `parent_issue_number` accepts `str | int`
+   — GitHub integer IDs (e.g., `42`) and beads string IDs (e.g., `"bd-a3f8"`) are both valid.
 
-If `parent_issue_number` is known and `github_issue` field is set in the task YAML, call
-`backlog_core.gh_client.update_task_status(repo, github_issue, "in-progress")` after the
-`claim-task` step to sync the in-progress status to GitHub. Failure is non-fatal — continue
-regardless.
+If `parent_issue_number` is known (`str | int`), the `sam_task(action='claim')` step already
+writes `in-progress` status via the backend-agnostic SAM router. The `task_status_hook.py`
+handles any external tracker sync on task completion. No additional call is required here.
 
 5. **Record divergence observations during implementation.**
 

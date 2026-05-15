@@ -48,7 +48,7 @@ so no gate fires and the loop behaves identically to the previous behavior.
 
 2. If tasks remain, query ready tasks **once** and store the result as the current batch:
 
-If parent story issue number is known, prefer the MCP tool:
+If parent story issue number is known (`str | int` — GitHub integer ID such as `42` or beads string ID such as `"bd-a3f8"`), prefer the MCP tool:
 
 ```text
 backlog_get_ready_sam_tasks(parent_issue_number=N)
@@ -149,7 +149,7 @@ flowchart TD
 
 ```text
 mcp__plugin_dh_backlog__backlog_groom(
-    selector="#{issue}",
+    selector="#{issue}",  # {issue} is str | int — GitHub integer ID or beads string ID
     section="Concerns",
     content="- [ ] {concern text} (reported by {agent_name} on {task_id})",
     append=True
@@ -158,7 +158,7 @@ mcp__plugin_dh_backlog__backlog_groom(
 
 Concerns accumulate across all task agents. They feed into the validation stage in `/complete-implementation` — each verified concern becomes a new backlog item.
 
-4a. If a parent issue number is known, attempt contract verification against the architect spec:
+4a. If a parent issue number is known (`str | int` — GitHub integer ID or beads string ID), attempt contract verification against the architect spec:
 
 ```text
 mcp__plugin_dh_backlog__artifact_read(issue_number=N, artifact_type="architect")
@@ -267,10 +267,11 @@ Skip this gate when `autonomy_mode` is `"full_auto"` or `"per_task"`.
 Note: under `"per_task"`, per-task gates already fire for each task; no additional wave gate is needed.
 
 > **Hook behavior on SubagentStop**: When a sub-agent finishes, `task_status_hook.py` marks
-> the task complete in the local task file. After marking the task complete locally, the hook
-> calls `backlog_core.gh_client.update_task_status()` to sync the completion to the GitHub
-> sub-issue (if `github_issue` field is set in the task YAML). GitHub sync failure does not
-> affect the hook exit code.
+> the task complete via the SAM MCP server (backend-agnostic). After updating the SAM state,
+> the hook syncs completion to the external tracker (if `parent_issue_number` is set in the
+> active-task context). External tracker sync failure does not affect the hook exit code.
+> `parent_issue_number` accepts `str | int` — GitHub integer IDs and beads string IDs are
+> both supported.
 
 ---
 
@@ -285,7 +286,7 @@ T0 runs agent `t0-baseline-capture`. TN runs agent `tn-verification-gate`. Both 
 
 ### Bookend Artifact Registration
 
-When the parent story issue number is known, include `artifact_register` instructions in each bookend task's delegation prompt so the bookend artifacts are registered in the issue's artifact manifest:
+When the parent story issue number is known (`str | int` — GitHub integer ID or beads string ID), include `artifact_register` instructions in each bookend task's delegation prompt so the bookend artifacts are registered in the issue's artifact manifest:
 
 **T0 delegation prompt addition:**
 
