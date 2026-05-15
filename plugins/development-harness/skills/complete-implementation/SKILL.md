@@ -7,11 +7,6 @@ compatibility: Python 3.11+
 metadata:
   version: 2.0.0
   last_updated: '2026-03-22'
-hooks:
-  SubagentStop:
-  - hooks:
-    - type: command
-      command: uv run --script "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py"
 ---
 
 # Complete Implementation (Quality Gates + Recursion)
