@@ -32,7 +32,7 @@ with contextlib.suppress(ImportError):
 
 __all__ = ["TaskConfig", "create_task_backend", "get_task_config", "reset_task_config", "set_task_config"]
 
-_VALID_BACKENDS: tuple[str, ...] = ("local", "github", "memory")
+_VALID_BACKENDS: tuple[str, ...] = ("beads", "local", "github", "memory")
 _BACKEND_TOML_FILENAME = "taskbackend.toml"
 
 
@@ -176,6 +176,12 @@ def create_task_backend(name: str | None = None) -> TaskBackend:
         # and handles the case where the backends package is created in T03.
         mod = importlib.import_module("sam_schema.core.backends.memory")
         return mod.InMemoryTaskProvider()  # type: ignore[return-value]
+
+    if resolved == "beads":
+        # importlib.import_module defers resolution to runtime: avoids circular imports
+        # and handles the case where the beads backend module is created in T08.
+        mod = importlib.import_module("sam_schema.core.backends.beads")
+        return mod.BeadsTaskProvider()  # type: ignore[return-value]
 
     if resolved == "github":
         msg = "GitHub backend requires IssueBackend + DocumentBackend (see #984). Use 'local' or 'memory' instead."

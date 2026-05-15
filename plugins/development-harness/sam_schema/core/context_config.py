@@ -37,7 +37,7 @@ __all__ = [
     "set_context_config",
 ]
 
-_VALID_BACKENDS: tuple[str, ...] = ("local", "github", "memory")
+_VALID_BACKENDS: tuple[str, ...] = ("beads", "local", "github", "memory")
 _BACKEND_TOML_FILENAME = "contextbackend.toml"
 
 
@@ -176,6 +176,12 @@ def create_context_backend(name: str | None = None) -> ContextBackend:
     if resolved == "memory":
         mod = importlib.import_module("sam_schema.core.backends.memory_context_backend")
         return mod.InMemoryContextBackend()  # type: ignore[return-value]
+
+    if resolved == "beads":
+        # importlib.import_module defers resolution to runtime: avoids circular imports
+        # and handles the case where the beads backend module is created in T08.
+        mod = importlib.import_module("sam_schema.core.backends.beads")
+        return mod.BeadsContextBackend()  # type: ignore[return-value]
 
     if resolved == "github":
         msg = "GitHub context backend is implemented in T02. Use 'local' or 'memory' instead."
