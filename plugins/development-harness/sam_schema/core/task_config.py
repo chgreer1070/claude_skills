@@ -6,34 +6,23 @@ pattern established in backlog_core.backend_protocol.
 
 Resolution order for backend selection:
     1. ``TASKBACKEND`` environment variable
-    2. ``[backend] name`` in ``taskbackend.toml`` (project root, project
-       root ``/.dh/``, or ``~/.dh/``)
+    2. ``[backend] name`` in ``.dh/config.yaml`` (via DHConfig)
     3. Default: ``"local"``
 """
 
 from __future__ import annotations
 
-import contextlib
 import importlib
 import os
-import tomllib
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import types
-
     from sam_schema.core.task_backend import TaskBackend
-
-_dh_paths: types.ModuleType | None = None
-with contextlib.suppress(ImportError):
-    import dh_paths as _dh_paths  # optional — only present inside the plugin
 
 __all__ = ["TaskConfig", "create_task_backend", "get_task_config", "reset_task_config", "set_task_config"]
 
 _VALID_BACKENDS: tuple[str, ...] = ("beads", "local", "github", "memory")
-_BACKEND_TOML_FILENAME = "taskbackend.toml"
 
 
 # ---------------------------------------------------------------------------
@@ -108,37 +97,19 @@ def reset_task_config() -> None:
 
 
 def _load_backend_toml_name() -> str | None:
-    """Read backend name from taskbackend.toml if present.
+    """Read backend name from .dh/config.yaml if present.
 
-    Searches (in order): the project root (via dh_paths), the project root
-    ``/.dh/`` subdirectory, then ``~/.dh/``. Missing files are silently
-    ignored. A present file that lacks the ``backend.name`` key is also
-    ignored.
+    Delegates to DHConfig for YAML-based backend resolution. Returns None
+    when the resolved value matches the subsystem default ("local"), so
+    the caller's resolution chain can continue to the next step.
 
     Returns:
-        Backend name string from ``[backend] name = "..."`` if found,
-        otherwise ``None``.
+        Backend name string when explicitly configured, otherwise ``None``.
     """
-    search_paths: list[Path] = []
+    from dh_config import DHConfig  # noqa: PLC0415
 
-    if _dh_paths is not None:
-        with contextlib.suppress(FileNotFoundError, RuntimeError):
-            project_root = _dh_paths.git_project_root()
-            search_paths.extend((project_root / _BACKEND_TOML_FILENAME, project_root / ".dh" / _BACKEND_TOML_FILENAME))
-
-    search_paths.append(Path.home() / ".dh" / _BACKEND_TOML_FILENAME)
-
-    for candidate in search_paths:
-        if candidate.is_file():
-            try:
-                data = tomllib.loads(candidate.read_text(encoding="utf-8"))
-            except (OSError, tomllib.TOMLDecodeError):
-                continue
-            name = data.get("backend", {}).get("name")
-            if isinstance(name, str) and name:
-                return name
-
-    return None
+    result = DHConfig().get_backend(subsystem="task")
+    return result if result != "local" else None
 
 
 def create_task_backend(name: str | None = None) -> TaskBackend:

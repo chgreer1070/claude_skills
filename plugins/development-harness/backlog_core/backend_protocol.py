@@ -18,9 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import os
-import tomllib
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast, runtime_checkable
 
 if TYPE_CHECKING:
@@ -964,41 +962,22 @@ def reset_config() -> None:
 # ---------------------------------------------------------------------------
 
 _VALID_BACKENDS: tuple[str, ...] = ("github", "memory", "sqlite", "beads")
-_BACKEND_TOML_FILENAME = "backend.toml"
 
 
 def _load_backend_toml_name() -> str | None:
-    """Read backend name from backend.toml if present.
+    """Read backend name from .dh/config.yaml if present.
 
-    Searches the project root (via dh_paths) then ``~/.dh/``.  Missing files
-    are silently ignored.  A present file that lacks the ``backend.name`` key
-    is also ignored.
+    Delegates to DHConfig for YAML-based backend resolution. Returns None
+    when the resolved value matches the subsystem default ("github"), so
+    the caller's resolution chain can continue to the next step.
 
     Returns:
-        Backend name string from ``[backend] name = "..."`` if found,
-        otherwise ``None``.
+        Backend name string when explicitly configured, otherwise ``None``.
     """
-    search_paths: list[Path] = []
-    if _dh_paths is not None:
-        try:
-            project_root = _dh_paths.git_project_root()
-            search_paths.extend((project_root / _BACKEND_TOML_FILENAME, project_root / ".dh" / _BACKEND_TOML_FILENAME))
-        except (FileNotFoundError, RuntimeError):
-            pass
+    from dh_config import DHConfig  # noqa: PLC0415
 
-    search_paths.append(Path.home() / ".dh" / _BACKEND_TOML_FILENAME)
-
-    for candidate in search_paths:
-        if candidate.is_file():
-            try:
-                data = tomllib.loads(candidate.read_text(encoding="utf-8"))
-            except (OSError, tomllib.TOMLDecodeError):
-                continue
-            name = data.get("backend", {}).get("name")
-            if isinstance(name, str) and name:
-                return name
-
-    return None
+    result = DHConfig().get_backend(subsystem="backlog")
+    return result if result != "github" else None
 
 
 def _auto_detect_beads() -> str | None:

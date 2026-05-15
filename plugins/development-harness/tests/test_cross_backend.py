@@ -855,3 +855,151 @@ class TestViewEnrich:
 
         # Assert
         assert enriched is False
+
+
+# ---------------------------------------------------------------------------
+# TestBeadsBackendConformance
+# ---------------------------------------------------------------------------
+
+
+class TestBeadsBackendConformance:
+    """Conformance tests for BeadsBackend — beads-specific protocol surface.
+
+    Uses constructor injection to mock BdRunner — no live bd binary is
+    invoked.  These tests are NOT parametrised over the shared ``backend``
+    fixture because BeadsBackend stubs out most Protocol methods as
+    NotImplementedError (ADR-001) — running those tests against beads would
+    produce 20+ expected failures rather than signal a problem.
+
+    Marked ``cross_backend`` so they are included in the CI matrix job.
+    """
+
+    @pytest.fixture
+    def bd_runner(self, mocker):
+        """Return a spec'd MagicMock for BdRunner."""
+        from backlog_core.backends.bd_runner import BdRunner
+
+        return mocker.MagicMock(spec=BdRunner)
+
+    @pytest.fixture
+    def beads_backend(self, bd_runner):
+        """Return a BeadsBackend backed by a mocked BdRunner."""
+        from backlog_core.backends.beads_backend import BeadsBackend
+
+        return BeadsBackend(runner=bd_runner)
+
+    @pytest.fixture
+    def bd_show_fixture(self):
+        """Load the bd show fixture from the beads fixtures directory."""
+        import json
+        from pathlib import Path
+
+        fixtures = Path(__file__).resolve().parent / "fixtures" / "beads"
+        return json.loads((fixtures / "bd_show_issue.json").read_text())
+
+    @pytest.fixture
+    def bd_list_fixture(self):
+        """Load the bd list fixture from the beads fixtures directory."""
+        import json
+        from pathlib import Path
+
+        fixtures = Path(__file__).resolve().parent / "fixtures" / "beads"
+        return json.loads((fixtures / "bd_list_epic_children.json").read_text())
+
+    def test_isinstance_satisfies_backlog_backend_protocol(self, beads_backend) -> None:
+        """BeadsBackend satisfies the runtime-checkable BacklogBackend Protocol.
+
+        Why: isinstance is the conformance gate in operations.py — failing this
+             means BeadsBackend is silently rejected by the factory.
+        """
+        from backlog_core.backend_protocol import BacklogBackend as _BacklogBackend
+
+        assert isinstance(beads_backend, _BacklogBackend)
+
+    def test_probe_backend_status_reachable(self, beads_backend, bd_runner) -> None:
+        """probe_backend_status returns REACHABLE when BdRunner.is_available() is True.
+
+        Why: Health-check callers render the availability state — a wrong enum
+             breaks the health-check display.
+        """
+        from backlog_core.models import BackendAvailability
+
+        bd_runner.is_available.return_value = True
+
+        status = beads_backend.probe_backend_status()
+
+        assert status.availability == BackendAvailability.REACHABLE
+        assert status.name == "Beads"
+
+    def test_probe_backend_status_error(self, beads_backend, bd_runner) -> None:
+        """probe_backend_status returns ERROR when BdRunner.is_available() is False."""
+        from backlog_core.models import BackendAvailability
+
+        bd_runner.is_available.return_value = False
+
+        status = beads_backend.probe_backend_status()
+
+        assert status.availability == BackendAvailability.ERROR
+
+    def test_check_open_prs_returns_empty_list(self, beads_backend) -> None:
+        """check_open_prs_for_issue returns [] — beads has no PR surface."""
+        result = beads_backend.check_open_prs_for_issue(issue_num=1)
+
+        assert result == []
+
+    def test_fetch_open_issues_by_title_str_maps_title_to_id(self, beads_backend, bd_runner, bd_list_fixture) -> None:
+        """fetch_open_issues_by_title_str returns dict[str, str] with correct mapping."""
+        bd_runner.run_json.return_value = bd_list_fixture
+
+        result = beads_backend.fetch_open_issues_by_title_str()
+
+        assert isinstance(result, dict)
+        assert all(isinstance(k, str) and isinstance(v, str) for k, v in result.items())
+        assert "Write bd_runner tests" in result
+
+    def test_close_github_issue_calls_bd_close(self, beads_backend, bd_runner) -> None:
+        """close_github_issue calls bd close with the issue ref and reason."""
+        beads_backend.close_github_issue("bd-a3f8", "done")
+
+        bd_runner.run_text.assert_called_once_with(["close", "bd-a3f8", "--reason", "done"])
+
+    def test_apply_status_in_progress_calls_bd_update_claim(self, beads_backend, bd_runner) -> None:
+        """apply_status_in_progress calls bd update --claim with the beads ID."""
+        item = BacklogItem(
+            title="Task",
+            description="desc",
+            metadata=BacklogItemMetadata(
+                source="test", added="2026-01-01", priority="P2", item_type="Task", status="open", issue="bd-a3f8"
+            ),
+        )
+
+        beads_backend.apply_status_in_progress(item)
+
+        bd_runner.run_text.assert_called_once_with(["update", "bd-a3f8", "--claim"])
+
+    def test_apply_status_groomed_is_noop(self, beads_backend, bd_runner) -> None:
+        """apply_status_groomed must not raise or invoke subprocess."""
+        item = BacklogItem(
+            title="Task",
+            description="desc",
+            metadata=BacklogItemMetadata(
+                source="test", added="2026-01-01", priority="P2", item_type="Task", status="open"
+            ),
+        )
+
+        beads_backend.apply_status_groomed(item)  # must not raise
+
+        bd_runner.run_text.assert_not_called()
+
+    def test_view_enrich_populates_status_and_source(self, beads_backend, bd_runner, bd_show_fixture) -> None:
+        """view_enrich_from_github populates status, state, source, and title."""
+        bd_runner.run_json.return_value = bd_show_fixture
+        result = ViewItemResult(title="", status="", state="", source="")
+
+        ok = beads_backend.view_enrich_from_github(result, "bd-a3f8")
+
+        assert ok is True
+        assert result.status == "open"
+        assert result.state == "open"
+        assert result.source == "beads"
+        assert result.title == "Fix authentication bug"

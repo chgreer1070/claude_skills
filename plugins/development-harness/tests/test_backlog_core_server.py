@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from backlog_core.models import BackendAvailability, BackendStatus, BacklogError, Output, ViewItemResult
-from backlog_core.server import mcp
+from backlog_core.server import _SESSION_GATE_TOKEN, mcp
 from fastmcp.client import Client
 
 # ---------------------------------------------------------------------------
@@ -93,12 +93,7 @@ async def test_backlog_add_success_returns_merged_result():
     with patch("backlog_core.operations.add_item", return_value=op_result) as mock_add:
         response = await _call(
             "backlog_add",
-            {
-                "title": "My Item",
-                "priority": "P1",
-                "description": "A test item",
-                "gate_token": "problems-not-solutions",
-            },
+            {"title": "My Item", "priority": "P1", "description": "A test item", "gate_token": _SESSION_GATE_TOKEN},
         )
 
     mock_add.assert_called_once()
@@ -126,7 +121,7 @@ async def test_backlog_add_passes_optional_params():
                 "source": "CI pipeline",
                 "type": "Bug",
                 "force": True,
-                "gate_token": "problems-not-solutions",
+                "gate_token": _SESSION_GATE_TOKEN,
             },
         )
 
@@ -141,12 +136,7 @@ async def test_backlog_add_backlog_error_returns_error_key():
     with patch("backlog_core.operations.add_item", side_effect=BacklogError("duplicate found")):
         response = await _call(
             "backlog_add",
-            {
-                "title": "Dupe",
-                "priority": "P1",
-                "description": "Already exists",
-                "gate_token": "problems-not-solutions",
-            },
+            {"title": "Dupe", "priority": "P1", "description": "Already exists", "gate_token": _SESSION_GATE_TOKEN},
         )
 
     assert response["error"] == "duplicate found"
@@ -166,8 +156,7 @@ async def test_backlog_add_output_messages_included():
 
     with patch("backlog_core.operations.add_item", side_effect=_add_with_messages):
         response = await _call(
-            "backlog_add",
-            {"title": "Item", "priority": "P1", "description": "Test", "gate_token": "problems-not-solutions"},
+            "backlog_add", {"title": "Item", "priority": "P1", "description": "Test", "gate_token": _SESSION_GATE_TOKEN}
         )
 
     assert "created file" in response["messages"]
@@ -1687,7 +1676,7 @@ async def test_backlog_view_show_non_numeric_string_passed_as_str():
     [
         (
             "backlog_add",
-            {"title": "T", "priority": "P1", "description": "D", "gate_token": "problems-not-solutions"},
+            {"title": "T", "priority": "P1", "description": "D", "gate_token": _SESSION_GATE_TOKEN},
             "backlog_core.operations.add_item",
             {"file_path": "f"},
         ),
@@ -1721,7 +1710,7 @@ async def test_output_fields_always_present_on_success(tool_name, params, mock_t
     [
         (
             "backlog_add",
-            {"title": "T", "priority": "P1", "description": "D", "gate_token": "problems-not-solutions"},
+            {"title": "T", "priority": "P1", "description": "D", "gate_token": _SESSION_GATE_TOKEN},
             "backlog_core.operations.add_item",
         ),
         ("backlog_list", {}, "backlog_core.operations.list_items"),
@@ -1799,7 +1788,7 @@ async def test_backlog_add_passes_output_instance_to_operations():
 
     with patch("backlog_core.operations.add_item", side_effect=_capture):
         await _call(
-            "backlog_add", {"title": "X", "priority": "P1", "description": "D", "gate_token": "problems-not-solutions"}
+            "backlog_add", {"title": "X", "priority": "P1", "description": "D", "gate_token": _SESSION_GATE_TOKEN}
         )
 
     assert len(captured) == 1
@@ -1830,8 +1819,7 @@ async def test_backlog_add_no_error_key_on_success():
     """Successful backlog_add response must not contain an 'error' key."""
     with patch("backlog_core.operations.add_item", return_value={"file_path": "/tmp/p1-ok.md"}):
         response = await _call(
-            "backlog_add",
-            {"title": "OK", "priority": "P1", "description": "Fine", "gate_token": "problems-not-solutions"},
+            "backlog_add", {"title": "OK", "priority": "P1", "description": "Fine", "gate_token": _SESSION_GATE_TOKEN}
         )
 
     assert "error" not in response

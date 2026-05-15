@@ -13,7 +13,6 @@ No asyncio — all tests are synchronous. asyncio_mode = "auto" in pyproject.tom
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
@@ -25,6 +24,7 @@ from sam_schema.core.task_config import create_task_backend, reset_task_config
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
@@ -103,34 +103,36 @@ class TestLazyMigration:
         assert isinstance(backend, InMemoryTaskProvider)
 
     def test_taskbackend_toml_overrides_default(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """taskbackend.toml in project root selects the backend.
+        """config.yaml task backend setting selects the backend.
 
-        When ``taskbackend.toml`` is present at the project root (resolved via
-        ``dh_paths.git_project_root()``), its ``[backend] name`` overrides the
-        default ``"local"`` backend.  The factory reads the TOML and instantiates
-        the configured backend.
+        When ``.dh/config.yaml`` declares ``task.backend: memory`` (resolved via
+        DHConfig), it overrides the default ``"local"`` backend.
 
-        Arrange: write taskbackend.toml with name="memory" to tmp_path;
-                 mock dh_paths.git_project_root() to return tmp_path;
-                 redirect Path.home() to an empty directory (no ~/.dh/ toml);
+        Arrange: write .dh/config.yaml with task.backend=memory to tmp_path;
+                 mock dh_config._dh_paths to return tmp_path as project root;
                  clear TASKBACKEND env var.
         Act: call create_task_backend() with no arguments.
         Assert: returned backend is InMemoryTaskProvider.
         """
-        # Arrange — write TOML to the mocked project root
-        (tmp_path / "taskbackend.toml").write_text('[backend]\nname = "memory"\n', encoding="utf-8")
+        import dh_config as _dh_config_mod
+
+        # Arrange — write YAML config to the mocked project .dh/ dir
+        dh_dir = tmp_path / ".dh"
+        dh_dir.mkdir()
+        from ruamel.yaml import YAML
+
+        yaml = YAML(typ="safe")
+        with (dh_dir / "config.yaml").open("w", encoding="utf-8") as fh:
+            yaml.dump({"task": {"backend": "memory"}}, fh)
 
         monkeypatch.delenv("TASKBACKEND", raising=False)
 
         mock_dh = MagicMock()
         mock_dh.git_project_root.return_value = tmp_path
-        monkeypatch.setattr(task_config_module, "_dh_paths", mock_dh)
-
-        # Redirect Path.home() so ~/.dh/taskbackend.toml is never found,
-        # ensuring only the project-root TOML influences the result.
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        monkeypatch.setattr(Path, "home", lambda: fake_home)
+        mock_dh._dh_user_root.return_value = tmp_path / "home" / ".dh"
+        mock_dh.project_dh_dir.return_value = dh_dir
+        (tmp_path / "home" / ".dh").mkdir(parents=True)
+        monkeypatch.setattr(_dh_config_mod, "_dh_paths", mock_dh)
 
         # Act
         backend = create_task_backend()
@@ -139,36 +141,42 @@ class TestLazyMigration:
         assert isinstance(backend, InMemoryTaskProvider)
 
     def test_env_var_overrides_toml(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """TASKBACKEND env var takes precedence over taskbackend.toml.
+        """TASKBACKEND env var takes precedence over config.yaml.
 
-        When ``TASKBACKEND="memory"`` is set and ``taskbackend.toml`` declares
-        ``name="local"``, the env var wins.  Resolution order:
-        env var > taskbackend.toml > default ``"local"``.
+        When ``TASKBACKEND="memory"`` is set and ``.dh/config.yaml`` declares
+        ``task.backend: local``, the env var wins.  Resolution order:
+        env var > config.yaml > default ``"local"``.
 
-        Arrange: write taskbackend.toml with name="local" to tmp_path;
+        Arrange: write .dh/config.yaml with task.backend=local to tmp_path;
                  set TASKBACKEND="memory" via monkeypatch;
-                 mock dh_paths.git_project_root() to return tmp_path;
-                 redirect Path.home() to an empty directory.
+                 mock dh_config._dh_paths to return tmp_path.
         Act: call create_task_backend() with no arguments.
-        Assert: returned backend is InMemoryTaskProvider (env var wins over toml).
+        Assert: returned backend is InMemoryTaskProvider (env var wins over config).
         """
-        # Arrange — toml says "local", env var says "memory"
-        (tmp_path / "taskbackend.toml").write_text('[backend]\nname = "local"\n', encoding="utf-8")
+        import dh_config as _dh_config_mod
+
+        # Arrange — config says "local", env var says "memory"
+        dh_dir = tmp_path / ".dh"
+        dh_dir.mkdir()
+        from ruamel.yaml import YAML
+
+        yaml = YAML(typ="safe")
+        with (dh_dir / "config.yaml").open("w", encoding="utf-8") as fh:
+            yaml.dump({"task": {"backend": "local"}}, fh)
 
         monkeypatch.setenv("TASKBACKEND", "memory")
 
         mock_dh = MagicMock()
         mock_dh.git_project_root.return_value = tmp_path
-        monkeypatch.setattr(task_config_module, "_dh_paths", mock_dh)
-
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        monkeypatch.setattr(Path, "home", lambda: fake_home)
+        mock_dh._dh_user_root.return_value = tmp_path / "home" / ".dh"
+        mock_dh.project_dh_dir.return_value = dh_dir
+        (tmp_path / "home" / ".dh").mkdir(parents=True)
+        monkeypatch.setattr(_dh_config_mod, "_dh_paths", mock_dh)
 
         # Act
         backend = create_task_backend()
 
-        # Assert — TASKBACKEND env var overrides taskbackend.toml
+        # Assert — TASKBACKEND env var overrides config.yaml
         assert isinstance(backend, InMemoryTaskProvider)
 
     def test_mixed_plans_different_backends(self, monkeypatch: pytest.MonkeyPatch) -> None:

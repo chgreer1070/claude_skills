@@ -19,7 +19,7 @@ import uuid
 import backlog_core.models as _bc_models
 import pytest
 from backlog_core.models import BacklogConfig
-from backlog_core.server import _BACKLOG_ADD_GATE_PHRASE, mcp
+from backlog_core.server import _SESSION_GATE_TOKEN, mcp
 from fastmcp.client import Client
 
 logger = logging.getLogger(__name__)
@@ -167,7 +167,7 @@ class TestLiveLifecycle:
                 "description": "Live validation test item",
                 "source": "test",
                 "force": True,
-                "gate_token": _BACKLOG_ADD_GATE_PHRASE,
+                "gate_token": _SESSION_GATE_TOKEN,
             },
         )
 
@@ -289,7 +289,7 @@ class TestLiveLifecycle:
                 "description": "Item to be resolved",
                 "source": "test",
                 "force": True,
-                "gate_token": _BACKLOG_ADD_GATE_PHRASE,
+                "gate_token": _SESSION_GATE_TOKEN,
             },
         )
         assert isinstance(create_result["issue_num"], int)

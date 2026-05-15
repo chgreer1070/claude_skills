@@ -6,28 +6,19 @@ pattern established in task_config.py.
 
 Resolution order for backend selection:
     1. ``CONTEXTBACKEND`` environment variable
-    2. ``[backend] name`` in ``contextbackend.toml`` (project root or ``~/.dh/``)
+    2. ``[backend] name`` in ``.dh/config.yaml`` (via DHConfig)
     3. Default: ``"local"``
 """
 
 from __future__ import annotations
 
-import contextlib
 import importlib
 import os
-import tomllib
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import types
-
     from sam_schema.core.context_backend import ContextBackend
-
-_dh_paths: types.ModuleType | None = None
-with contextlib.suppress(ImportError):
-    import dh_paths as _dh_paths  # optional — only present inside the plugin
 
 __all__ = [
     "ContextConfig",
@@ -38,7 +29,6 @@ __all__ = [
 ]
 
 _VALID_BACKENDS: tuple[str, ...] = ("beads", "local", "github", "memory")
-_BACKEND_TOML_FILENAME = "contextbackend.toml"
 
 
 # ---------------------------------------------------------------------------
@@ -113,36 +103,19 @@ def reset_context_config() -> None:
 
 
 def _load_backend_toml_name() -> str | None:
-    """Read backend name from contextbackend.toml if present.
+    """Read backend name from .dh/config.yaml if present.
 
-    Searches the project root (via dh_paths) then ``~/.dh/``. Missing files
-    are silently ignored. A present file that lacks the ``backend.name`` key
-    is also ignored.
+    Delegates to DHConfig for YAML-based backend resolution. Returns None
+    when the resolved value matches the subsystem default ("local"), so
+    the caller's resolution chain can continue to the next step.
 
     Returns:
-        Backend name string from ``[backend] name = "..."`` if found,
-        otherwise ``None``.
+        Backend name string when explicitly configured, otherwise ``None``.
     """
-    search_paths: list[Path] = []
+    from dh_config import DHConfig  # noqa: PLC0415
 
-    if _dh_paths is not None:
-        with contextlib.suppress(FileNotFoundError, RuntimeError):
-            project_root = _dh_paths.git_project_root()
-            search_paths.append(project_root / _BACKEND_TOML_FILENAME)
-
-    search_paths.append(Path.home() / ".dh" / _BACKEND_TOML_FILENAME)
-
-    for candidate in search_paths:
-        if candidate.is_file():
-            try:
-                data = tomllib.loads(candidate.read_text(encoding="utf-8"))
-            except (OSError, tomllib.TOMLDecodeError):
-                continue
-            name = data.get("backend", {}).get("name")
-            if isinstance(name, str) and name:
-                return name
-
-    return None
+    result = DHConfig().get_backend(subsystem="context")
+    return result if result != "local" else None
 
 
 def create_context_backend(name: str | None = None) -> ContextBackend:

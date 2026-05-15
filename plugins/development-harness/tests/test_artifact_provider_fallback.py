@@ -14,6 +14,8 @@ import backlog_core.server as _server
 import pytest
 from backlog_core.artifact_provider import ArtifactBackend
 from backlog_core.artifact_provider_local import LocalFilesystemArtifactProvider
+from backlog_core.backends.bd_runner import BdRunner
+from backlog_core.backends.beads_artifact_provider import BeadsArtifactProvider
 from backlog_core.models import BacklogError, GitHubUnavailableError
 from fastmcp.client import Client
 
@@ -201,6 +203,26 @@ class TestFallbackChain:
         _server._get_artifact_provider()
 
         assert call_count == 1
+
+    def test_beads_provider_returned_without_local_warning(
+        self, isolated_state: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """BeadsArtifactProvider from create_artifact_provider sets no local-provider warning.
+
+        The warning is set only when the provider is a LocalFilesystemArtifactProvider.
+        BeadsArtifactProvider is a remote-capable provider; no fallback warning applies.
+        """
+        mock_runner = MagicMock(spec=BdRunner)
+        beads_provider = BeadsArtifactProvider(runner=mock_runner)
+        monkeypatch.setattr(_server._models, "get_default_repo", lambda: "owner/repo")
+        monkeypatch.setattr(_server._models, "get_repo_root", lambda: isolated_state)
+        monkeypatch.setattr(_server, "create_artifact_provider", lambda **kw: beads_provider)
+
+        provider = _server._get_artifact_provider()
+
+        assert provider is beads_provider
+        assert isinstance(provider, BeadsArtifactProvider)
+        assert _server._artifact_provider_warning is None
 
 
 # ---------------------------------------------------------------------------

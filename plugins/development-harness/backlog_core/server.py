@@ -11,6 +11,7 @@ import json as _json
 import logging as _logging
 import os as _os
 import re as _re
+import secrets
 import sqlite3
 import sys
 import time as _time
@@ -1136,9 +1137,9 @@ _args = _parse_args()
 if _args.project_dir is not None:
     _init_models(_args.project_dir)
 
-# Gate passphrase required by backlog_add to enforce skill-mediated item creation.
-# Callers must load /dh:create-backlog-item to obtain this value.
-_BACKLOG_ADD_GATE_PHRASE = "problems-not-solutions"
+# Per-session gate token required by backlog_add to enforce skill-mediated item creation.
+# Generated once at server startup; callers must call backlog_gate_token() to obtain it.
+_SESSION_GATE_TOKEN: str = secrets.token_hex(32)
 
 mcp = FastMCP(
     "backlog",
@@ -1149,6 +1150,27 @@ mcp = FastMCP(
     ),
     version="0.1.0",
 )
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Get Backlog Add Gate Token",
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=False,
+    )
+)
+async def backlog_gate_token() -> dict[str, str]:
+    """Return the current session's gate token required by backlog_add.
+
+    Call this tool first, then pass the returned gate_token value to backlog_add.
+    The token changes every time the server restarts.
+
+    Returns:
+        Dict with a single key ``gate_token`` whose value is the current session token.
+    """
+    return {"gate_token": _SESSION_GATE_TOKEN}
 
 
 @mcp.tool(
@@ -1168,7 +1190,7 @@ async def backlog_add(
     gate_token: Annotated[
         str | None,
         Field(
-            description="Required gate token. Must be 'problems-not-solutions'. Obtain by loading /dh:create-backlog-item skill."
+            description="Required gate token. Call backlog_gate_token() first to obtain the current session token, or load /dh:create-backlog-item which will fetch it for you."
         ),
     ] = None,
 ) -> dict:
@@ -1181,7 +1203,7 @@ async def backlog_add(
         Dict with file_path, title, priority, issue number (if created),
         and output messages/warnings. On error, dict contains an error key.
     """
-    if gate_token != _BACKLOG_ADD_GATE_PHRASE:
+    if gate_token != _SESSION_GATE_TOKEN:
         return {
             "error": "Direct backlog_add calls are not permitted. Load and follow /dh:create-backlog-item — it will provide the required gate_token."
         }
