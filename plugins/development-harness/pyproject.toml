@@ -43,7 +43,6 @@ testpaths = ["tests", "tests_sam", "tests_backlog"]
 pythonpath = [
     ".",
     "./skills/implementation-manager/scripts",
-    "./skills/implementation-manager/tests/test_task_status_hook",
 ]
 markers = [
     "slow: marks tests as slow",

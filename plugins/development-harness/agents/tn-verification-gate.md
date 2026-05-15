@@ -1,7 +1,7 @@
 ---
 name: tn-verification-gate
 description: Verification gate that runs after all implementation tasks complete. Re-runs acceptance-criteria-structured check commands, compares results against T0 baseline, computes CriterionStatus per criterion, and registers a TN-verification artifact via MCP with a verdict of PASS or FAIL. FAIL blocks /complete-implementation if any criterion regressed.
-tools: Read, Bash, Glob, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+tools: Read, Bash, Glob, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register
 model: haiku
 skills:
   - dh:subagent-contract
@@ -19,7 +19,7 @@ You are the TN verification gate agent. You run after all implementation tasks a
 
 **Capture stdout and stderr in full.** No truncation.
 
-**`issue_number` is required.** It is needed for both reading the T0 baseline via `artifact_read` and registering the TN artifact via `artifact_register`. If not provided in the delegation prompt, return STATUS: BLOCKED immediately.
+**`item_id` is required.** It is needed for both reading the T0 baseline via `artifact_read` and registering the TN artifact via `artifact_register`. Accepts either a GitHub issue number (integer) or a beads nanoid string (e.g., `bd-a3f8`). If not provided in the delegation prompt, return STATUS: BLOCKED immediately.
 
 **Register via MCP, not filesystem.** Assemble TN YAML in memory and pass it as `content=` to `artifact_register`. Do not write to `~/.dh/` paths.
 
@@ -31,21 +31,21 @@ You are the TN verification gate agent. You run after all implementation tasks a
 
 You need two inputs:
 
-1. **T0 baseline**: Retrieved via `artifact_read(issue_number, "T0-baseline")` — stored by the T0 agent as a GitHub issue comment artifact
-2. **Plan file**: retrieved via `artifact_read(issue_number, "task-plan")` — to re-read `acceptance_criteria_structured`
+1. **T0 baseline**: Retrieved via `artifact_read(item_id, "T0-baseline")` — stored by the T0 agent as a GitHub issue comment artifact
+2. **Plan file**: retrieved via `artifact_read(item_id, "task-plan")` — to re-read `acceptance_criteria_structured`
 
-The `issue_number` and plan path are provided in your task delegation prompt. The slug is inferred from the T0 baseline's `feature` field after retrieval.
+The `item_id` and plan path are provided in your task delegation prompt. The slug is inferred from the T0 baseline's `feature` field after retrieval.
 
 Retrieve T0 baseline and read plan file:
 
 ```bash
-mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, artifact_type="T0-baseline")
-mcp__plugin_dh_backlog__artifact_read(issue_number={issue_number}, artifact_type="task-plan")
+mcp__plugin_dh_backlog__artifact_read(issue_number={item_id}, artifact_type="T0-baseline")
+mcp__plugin_dh_backlog__artifact_read(issue_number={item_id}, artifact_type="task-plan")
 ```
 
 Parse the content returned by `artifact_read` as YAML to extract the T0 results.
 
-If `artifact_read` returns an error or empty result for type `T0-baseline`, return STATUS: BLOCKED with: "T0 baseline not found — `artifact_read(issue_number={issue_number}, artifact_type='T0-baseline')` returned no content. T0 agent must run first."
+If `artifact_read` returns an error or empty result for type `T0-baseline`, return STATUS: BLOCKED with: "T0 baseline not found — `artifact_read(issue_number={item_id}, artifact_type='T0-baseline')` returned no content. T0 agent must run first."
 
 ## Step 2: Re-Run Each Check Command
 
@@ -87,7 +87,7 @@ Assemble the TN verification result as a YAML string in memory (do not write to 
 ```yaml
 feature: "{slug}"
 verified_at: "2026-03-15T14:00:00Z"
-t0_baseline_source: "artifact:T0-baseline:issue={issue_number}"
+t0_baseline_source: "artifact:T0-baseline:item_id={item_id}"
 verdict: "PASS"  # or "FAIL"
 criteria_count: 2
 regressions: 0
@@ -113,7 +113,7 @@ results:
 |-------|------|-------------|
 | `feature` | str | Feature slug |
 | `verified_at` | str (ISO 8601 UTC) | When TN agent ran |
-| `t0_baseline_source` | str | MCP artifact reference for the T0 baseline — `artifact:T0-baseline:issue={issue_number}` |
+| `t0_baseline_source` | str | MCP artifact reference for the T0 baseline — `artifact:T0-baseline:item_id={item_id}` |
 | `verdict` | str | `"PASS"` or `"FAIL"` |
 | `criteria_count` | int | Total criteria evaluated |
 | `regressions` | int | Count of `regressed` criteria |
@@ -138,7 +138,7 @@ Register the assembled YAML string directly via `artifact_register` with `conten
 
 ```bash
 mcp__plugin_dh_backlog__artifact_register(
-    issue_number={issue_number},
+    issue_number={item_id},
     type="TN-verification",
     artifact_id="TN-verification-{slug}",
     content={yaml_string},
@@ -147,7 +147,7 @@ mcp__plugin_dh_backlog__artifact_register(
 )
 ```
 
-The `issue_number` is provided in your task delegation prompt (the GitHub issue number for the feature) and is required. If not provided, return STATUS: BLOCKED with: "`issue_number` is required for `artifact_register` — provide the GitHub issue number in the delegation prompt."
+The `item_id` is provided in your task delegation prompt and is required. Accepts either a GitHub issue number (integer) or a beads nanoid string (e.g., `bd-a3f8`). If not provided, return STATUS: BLOCKED with: "`item_id` is required for `artifact_register` — provide the GitHub issue number or beads item ID in the delegation prompt."
 
 ## Step 6: Report Regressions (If verdict FAIL)
 
@@ -170,7 +170,7 @@ This report goes in the STATUS: DONE output below, enabling `/complete-implement
 STATUS: DONE
 
 ARTIFACTS:
-  - type=TN-verification, issue={issue_number}, artifact_id=TN-verification-{slug}
+  - type=TN-verification, item_id={item_id}, artifact_id=TN-verification-{slug}
 
 SUMMARY:
   - Verdict: PASS
@@ -190,7 +190,7 @@ NOTES:
 STATUS: DONE
 
 ARTIFACTS:
-  - type=TN-verification, issue={issue_number}, artifact_id=TN-verification-{slug}
+  - type=TN-verification, item_id={item_id}, artifact_id=TN-verification-{slug}
 
 SUMMARY:
   - Verdict: FAIL
@@ -210,8 +210,8 @@ NEXT_STEP: /complete-implementation will read TN-verification artifact via artif
 ```
 
 Return STATUS: BLOCKED if:
-- `issue_number` is not provided in the delegation prompt
-- `artifact_read(issue_number, "T0-baseline")` returns an error or empty result
+- `item_id` is not provided in the delegation prompt
+- `artifact_read(item_id, "T0-baseline")` returns an error or empty result
 - Plan file cannot be read
 - `artifact_register` call fails
 

@@ -31,6 +31,7 @@ from .entry_blocks import ENTRY_RE, _render_entry_raw, generate_diff, parse_entr
 from .models import (
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
     MIN_FRONTMATTER_PARTS,
+    SECTION_HEADING_ALIAS,
     VALID_CLOSE_REASONS,
     ArtifactEntry,
     ArtifactType,
@@ -78,6 +79,7 @@ from .parsing import (
     today,
     view_result_from_local_item,
 )
+from .rendering import SECTION_HEADING
 from .yaml_io import load_item, save_item
 
 if TYPE_CHECKING:
@@ -867,6 +869,34 @@ def _apply_groomed_entries(
         section.entries.append(Entry(id=now_iso(), content=groomed_content))
 
 
+def _normalize_section_key(name: str) -> str:
+    """Return the canonical snake_case storage key for a section name.
+
+    Resolves display names (e.g. ``"RT-ICA"``) and aliases (e.g. ``"rt-ica"``) to
+    the snake_case key used in ``SECTION_HEADING`` (e.g. ``"rt_ica"``).  Unknown
+    and custom section names are returned unchanged so they pass through as-is.
+
+    Lookup order:
+    1. ``SECTION_HEADING_ALIAS`` keyed by ``name.lower()`` — catches hyphened aliases.
+    2. Reverse scan of ``SECTION_HEADING`` for a matching display value — catches
+       display names stored verbatim (e.g. ``"RT-ICA"`` → ``"rt_ica"``).
+    3. Return *name* unchanged when no match is found.
+
+    Args:
+        name: Section name as provided by the caller (e.g. ``"RT-ICA"`` or ``"rt_ica"``).
+
+    Returns:
+        Canonical snake_case key (e.g. ``"rt_ica"``), or *name* unchanged for unknown sections.
+    """
+    alias_key = SECTION_HEADING_ALIAS.get(name.lower())
+    if alias_key is not None:
+        return alias_key
+    for snake_key, display in SECTION_HEADING.items():
+        if display == name:
+            return snake_key
+    return name
+
+
 def _write_groomed_to_yaml_item(
     filepath: Path,
     groomed_content: str,
@@ -908,7 +938,8 @@ def _write_groomed_to_yaml_item(
         groomed_data.subsections["content"] = groomed_content.strip()
         item.sections["groomed"] = groomed_data
     else:
-        existing_section = item.sections.get(section_name)
+        section_key = _normalize_section_key(section_name)
+        existing_section = item.sections.get(section_key)
         section = existing_section if isinstance(existing_section, Section) else Section()
         _apply_groomed_entries(
             section,
@@ -919,7 +950,7 @@ def _write_groomed_to_yaml_item(
             entry_id=entry_id,
             added_date=added_date,
         )
-        item.sections[section_name] = section
+        item.sections[section_key] = section
 
     save_item(item)
 
@@ -1148,13 +1179,14 @@ def _handle_batch_groomed(
     today_str = today()
     batch_item.metadata.groomed = today_str
     for section_name, content in sections.items():
-        existing_section = batch_item.sections.get(section_name)
+        section_key = _normalize_section_key(section_name)
+        existing_section = batch_item.sections.get(section_key)
         section = existing_section if isinstance(existing_section, Section) else Section()
         _apply_groomed_entries(
             section, content, append=False, replace_section=False, reason=None, entry_id=None, added_date=added_date
         )
-        batch_item.sections[section_name] = section
-        written.append(section_name)
+        batch_item.sections[section_key] = section
+        written.append(section_key)
     save_item(batch_item)
     out.info(f"Updated {filepath.name} with {len(written)} groomed section(s)")
 

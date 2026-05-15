@@ -113,6 +113,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--ink); marg
 .task-desc { font-size: 0.8125rem; color: var(--ink-mid); line-height: 1.5; }
 .size-chip { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 20px; border: 1px solid var(--hairline); color: var(--ink-muted); margin-left: 4px; }
 .criterion { opacity: 0.55; }
+.row-flag { background: oklch(96% 0.025 60); }
+.row-flag:hover td { background: oklch(93% 0.03 60); }
 .group-details { margin-bottom: 4px; }
 .group-details > summary { display: flex; align-items: center; gap: 10px; padding: 14px 0; cursor: pointer; user-select: none; list-style: none; font-weight: 600; font-size: 0.9375rem; border-bottom: 1px solid var(--hairline); }
 .group-details > summary::-webkit-details-marker { display: none; }
@@ -190,6 +192,7 @@ footer { border-top: 1px solid var(--hairline); padding: 28px 0; font-size: 0.75
     <li><a href="#gaps"><span class="toc-num">07</span>Gaps Requiring Bridges</a></li>
     <li><a href="#checklist"><span class="toc-num">08</span>Implementation Checklist</a></li>
     <li><a href="#cli-wrapper"><span class="toc-num">09</span>CLI Wrapper Specification</a></li>
+    <li><a href="#layer-audit"><span class="toc-num">10</span>Plugin Layer Integration Audit</a></li>
   </ul>
 </nav>
 <div class="layer-legend">
@@ -232,21 +235,21 @@ footer { border-top: 1px solid var(--hairline); padding: 28px 0; font-size: 0.75
       </tr>
       <tr>
         <td><span class="layer-chip lc-agents"><span class="material-symbols-outlined">smart_toy</span>Agents</span></td>
-        <td><span class="coverage-status cov-partial"><span class="material-symbols-outlined">adjust</span>Partial</span></td>
-        <td>SubagentStop hook behavior noted as unchanged (Bridge 3). <code>task-worker</code> skill routing via <code>metadata.agent</code> confirmed direct (SAM mapping). Phase 6 plans a CLAUDE.md update.</td>
-        <td>No audit of the 23 agent files in <code>agents/</code>. Which agents embed <code>#N</code> issue references, GitHub milestone numbers, or GitHub-specific API assumptions in their prompts? <code>impact-analyst</code>, <code>doc-drift-auditor</code>, <code>swarm-task-planner</code>, and others likely reference GitHub directly.</td>
+        <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>Full</span></td>
+        <td>All 23 agents audited (Section 10). 1 NO_CHANGE, 18 INSTRUCTION_UPDATE, 4 BEHAVIOUR_CHANGE. High-priority: <code>alignment-analyst</code>, <code>impact-analyst</code>, <code>plan-validator</code>, <code>swarm-task-planner</code>. Systemic: 18 agents carry over-broad <code>tools:</code> frontmatter listing beads-absent tools.</td>
+        <td>—</td>
       </tr>
       <tr>
         <td><span class="layer-chip lc-hooks"><span class="material-symbols-outlined">webhook</span>Hooks</span></td>
-        <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">do_not_disturb_on</span>Minimal</span></td>
-        <td>SubagentStop hook noted once: reads <code>active-task-{session_id}.json</code>, calls SAM MCP — unchanged if JSON file format is preserved (Bridge 3).</td>
-        <td><code>hooks.json</code> not analyzed. <code>session-start-session-id.cjs</code>, <code>block-context-direct-writes.cjs</code>, <code>stop-kage-bunshin-idle-check.cjs</code>, and others not mentioned. Does any hook inspect issue number format? Does session init inject GitHub-specific context?</td>
+        <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>Full</span></td>
+        <td>All 8 hooks audited (Section 10). 7 Node.js hooks are fully backend-agnostic (tmux session management only). <code>task_status_hook.py</code> reads SAM context and calls SAM MCP — architecturally agnostic, but casts <code>parent_issue_number</code> to <code>int</code> which fails with <code>bd-NNN</code> IDs. One-line type fix required.</td>
+        <td>—</td>
       </tr>
       <tr>
         <td><span class="layer-chip lc-skills"><span class="material-symbols-outlined">psychology</span>Skills</span></td>
-        <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">do_not_disturb_on</span>None</span></td>
-        <td><code>complete-implementation</code> noted in Bridge 5 (reads TN result via <code>bd recall</code>). <code>start-task</code> mentioned in Phase 3 checklist.</td>
-        <td>No skills audit. The 40+ skills in <code>skills/</code> that reference backlog operations — <code>work-backlog-item</code>, <code>create-backlog-item</code>, <code>groom-backlog-item</code>, <code>add-new-feature</code>, <code>dispatch</code>, <code>work-milestone</code>, <code>implement-feature</code> — almost certainly contain hardcoded <code>#N</code> references, GitHub issue URLs, or milestone number patterns that will break under beads.</td>
+        <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>Full</span></td>
+        <td>All 43 skill directories audited (Section 10). 19 NO_CHANGE, 15 INSTRUCTION_UPDATE, 9 BEHAVIOUR_CHANGE. High-priority: <code>work-backlog-item</code> (GitHub mode branching), <code>work-milestone</code> (GitHub branch API), <code>add-new-feature</code> (<code>#N</code> pattern match), <code>complete-implementation</code> (GitHub URL resolver), <code>start-task</code> (<code>gh_client</code> direct call).</td>
+        <td>—</td>
       </tr>
     </tbody>
   </table>
@@ -941,6 +944,259 @@ def backlog_add(
 
 if __name__ == "__main__":
     app()</code></pre>
+</section>
+
+<section id="layer-audit">
+<span class="eyebrow">10 · Plugin Layer Integration Audit</span>
+<h2>What changes in every plugin layer</h2>
+<p style="color:var(--ink-mid);font-size:0.9375rem;margin-bottom:32px;">Audit of all 23 agent files, 43 skill directories, and 8 hooks against beads backend compatibility. Source: <code>06-agents-beads-integration.md</code> · <code>07-skills-hooks-beads-integration.md</code>. Classifications: <strong>NO_CHANGE</strong> — fully agnostic · <strong>INSTRUCTION_UPDATE</strong> — wording/tool-name references only · <strong>BEHAVIOUR_CHANGE</strong> — logic breaks with beads IDs or GitHub-only APIs.</p>
+
+<!-- ── AGENTS ── -->
+<h3 style="margin-top:40px;margin-bottom:16px;display:flex;align-items:center;gap:10px;"><span class="layer-chip lc-agents"><span class="material-symbols-outlined">smart_toy</span>Agents</span> 23 files audited · 4 require behavioral change</h3>
+<div class="table-wrap">
+<table>
+<thead><tr>
+  <th style="width:200px">Agent</th>
+  <th style="width:130px">Classification</th>
+  <th>Specific breaking change or required update</th>
+  <th style="width:80px">Impact</th>
+</tr></thead>
+<tbody>
+<tr>
+  <td><code>alignment-analyst</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Runs <code>gh pr list</code> directly and cites <code>PR #N</code> numbers as mission-alignment evidence. The <code>reverses-merged-direction</code> concern category depends on GitHub PR history — no beads equivalent. Must be conditioned on backend type or PR evidence skipped.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>impact-analyst</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Widest tool surface (43 tools declared). Uses <code>backlog_list_merged_prs</code>, <code>backlog_list_milestones</code>, <code>backlog_list_projects</code>, <code>backlog_create_project</code> — all missing from beads backend. Core procedure (<code>backlog_view</code>, <code>backlog_groom</code>) works; expanded surface creates multiple failure points.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>plan-validator</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Dimension 10 (Impact Radius Coverage) calls <code>backlog_view(selector="{issue_number}")</code> with explicit "GitHub issue number" language. Text must be generalized to "item ID"; selector must accept <code>bd-NNN</code> format.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>swarm-task-planner</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Generates task YAML with <code>issue:</code> field containing GitHub issue integers. Downstream agents pass this to <code>artifact_register</code>. The <code>issue_number</code> terminology propagates through the entire artifact pipeline — all generated YAML must use <code>bd-NNN</code> format when backend=beads.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>task-worker</code></td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>NO_CHANGE</span></td>
+  <td>Purely SAM-focused. No backlog or GitHub logic.</td>
+  <td><span style="color:var(--ink-muted);font-family:var(--font-mono);font-size:12px;">—</span></td>
+</tr>
+<tr>
+  <td style="color:var(--ink-mid)">18 remaining agents</td>
+  <td><span class="coverage-status cov-partial"><span class="material-symbols-outlined">adjust</span>INSTRUCTION</span></td>
+  <td>Reference MCP tool names in frontmatter or use <code>issue_number</code> terminology, but core behavior is backend-agnostic. Require a wording pass and frontmatter <code>tools:</code> list cleanup removing <code>backlog_normalize</code>, <code>backlog_pull</code>, <code>backlog_sync</code>, <code>backlog_list_merged_prs</code> (absent from beads backend).</td>
+  <td><span class="priority-chip S">Low</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p style="color:var(--ink-mid);font-size:0.875rem;margin-top:8px;"><strong>Systemic pattern:</strong> 18 agents carry over-broad frontmatter <code>tools:</code> lists declaring <code>backlog_comment_issue</code>, <code>backlog_normalize</code>, <code>backlog_pull</code>, <code>backlog_sync</code> — declared but not called in most agent bodies, and absent from the beads backend. Low individual risk; creates tool-discovery confusion at scale. Clean up in Phase 6.</p>
+
+<!-- ── SKILLS ── -->
+<h3 style="margin-top:48px;margin-bottom:16px;display:flex;align-items:center;gap:10px;"><span class="layer-chip lc-skills"><span class="material-symbols-outlined">psychology</span>Skills</span> 43 directories audited · 9 require behavioral change</h3>
+<div class="table-wrap">
+<table>
+<thead><tr>
+  <th style="width:200px">Skill</th>
+  <th style="width:130px">Classification</th>
+  <th>Specific breaking change</th>
+  <th style="width:80px">Impact</th>
+</tr></thead>
+<tbody>
+<tr>
+  <td><code>work-backlog-item</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Deepest GitHub entanglement: <code>setup-github</code> mode, GitHub URLs as item references, GitHub label-based status model. Requires a <code>setup-beads</code> mode branch and beads-aware item resolution.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>work-milestone</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Uses <code>github_branches create/merge/delete</code> MCP tool (GitHub-only). Uses GitHub milestone integers as organizing key — must use beads milestone-type issues instead.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>add-new-feature</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Phase entry branches on <code>"GitHub Issue: #N"</code> text pattern detection. Pattern match fails with <code>bd-NNN</code> format — feature never enters correct phase.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>complete-implementation</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Input resolver handles GitHub URLs; error messages mention GitHub token. Must accept <code>bd-NNN</code> IDs and beads-specific error conditions.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>start-task</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Documents <code>backlog_core.gh_client.update_task_status(repo, github_issue, ...)</code> call — a GitHub-only internal API. When backend=beads this path must route to <code>bd update --status</code>.</td>
+  <td><span class="priority-chip L">High</span></td>
+</tr>
+<tr>
+  <td><code>implement-feature</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>References <code>backlog_core.gh_client</code> (GitHub-only internal API) via <code>start-task</code> note. Inherits the same breaking path.</td>
+  <td><span class="priority-chip M">Med</span></td>
+</tr>
+<tr>
+  <td><code>groom-milestone</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Frontmatter describes GitHub milestones; <code>backlog_list_issues(milestone=N)</code> maps to GitHub milestone integers. Must use beads parent-issue pattern instead.</td>
+  <td><span class="priority-chip M">Med</span></td>
+</tr>
+<tr>
+  <td><code>gate-push</code></td>
+  <td><span class="coverage-status cov-none"><span class="material-symbols-outlined">change_circle</span>BEHAVIOUR</span></td>
+  <td>Shell script parses GitHub URL from git remote to extract repo slug. Unrelated to beads backend directly, but assumes GitHub remote — may fail in beads-only environments without a GitHub remote.</td>
+  <td><span class="priority-chip M">Med</span></td>
+</tr>
+<tr>
+  <td><code>dispatch</code></td>
+  <td><span class="coverage-status cov-partial"><span class="material-symbols-outlined">adjust</span>INSTRUCTION</span></td>
+  <td>Borderline: no hard GitHub logic, but references milestone numbers and issue URLs in dispatch plan examples. Wording update sufficient.</td>
+  <td><span class="priority-chip S">Low</span></td>
+</tr>
+<tr>
+  <td style="color:var(--ink-mid)">19 NO_CHANGE skills</td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>NO_CHANGE</span></td>
+  <td><code>code-review-*</code> (8 skills), <code>test-failure-mindset</code>, <code>kage-bunshin</code>, <code>planner-rt-ica</code>, <code>validation-protocol</code>, <code>dh-meta-docs</code>, <code>generate-task</code>, <code>subagent-contract</code>, <code>clear-cove-task-design</code>, <code>comprehensive-test-review</code>, <code>analyze-test-failures</code>, <code>create-backlog-item</code>, <code>setup-skill-discovery</code>.</td>
+  <td><span style="color:var(--ink-muted);font-family:var(--font-mono);font-size:12px;">—</span></td>
+</tr>
+<tr>
+  <td style="color:var(--ink-mid)">15 INSTRUCTION_UPDATE skills</td>
+  <td><span class="coverage-status cov-partial"><span class="material-symbols-outlined">adjust</span>INSTRUCTION</span></td>
+  <td>Include <code>backlog</code>, <code>rt-ica</code>, <code>planning</code>, <code>final-verification</code>, <code>implementation-manager</code>, <code>forensic-review</code>, <code>task-decomposition</code>, <code>interop</code>, <code>context-integration</code>, <code>discovery</code>, <code>execution</code>, <code>development-harness</code>, <code>groom-backlog-item</code>, <code>create-artifact</code>, and others. Reference <code>#N</code> or MCP tool names in examples only.</td>
+  <td><span class="priority-chip S">Low</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<!-- ── HOOKS ── -->
+<h3 style="margin-top:48px;margin-bottom:16px;display:flex;align-items:center;gap:10px;"><span class="layer-chip lc-hooks"><span class="material-symbols-outlined">webhook</span>Hooks</span> 8 hooks audited · 1 type fix required</h3>
+<div class="table-wrap">
+<table>
+<thead><tr>
+  <th style="width:260px">Hook file</th>
+  <th style="width:140px">Trigger</th>
+  <th style="width:110px">SAM context</th>
+  <th>Change required</th>
+</tr></thead>
+<tbody>
+<tr>
+  <td><code>session-start-session-id.cjs</code></td>
+  <td>SessionStart</td>
+  <td>No</td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>None</span> — injects session ID only</td>
+</tr>
+<tr>
+  <td><code>block-context-direct-writes.cjs</code></td>
+  <td>PreToolUse</td>
+  <td>No</td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>None</span> — file path guard only</td>
+</tr>
+<tr>
+  <td><code>stop-kage-bunshin-idle-check.cjs</code></td>
+  <td>Stop</td>
+  <td>No</td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>None</span> — tmux session management</td>
+</tr>
+<tr>
+  <td><code>stop-kage-bunshin-child-notify.cjs</code></td>
+  <td>Stop</td>
+  <td>No</td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>None</span> — tmux IPC only</td>
+</tr>
+<tr>
+  <td><code>session-end-kage-bunshin-child-notify.cjs</code></td>
+  <td>SessionEnd</td>
+  <td>No</td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>None</span> — tmux IPC only</td>
+</tr>
+<tr>
+  <td><code>session-end-kage-bunshin-cleanup.cjs</code></td>
+  <td>SessionEnd</td>
+  <td>No</td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>None</span> — tmux cleanup only</td>
+</tr>
+<tr>
+  <td><code>task-completed-kage-bunshin-reminder.cjs</code></td>
+  <td>PostToolUse</td>
+  <td>No</td>
+  <td><span class="coverage-status cov-full"><span class="material-symbols-outlined">check_circle</span>None</span> — tmux notification only</td>
+</tr>
+<tr class="row-flag">
+  <td><code>task_status_hook.py</code></td>
+  <td>SubagentStop</td>
+  <td><strong>Yes</strong> — reads <code>active-task-{session_id}.json</code>, calls SAM MCP</td>
+  <td><span class="coverage-status cov-partial"><span class="material-symbols-outlined">adjust</span>Type fix required</span> — casts <code>parent_issue_number</code> to <code>int</code>; fails when value is <code>bd-NNN</code> (non-integer). Fix: cast to <code>str</code>, or use a union type that accepts both integer and nanoid formats.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<!-- ── PHASE 6 IMPACT ── -->
+<h3 style="margin-top:48px;margin-bottom:12px;">Impact on Phase 6 checklist</h3>
+<div class="table-wrap">
+<table>
+<thead><tr>
+  <th>Work item</th>
+  <th style="width:100px">Layer</th>
+  <th style="width:100px">Count</th>
+  <th style="width:80px">Size</th>
+</tr></thead>
+<tbody>
+<tr>
+  <td>Behavioral rewrites: <code>alignment-analyst</code>, <code>impact-analyst</code>, <code>plan-validator</code>, <code>swarm-task-planner</code></td>
+  <td><span class="layer-chip lc-agents"><span class="material-symbols-outlined">smart_toy</span>Agents</span></td>
+  <td>4 agents</td>
+  <td><span class="size-chip">L</span></td>
+</tr>
+<tr>
+  <td>Behavioral rewrites: <code>work-backlog-item</code>, <code>work-milestone</code>, <code>add-new-feature</code>, <code>complete-implementation</code>, <code>start-task</code></td>
+  <td><span class="layer-chip lc-skills"><span class="material-symbols-outlined">psychology</span>Skills</span></td>
+  <td>5 skills</td>
+  <td><span class="size-chip">L</span></td>
+</tr>
+<tr>
+  <td>Behavioral rewrites: <code>implement-feature</code>, <code>groom-milestone</code>, <code>gate-push</code></td>
+  <td><span class="layer-chip lc-skills"><span class="material-symbols-outlined">psychology</span>Skills</span></td>
+  <td>3 skills</td>
+  <td><span class="size-chip">M</span></td>
+</tr>
+<tr>
+  <td>Frontmatter <code>tools:</code> list cleanup (remove beads-absent tools)</td>
+  <td><span class="layer-chip lc-agents"><span class="material-symbols-outlined">smart_toy</span>Agents</span></td>
+  <td>18 agents</td>
+  <td><span class="size-chip">S</span></td>
+</tr>
+<tr>
+  <td>Wording / tool-name reference updates</td>
+  <td><span class="layer-chip lc-skills"><span class="material-symbols-outlined">psychology</span>Skills</span></td>
+  <td>15 skills</td>
+  <td><span class="size-chip">S</span></td>
+</tr>
+<tr>
+  <td>Fix <code>parent_issue_number</code> int cast in <code>task_status_hook.py</code></td>
+  <td><span class="layer-chip lc-hooks"><span class="material-symbols-outlined">webhook</span>Hooks</span></td>
+  <td>1 hook</td>
+  <td><span class="size-chip">S</span></td>
+</tr>
+</tbody>
+</table>
+</div>
 </section>
 
 <footer>

@@ -72,7 +72,6 @@ extra-paths = [
     "./plugins/python3-development/scripts",
     "./plugins/development-harness/scripts",
     "./plugins/development-harness/skills/implementation-manager/scripts",
-    "./plugins/development-harness/skills/implementation-manager/tests/test_task_status_hook",
     "./plugins/fastmcp-creator/skills/fastmcp-creator/scripts",
     "./plugins/gitlab-skill/skills/gitlab-skill/scripts",
     "./plugins/holistic-linting/skills/holistic-linting/scripts",

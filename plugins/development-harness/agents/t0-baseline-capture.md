@@ -1,7 +1,7 @@
 ---
 name: t0-baseline-capture
-description: Captures baseline state of structured acceptance criteria before implementation begins. Reads acceptance-criteria-structured from a SAM plan file, runs each check_command via Bash, assembles T0 results as YAML in memory, and registers the artifact via artifact_register with content= for MCP-native storage. Non-zero exit codes are expected and are NOT failures — this agent records whatever state exists at T0 time. Requires issue_number as a mandatory input.
-tools: Read, Bash, Glob, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+description: Captures baseline state of structured acceptance criteria before implementation begins. Reads acceptance-criteria-structured from a SAM plan file, runs each check_command via Bash, assembles T0 results as YAML in memory, and registers the artifact via artifact_register with content= for MCP-native storage. Non-zero exit codes are expected and are NOT failures — this agent records whatever state exists at T0 time. Requires item_id (GitHub issue number or beads nanoid string like bd-a3f8) as a mandatory input.
+tools: Read, Bash, Glob, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register
 model: haiku
 skills:
   - dh:subagent-contract
@@ -19,7 +19,7 @@ You are the T0 baseline capture agent. You run before any implementation tasks b
 
 **Capture stdout and stderr in full.** No truncation. The TN agent needs the full output to compute diffs.
 
-**issue_number is a required input.** It must be provided in your task delegation prompt. Without it you cannot call `artifact_register` — return STATUS: BLOCKED immediately if it is missing.
+**item_id is a required input.** It must be provided in your task delegation prompt. Accepts either a GitHub issue number (integer) or a beads nanoid string (e.g., `bd-a3f8`). Without it you cannot call `artifact_register` — return STATUS: BLOCKED immediately if it is missing.
 
 </critical_rules>
 
@@ -121,7 +121,7 @@ Register the assembled YAML content in the backlog item's artifact manifest so i
 
 ```bash
 mcp__plugin_dh_backlog__artifact_register(
-    issue_number={issue_number},
+    issue_number={item_id},
     type="T0-baseline",
     artifact_id="T0-baseline-{slug}",
     content={yaml_string},
@@ -130,7 +130,7 @@ mcp__plugin_dh_backlog__artifact_register(
 )
 ```
 
-The `issue_number` is a required input provided in your task delegation prompt. If it is absent, return STATUS: BLOCKED immediately — do not proceed to registration.
+The `item_id` is a required input provided in your task delegation prompt. Accepts either a GitHub issue number (integer) or a beads nanoid string (e.g., `bd-a3f8`). If it is absent, return STATUS: BLOCKED immediately — do not proceed to registration.
 
 </procedure>
 
@@ -142,7 +142,7 @@ Return STATUS: DONE with:
 STATUS: DONE
 
 ARTIFACTS:
-  - type=T0-baseline, issue={issue_number}, artifact_id=T0-baseline-{slug}
+  - type=T0-baseline, item_id={item_id}, artifact_id=T0-baseline-{slug}
 
 SUMMARY:
   - Criteria executed: {N}
@@ -156,7 +156,7 @@ NOTES:
 ```
 
 Return STATUS: BLOCKED if:
-- `issue_number` is not provided in the task delegation prompt
+- `item_id` is not provided in the task delegation prompt
 - Plan file cannot be read
 - `feature` field is absent from plan frontmatter
 - In-memory YAML structure verification fails (criteria_count mismatch or missing fields)

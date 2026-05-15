@@ -37,6 +37,11 @@ SECTION_HEADING: dict[str, str] = {
     "issue_classification": "Issue Classification",
 }
 
+# Frozenset of the display values in SECTION_HEADING.
+# Used by section_display_title to recognise display-name keys stored verbatim
+# (e.g. "RT-ICA") that bypass the snake_case lookup but are already correct.
+_SECTION_HEADING_VALUES: frozenset[str] = frozenset(SECTION_HEADING.values())
+
 # Canonical render order for GroomedData subsections (heading text as stored)
 GROOMED_SUBSECTION_ORDER: list[str] = [
     "Priority",
@@ -119,4 +124,6 @@ def section_display_title(key: str, groomed_date: str = "") -> str:
         return f"Groomed \u2014 {groomed_date}" if groomed_date else "Groomed"
     if key.startswith("unknown__"):
         return unknown_key_to_heading(key)
+    if key in _SECTION_HEADING_VALUES:
+        return key
     return key.replace("_", " ").title()

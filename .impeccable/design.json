@@ -1,0 +1,353 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-14T00:00:00Z",
+  "title": "Design System: Beads Backend Integration Reference",
+  "extensions": {
+    "colorMeta": {
+      "press-white": {
+        "role": "neutral",
+        "displayName": "Press White",
+        "canonical": "oklch(99% 0.002 250)",
+        "tonalRamp": [
+          "oklch(15% 0.01 250)",
+          "oklch(25% 0.01 250)",
+          "oklch(38% 0.01 250)",
+          "oklch(50% 0.01 250)",
+          "oklch(62% 0.008 250)",
+          "oklch(75% 0.006 250)",
+          "oklch(87% 0.004 250)",
+          "oklch(95% 0.003 250)"
+        ]
+      },
+      "proof-copy": {
+        "role": "neutral",
+        "displayName": "Proof Copy",
+        "canonical": "oklch(97% 0.005 250)",
+        "tonalRamp": [
+          "oklch(15% 0.01 250)",
+          "oklch(25% 0.01 250)",
+          "oklch(38% 0.01 250)",
+          "oklch(50% 0.01 250)",
+          "oklch(62% 0.008 250)",
+          "oklch(75% 0.006 250)",
+          "oklch(87% 0.004 250)",
+          "oklch(95% 0.003 250)"
+        ]
+      },
+      "galley-ink": {
+        "role": "neutral",
+        "displayName": "Galley Ink",
+        "canonical": "oklch(12% 0.01 250)",
+        "tonalRamp": [
+          "oklch(12% 0.01 250)",
+          "oklch(22% 0.01 250)",
+          "oklch(34% 0.01 250)",
+          "oklch(46% 0.01 250)",
+          "oklch(58% 0.008 250)",
+          "oklch(70% 0.006 250)",
+          "oklch(82% 0.004 250)",
+          "oklch(93% 0.003 250)"
+        ]
+      },
+      "caption-gray": {
+        "role": "neutral",
+        "displayName": "Caption Gray",
+        "canonical": "oklch(42% 0.01 250)",
+        "tonalRamp": [
+          "oklch(12% 0.01 250)",
+          "oklch(22% 0.01 250)",
+          "oklch(34% 0.01 250)",
+          "oklch(46% 0.01 250)",
+          "oklch(58% 0.008 250)",
+          "oklch(70% 0.006 250)",
+          "oklch(82% 0.004 250)",
+          "oklch(93% 0.003 250)"
+        ]
+      },
+      "decision-violet": {
+        "role": "secondary",
+        "displayName": "Decision Violet",
+        "canonical": "oklch(94% 0.035 300)",
+        "tonalRamp": [
+          "oklch(15% 0.015 300)",
+          "oklch(25% 0.02 300)",
+          "oklch(38% 0.025 300)",
+          "oklch(52% 0.03 300)",
+          "oklch(65% 0.035 300)",
+          "oklch(78% 0.035 300)",
+          "oklch(89% 0.03 300)",
+          "oklch(95% 0.018 300)"
+        ]
+      },
+      "bridge-lime": {
+        "role": "tertiary",
+        "displayName": "Bridge Lime",
+        "canonical": "oklch(93% 0.10 128)",
+        "tonalRamp": [
+          "oklch(18% 0.08 128)",
+          "oklch(28% 0.10 128)",
+          "oklch(40% 0.11 128)",
+          "oklch(52% 0.12 128)",
+          "oklch(65% 0.11 128)",
+          "oklch(76% 0.10 128)",
+          "oklch(86% 0.08 128)",
+          "oklch(94% 0.05 128)"
+        ]
+      },
+      "direct-green-bg": {
+        "role": "primary",
+        "displayName": "Direct Green",
+        "canonical": "oklch(89% 0.07 145)",
+        "tonalRamp": [
+          "oklch(15% 0.08 145)",
+          "oklch(25% 0.10 145)",
+          "oklch(35% 0.11 145)",
+          "oklch(45% 0.12 145)",
+          "oklch(58% 0.11 145)",
+          "oklch(70% 0.10 145)",
+          "oklch(82% 0.08 145)",
+          "oklch(92% 0.05 145)"
+        ]
+      },
+      "adapted-amber-bg": {
+        "role": "primary",
+        "displayName": "Adapted Amber",
+        "canonical": "oklch(91% 0.08 90)",
+        "tonalRamp": [
+          "oklch(18% 0.08 90)",
+          "oklch(28% 0.10 90)",
+          "oklch(40% 0.11 90)",
+          "oklch(52% 0.12 90)",
+          "oklch(65% 0.11 90)",
+          "oklch(76% 0.10 90)",
+          "oklch(86% 0.09 90)",
+          "oklch(93% 0.06 90)"
+        ]
+      },
+      "bridge-orange-bg": {
+        "role": "primary",
+        "displayName": "Bridge Orange",
+        "canonical": "oklch(88% 0.07 48)",
+        "tonalRamp": [
+          "oklch(18% 0.08 48)",
+          "oklch(28% 0.10 48)",
+          "oklch(40% 0.11 48)",
+          "oklch(52% 0.12 48)",
+          "oklch(65% 0.11 48)",
+          "oklch(76% 0.09 48)",
+          "oklch(85% 0.08 48)",
+          "oklch(92% 0.05 48)"
+        ]
+      },
+      "gap-red-bg": {
+        "role": "primary",
+        "displayName": "Gap Red",
+        "canonical": "oklch(88% 0.05 18)",
+        "tonalRamp": [
+          "oklch(18% 0.06 18)",
+          "oklch(28% 0.08 18)",
+          "oklch(40% 0.09 18)",
+          "oklch(52% 0.10 18)",
+          "oklch(64% 0.08 18)",
+          "oklch(76% 0.07 18)",
+          "oklch(85% 0.06 18)",
+          "oklch(92% 0.04 18)"
+        ]
+      },
+      "layer-agents": {
+        "role": "secondary",
+        "displayName": "Agents Violet",
+        "canonical": "oklch(96% 0.025 280)",
+        "tonalRamp": [
+          "oklch(15% 0.08 280)",
+          "oklch(25% 0.10 280)",
+          "oklch(38% 0.11 280)",
+          "oklch(52% 0.10 280)",
+          "oklch(65% 0.09 280)",
+          "oklch(78% 0.07 280)",
+          "oklch(88% 0.04 280)",
+          "oklch(95% 0.025 280)"
+        ]
+      },
+      "layer-mcp": {
+        "role": "secondary",
+        "displayName": "MCP Teal",
+        "canonical": "oklch(96% 0.025 200)",
+        "tonalRamp": [
+          "oklch(15% 0.08 200)",
+          "oklch(25% 0.10 200)",
+          "oklch(38% 0.11 200)",
+          "oklch(52% 0.10 200)",
+          "oklch(65% 0.09 200)",
+          "oklch(78% 0.07 200)",
+          "oklch(88% 0.04 200)",
+          "oklch(95% 0.025 200)"
+        ]
+      },
+      "layer-skills": {
+        "role": "secondary",
+        "displayName": "Skills Green",
+        "canonical": "oklch(96% 0.025 145)",
+        "tonalRamp": [
+          "oklch(15% 0.08 145)",
+          "oklch(25% 0.10 145)",
+          "oklch(38% 0.11 145)",
+          "oklch(52% 0.10 145)",
+          "oklch(65% 0.09 145)",
+          "oklch(78% 0.07 145)",
+          "oklch(88% 0.05 145)",
+          "oklch(95% 0.025 145)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Document title only — appears once. Compressed letterspacing closes Inter 800's optical gaps at large sizes."
+      },
+      "headline": { "displayName": "Headline", "purpose": "Section titles (h2). One per section." },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Subsection headings (h3). Within-section structure."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prose in summaries, gap cards, decision option text. Not used in tables."
+      },
+      "label": {
+        "displayName": "Label / Eyebrow",
+        "purpose": "All metadata: eyebrows, table headers, chip text, footer, header meta. The monospace gatekeeping rule — if it is metadata, it passes through JetBrains Mono."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "toc-hover",
+        "value": "color 0.15s ease",
+        "purpose": "TOC link color transition on hover. The only transition in the document."
+      }
+    ],
+    "breakpoints": [{ "name": "md", "value": "768px" }, { "name": "sm", "value": "640px" }]
+  },
+  "components": [
+    {
+      "name": "Layer Chip — Agents",
+      "kind": "chip",
+      "refersTo": "layer-chip-agents",
+      "description": "Identifies content touching the agents/ layer. Purple/violet hue, icon-leading, monospace text.",
+      "html": "<span class=\"ds-layer-chip ds-lc-agents\"><span class=\"ds-mat-icon\">smart_toy</span>Agents</span>",
+      "css": ".ds-layer-chip { display: inline-flex; align-items: center; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px 3px 5px; border-radius: 20px; border: 1px solid; white-space: nowrap; line-height: 1.4; } .ds-mat-icon { font-family: 'Material Symbols Outlined'; font-size: 13px; vertical-align: -2px; font-weight: normal; font-style: normal; } .ds-lc-agents { background: oklch(96% 0.025 280); border-color: oklch(78% 0.06 280); color: oklch(35% 0.10 280); }"
+    },
+    {
+      "name": "Layer Chip — Skills",
+      "kind": "chip",
+      "refersTo": "layer-chip-skills",
+      "description": "Identifies content touching the skills/ layer. Green hue.",
+      "html": "<span class=\"ds-layer-chip ds-lc-skills\"><span class=\"ds-mat-icon\">psychology</span>Skills</span>",
+      "css": ".ds-layer-chip { display: inline-flex; align-items: center; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px 3px 5px; border-radius: 20px; border: 1px solid; white-space: nowrap; line-height: 1.4; } .ds-mat-icon { font-family: 'Material Symbols Outlined'; font-size: 13px; vertical-align: -2px; font-weight: normal; font-style: normal; } .ds-lc-skills { background: oklch(96% 0.025 145); border-color: oklch(75% 0.07 145); color: oklch(30% 0.12 145); }"
+    },
+    {
+      "name": "Fidelity Cell — Direct",
+      "kind": "custom",
+      "refersTo": "cell-direct",
+      "description": "Table cell indicating a 1:1 beads mapping with no data loss. Green background fill, always font-weight 500.",
+      "html": "<td class=\"ds-cell-direct\">🟢 Direct</td>",
+      "css": "td.ds-cell-direct { background: oklch(89% 0.07 145); color: oklch(28% 0.12 145); font-weight: 500; padding: 10px 14px; border-bottom: 1px solid oklch(94% 0.003 250); vertical-align: top; }"
+    },
+    {
+      "name": "Fidelity Cell — Gap",
+      "kind": "custom",
+      "refersTo": "cell-gap",
+      "description": "Table cell indicating no beads equivalent exists. Red background fill.",
+      "html": "<td class=\"ds-cell-gap\">🔴 Missing</td>",
+      "css": "td.ds-cell-gap { background: oklch(88% 0.05 18); color: oklch(28% 0.10 12); font-weight: 500; padding: 10px 14px; border-bottom: 1px solid oklch(94% 0.003 250); vertical-align: top; }"
+    },
+    {
+      "name": "Priority Chip — High",
+      "kind": "chip",
+      "refersTo": "priority-chip-high",
+      "description": "Signals high-impact or large-scope work. Outline-only, soft violet. Used in decision criticality and audit impact tables.",
+      "html": "<span class=\"ds-priority-chip ds-priority-high\">High</span>",
+      "css": ".ds-priority-chip { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 20px; border: 1px solid; background: transparent; } .ds-priority-high { border-color: oklch(70% 0.04 300); color: oklch(38% 0.08 300); } .ds-priority-high:hover { background: oklch(97% 0.018 300); }"
+    },
+    {
+      "name": "Size Chip",
+      "kind": "chip",
+      "refersTo": "size-chip",
+      "description": "Inline complexity tag appended to checklist task titles. Muted, minimal. Values: S, M, L, XL.",
+      "html": "<span class=\"ds-size-chip\">M</span>",
+      "css": ".ds-size-chip { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 20px; border: 1px solid oklch(89% 0.005 250); color: oklch(56% 0.01 250); margin-left: 4px; background: transparent; }"
+    },
+    {
+      "name": "Info Callout",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Contextual architecture note at the top of an open phase accordion. No heading, no icon, no accent. A block of context text in a Proof Copy panel.",
+      "html": "<div class=\"ds-info-callout\"><strong>Architecture:</strong> BeadsTaskProvider composes over BeadsBackend (Phase 1) and BeadsArtifactProvider (Phase 2). Constructor: <code>BeadsTaskProvider(issue_backend, doc_backend)</code>.</div>",
+      "css": ".ds-info-callout { font-size: 0.8125rem; color: oklch(42% 0.01 250); background: oklch(97% 0.005 250); border: 1px solid oklch(89% 0.005 250); border-radius: 8px; padding: 12px 14px; line-height: 1.5; } .ds-info-callout code { font-family: 'JetBrains Mono', monospace; font-size: 0.82em; background: oklch(99% 0.002 250); border: 1px solid oklch(89% 0.005 250); border-radius: 4px; padding: 1px 5px; }"
+    },
+    {
+      "name": "Coverage Status — Full",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Inline status indicator used in tables. Icon + text, both in Direct Green. Signals complete coverage or no change required.",
+      "html": "<span class=\"ds-cov-status ds-cov-full\"><span class=\"ds-mat-icon\">check_circle</span>Full</span>",
+      "css": ".ds-cov-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.8125rem; font-weight: 500; } .ds-mat-icon { font-family: 'Material Symbols Outlined'; font-size: 15px; vertical-align: -2px; font-weight: normal; font-style: normal; } .ds-cov-full { color: oklch(28% 0.12 145); } .ds-cov-partial { color: oklch(30% 0.10 75); } .ds-cov-none { color: oklch(28% 0.10 12); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Proof Sheet",
+    "overview": "A proof sheet is the last document before the press run — every mark is deliberate, every color is coded, every column earns its place. This reference document is that artifact: the technical record a developer opens to resolve a single question and closes in under ten seconds.\n\nThe aesthetic is that of precision technical publishing — Inter at high weights for editorial authority, JetBrains Mono for all metadata and labels, OKLCH-calibrated tonal neutrals that read as paper under daylight. Color in this system is exclusively semantic.\n\nThis system explicitly rejects: the rendered GitHub Markdown look, and the Notion/Confluence wiki aesthetic.",
+    "keyCharacteristics": [
+      "Tonal neutrals as the base; chromatic color only for data",
+      "Monospace type carries all metadata, labels, and secondary structure",
+      "No shadows; elevation is a 2-point lightness step",
+      "Fidelity traffic light is the primary navigational signal",
+      "Tables are the primary layout unit; cards are used once (decision options)"
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Each color family carries exactly one semantic meaning throughout the document. Green means Direct/Full/No-Change. Orange means Bridge/Partial/Flag. Red means Gap/Missing. Violet means Decision. Lime means Bridge-work.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tonal Proof Rule",
+        "body": "Every surface in this document can be identified by lightness alone: 99% is the page, 97% is elevated, 89%–94% is a hairline or near-invisible separator.",
+        "section": "colors"
+      },
+      {
+        "name": "The Monospace Gatekeeping Rule",
+        "body": "If it is a label, a number in a data role, a command name, a status tag, or any piece of metadata, it passes through JetBrains Mono. Prose never appears in monospace.",
+        "section": "typography"
+      },
+      {
+        "name": "The Shadow Embargo",
+        "body": "No box-shadow appears in this document. If an element needs more presence, increase its border weight or use a colored border from the fidelity or layer taxonomy.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Chrome Rule",
+        "body": "No component uses border-left or border-right as an accent stripe. No glassmorphism. No gradient fills. If an element needs chromatic emphasis, use a full background tint from the established semantic palette.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Use fidelity cell colors exclusively to signal mapping fidelity — never borrow these for other purposes",
+      "Run all labels, table headers, eyebrows, chip text, command names, and metadata through JetBrains Mono",
+      "Keep Inter at weights 600–800 for headings; at smaller sizes (below 16px), Inter 400 or 500 only",
+      "Add new layer types using the existing chip pattern: assign a hue, derive background at 96% lightness",
+      "Use proof-copy (97%) as the background for any elevated container (code block, info panel, pre element)"
+    ],
+    "donts": [
+      "Don't render this like GitHub Flavored Markdown — no plain-list tables, no undifferentiated rows",
+      "Don't introduce the Notion or Confluence wiki aesthetic: no emoji-led bullet lists, no pastel callout card grids",
+      "Don't add box-shadow to any component — the Shadow Embargo is absolute",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe on any element",
+      "Don't use gradient text (background-clip: text) — emphasis via weight or size only",
+      "Don't add decorative sections: no hero metrics, no illustration panels, no ornamental color blocks",
+      "Don't borrow fidelity traffic-light hues outside of fidelity cells and coverage-status chips",
+      "Don't borrow layer taxonomy hues outside of layer chips and the layer legend"
+    ]
+  }
+}

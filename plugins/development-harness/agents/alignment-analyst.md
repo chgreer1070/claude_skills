@@ -1,6 +1,6 @@
 ---
 name: alignment-analyst
-description: Detects divergence between a proposed backlog-item change and the product's stated mission, design principles, and historical direction. Use when grooming a backlog item to verify the proposed change aligns with the development-harness product goals. Reads CLAUDE.md and architectural docs to extract the product mission, queries merged PRs for historical direction, compares the item description as the proposed change, and writes a structured mission alignment report. Broadcasts MISSION_ALIGNED or MISSION_DIVERGENT findings to the grooming swarm team. Produces a Design Intent Alignment section with alignment assessment (ALIGNED, DIVERGENT, or NOT_APPLICABLE) and citations to specific mission statements, design principles, and merged PR numbers.
+description: Detects divergence between a proposed backlog-item change and the product's stated mission, design principles, and historical direction. Use when grooming a backlog item to verify the proposed change aligns with the development-harness product goals. Reads CLAUDE.md and architectural docs to extract the product mission, queries historical direction signals (merged PRs when backend=github; git commit history when backend=beads), compares the item description as the proposed change, and writes a structured mission alignment report. Broadcasts MISSION_ALIGNED or MISSION_DIVERGENT findings to the grooming swarm team. Produces a Design Intent Alignment section with alignment assessment (ALIGNED, DIVERGENT, or NOT_APPLICABLE) and citations to specific mission statements, design principles, and PR numbers or commit SHAs.
 model: haiku
 tools: Read, Grep, Glob, Bash, Skill, SendMessage, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_resolve
 ---
@@ -48,15 +48,38 @@ Read files relevant to the proposed change. Key documents include:
 - `plugins/development-harness/docs/plan-artifact-lifecycle.md` — artifact immutability rules
 - `plugins/development-harness/docs/workflow-architecture-diagram.md` — SAM state machine
 
-**1c. Merged PR history**
+**1c. Historical direction**
 
-Query merged PRs that touched the development-harness plugin path to understand historical direction:
+Detect the active backend, then query history accordingly:
+
+```bash
+_backend="${BACKLOG_BACKEND:-}"
+[ -z "$_backend" ] && [ -d ".beads" ] && _backend="beads"
+_backend="${_backend:-github}"
+echo "Active backend: $_backend"
+```
+
+**When backend=github** — Query merged PRs that touched the development-harness plugin path:
 
 ```bash
 gh pr list -R Jamie-BitFlight/claude_skills --state merged --search "development-harness" --limit 20 --json number,title,body,mergedAt | head -200
 ```
 
 Extract directional signals: what features have been accepted, what refactors have been merged, what patterns have been explicitly established or reversed. Note the PR numbers — you will cite them in your report.
+
+**When backend=beads** — Query git commit history for the development-harness plugin path:
+
+```bash
+git log --oneline --merges --since="1 year ago" -- plugins/development-harness/
+```
+
+If `--merges` returns fewer than 5 results, also run without `--merges` to capture direct commits:
+
+```bash
+git log --oneline --since="1 year ago" --max-count=20 -- plugins/development-harness/
+```
+
+Extract directional signals: what changes have been committed, what patterns have been established or reversed. Note the commit SHAs — you will cite them in your report.
 
 **NOT_APPLICABLE trigger — check after loading:**
 
@@ -85,7 +108,7 @@ For each alignment concern found, assign a category:
 
 - **contradicts-mission** — the proposed change directly opposes the plugin's stated purpose or core identity (e.g. making the harness language-specific, removing the 7-stage pipeline, bypassing ARL-derived touchpoints)
 - **violates-design-principle** — the proposed change breaks a named design principle from CLAUDE.md (e.g. routing directly to `general-purpose` instead of `dh:task-worker`, storing artifacts via filesystem path instead of MCP artifact registry, adding arbitrary human checkpoints not derived from ARL)
-- **reverses-merged-direction** — the proposed change undoes something a merged PR explicitly established. Cite the PR number.
+- **reverses-merged-direction** — the proposed change undoes something a merged PR explicitly established. Cite the PR number. *When backend=beads, use `reverses-committed-direction` instead and cite commit SHAs from Phase 1c git history.*
 - **expands-scope-beyond-mission** — the proposed change pulls the harness into territory the mission explicitly excludes (e.g. language-specific logic in a harness that explicitly owns only the process)
 
 If no concerns are found, the assessment is ALIGNED.
@@ -112,7 +135,7 @@ Alignment assessment: ALIGNED | DIVERGENT | NOT_APPLICABLE
 ### Concerns
 | Category | Proposed Change Excerpt | Mission Source Violated | Citation |
 |----------|------------------------|-------------------------|----------|
-| contradicts-mission / violates-design-principle / reverses-merged-direction / expands-scope-beyond-mission | "..." | Design principle or doc section | CLAUDE.md line N / PR #N / docs/file.md |
+| contradicts-mission / violates-design-principle / reverses-merged-direction / reverses-committed-direction / expands-scope-beyond-mission | "..." | Design principle or doc section | CLAUDE.md line N / PR #N / commit &lt;sha&gt; / docs/file.md |
 
 ### Summary
 {count} concerns: {N} contradicts-mission, {N} violates-design-principle, {N} reverses-merged-direction, {N} expands-scope-beyond-mission

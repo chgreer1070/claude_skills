@@ -398,9 +398,11 @@ Processing sequence:
 2. Parse prompt for `/start-task <path> --task <id>` or `Skill(skill="start-task", args="<path> --task <id>")` pattern.
 3. If no match, fall back to `~/.dh/projects/{slug}/context/active-task-{session_id}.json`.
 4. If still no match, exit 0 silently (not a `/start-task` sub-agent).
-5. Call `sam_update_status(full_path, task_id, COMPLETE, timestamp_field="completed")`.
-6. Delete `~/.dh/projects/{slug}/context/active-task-{session_id}.json`.
-7. Call `sync_completion_to_github()` — best-effort, never changes exit code.
+5. Call `sam_task(action='state', plan, task_id, status='complete')` via fastmcp CLI subprocess; on MCP failure, exit 0 (best-effort).
+6. Call `sam_task(action='update', plan, task_id, set_fields={'completed': <ISO timestamp>})` via fastmcp CLI subprocess.
+7. Delete `~/.dh/projects/{slug}/context/active-task-{session_id}.json`.
+
+GitHub synchronization is the responsibility of the SAM `TaskBackend` selected at server configuration time (see [Backend Providers](./backend-providers.md)) — not the hook. The hook is backend-agnostic and only routes status writes through the SAM MCP server.
 
 Fields written: `status: complete`, `completed: <ISO timestamp>`
 

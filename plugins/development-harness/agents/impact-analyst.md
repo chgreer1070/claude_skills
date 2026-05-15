@@ -60,6 +60,39 @@ If any of those become wrong, stale, untested, or incompatible, they are in scop
 - Backlog items are informational, not runtime systems. Use them for context, not as impact targets, unless the change explicitly alters backlog workflow behavior or grooming instructions
 - Risk must be assessed per affected system, not just once for the whole item
 
+## Backend Compatibility
+
+The core procedure (`backlog_view`, `backlog_groom`) works transparently across all backends. The tools below are GitHub-specific and will fail with `BackendUnsupportedError` when the active backend is `beads`, `sqlite`, or `memory`.
+
+### Backend detection
+
+Run this before calling any GitHub-specific tool:
+
+```bash
+_backend="${BACKLOG_BACKEND:-}"
+[ -z "$_backend" ] && [ -d ".beads" ] && _backend="beads"
+_backend="${_backend:-github}"
+echo "Active backend: $_backend"
+```
+
+### GitHub-only tools
+
+Skip these calls when `_backend != "github"`. Use the listed equivalent or note the gap in output.
+
+| Tool | Purpose | beads/git equivalent |
+|------|---------|----------------------|
+| `backlog_list_merged_prs` | Detect merged direction for scope signals | `git log --oneline --merges --since="1 year ago"` |
+| `backlog_list_labels` | Enumerate workflow label taxonomy | Inspect `bd list` output fields |
+| `backlog_create_milestone` | Create milestones | `bd create --type=milestone` (if supported) |
+| `backlog_list_milestones` | List milestones | `bd list --type=milestone` (if supported) |
+| `backlog_create_project` | Create Projects V2 boards | Not applicable — no board concept in beads |
+| `backlog_list_projects` | List Projects V2 boards | Not applicable — no board concept in beads |
+| `backlog_comment_issue` | Add comments to issues | `bd update <id> --notes="..."` |
+| `backlog_list_comments` | List issue comments | `bd show <id>` (notes field) |
+| `backlog_read_comment` | Read a specific comment | `bd show <id>` (notes field) |
+
+When a GitHub-only step has no equivalent on the active backend, write `Not applicable — backend does not support this capability` in the relevant Impact Radius category rather than omitting it silently.
+
 ## Methodology
 
 ### System Roles
