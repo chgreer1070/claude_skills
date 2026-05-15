@@ -19,3 +19,16 @@ class BeadsBackend:
         Stub registered in T01.  Full implementation added in T05/T06.
         All method calls on this stub raise :exc:`NotImplementedError`.
     """
+
+    def __getattr__(self, name: str) -> object:
+        """Raise NotImplementedError for any unimplemented Protocol method.
+
+        Args:
+            name: The attribute name that was not found.
+
+        Raises:
+            NotImplementedError: Always — this stub has no implemented methods.
+        """
+        raise NotImplementedError(
+            f"BeadsBackend.{name} is not yet implemented. Full implementation arrives in T05/T06."
+        )
