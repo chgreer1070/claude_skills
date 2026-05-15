@@ -75,15 +75,18 @@ Then re-run:
 
 ## Success check
 
-After successful completion, verify PR visibility for the branch:
+After successful completion, verify PR visibility for the branch.
+
+**GitHub backend only** — this step requires a GitHub remote configured with the `gh` CLI.
+For beads and other non-GitHub backends, skip this step and verify via your backend's native
+tooling (e.g., `bd show <issue-id>` for merge-request state).
 
 ```bash
-REPO_SLUG="$(git remote get-url origin | sed -E 's#.*github.com[:/]([^/]+/[^/.]+)(\.git)?#\1#')"
-if [ -z "$REPO_SLUG" ]; then
-  echo "Unable to resolve GitHub repo slug from origin remote."
-  exit 1
+if gh repo view --json name >/dev/null 2>&1; then
+  gh pr list --head <branch-name>
+else
+  echo "Remote is not a GitHub repository — PR visibility check not applicable for this backend."
 fi
-gh pr list -R "$REPO_SLUG" --head <branch-name>
 ```
 
 Use the original input branch (`branch_name`), not `normalized_slug`, for `--head`.

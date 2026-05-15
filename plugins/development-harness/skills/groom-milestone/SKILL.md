@@ -106,3 +106,17 @@ The dispatch plan is persisted via the `dispatch_create_plan` MCP tool, which va
 - Grooming agent fails for an item: log the error, continue grooming remaining items, report all failures at the end
 - Impact Radius missing after grooming: re-trigger groom for that item once; if still missing, flag as BLOCKED in the report
 - Wave ordering or dependency reference errors found during plan build: fix before writing the plan file and calling `dispatch_wave_start`
+
+## Backend Requirements
+
+**GitHub backend only.** The GitHub milestone is the organizing primitive for this skill.
+All milestone lookup (`backlog_list_issues(milestone=N)`), wave registration, and dispatch plan
+storage assume GitHub Issues as the source of truth.
+
+**Beads backend**: GitHub milestones are not available in beads repos. Do not run this skill
+against a beads-backed project. The beads equivalent of wave membership is the `dh:wave:<N>`
+label, managed by the Beads Dispatch Adapter during `/work-milestone` execution. Use the
+dispatch adapter tooling directly rather than this skill.
+
+**Other non-GitHub backends**: Behavior is undefined. Report `PROCESS ERROR — groom-milestone
+requires GitHub backend` and stop if backlog MCP reports a non-GitHub backend.
