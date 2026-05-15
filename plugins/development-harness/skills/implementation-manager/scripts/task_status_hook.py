@@ -351,7 +351,7 @@ def delete_task_context(cwd: Path, session_id: str) -> None:
         context_file.unlink()
 
 
-def _call_sam_active_task_get(session_id: str, timeout: int = 10) -> tuple[Path | None, str | None, int | None]:
+def _call_sam_active_task_get(session_id: str, timeout: int = 10) -> tuple[Path | None, str | None, str | int | None]:
     """Retrieve active task context via fastmcp CLI call to sam_active_task(action='get').
 
     Primary retrieval path for SubagentStop. Returns parsed fields from the
@@ -414,11 +414,7 @@ def _call_sam_active_task_get(session_id: str, timeout: int = 10) -> tuple[Path 
         task_file_raw = active.get("task_file_path")
         task_id = active.get("task_id")
         if task_file_raw and task_id:
-            parent_issue: int | None = None
-            with contextlib.suppress(TypeError, ValueError):
-                raw_issue = active.get("parent_issue_number")
-                if raw_issue is not None:
-                    parent_issue = int(raw_issue)
+            parent_issue: str | int | None = active.get("parent_issue_number")
             return Path(task_file_raw), task_id, parent_issue
     except (json.JSONDecodeError, KeyError, IndexError):
         pass
@@ -781,7 +777,7 @@ def _extract_session_id_from_transcript(transcript_path: Path) -> str | None:
     return None
 
 
-def _read_context_file(context_file: Path) -> tuple[Path | None, str | None, int | None]:
+def _read_context_file(context_file: Path) -> tuple[Path | None, str | None, str | int | None]:
     """Read task_file_path, task_id, and parent_issue_number from a context file.
 
     Args:
@@ -801,10 +797,7 @@ def _read_context_file(context_file: Path) -> tuple[Path | None, str | None, int
     if not raw_path or not task_id:
         return None, None, None
 
-    parent_issue: int | None = None
-    if "parent_issue_number" in data:
-        with contextlib.suppress(TypeError, ValueError):
-            parent_issue = int(data["parent_issue_number"])
+    parent_issue: str | int | None = data.get("parent_issue_number")
 
     return Path(raw_path), task_id, parent_issue
 
@@ -857,7 +850,7 @@ def _resolve_context_file_from_transcript(hook_input: dict[str, Any]) -> Path | 
 
 def _resolve_active_task_context(
     hook_input: dict[str, Any],
-) -> tuple[str | None, Path | None, str | None, int | None, Path | None] | None:
+) -> tuple[str | None, Path | None, str | None, str | int | None, Path | None] | None:
     """Resolve the active task context for the agent that just stopped.
 
     Three-step resolution chain:
@@ -883,7 +876,7 @@ def _resolve_active_task_context(
 
     task_file_path: Path | None = None
     task_id: str | None = None
-    parent_issue_number: int | None = None
+    parent_issue_number: str | int | None = None
     context_file: Path | None = None
 
     # Step 1: MCP lookup via sam_active_task(get)
