@@ -40,7 +40,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 import dh_paths
 from backlog_core.backends.bd_runner import BdInvocationError, BdJsonDecodeError, BdNotInstalledError, BdRunner
-from backlog_core.backends.beads_models import BeadsStatus, parse_issue, parse_ready_list
+from backlog_core.backends.beads_models import BeadsIssueRaw, BeadsStatus, parse_issue, parse_ready_list
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from sam_schema.core.backends._utils import _now_iso, validate_appended_task
@@ -175,7 +175,7 @@ def _task_to_beads_status(s: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _issue_to_task_data(issue: Any, task_id: str, plan_id: str) -> TaskData:  # noqa: ANN401
+def _issue_to_task_data(issue: BeadsIssueRaw, task_id: str, plan_id: str) -> TaskData:
     """Build a minimal TaskData from a BeadsIssueRaw instance.
 
     Only fields derivable from the bd issue are populated.  Rich content
@@ -389,7 +389,7 @@ class BeadsTaskProvider:
             raise TaskNotFoundError(plan_id, task_id)
         return parsed["bd_id"], bool(parsed.get("is_bookend", False)), parsed.get("bookend_type")
 
-    def _create_task_issue(self, task: Task, epic_id: str) -> Any:  # noqa: ANN401
+    def _create_task_issue(self, task: Task, epic_id: str) -> BeadsIssueRaw:
         """Create a child bd issue for a SAM task.
 
         Args:
