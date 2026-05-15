@@ -550,7 +550,17 @@ class DuplicateItemError(BacklogError):
         super().__init__(f"Similar backlog items found: {titles}")
 
 
-class GitHubUnavailableError(BacklogError):
+class BackendUnavailableError(BacklogError):
+    """Raised when a backend service is unavailable or misconfigured.
+
+    Base class for all backend-specific availability errors.  Callers
+    catching this exception handle any backend absence uniformly; callers
+    that need to distinguish backend types (e.g. to render install hints)
+    catch the appropriate subclass.
+    """
+
+
+class GitHubUnavailableError(BackendUnavailableError):
     """Raised when GITHUB_TOKEN is missing or the GitHub API is unreachable."""
 
 
