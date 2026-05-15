@@ -125,7 +125,7 @@ The server name is `backlog`. MCP prefix: `mcp__plugin_dh_backlog__`.
 
 Add a new item to the backlog. Creates a local file and a GitHub Issue.
 
-**GATE**: Requires `gate_token="problems-not-solutions"`. Callers must load `/dh:create-backlog-item` to obtain this value. Direct calls without the gate token are rejected.
+**GATE**: Direct calls are not permitted. Use `/dh:work-backlog-item create` — the skill workflow provides the required authorization token. Direct calls without going through the skill are rejected.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
@@ -135,7 +135,7 @@ Add a new item to the backlog. Creates a local file and a GitHub Issue.
 | `source` | str | `"Not specified"` | Where this item came from |
 | `type` | str | `"Feature"` | Feature, Bug, Refactor, Docs, or Chore |
 | `force` | bool | `False` | Skip fuzzy duplicate check |
-| `gate_token` | str\|None | `None` | Must be `"problems-not-solutions"` |
+| `gate_token` | str\|None | `None` | Required. Provided by the `/dh:work-backlog-item create` skill — do not call directly |
 
 Returns: `{file_path, title, priority, issue (if created), messages, warnings}` or `{error}`.
 
@@ -1054,7 +1054,7 @@ Example: `/home/ubuntulinuxqa2/repos/claude_skills` → `-home-ubuntulinuxqa2-re
 | Profile loading for task-worker | Yes | `profile_load` |
 | Backend pluggability | Yes | GitHub, SQLite, InMemory — Protocol-based |
 | Backend availability status | Yes | Included in `backlog_list` responses |
-| Gate-protected item creation | Yes | `backlog_add` requires `gate_token="problems-not-solutions"` |
+| Gate-protected item creation | Yes | `backlog_add` requires authorization via `/dh:work-backlog-item create` skill |
 | Cross-worktree artifact access | Yes | GitHub comment storage, no local filesystem dependency |
 | Item lifecycle tracking | Yes | 7-phase: Capture→Grooming→Research/Architecture→Planning→Execution→Quality Gates→Closure |
 | Offline fallback | Partial | Local cache used when GitHub unavailable; not all tools degrade gracefully |

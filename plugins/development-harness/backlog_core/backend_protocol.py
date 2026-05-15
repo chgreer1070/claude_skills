@@ -51,6 +51,8 @@ if TYPE_CHECKING:
     )
 
 __all__ = [
+    "BEADS_DIR",
+    "BEADS_OPT_IN_MARKER",
     "BacklogBackend",
     "BacklogConfig",
     "IssueCommentNode",
@@ -60,6 +62,17 @@ __all__ = [
     "get_config",
     "reset_config",
 ]
+
+#: Name of the ``.beads`` workspace directory at the project root.
+BEADS_DIR: str = ".beads"
+
+#: Marker file that must exist inside :data:`BEADS_DIR` to opt the project into
+#: the beads backlog backend.  The directory alone is insufficient; the marker
+#: file is an explicit opt-in that prevents silent mis-routing of projects that
+#: happen to have a ``.beads/`` directory for unrelated reasons.
+#:
+#: Full path relative to project root: ``{BEADS_DIR}/{BEADS_OPT_IN_MARKER}``
+BEADS_OPT_IN_MARKER: str = "dh-backend"
 
 
 # ---------------------------------------------------------------------------
@@ -918,8 +931,9 @@ def get_config() -> BacklogConfig:
     :func:`set_config`):
 
     1. ``BACKLOG_BACKEND`` environment variable.
-    2. ``[backend] name`` key in ``backend.toml`` (project root or ``~/.dh/``).
-    3. Auto-detect: ``"beads"`` when ``.beads/`` exists at the project root.
+    2. ``backlog.backend`` key in ``.dh/config.yaml`` (project config directory).
+    3. Auto-detect: ``"beads"`` when ``.beads/dh-backend`` marker file exists at
+       the project root (directory alone is not sufficient — explicit opt-in required).
     4. Default: ``"github"``.
 
     The result is cached as a module-level singleton.  Call :func:`reset_config`
@@ -981,14 +995,19 @@ def _load_backend_toml_name() -> str | None:
 
 
 def _auto_detect_beads() -> str | None:
-    """Return ``"beads"`` when ``.beads/`` exists at the project root.
+    """Return ``"beads"`` when the explicit opt-in marker ``.beads/dh-backend`` exists.
+
+    Requires an explicit opt-in marker file at ``<project_root>/.beads/dh-backend``.
+    The ``.beads/`` directory alone is not sufficient — a project may have a
+    ``.beads/`` directory for other purposes without intending to use the beads
+    backlog backend.
 
     Uses dh_paths to resolve the project root.  Falls through silently
     (returns ``None``) when dh_paths is absent, the project root cannot
-    be determined, or ``.beads/`` does not exist.
+    be determined, or the marker file does not exist.
 
     Returns:
-        ``"beads"`` when the auto-detect marker is present, otherwise ``None``.
+        ``"beads"`` when the opt-in marker file is present, otherwise ``None``.
     """
     if _dh_paths is None:
         return None
@@ -996,7 +1015,7 @@ def _auto_detect_beads() -> str | None:
         project_root = _dh_paths.git_project_root()
     except (FileNotFoundError, RuntimeError):
         return None
-    return "beads" if (project_root / ".beads").is_dir() else None
+    return "beads" if (project_root / BEADS_DIR / BEADS_OPT_IN_MARKER).is_file() else None
 
 
 def create_backend(name: str | None = None) -> BacklogBackend:
@@ -1005,8 +1024,9 @@ def create_backend(name: str | None = None) -> BacklogBackend:
     Resolution order when *name* is ``None``:
 
     1. ``BACKLOG_BACKEND`` environment variable.
-    2. ``[backend] name`` in ``backend.toml`` (project root or ``~/.dh/``).
-    3. Auto-detect: ``"beads"`` when ``.beads/`` exists at the project root.
+    2. ``backlog.backend`` key in ``.dh/config.yaml`` (project config directory).
+    3. Auto-detect: ``"beads"`` when ``.beads/dh-backend`` marker file exists at
+       the project root (directory alone is not sufficient — explicit opt-in required).
     4. Default: ``"github"``.
 
     Args:

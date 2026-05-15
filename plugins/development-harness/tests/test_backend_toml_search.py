@@ -8,13 +8,14 @@ migration.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, cast
 from unittest.mock import MagicMock
 
 import backlog_core.backend_protocol as _bp
 import dh_config as _dh_config
 import pytest
 import sam_schema.core.task_config as _tc
+from backlog_core.backend_protocol import BEADS_DIR, BEADS_OPT_IN_MARKER
 from ruamel.yaml import YAML
 
 if TYPE_CHECKING:
@@ -25,8 +26,6 @@ _yaml = YAML(typ="safe")
 
 class _BackendSearchModule(Protocol):
     """Protocol matching both backlog_core.backend_protocol and sam_schema.core.task_config."""
-
-    _dh_paths: object
 
     def _load_backend_toml_name(self) -> str | None: ...
 
@@ -158,7 +157,7 @@ def test_backend_config_yaml_beads_name_honored(tmp_path: Path, monkeypatch: pyt
     _write_yaml_config(project_root / ".dh" / "config.yaml", "beads")
     monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
     monkeypatch.delenv("BACKLOG_BACKEND", raising=False)
-    _patch_dh_paths(monkeypatch, _bp, project_root, tmp_path)
+    _patch_dh_paths(monkeypatch, cast("_BackendSearchModule", _bp), project_root, tmp_path)
 
     assert _bp._load_backend_toml_name() == "beads"
 
@@ -175,7 +174,7 @@ def test_backend_config_yaml_dh_subdir_beads_honored(tmp_path: Path, monkeypatch
     _write_yaml_config(project_root / ".dh" / "config.yaml", "beads")
     monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
     monkeypatch.delenv("BACKLOG_BACKEND", raising=False)
-    _patch_dh_paths(monkeypatch, _bp, project_root, tmp_path)
+    _patch_dh_paths(monkeypatch, cast("_BackendSearchModule", _bp), project_root, tmp_path)
 
     assert _bp._load_backend_toml_name() == "beads"
 
@@ -185,24 +184,43 @@ def test_backend_config_yaml_dh_subdir_beads_honored(tmp_path: Path, monkeypatch
 # ---------------------------------------------------------------------------
 
 
-def test_auto_detect_beads_found_when_dot_beads_dir_exists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """_auto_detect_beads() returns 'beads' when .beads/ is a directory at project root.
+def test_auto_detect_beads_found_when_opt_in_marker_exists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_auto_detect_beads() returns 'beads' when .beads/dh-backend marker file exists.
 
-    Why: Auto-detect is the zero-config on-ramp — if it misses .beads/, beads
-         users must manually configure config.yaml with no explanation.
+    Why: Auto-detect requires an explicit opt-in marker file. A project that has
+         .beads/ for other purposes must not be silently routed to the beads backend.
     """
     project_root = tmp_path / "project"
-    (project_root / ".beads").mkdir(parents=True)
+    (project_root / BEADS_DIR).mkdir(parents=True)
+    (project_root / BEADS_DIR / BEADS_OPT_IN_MARKER).write_text("", encoding="utf-8")
     dh_mock = _make_dh_paths_mock(project_root)
     monkeypatch.setattr(_bp, "_dh_paths", dh_mock)
 
     assert _bp._auto_detect_beads() == "beads"
 
 
-def test_auto_detect_beads_not_found_when_dot_beads_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """_auto_detect_beads() returns None when .beads/ does not exist.
+def test_auto_detect_beads_returns_none_when_only_dot_beads_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_auto_detect_beads() returns None when .beads/ exists but the opt-in marker is absent.
 
-    Why: Returning 'beads' when .beads/ is absent would route all non-beads
+    Why: T33 requirement — BEADS_DIR alone must not trigger auto-detection.
+         Projects using .beads/ for other purposes would be silently mis-routed
+         to the beads backend without the explicit opt-in marker file.
+    """
+    project_root = tmp_path / "project"
+    (project_root / BEADS_DIR).mkdir(parents=True)
+    # No BEADS_OPT_IN_MARKER file — directory alone must not trigger detection
+    dh_mock = _make_dh_paths_mock(project_root)
+    monkeypatch.setattr(_bp, "_dh_paths", dh_mock)
+
+    assert _bp._auto_detect_beads() is None
+
+
+def test_auto_detect_beads_not_found_when_dot_beads_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """_auto_detect_beads() returns None when BEADS_DIR does not exist.
+
+    Why: Returning 'beads' when BEADS_DIR is absent would route all non-beads
          projects to the beads backend, breaking github/sqlite/memory users.
     """
     project_root = tmp_path / "project"
@@ -225,14 +243,14 @@ def test_auto_detect_beads_returns_none_when_dh_paths_absent(monkeypatch: pytest
 
 
 def test_auto_detect_beads_file_not_dir_returns_none(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """_auto_detect_beads() returns None when .beads is a file, not a directory.
+    """_auto_detect_beads() returns None when .beads is a plain file, not a directory.
 
-    Why: is_dir() returns False for files — a stale .beads file must not
-         trigger beads auto-detection and break users accidentally.
+    Why: When BEADS_DIR is a plain file (not a directory), the marker file path
+         cannot exist, so auto-detection must return None rather than crashing.
     """
     project_root = tmp_path / "project"
     project_root.mkdir()
-    (project_root / ".beads").write_text("not a directory", encoding="utf-8")
+    (project_root / BEADS_DIR).write_text("not a directory", encoding="utf-8")
     dh_mock = _make_dh_paths_mock(project_root)
     monkeypatch.setattr(_bp, "_dh_paths", dh_mock)
 
@@ -240,7 +258,7 @@ def test_auto_detect_beads_file_not_dir_returns_none(tmp_path: Path, monkeypatch
 
 
 def test_config_yaml_takes_precedence_over_auto_detect(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """config.yaml with name='memory' wins even when .beads/ exists.
+    """config.yaml with name='memory' wins even when the opt-in marker exists.
 
     Why: YAML config is ranked above auto-detect in the resolution order;
          if auto-detect overrides config.yaml, users cannot opt out of beads by
@@ -250,12 +268,13 @@ def test_config_yaml_takes_precedence_over_auto_detect(tmp_path: Path, monkeypat
     from backlog_core.backends.memory_backend import InMemoryBackend
 
     project_root = tmp_path / "project"
-    (project_root / ".beads").mkdir(parents=True)
+    (project_root / BEADS_DIR).mkdir(parents=True)
+    (project_root / BEADS_DIR / BEADS_OPT_IN_MARKER).write_text("", encoding="utf-8")
     _write_yaml_config(project_root / ".dh" / "config.yaml", "memory")
 
     monkeypatch.delenv("BACKLOG_BACKEND", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path / "fakehome"))
-    _patch_dh_paths(monkeypatch, _bp, project_root, tmp_path)
+    _patch_dh_paths(monkeypatch, cast("_BackendSearchModule", _bp), project_root, tmp_path)
 
     backend = create_backend()
 
