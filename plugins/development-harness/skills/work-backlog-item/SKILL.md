@@ -94,7 +94,7 @@ See the [Backlog Lifecycle reference](../../docs/backlog-lifecycle.md) for the c
 **Phase separation**: Grooming (Step 3.1) is autonomous research — the agent verifies facts, maps resources, estimates effort, and surfaces blockers. Planning (Step 4.2) is solution design — architecture, tasks, implementation. The human sets priorities and resolves blockers; the agent handles research and fact-checking autonomously.
 
 **SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/workflows/work/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
-Primary source of truth is **GitHub Issues** (labels + milestone = canonical status). Agents interact with backlog items exclusively through MCP tools (`backlog_view`, `backlog_update`, `backlog_list`, etc.).
+Primary source of truth is **GitHub Issues** when `backend=github` (labels + milestone = canonical status); when `backend=beads`, the beads issue tracker is the primary source of truth. Agents interact with backlog items exclusively through MCP tools (`backlog_view`, `backlog_update`, `backlog_list`, etc.) regardless of backend.
 
 **MCP server availability**: Both `plugin:dh:backlog` and `plugin:dh:sam` take 10–30 seconds to initialize after a session restart. If a tool is unavailable or `ToolSearch` reports "still connecting", follow [mcp-connection-check.md](../backlog/references/mcp-connection-check.md) before making any MCP call.
 
@@ -111,10 +111,11 @@ Parser `route` is `none` only when argv is empty (no flags, no positionals, no f
 | `<mode/>` value | Remaining args meaning |
 |---|---|
 | (empty) | — |
-| `#N` / bare number / GitHub issue URL | issue number |
+| `#N` / bare number / GitHub issue URL | issue number (`backend=github` only) |
+| beads ID (e.g. `bd-a3f8`) | beads issue ID (`backend=beads` only) |
 | `--auto` | `<item_ref/>`+ = title (or empty → auto-select first open P0/P1 item) |
-| `close` / `resolve` | `<item_ref/>`+ = title, `#N`, number, or URL |
-| `setup-github` | — |
+| `close` / `resolve` | `<item_ref/>`+ = title, `#N`, number, beads ID, or URL |
+| `setup-github` (**GitHub backend only**) | — |
 | `--quick` | `<item_ref/>`+ = title |
 | `progress` / `resume` | `<item_ref/>`+ = title or `#N` (optional for `resume`) |
 | (any other) | `<invocation_args/>` treated as title substring |

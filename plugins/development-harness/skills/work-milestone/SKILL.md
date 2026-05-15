@@ -32,7 +32,7 @@ flowchart TD
     Validate -->|"Plan valid"| CreateBranch
     Regroom --> LoadPlan
 
-    CreateBranch["Step 3: Create Integration Branch<br>github_branches create<br>milestone/{N}-{slug} from main.<br>Switch to integration branch locally.<br>Run prepare_clean_worktree.sh before any worktree add."]
+    CreateBranch["Step 3: Create Integration Branch<br>github_branches create (GitHub backend only)<br>Fallback (beads backend): git checkout -b milestone/{N}-{slug} origin/main<br>Branch: milestone/{N}-{slug} — when backend=beads, N is the beads ID (e.g. bd-a3f8)<br>Switch to integration branch locally.<br>Run prepare_clean_worktree.sh before any worktree add."]
 
     CreateBranch --> FetchItems["Step 3b: Fetch All Items Once<br>Call backlog_view once per issue in the dispatch plan.<br>Store results in context keyed by issue number.<br>DO NOT call backlog_view again for any issue<br>already fetched this session."]
 
@@ -274,9 +274,9 @@ Conflict resolution agent receives both branches' diffs and resolves in-place on
 | `artifact_read` | Read plan artifact content from root worktree via MCP (used by spawned sessions) |
 | `sam_plan` | Read SAM task plan for an item (used by spawned sessions) |
 | `sam_plan` | Check whether item has a SAM plan (used by spawned sessions) |
-| `github_branches create` | Create integration branch |
-| `github_branches merge` | Merge worktree branch into integration branch |
-| `github_branches delete` | Delete integration branch after landing |
+| `github_branches create` | Create integration branch (**GitHub backend only** — use `git checkout -b` when `backend=beads`) |
+| `github_branches merge` | Merge worktree branch into integration branch (**GitHub backend only** — use `git merge` when `backend=beads`) |
+| `github_branches delete` | Delete integration branch after landing (**GitHub backend only** — use `git branch -d` when `backend=beads`) |
 | `run_quality_gates` | Execute gate commands from dispatch plan |
 | `backlog_list_issues(milestone=N)` | Validate plan against current item state |
 
