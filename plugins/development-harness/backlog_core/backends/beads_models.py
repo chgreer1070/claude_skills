@@ -134,6 +134,11 @@ class BeadsIssueRaw(BaseModel):
         priority: Numeric priority (0 = critical, 4 = backlog).
         description: Long-form description body, may be absent.
         notes: Supplementary notes, may be absent.
+        metadata: Arbitrary key-value metadata set via ``bd update --metadata``.
+            Used by the artifact provider to store the ``dh.artifacts`` manifest.
+            The ``bd`` CLI may represent dot-notation keys (``dh.artifacts``) as
+            either a nested dict ``{"dh": {"artifacts": ...}}`` or a flat key
+            ``{"dh.artifacts": ...}`` — both are accepted at parse time.
         assignee: Username of the assigned user, may be absent.
         created_at: ISO-8601 creation timestamp, may be absent.
         updated_at: ISO-8601 last-update timestamp, may be absent.
@@ -149,6 +154,7 @@ class BeadsIssueRaw(BaseModel):
     priority: Annotated[BeadsPriority, Field(strict=False)]
     description: str | None = None
     notes: str | None = None
+    metadata: dict[str, object] | None = None
     assignee: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
