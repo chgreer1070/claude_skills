@@ -1,0 +1,14 @@
+{
+  "id": "bd-task1",
+  "title": "Write bd_runner tests",
+  "status": "open",
+  "type": "task",
+  "priority": 2,
+  "description": "Write comprehensive pytest tests for the BdRunner subprocess wrapper.",
+  "notes": null,
+  "assignee": null,
+  "created_at": "2026-01-15T09:00:00Z",
+  "updated_at": "2026-01-15T09:00:00Z",
+  "closed_at": null,
+  "_source_argv": ["bd", "create", "--type=task", "--title=Write bd_runner tests", "--json"]
+}

@@ -40,5 +40,5 @@ Before claiming task complete:
 
 ## Sources
 
-- [verify SKILL.md](../../../skills/verify/SKILL.md)
+- [verify-done SKILL.md](../../../skills/verify-done/SKILL.md)
 - [verification-gate SKILL.md](../../../../plugins/verification-gate/skills/verification-gate/SKILL.md)

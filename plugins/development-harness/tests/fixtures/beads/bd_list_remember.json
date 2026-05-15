@@ -1,0 +1,7 @@
+{
+  "entries": [
+    { "key": "backend_version", "value": "beads-0.4.2" },
+    { "key": "last_sync", "value": "2026-01-15T10:00:00Z" }
+  ],
+  "_source_argv": ["bd", "remember", "list", "--json"]
+}

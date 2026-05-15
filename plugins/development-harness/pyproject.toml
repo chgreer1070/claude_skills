@@ -26,6 +26,7 @@ dev = [
     "pytest-mock>=3.15.1",
     "pytest-cov>=6.0.0",
     "fastmcp[tasks]>=3.0.2",
+    "hypothesis>=6.0.0",
 ]
 
 [tool.pytest.ini_options]
@@ -52,6 +53,7 @@ markers = [
     "critical: marks tests requiring property-based or mutation testing",
     "e2e: marks tests as end-to-end tests",
     "cross_backend: marks tests that run only in the test-cross-backend CI matrix job",
+    "beads_smoke: marks tests that require a live bd binary on PATH",
 ]
 
 [tool.coverage.run]

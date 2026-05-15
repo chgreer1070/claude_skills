@@ -1,0 +1,5 @@
+{
+  "key": "backend_version",
+  "value": "beads-0.4.2",
+  "_source_argv": ["bd", "remember", "backend_version", "--json"]
+}

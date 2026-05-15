@@ -41,11 +41,11 @@ ECOSYSTEM CONTEXT:
 - [Authenticated CLIs, non-obvious doc locations, task-specific access]
 
 YOUR TASK:
-1. Run /verify (as completion criteria guide)
+1. Run /dh:verify-done (as completion criteria guide)
 2. Perform comprehensive context gathering
 3. Form hypothesis → Experiment → Verify
 4. Implement solution
-5. Only report completion after /verify criteria are met
+5. Only report completion after /dh:verify-done criteria are met
 ```
 
 **Authoring guidance** (for the orchestrator filling in this template — do not include these annotations in the delivered prompt):

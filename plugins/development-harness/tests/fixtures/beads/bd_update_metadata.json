@@ -1,0 +1,15 @@
+{
+  "id": "bd-a3f8",
+  "title": "Fix authentication bug",
+  "status": "open",
+  "type": "task",
+  "priority": 2,
+  "metadata": {
+    "dh.artifacts": "[{\"type\":\"architect\",\"path\":\"plan/architect.md\"}]",
+    "last_updated": "2026-01-15"
+  },
+  "created_at": "2026-01-15T10:00:00Z",
+  "updated_at": "2026-01-15T13:00:00Z",
+  "closed_at": null,
+  "_source_argv": ["bd", "update", "bd-a3f8", "--metadata=dh.artifacts=...", "--json"]
+}

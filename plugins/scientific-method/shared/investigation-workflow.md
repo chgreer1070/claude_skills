@@ -293,7 +293,7 @@ sequenceDiagram
     O->>O: Execute tests
 
     Note over O: VERIFICATION
-    O->>SK: Load verify skill
+    O->>SK: Load /dh:verify-done skill
     SK-->>O: Checklist
     O->>SK: Load audit skill
     O->>O: Chain-of-Verification

@@ -98,7 +98,7 @@ sequenceDiagram
 
     rect rgb(230, 200, 200)
         Note over O: VERIFICATION PHASE
-        O->>SK: Load verify skill
+        O->>SK: Load /dh:verify-done skill
         SK-->>O: Completion checklist
         O->>O: Verify deliverable
     end
@@ -311,7 +311,7 @@ sequenceDiagram
     deactivate PD
 
     Note over O: Phase 5: Verify
-    O->>O: Load verify skill
+    O->>O: Load /dh:verify-done skill
     O->>O: Check all deliverables
 
     O->>U: Complete: Plugin reviewed & documented

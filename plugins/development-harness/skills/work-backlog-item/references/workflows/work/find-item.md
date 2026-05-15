@@ -24,7 +24,7 @@ flowchart TD
     Batch --> LLM["LLM selects best semantic match<br>from candidate titles"]
     LLM --> R3{Match found?}
     R3 -->|Yes| Done3([Use LLM-selected item])
-    R3 -->|No| NoMatch([No match — offer to create via /create-backlog-item])
+    R3 -->|No| NoMatch([No match — offer to create via /dh:work-backlog-item create])
 ```
 
 ## Strategy 1 — Substring Match
@@ -75,6 +75,6 @@ When <mode/> is `auto`, apply the tiebreaker silently and log: `[AUTO] Strategy 
 ## Zero-match handling after all 3 strategies
 
 - **Interactive mode:** report "No backlog item found matching: {title}" and offer to create one
-  via `/create-backlog-item`.
-- **When <mode/> is `auto`:** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`,
-  invoke `Skill(skill: "create-backlog-item", args: "--auto {title}")`, then re-run this step.
+  via `/dh:work-backlog-item create -- "<what and why of the problem>"`.
+- **When <mode/> is `auto`:** log `[AUTO] No item found — invoking work-backlog-item create --auto {title}`,
+  invoke `Skill(skill: "dh:work-backlog-item", args: "create -- {title}")`, then re-run this step.

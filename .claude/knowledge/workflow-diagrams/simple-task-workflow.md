@@ -71,7 +71,7 @@ flowchart TB
 
     subgraph VERIFY["3. VERIFY"]
         V1["Check deliverable"]
-        V2["Run /verify if needed"]
+        V2["Run /dh:verify-done if needed"]
     end
 
     subgraph OUTPUT["4. OUTPUT"]
@@ -115,7 +115,7 @@ sequenceDiagram
 | ------- | ---------------- | ---------------------------------------- |
 | Input   | -                | /sessions (if session management needed) |
 | Execute | Direct tool use  | -                                        |
-| Verify  | Quick self-check | /verify, /am-i-complete                  |
+| Verify  | Quick self-check | /dh:verify-done, /am-i-complete                  |
 | Output  | Present result   | git-commit-helper                        |
 
 **Minimal Asset Path:**
@@ -127,7 +127,7 @@ Input → [Direct Execution] → Quick Check → Output
 **Enhanced Asset Path:**
 
 ```text
-Input → [Direct Execution] → /verify → git-commit-helper → Output
+Input → [Direct Execution] → /dh:verify-done → git-commit-helper → Output
 ```
 
 ---
@@ -161,7 +161,7 @@ flowchart LR
     A --> B --> C --> D --> E
 ```
 
-**Optional:** Use `/verify` before presenting if function is non-trivial.
+**Optional:** Use `/dh:verify-done` before presenting if function is non-trivial.
 
 ### Example 3: Update Config
 

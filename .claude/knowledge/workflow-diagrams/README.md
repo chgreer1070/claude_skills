@@ -82,7 +82,7 @@ classDef neutral fill:#e0e0e0,stroke:#757575,stroke-width:1px,color:#424242
 | Command                                | Stage Coverage | Primary Purpose              |
 | -------------------------------------- | -------------- | ---------------------------- |
 | /am-i-complete                         | Verification   | Completion readiness check   |
-| /verify                                | Verification   | Self-assessment checklist    |
+| /dh:verify-done                                | Verification   | Self-assessment checklist    |
 | /audit                                 | Verification   | Hallucination detection      |
 | /how-to-delegate                       | Planning       | Delegation guidance          |
 | /think                                 | Planning       | Step-back reasoning          |

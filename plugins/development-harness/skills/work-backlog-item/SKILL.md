@@ -100,6 +100,8 @@ Primary source of truth is **GitHub Issues** when `backend=github` (labels + mil
 
 When invoked with no arguments, shows an interactive browser. When invoked with `#N` or a title substring, proceeds directly to the planning workflow.
 
+**To capture a new backlog item**: `/dh:work-backlog-item create -- "<what and why of the problem that triggered the need for a backlog issue>"`
+
 ## Arguments
 
 **Agent Preflight:** Run `node plugins/development-harness/skills/work-backlog-item/scripts/parser/parse.mjs "<invocation_args/>"` to receive a structured JSON payload with the exact `mode`, `route`, `flags`, `item_ref`, and `user_text` to follow, rather than manually parsing the rules below. Pipeline, output shape, and extension steps: [parser-guide.md](./scripts/parser/parser-guide.md).

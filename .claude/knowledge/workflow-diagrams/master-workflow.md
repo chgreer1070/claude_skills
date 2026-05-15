@@ -278,7 +278,7 @@ flowchart TB
 | verify            | Skill   | Rigorous self-assessment checklist    |
 | audit             | Skill   | Detect hallucinations and assumptions |
 | /am-i-complete    | Command | Check completion readiness            |
-| /verify           | Command | Execute verification checklist        |
+| /dh:verify-done           | Command | Execute verification checklist        |
 | /audit            | Command | Trigger hallucination audit           |
 | /how-confident    | Command | Self-assess confidence level          |
 | code-review       | Agent   | Security, bugs, code quality          |
@@ -364,7 +364,7 @@ flowchart TB
 │ COMMANDS                               │       │         │          │           │              │        │
 │ /sessions                              │   ●   │         │          │           │              │        │
 │ /am-i-complete                         │       │         │          │           │      ●       │        │
-│ /verify                                │       │         │          │           │      ●       │        │
+│ /dh:verify-done                                │       │         │          │           │      ●       │        │
 │ /audit                                 │       │         │          │           │      ●       │        │
 │ /how-to-delegate                       │       │         │    ●     │           │              │        │
 │ /think                                 │       │         │    ●     │           │              │        │

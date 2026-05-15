@@ -33,7 +33,7 @@ Never introduce hard-coded truncation or length limits on content that a consume
 1. !`uv self update || true` — ensure uv is v0.10.0 or newer
 2. !`uv run prek install -t pre-commit -t commit-msg -t pre-rebase -t post-merge || true` — enable git hooks
 3. Follow `./CONTRIBUTING.md` procedures when modifying plugins
-4. Multi-step work identified: create backlog items via /dh:create-backlog-item or process backlog items via /dh:work-backlog-item — add items freely, they get groomed and checked later.
+4. Multi-step work identified: capture new backlog items via `/dh:work-backlog-item create -- "<what and why of the problem that triggered the need for a backlog issue>"` — add items freely, they get groomed and checked later.
 
 **Runtime**: All Python via `uv`, `uv run`, `uv run python -c 'some python code'`. All pre-commit via `prek`, `uv run prek run --files <file>`
 
@@ -54,7 +54,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 | Starting complex task | `/dh:rt-ica` | High Quality Details |
 | Delegating to sub-agent | `/delegate` | Enforces delegation framework |
 | Reviewing agent output | `/hallucination-detector:hallucination-audit` | Checks hallucinations, unverified causality |
-| Claiming task complete | `/verify` | Runs "Is It Done?" checklist |
+| Claiming task complete | `/dh:verify-done` | Runs "Is It Done?" checklist |
 | Writing or improving a process | `/process-siren:improve-processes` | Evaluates process completeness, improves before Mermaid conversion |
 
 **Critical Constraints:**
@@ -281,7 +281,7 @@ Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not 
 
 When you identify that work will need multiple steps or jobs: create backlog items for them — don't just describe them.
 
-1. **Backlog**: Create via `dh:create-backlog-item` or match via `dh:work-backlog-item` before starting.
+1. **Backlog**: Create via `/dh:work-backlog-item create -- "<what and why of the problem>"` or match via `/dh:work-backlog-item #N` before starting.
 2. **Plan**: When writing a plan, add it to the item via `mcp__plugin_dh_backlog__backlog_update(selector="{title}", plan="{path}")`.
 3. **Progress**: When completing actions, update the task/plan artifact (checklist, status) so progression is visible.
 

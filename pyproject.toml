@@ -235,6 +235,10 @@ unfixable = ["F401"]
 # SQLiteBackend implements the full BacklogBackend Protocol surface — PLR0904 does not apply
 # SLF001 — protocol surface includes _-prefixed methods that are part of the public protocol interface by design
 "**/backlog_core/backends/sqlite_backend.py" = ["PLR0904", "SLF001"]
+# BeadsBackend implements the full BacklogBackend Protocol surface — PLR0904 does not apply
+# SLF001 — protocol surface includes _-prefixed methods that are part of the public protocol interface by design
+# DOC201 — single-line docstrings for NotImplementedError stubs; Returns sections add no information
+"**/backlog_core/backends/beads_backend.py" = ["PLR0904", "SLF001", "DOC201"]
 # operations.py calls _-prefixed BacklogBackend protocol methods — these are part of the public protocol surface
 # SLF001 — private-name access is intentional: protocol interface defines _-prefixed methods by design
 "**/backlog_core/operations.py" = ["SLF001"]

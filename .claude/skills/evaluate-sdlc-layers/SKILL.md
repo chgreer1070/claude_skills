@@ -138,5 +138,5 @@ Flow experiments and learnings live in [sam-flow-experiments](https://github.com
 ## References
 
 - [SDLC Layers](../../../plugins/development-harness/docs/sdlc-layers/)
-- [verify skill](../verify/SKILL.md) — evidence discipline
+- [verify-done](../../../plugins/development-harness/skills/verify-done/SKILL.md) — evidence discipline
 - [groom-backlog-item](../../../plugins/development-harness/skills/groom-backlog-item/SKILL.md) — orchestration pattern

@@ -408,7 +408,8 @@ class BeadsArtifactProvider:
         """
         stamped = manifest.model_copy(update={"last_updated": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")})
         manifest_json = stamped.model_dump_json(by_alias=True)
-        self._runner.run_text(["update", issue_id, "--metadata", f"{_DH_ARTIFACTS_KEY}={manifest_json}"])
+        # --set-metadata sets a single key=value; --metadata expects a full JSON object.
+        self._runner.run_text(["update", issue_id, "--set-metadata", f"{_DH_ARTIFACTS_KEY}={manifest_json}"])
 
     def store_artifact_content_bd(self, issue_id: str, artifact_type: str, path: str, content: str) -> None:
         """Store artifact content in bd notes as a sentinel-delimited block.
@@ -470,6 +471,74 @@ class BeadsArtifactProvider:
         issue = parse_issue(raw)
         notes = issue.notes or ""
         return _extract_content_block(notes, artifact_type, path)
+
+    def delete_entry(self, issue_number: int, artifact_type: str, path: str) -> None:
+        """Remove an artifact entry from the manifest and its content block from notes.
+
+        Accepts a beads string ID at runtime (ADR-002 type widening).
+        Raises when called with an actual ``int``.
+
+        Args:
+            issue_number: Beads string ID accepted at runtime.  Actual
+                ``int`` values raise :exc:`NotImplementedError`.
+            artifact_type: Artifact type string to match.
+            path: Logical artifact identifier to match.
+
+        Raises:
+            NotImplementedError: When *issue_number* is an actual ``int``.
+        """
+        if isinstance(issue_number, str):
+            self.delete_entry_bd(issue_number, artifact_type, path)
+            return
+        raise NotImplementedError(
+            "BeadsArtifactProvider does not support integer issue numbers. "
+            "Call delete_entry_bd(issue_id: str, ...) with a beads ID instead."
+        )
+
+    def delete_entry_bd(self, issue_id: str, artifact_type: str, path: str) -> None:
+        """Remove an artifact entry from the manifest and its content block from notes.
+
+        Reads the current manifest, removes the entry matching *artifact_type*
+        and *path*, persists the updated manifest, then strips the
+        corresponding sentinel block from the issue notes.  Both manifest and
+        notes are updated independently — a missing entry in one location does
+        not prevent cleanup in the other.
+
+        Args:
+            issue_id: Beads issue ID string (e.g. ``"bd-a3f8"``).
+            artifact_type: Artifact type string to match.
+            path: Logical artifact identifier to match.
+
+        Raises:
+            bd_runner.BdNotInstalledError: When ``bd`` is not on ``PATH``.
+            bd_runner.BdInvocationError: When ``bd show`` or ``bd update`` fails.
+        """
+        # Step 1: Update manifest (filter out matching entry).
+        manifest = self.get_manifest_bd(issue_id)
+        updated_artifacts = [
+            e for e in manifest.artifacts if not (e.artifact_type == artifact_type and e.artifact_id == path)
+        ]
+        if len(updated_artifacts) != len(manifest.artifacts):
+            updated_manifest = manifest.model_copy(update={"artifacts": updated_artifacts})
+            self.set_manifest_bd(issue_id, updated_manifest)
+
+        # Step 2: Strip content block from notes.
+        raw = self._runner.run_json(["show", issue_id])
+        issue = parse_issue(raw)
+        current_notes = issue.notes or ""
+        if not current_notes:
+            return
+
+        open_sentinel = _SENTINEL_OPEN_TMPL.format(artifact_type=artifact_type, path=path)
+        if open_sentinel not in current_notes:
+            return
+
+        close_sentinel = _SENTINEL_CLOSE_TMPL.format(artifact_type=artifact_type, path=path)
+        pattern = re.escape(open_sentinel) + r".*?" + re.escape(close_sentinel)
+        new_notes = re.sub(pattern, "", current_notes, flags=re.DOTALL)
+        # Collapse surplus blank lines left by the removal, then strip trailing whitespace.
+        new_notes = re.sub(r"\n{3,}", "\n\n", new_notes).strip()
+        self._runner.run_text(["update", issue_id, "--notes", new_notes])
 
     # -----------------------------------------------------------------------
     # Private helpers
