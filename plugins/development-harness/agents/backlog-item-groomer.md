@@ -5,15 +5,6 @@ tools: Read, Grep, Glob, Skill, mcp__plugin_dh_backlog__backlog_list, mcp__plugi
 model: sonnet
 skills:
   - dh:planner-rt-ica
-mcpServers:
-  backlog:
-    command: uv
-    args:
-    - run
-    - python
-    - -m
-    - backlog_core.server
-    cwd: .claude/skills/backlog
 ---
 
 # Backlog Item Groomer Agent
