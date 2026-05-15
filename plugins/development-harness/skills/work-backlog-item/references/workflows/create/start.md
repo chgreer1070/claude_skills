@@ -110,18 +110,13 @@ Do not use `force=true` unless the user has already confirmed proceeding despite
 Call:
 
 ```text
-# Step 1: Obtain the session gate token
-token_result = mcp__plugin_dh_backlog__backlog_gate_token()
-gate_token = token_result["gate_token"]
-
-# Step 2: Call backlog_add with the token
 mcp__plugin_dh_backlog__backlog_add(
     title='{title}',
     priority='{priority}',
     description='{description}',
     source='{source}',
     type='{type}',
-    gate_token=gate_token
+    gate_token='<gate_token>'
 )
 ```
 
@@ -131,7 +126,7 @@ Tool parameters:
 - `description`: required
 - `source`: optional; defaults to `Not specified`
 - `type`: optional; one of `Feature`, `Bug`, `Refactor`, `Docs`, `Chore`
-- `gate_token`: required. Call `backlog_gate_token()` first to obtain the current session token. Tokens are session-scoped and change at each server restart — do not recall or guess the value.
+- `gate_token`: required. The value is provided by the skill at load time via the `<gate_token>` tag injected from the session gate token file.
 - `force`: optional; default false
 
 If the result contains `error` or non-empty `errors`, report the error and stop.

@@ -14,8 +14,10 @@ import json
 from typing import ClassVar
 from unittest.mock import MagicMock
 
-from backlog_core.server import _SESSION_GATE_TOKEN, mcp
+from backlog_core.server import mcp
 from fastmcp.client import Client
+
+from tests.conftest import TEST_GATE_TOKEN as _SESSION_GATE_TOKEN
 
 # ---------------------------------------------------------------------------
 # Helpers

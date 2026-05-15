@@ -7,11 +7,7 @@
 2. Find the item via `backlog_view(selector="{title or #N}", summary=false)`. If not found (response contains `error` key), create a minimal item using the two-step pattern:
 
    ```text
-   # Step 1: Obtain the session gate token
-   token_result = backlog_gate_token()
-
-   # Step 2: Call backlog_add with the token
-   backlog_add(title="{title}", gate_token=token_result["gate_token"])
+   backlog_add(title="{title}", gate_token="<gate_token>")
    ```
 
    If found, extract description and acceptance criteria from `response["sections"]`.

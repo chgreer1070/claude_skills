@@ -4,6 +4,8 @@ description: "Use when working, planning, grooming, or closing a backlog item. B
 argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} [--force] | setup-github | --quick {title} | progress | resume [{title}]]'
 user-invocable: true
 ---
+<gate_token>!`cat "${DH_STATE_HOME:-${HOME}/.dh}/.gate-token"`</gate_token>
+
 <input>
 !`node "${CLAUDE_SKILL_DIR}/scripts/parser/parse.mjs" "$ARGUMENTS"`
 </input>

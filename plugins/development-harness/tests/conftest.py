@@ -169,17 +169,25 @@ def write_test_item(backlog_dir: Path) -> object:
 
 
 # ---------------------------------------------------------------------------
-# Gate token fixture
+# Gate token fixtures
 # ---------------------------------------------------------------------------
+
+TEST_GATE_TOKEN = "test-fixed-gate-token-aabbccdd"
+
+
+@pytest.fixture(autouse=True)
+def _patch_gate_token(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    """Monkeypatch _SESSION_GATE_TOKEN to a fixed value for all non-e2e tests.
+
+    Skips patching for tests marked with @pytest.mark.e2e so that live
+    validation tests still use the real token generated at server startup.
+    """
+    if request.node.get_closest_marker("e2e"):
+        return
+    monkeypatch.setattr("backlog_core.server._SESSION_GATE_TOKEN", TEST_GATE_TOKEN)
 
 
 @pytest.fixture
 def gate_token() -> str:
-    """Return the current session gate token for tests that need it explicitly.
-
-    Reads the live module attribute at call time so tests always receive the
-    value that the running server instance uses.  Does NOT monkeypatch anything.
-    """
-    import backlog_core.server
-
-    return backlog_core.server._SESSION_GATE_TOKEN
+    """Return the fixed gate token used by the monkeypatched server in tests."""
+    return TEST_GATE_TOKEN

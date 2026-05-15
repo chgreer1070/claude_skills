@@ -525,14 +525,22 @@ The SAM MCP server uses a `TaskBackend` Protocol (`sam_schema/core/task_backend.
 - `memory` — in-memory test double. No persistence.
 - `beads` — maps plans to beads epics, tasks to child issues with `--parent` links. Context persisted via `bd remember`.
 
-Select via `TASKBACKEND` env var or `[backend] name` in `taskbackend.toml` (`.dh/` project config dir or `~/.dh/`). Default is `local` when neither is set — existing deployments require no changes.
+Select via `TASKBACKEND` env var or subsystem override in `.dh/config.yaml`. Default is `local` when neither is set — existing deployments require no changes.
 
-**`taskbackend.toml` schema:**
+**`.dh/config.yaml` subsystem override:**
 
-```toml
-[backend]
-name = "local"   # valid: "local", "github", "memory", "beads"
+```yaml
+backend:
+  name: github   # global default (used for backlog)
+
+task:
+  backend: local   # SAM task backend — github not yet fully implemented (#984)
+
+context:
+  backend: local   # SAM context backend
 ```
+
+> **Important**: `backend.name` is the global default and applies to all subsystems that lack a specific override. If you set `backend.name: github` (e.g. to configure the backlog backend), you MUST also add `task.backend: local` and `context.backend: local` — otherwise the SAM server will attempt the GitHub task backend, which is incomplete and raises `NotImplementedError`.
 
 ### ArtifactBackend Protocol
 

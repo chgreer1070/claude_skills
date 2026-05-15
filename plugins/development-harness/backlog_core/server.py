@@ -1138,8 +1138,23 @@ if _args.project_dir is not None:
     _init_models(_args.project_dir)
 
 # Per-session gate token required by backlog_add to enforce skill-mediated item creation.
-# Generated once at server startup; callers must call backlog_gate_token() to obtain it.
+# Generated once at server startup. Written to a session-scoped file so skills can
+# inject it at load time via the `!` bash injection mechanism. The in-memory value
+# remains authoritative — the file write is best-effort.
 _SESSION_GATE_TOKEN: str = secrets.token_hex(32)
+
+# Write the token to a session-scoped file for skill load-time injection.
+# Respects DH_STATE_HOME (same resolution as dh_paths._dh_user_root).
+_dh_state_home: str = _os.environ.get("DH_STATE_HOME", "")
+_dh_root: Path = Path(_dh_state_home).expanduser() if _dh_state_home else Path.home() / ".dh"
+_gate_token_path: Path = _dh_root / ".gate-token"
+try:
+    _gate_token_path.parent.mkdir(parents=True, exist_ok=True)
+    _gate_token_path.write_text(_SESSION_GATE_TOKEN, encoding="utf-8")
+except OSError as _gate_token_err:
+    import sys as _sys
+
+    print(f"WARNING: gate token file write failed: {_gate_token_path} — {_gate_token_err}", file=_sys.stderr)
 
 mcp = FastMCP(
     "backlog",
@@ -1150,27 +1165,6 @@ mcp = FastMCP(
     ),
     version="0.1.0",
 )
-
-
-@mcp.tool(
-    annotations=ToolAnnotations(
-        title="Get Backlog Add Gate Token",
-        readOnlyHint=True,
-        destructiveHint=False,
-        idempotentHint=True,
-        openWorldHint=False,
-    )
-)
-async def backlog_gate_token() -> dict[str, str]:
-    """Return the current session's gate token required by backlog_add.
-
-    Call this tool first, then pass the returned gate_token value to backlog_add.
-    The token changes every time the server restarts.
-
-    Returns:
-        Dict with a single key ``gate_token`` whose value is the current session token.
-    """
-    return {"gate_token": _SESSION_GATE_TOKEN}
 
 
 @mcp.tool(
@@ -1190,7 +1184,7 @@ async def backlog_add(
     gate_token: Annotated[
         str | None,
         Field(
-            description="Required gate token. Call backlog_gate_token() first to obtain the current session token, or load /dh:create-backlog-item which will fetch it for you."
+            description="Required gate token. Load /dh:work-backlog-item (or /dh:create-backlog-item) — the skill injects the token at load time via the <gate_token> tag."
         ),
     ] = None,
 ) -> dict:
