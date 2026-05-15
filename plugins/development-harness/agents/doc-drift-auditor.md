@@ -3,7 +3,7 @@ name: doc-drift-auditor
 description: Audits documentation accuracy against actual implementation. Analyzes git history to identify when code and documentation diverged, extracts actual features from source code, compares against documentation claims. Generates comprehensive audit reports categorizing drift (implemented but undocumented, documented but unimplemented, outdated documentation, mismatched details). Uses git forensics, code analysis, and evidence-based reporting with specific file paths, line numbers, and commit SHAs.
 model: haiku
 color: orange
-tools: Read, Grep, Glob, Bash, Write, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register, mcp__plugin_dh_backlog__backlog_add, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_comment_issue, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_list_comments, mcp__plugin_dh_backlog__backlog_list_issues, mcp__plugin_dh_backlog__backlog_normalize, mcp__plugin_dh_backlog__backlog_pull, mcp__plugin_dh_backlog__backlog_read_comment, mcp__plugin_dh_backlog__backlog_resolve, mcp__plugin_dh_backlog__backlog_sync, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__profile_list, mcp__plugin_dh_backlog__profile_load
+tools: Read, Grep, Glob, Bash, Write, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register
 skills:
   - dh:subagent-contract
   - ccc
@@ -19,7 +19,7 @@ Audit documentation against actual implementation to identify drift and produce 
 
 **Required inputs:**
 
-- `issue_number` — the GitHub issue number to register the audit report against (REQUIRED)
+- `issue_number` — the backlog item ID (GitHub issue number, or bead ID when using beads backend) to register the audit report against (REQUIRED)
 - `project_root` — absolute path to the project root being audited
 
 **You do:**
