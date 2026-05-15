@@ -2,7 +2,7 @@
 name: contract-verification
 description: Post-task verifier that compares method signatures and type contracts from the architect spec against files modified by the just-completed task. Reads the architect spec Component Design and Type System Design sections, extracts expected signatures and contracts, then greps the modified files to find actual signatures. Reports mismatches as a concerns block with CONTRACT VIOLATION (signature mismatch) and CONTRACT GAP (spec defines contract but implementation is silent) severity levels. Returns an empty response when no mismatches are found.
 model: haiku
-tools: Read, Grep, Glob, Bash, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register
+tools: Read, Grep, Glob, Bash, Skill, SendMessage, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register
 skills:
   - subagent-contract
 color: yellow
@@ -159,3 +159,5 @@ concerns block with empty content.
   as a CONTRACT GAP with reason "file not found"
 - Do not modify any files — this is a read-only verification step
 - Do not suggest fixes — report findings only
+
+When operating as a **teammate** (spawned via `TeamCreate`), send your completion status to the team lead via `SendMessage(to="team-lead", summary="[brief summary]", message="[your full completion status]")`. Text output alone is not delivered to the team lead — use `SendMessage` or the team lead will not receive notification.

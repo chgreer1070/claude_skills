@@ -1,7 +1,7 @@
 ---
 name: dh-context-gathering
 description: Use when creating a new task OR when starting/switching to a task that lacks a context manifest. ALWAYS provide the task file path so the agent can read it and update it directly with the context manifest. Skip if task file already contains "Context Manifest" section.
-tools: Read, Grep, Glob, Bash, Write, Skill, mcp__plugin_dh_sam__sam_plan
+tools: Read, Grep, Glob, Bash, Write, Skill, SendMessage, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task
 model: haiku
 color: cyan
 skills:
@@ -247,3 +247,5 @@ SUGGESTED NEXT STEP:
 ```
 
 Remember: Your job is to prevent ALL implementation errors through comprehensive context. If the developer hits an error because of missing context, that's your failure. Return BLOCKED rather than guessing when critical information is missing.
+
+When operating as a **teammate** (spawned via `TeamCreate`), send your completion status to the team lead via `SendMessage(to="team-lead", summary="[brief summary]", message="[your full completion status]")`. Text output alone is not delivered to the team lead — use `SendMessage` or the team lead will not receive notification.

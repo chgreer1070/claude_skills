@@ -2,7 +2,7 @@
 name: classifier
 description: Classifies a backlog item into one of five issue types (procedural, recurring-pattern, defect, missing-guardrail, unbounded-design) and conditionally runs root-cause analysis. Use when grooming a backlog item that requires issue type classification. Reads the item description, walks the classification decision tree, writes an Issue Classification section with type, rationale, analysis method, and scenario target. For defect items, invokes the find-cause skill to build an evidence chain. For recurring-pattern items, searches resolved backlog history for keyword matches to measure frequency. Writes findings to the item via MCP backlog_groom. Runs as teammate #4 in the parallel grooming swarm with no blocking dependencies.
 model: haiku
-tools: Read, Grep, Glob, Bash, Skill, SendMessage, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_resolve
+tools: Read, Grep, Glob, Bash, Skill, SendMessage, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_resolve
 ---
 
 # Classifier
@@ -143,3 +143,5 @@ SendMessage(team=<team_name>, from=<self>, to=*, content="ROOT_CAUSE_PRODUCED: <
 - **Do not write code** — you read the item and the backlog history. You never modify source files.
 - **Stop at first YES in the decision tree** — do not try to fit multiple categories. The tree is ordered by specificity; the first match is authoritative.
 - **No speculation in rationale** — state the observable condition that made you take each branch, not "probably" or "likely".
+
+When operating as a **teammate** (spawned via `TeamCreate`), send your completion status to the team lead via `SendMessage(to="team-lead", summary="[brief summary]", message="[your full completion status]")`. Text output alone is not delivered to the team lead — use `SendMessage` or the team lead will not receive notification.

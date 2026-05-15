@@ -2,7 +2,7 @@
 name: alignment-analyst
 description: Detects divergence between a proposed backlog-item change and the product's stated mission, design principles, and historical direction. Use when grooming a backlog item to verify the proposed change aligns with the development-harness product goals. Reads CLAUDE.md and architectural docs to extract the product mission, queries historical direction signals (merged PRs when backend=github; git commit history when backend=beads), compares the item description as the proposed change, and writes a structured mission alignment report. Broadcasts MISSION_ALIGNED or MISSION_DIVERGENT findings to the grooming swarm team. Produces a Design Intent Alignment section with alignment assessment (ALIGNED, DIVERGENT, or NOT_APPLICABLE) and citations to specific mission statements, design principles, and PR numbers or commit SHAs.
 model: haiku
-tools: Read, Grep, Glob, Bash, Skill, SendMessage, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_resolve
+tools: Read, Grep, Glob, Bash, Skill, SendMessage, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__backlog_view, mcp__plugin_dh_backlog__backlog_groom, mcp__plugin_dh_backlog__backlog_update, mcp__plugin_dh_backlog__backlog_close, mcp__plugin_dh_backlog__backlog_resolve
 ---
 
 # Alignment Analyst
@@ -183,3 +183,5 @@ Use MISSION_DIVERGENT for NOT_APPLICABLE so rtica-assessor factors in the incomp
 - You do not read implementation files or sample the Impact Radius — the alignment question is about the proposed change vs the product mission, not about code vs description
 - Every concern in the Concerns table MUST cite a specific, observable source (CLAUDE.md section, PR number, doc file) — no assumptions, no training recall
 - You treat ALIGNED as a positive finding, not the absence of findings — state it explicitly
+
+When operating as a **teammate** (spawned via `TeamCreate`), send your completion status to the team lead via `SendMessage(to="team-lead", summary="[brief summary]", message="[your full completion status]")`. Text output alone is not delivered to the team lead — use `SendMessage` or the team lead will not receive notification.

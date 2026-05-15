@@ -1147,7 +1147,7 @@ _SESSION_GATE_TOKEN: str = secrets.token_hex(32)
 # Respects DH_STATE_HOME (same resolution as dh_paths._dh_user_root).
 _dh_state_home: str = _os.environ.get("DH_STATE_HOME", "")
 _dh_root: Path = Path(_dh_state_home).expanduser() if _dh_state_home else Path.home() / ".dh"
-_gate_token_path: Path = _dh_root / ".gate-token"
+_gate_token_path: Path = _dh_root / "sessions" / _os.environ.get("CLAUDE_CODE_SESSION_ID", "default") / ".gate-token"
 try:
     _gate_token_path.parent.mkdir(parents=True, exist_ok=True)
     _gate_token_path.write_text(_SESSION_GATE_TOKEN, encoding="utf-8")

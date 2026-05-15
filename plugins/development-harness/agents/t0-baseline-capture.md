@@ -1,7 +1,7 @@
 ---
 name: t0-baseline-capture
 description: Captures baseline state of structured acceptance criteria before implementation begins. Reads acceptance-criteria-structured from a SAM plan file, runs each check_command via Bash, assembles T0 results as YAML in memory, and registers the artifact via artifact_register with content= for MCP-native storage. Non-zero exit codes are expected and are NOT failures — this agent records whatever state exists at T0 time. Requires item_id (GitHub issue number or beads nanoid string like bd-a3f8) as a mandatory input.
-tools: Read, Bash, Glob, Skill, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register
+tools: Read, Bash, Glob, Skill, SendMessage, mcp__plugin_dh_sam__sam_plan, mcp__plugin_dh_sam__sam_task, mcp__plugin_dh_sam__sam_active_task, mcp__plugin_dh_backlog__artifact_get, mcp__plugin_dh_backlog__artifact_list, mcp__plugin_dh_backlog__artifact_migrate, mcp__plugin_dh_backlog__artifact_read, mcp__plugin_dh_backlog__artifact_register
 model: haiku
 skills:
   - dh:subagent-contract
@@ -161,5 +161,7 @@ Return STATUS: BLOCKED if:
 - `feature` field is absent from plan frontmatter
 - In-memory YAML structure verification fails (criteria_count mismatch or missing fields)
 - `artifact_register` returns an error
+
+When operating as a **teammate** (spawned via `TeamCreate`), send your completion status to the team lead via `SendMessage(to="team-lead", summary="[brief summary]", message="[your full completion status]")`. Text output alone is not delivered to the team lead — use `SendMessage` or the team lead will not receive notification.
 
 </output>
