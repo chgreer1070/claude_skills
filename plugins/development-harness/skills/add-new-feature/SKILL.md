@@ -26,12 +26,12 @@ $ARGUMENTS
 
 ## Artifact Discovery (Pre-Phase)
 
-Before starting any phase, check whether the feature request references a GitHub Issue. If an issue number is present, discover existing artifacts registered on that issue.
+Before starting any phase, check whether the feature request references a tracked issue — either a GitHub Issue (`#N`) or a beads issue ID (e.g. `bd-a3f8`). If an issue selector is present, discover existing artifacts registered on that issue.
 
 ```mermaid
 flowchart TD
-    Start([Parse feature_request]) --> Q{"Contains 'GitHub Issue: #N'<br>or 'Issue: #N' or '#N'?"}
-    Q -->|Yes — issue number found| List["Call artifact_list(issue_number=N)<br>to discover registered artifacts"]
+    Start([Parse feature_request]) --> Q{"Contains 'GitHub Issue: #N' / '#N'<br>OR 'Beads Issue: bd-ID' / bare beads ID?"}
+    Q -->|Yes — issue selector found| List["Call artifact_list(issue_number=N)<br>to discover registered artifacts<br>(N may be int for GitHub or str for beads)"]
     Q -->|No — no issue reference| Skip[Skip artifact discovery<br>Proceed normally]
     List --> Found{Artifacts returned?}
     Found -->|Yes| Store["Store artifact list as discovered_artifacts<br>Include paths and types in each<br>phase delegation prompt"]
@@ -482,7 +482,7 @@ Fill these values before constructing each delegation prompt. All values come fr
 
 | Variable | Source |
 |---|---|
-| `{issue}` | GitHub issue number from the backlog item or user request |
+| `{issue}` | Issue selector — GitHub issue number (int) or beads ID string (e.g. `bd-a3f8`); no type coercion |
 | `{title}` | GitHub issue title from `backlog_view(selector="#{issue}")` |
 | `{slug}` | Kebab-case identifier derived from the issue title (e.g., `agent-profile-mcp-tool`) |
 | `{work_type}` | "production of the feature" for new features; "fixing of an issue in" for bug fixes |

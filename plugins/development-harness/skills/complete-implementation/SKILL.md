@@ -41,14 +41,16 @@ flowchart TD
     Q3 -->|Yes| IssueBare["issue_number = input<br>→ proceed to 'Resolve Issue'"]
     Q3 -->|No| Q4{"contains '/issues/'?"}
     Q4 -->|Yes| IssueURL["Extract number from URL path<br>→ proceed to 'Resolve Issue'"]
-    Q4 -->|No| Err["ERROR: Unrecognized input format.<br>Expected: plan file path, #N, bare number, or GitHub URL."]
+    Q4 -->|No| Q5{"beads ID? e.g. bd-a3f8"}
+    Q5 -->|Yes| IssueBeads["issue_id = input str<br>→ Resolve Issue"]
+    Q5 -->|No| Err["ERROR: unrecognized format.<br>Expected: path, #N, number, URL, beads ID."]
 ```
 
 ---
 
 ## Resolve Issue
 
-Entered when input is an issue number (`#N`, bare `N`, or GitHub URL). Skip this section when input is a file path.
+Entered when input is `#N`, bare `N`, GitHub URL, or beads ID (e.g. `bd-a3f8`). Skip for file path input.
 
 **Step 1 -- Fetch issue data**:
 
@@ -224,7 +226,9 @@ On verification success:
 mcp__plugin_dh_backlog__backlog_update(selector="#{issue_number}", verified=True)
 ```
 
-On failure, output:
+**Beads backend**: No `dh:state:verified` label — skip this call, continue.
+
+On failure (GitHub only), output:
 
 ```text
 COMPLETION BLOCKED — status:verified label could not be applied.
@@ -232,7 +236,7 @@ COMPLETION BLOCKED — status:verified label could not be applied.
 Error: {error}
 Issue: #{issue_number}
 
-Fix the error (check GitHub token, repo access), then re-run /complete-implementation #{issue_number}.
+Fix the error (check backend credentials and access), then re-run /complete-implementation #{issue_number}.
 ```
 
 Stop. Do not proceed to the Final Step commit.
@@ -841,17 +845,13 @@ Do not recurse. The follow-up is tracked in the backlog.
 
 ## Apply status:verified Label
 
-After all six phases and follow-up routing complete, apply the `status:verified` GitHub label to the parent backlog issue. This records durable completion evidence that `/dh:work-backlog-item resolve` requires before closing a SAM item.
+After all six phases and follow-up routing complete, apply the `status:verified` GitHub label to the parent backlog issue.
+
+**Beads backend**: No `dh:state:verified` label — skip this section, continue to Final Step.
 
 ### Step 1: Locate the backlog item
 
-Derive the search slug from the task file path (same algorithm as Recursive Follow-up Handling):
-
-```text
-plan/Pb3c4d5e6-integrate-sam-schema.yaml → slug: integrate-sam-schema
-```
-
-Search the backlog:
+Derive the search slug from the task file path (same algorithm as Recursive Follow-up Handling). Search the backlog:
 
 ```text
 mcp__plugin_dh_backlog__backlog_list(title="{slug}")
@@ -875,12 +875,10 @@ COMPLETION BLOCKED — status:verified label could not be applied.
 Error: {error}
 Backlog item: {matched_item_title}
 
-Fix the error (check GitHub token, repo access), then re-run /complete-implementation.
+Fix the error (check backend credentials and access), then re-run /complete-implementation.
 ```
 
 Stop. Do not proceed to the Final Step commit.
-
-On success, continue to the Final Step.
 
 ---
 
@@ -900,7 +898,7 @@ If there are staged or unstaged changes: stage the modified files and commit.
 mcp__plugin_dh_backlog__backlog_list(title="{slug}")
 ```
 
-Check the `issue` field on the matching item. If present and this commit resolves that issue, append `Fixes #NNN` to the commit message body (where NNN is the issue number). If no issue number is found, omit it.
+Check the `issue` field on the matching item. If present and this commit resolves that issue, append `Fixes #NNN` to the commit message body (NNN = GitHub integer issue number; omit for beads IDs — no commit-message closure). If no issue number is found, omit it.
 
 Push after committing. If the working tree is clean, skip this step.
 
