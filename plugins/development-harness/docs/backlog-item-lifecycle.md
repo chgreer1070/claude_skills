@@ -265,8 +265,8 @@ flowchart TD
 **Status advancement via `mark_groomed`**: Passing `mark_groomed=True` to the `backlog_groom` MCP tool triggers a status transition after all content writes complete:
 
 1. The item's `metadata.status` field is set to `groomed` in the local per-item file.
-2. The `status:needs-grooming` GitHub label is removed from the issue (no-op if already absent — it is removed as a side effect of each content sync, so it may already be gone).
-3. The `status:groomed` GitHub label is added to the issue. If the label does not exist on the repository, it is created automatically.
+2. When the active backend is `github`: the `status:needs-grooming` GitHub label is removed from the issue (no-op if already absent — it is removed as a side effect of each content sync, so it may already be gone). For other backends, the equivalent status field is cleared in the backend store.
+3. When the active backend is `github`: the `status:groomed` GitHub label is added to the issue; if the label does not exist on the repository, it is created automatically. For other backends, the equivalent `groomed` status marker is applied in the backend store.
 
 The flag works with both single-section writes and the batch `sections` parameter. When `sections` is used with `mark_groomed=True`, all sections are written first; the status transition fires exactly once after the batch completes.
 
@@ -496,7 +496,7 @@ flowchart TD
 
 **Hook mechanisms**:
 
-- `SubagentStop` hook (on `/dh:implement-feature`) — marks task COMPLETE after sub-agent finishes, syncs to GitHub sub-issue
+- `SubagentStop` hook (on `/dh:implement-feature`) — marks task COMPLETE after sub-agent finishes, syncs to the backend sub-issue (GitHub issue number when using `github` backend; beads child-issue ID when using `beads` backend)
 - `PostToolUse` hook (on `/dh:start-task`, matcher: Write|Edit|Bash) — records `last-activity` timestamp on every tool call during task execution. Uses the active-task context file to know which task to update.
 
 **Bookend task dispatch**:
@@ -747,9 +747,9 @@ flowchart TD
 | P7_STOP_PR_WAIT | orchestrator | open PR reference | local status update only, wait for PR merge | terminal |
 | P7_RESOLVE_CALL | `backlog_resolve` MCP | selector, summary (required), plan, method, notes, follow_ups, findings | GitHub Issue closed, `{"status": "done", "priority": "completed", "plan": "{plan}"}` metadata | terminal |
 
-**close metadata** (ADR-9): `{"status": "closed", "close_reason": "{reason}"}`. GitHub comment: `Closed ({reason}). Reference: {reference}. {comment}`. GitHub issue state: `closed`.
+**close metadata** (ADR-9): `{"status": "closed", "close_reason": "{reason}"}`. When using the `github` backend: a comment `Closed ({reason}). Reference: {reference}. {comment}` is added and the GitHub issue state is set to `closed`. For other backends, the equivalent close operation is applied in the backend store.
 
-**resolve metadata** (ADR-9): `{"status": "done", "priority": "completed", "plan": "{plan}"}`. GitHub comment: structured markdown with non-empty sections only. GitHub issue state: `closed`.
+**resolve metadata** (ADR-9): `{"status": "done", "priority": "completed", "plan": "{plan}"}`. When using the `github` backend: a structured markdown comment is added and the GitHub issue state is set to `closed`. For other backends, the equivalent resolve operation is applied in the backend store.
 
 **"Already implemented" discovery** during grooming should use `resolve(summary="Already implemented via PR #N / commit {sha}")`, not `close` (per ADR-9 Consequences).
 

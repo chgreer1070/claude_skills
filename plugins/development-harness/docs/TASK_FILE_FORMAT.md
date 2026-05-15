@@ -298,11 +298,11 @@ All content fields are stored as YAML multiline scalars. Default is an empty str
 | `is-bookend` | `bool` | `false` | `true` for T0 baseline or TN verification tasks |
 | `bookend-type` | `str` | `null` | `t0-baseline` or `tn-verification` (required when `is-bookend` is `true`) |
 
-### Optional Fields — GitHub Integration
+### Optional Fields — Issue Integration
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `github-issue` | `int` | `null` | Linked GitHub sub-issue number |
+| `github-issue` | `str \| int` | `null` | Linked sub-issue identifier. Integer for GitHub issue numbers; string for beads IDs (e.g. `"bd-a3f8"`). |
 
 ### Status Values
 

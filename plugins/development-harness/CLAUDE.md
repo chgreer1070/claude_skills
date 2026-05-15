@@ -505,23 +505,25 @@ uv run fastmcp call \
 
 When discussing, extending, or adding backend providers for the development harness — including state management, task management, planning, issues, jobs, milestones, or boards — read [docs/backend-providers.md](./docs/backend-providers.md) first. Amend that document with any new points, references, discoveries, or user inputs that arise during the conversation.
 
-The backlog MCP server uses a `BacklogBackend` Protocol (`backlog_core/backend_protocol.py`) to decouple all operations from any specific storage platform. Three backends are available:
+The backlog MCP server uses a `BacklogBackend` Protocol (`backlog_core/backend_protocol.py`) to decouple all operations from any specific storage platform. The following backends are available:
 
 - `github` (default) — GitHub Issues via GraphQL + PyGithub REST. Requires `GITHUB_TOKEN`.
 - `sqlite` — local 6-table SQLite schema, WAL mode. No external credentials.
 - `memory` — in-memory test double. No persistence.
+- `beads` — routes to `bd` CLI via lazy subprocess wrapper. Auto-detected when `.beads/` directory exists at project root. `bd` binary validated on first use; raises `BdNotInstalledError` on failure with no silent fallback.
 
-Select via `BACKLOG_BACKEND` env var or `[backend] name` in `backend.toml` (project root or `~/.dh/`). Default is `github` when neither is set — existing deployments require no changes.
+Select via `BACKLOG_BACKEND` env var, `[backend] name` in `backend.toml` (project root or `~/.dh/`), or auto-detected from `.beads/` directory presence. Default is `github` when no selector matches — existing deployments require no changes.
 
 Future platform backends (GitLab, Linear, Supabase) will implement the same Protocol. See [docs/backend-providers.md](./docs/backend-providers.md) for the full Protocol reference, method groups, configuration examples, and platform capability comparison.
 
 The backlog MCP server also exposes `profile_load` (agent_profile tool) for loading named agent profiles that specialize task-worker behavior at dispatch time. Profile definitions live in the backlog server configuration; see [docs/backend-providers.md](./docs/backend-providers.md) for the module boundary.
 
-The SAM MCP server uses a `TaskBackend` Protocol (`sam_schema/core/task_backend.py`) to decouple plan/task operations from storage. Three backends are available:
+The SAM MCP server uses a `TaskBackend` Protocol (`sam_schema/core/task_backend.py`) to decouple plan/task operations from storage. The following backends are available:
 
 - `local` (default) — wraps existing YAML I/O stack. Single-machine only.
 - `github` — maps plans to GitHub Issues, tasks to sub-issues with `sam:{status}` labels. Requires IssueBackend + DocumentBackend (#984).
 - `memory` — in-memory test double. No persistence.
+- `beads` — maps plans to beads epics, tasks to child issues with `--parent` links. Context persisted via `bd remember`.
 
 Select via `TASKBACKEND` env var or `[backend] name` in `taskbackend.toml` (project root or `~/.dh/`). Default is `local` when neither is set — existing deployments require no changes.
 
@@ -529,7 +531,7 @@ Select via `TASKBACKEND` env var or `[backend] name` in `taskbackend.toml` (proj
 
 ```toml
 [backend]
-name = "local"   # valid: "local", "github", "memory"
+name = "local"   # valid: "local", "github", "memory", "beads"
 ```
 
 ### ArtifactBackend Protocol

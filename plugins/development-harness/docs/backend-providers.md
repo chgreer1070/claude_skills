@@ -126,6 +126,7 @@ All protocol methods are synchronous. The MCP layer wraps calls in `asyncio.to_t
 | `GitHubBackend` | `github` | Default. Delegates to `gh_client.py`, `github_sync.py`, `github_branches.py`. Requires `GITHUB_TOKEN`. |
 | `SQLiteBackend` | `sqlite` | Local 6-table schema via stdlib `sqlite3`, WAL mode. No external credentials required. |
 | `InMemoryBackend` | `memory` | In-memory test double. No persistence. Use in tests and CI where GitHub is unavailable. |
+| `BeadsBackend` | `beads` | Routes to `bd` CLI via lazy subprocess wrapper (`backlog_core/backends/bd_runner.py`). Auto-detected when `.beads/` directory exists at project root. `bd` binary is NOT probed at server startup — validated on first `run_json()` call. Failure raises `BdNotInstalledError`; no silent fallback to `github`. |
 
 ### Configuration
 
@@ -133,13 +134,17 @@ Backend selection uses this resolution order:
 
 1. `BACKLOG_BACKEND` environment variable
 2. `[backend] name` key in `backend.toml` (project root searched first, then `~/.dh/`)
-3. Default: `github`
+3. Auto-detect: `beads` when a `.beads/` directory exists at the project root
+4. Default: `github`
 
 **Environment variable:**
 
 ```bash
 BACKLOG_BACKEND=sqlite uv run --script plugins/development-harness/scripts/run_backlog_server.py
+BACKLOG_BACKEND=beads uv run --script plugins/development-harness/scripts/run_backlog_server.py
 ```
+
+**Beads auto-detection and lazy `bd` validation**: When `BACKLOG_BACKEND` is not set and no `backend.toml` exists, the server inspects the project root for a `.beads/` directory. If found, `beads` is selected automatically — no explicit configuration is required in a beads workspace. The `bd` binary is **not** probed at startup; it is validated on the first `run_json()` call. If `bd` is absent or not executable at that point, `BdNotInstalledError` is raised. There is no silent fallback to `github`.
 
 **`backend.toml` file:**
 
@@ -193,6 +198,7 @@ behavior rather than assuming tasks become visible only after finalization. Both
 | `LocalYamlTaskProvider` | `local` | Default. Wraps `yaml_reader.py` / `yaml_writer.py` + query layer. Single-machine use only — documents written to `plan_dir/{plan_id}/documents/`. |
 | `InMemoryTaskProvider` | `memory` | In-memory test double. No persistence. Use in tests and CI where filesystem access is unavailable. |
 | `GitHubTaskProvider` | `github` | Fully implemented (13 methods). Not selectable via factory — `create_task_backend("github")` raises `NotImplementedError` until #984 lands. Instantiate directly: `GitHubTaskProvider(issue_backend, doc_backend)`. Current `issue_backend` type is `BacklogBackend` (from `backlog_core.backend_protocol`) — stand-in until #984 delivers a standalone `IssueBackend`. `doc_backend` type is the `DocumentBackend` stub in `github_task.py`. |
+| `BeadsTaskProvider` | `beads` | Maps SAM plans to beads epics; tasks to child issues with `--parent` links. Uses `bd` CLI subprocess. Active-task context persisted via `bd remember` under `dh.active-task.<session_id>` keys. |
 
 ### Configuration
 
@@ -449,7 +455,7 @@ Source: `backlog_core/artifact_provider.py` — `GitLabArtifactProvider`
 2. `BACKLOG_BACKEND` environment variable
 3. Default: `github`
 
-**Supported values**: `github`, `linear`, `gitlab`, `local`. Values `sqlite` and `memory` raise `BacklogError` — those backends do not support artifact storage.
+**Supported values**: `github`, `linear`, `gitlab`, `local`, `beads`. Values `sqlite` and `memory` raise `BacklogError` — those backends do not support artifact storage. The `beads` provider stores artifact manifests as a JSON blob in `bd update --metadata dh.artifacts={...}`.
 
 **Environment variables summary**:
 
@@ -657,6 +663,7 @@ class TaskBackend(Protocol):
 | `LocalYamlTaskProvider` | `local` | `sam_schema.core.backends.local_yaml` | Default. Wraps existing YAML I/O stack (yaml_reader, yaml_writer, query). Single-machine only. |
 | `GitHubTaskProvider` | `github` | `sam_schema.core.backends.github_task` | Maps plans → GitHub Issues (`sam:plan` label), tasks → sub-issues (`sam:{status}` labels). Constructor: `GitHubTaskProvider(issue_backend: BacklogBackend, doc_backend: DocumentBackend)`. `BacklogBackend` is from `backlog_core.backend_protocol`; `DocumentBackend` is a stub in `github_task.py` pending #984. |
 | `InMemoryTaskProvider` | `memory` | `sam_schema.core.backends.memory` | In-memory test double. No persistence. Use in tests and CI. |
+| `BeadsTaskProvider` | `beads` | `sam_schema.core.backends.beads_task` | Maps plans → beads epics, tasks → child issues with `--parent` links. Context persistence via `bd remember` under `dh.active-task.<session_id>` keys. Artifacts stored as JSON blob in `bd update --metadata dh.artifacts={...}`. |
 
 #### Configuration
 
