@@ -166,3 +166,20 @@ def write_test_item(backlog_dir: Path) -> object:
         return filepath
 
     return _write
+
+
+# ---------------------------------------------------------------------------
+# Gate token fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def gate_token() -> str:
+    """Return the current session gate token for tests that need it explicitly.
+
+    Reads the live module attribute at call time so tests always receive the
+    value that the running server instance uses.  Does NOT monkeypatch anything.
+    """
+    import backlog_core.server
+
+    return backlog_core.server._SESSION_GATE_TOKEN

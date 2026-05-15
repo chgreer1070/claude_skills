@@ -178,6 +178,17 @@ async def test_backlog_add_gate_rejects_missing_token():
 
 
 # ---------------------------------------------------------------------------
+# backlog_gate_token
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_gate_token_returns_current_session_token(gate_token: str):
+    """backlog_gate_token tool returns the same value as the live module attribute."""
+    response = await _call("backlog_gate_token")
+    assert response["gate_token"] == gate_token
+
+
+# ---------------------------------------------------------------------------
 # backlog_list
 # ---------------------------------------------------------------------------
 
