@@ -411,9 +411,9 @@ SOURCE: Adapted from gsd-plan-checker.md (Scope Sanity dimension)
 **Process:**
 
 1. Locate the backlog item file:
-   - Check the task plan's `issue` frontmatter field for a backlog item path or GitHub issue number
+   - Check the task plan's `issue` frontmatter field for a backlog item path or issue selector
    - If a path is present, read it directly
-   - If a GitHub issue number is present, retrieve the backlog item via `backlog_view(selector="{issue_number}")`
+   - If an issue selector is present (`str | int` — GitHub integer issue number or beads string ID such as `bd-a3f8`), retrieve the backlog item via `backlog_view(selector=<selector>)`
    - If neither is present, skip this dimension and record as `skipped — no backlog item reference`
 2. Extract the Impact Radius section from the backlog item:
    - Find the section headed `## Impact Radius` or `**Impact Radius**`

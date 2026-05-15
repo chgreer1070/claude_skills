@@ -334,6 +334,7 @@ tasks:
     parallelize-with: []
     reason: "..."
     handoff: "..."
+issue: ""  # str | int — GitHub integer issue number or beads string ID (e.g., "bd-a3f8")
 acceptance_criteria:
   - "AC1: ..."
 context: ""
@@ -373,6 +374,7 @@ Run all structured acceptance criteria commands and record baseline results via 
 
 ## Inputs
 - Plan file: the task file containing `acceptance-criteria-structured` entries
+- `issue_number`: `str | int` — GitHub integer issue number or beads string ID (e.g., `bd-a3f8`); obtained from the plan's `issue` field
 
 ## Requirements
 1. For each criterion in `acceptance-criteria-structured`, run its `check-command` via Bash
@@ -414,6 +416,7 @@ Re-run acceptance criteria and compare against T0 baseline; register verdict via
 
 ## Inputs
 - Plan file: the task file containing `acceptance-criteria-structured` entries
+- `issue_number`: `str | int` — GitHub integer issue number or beads string ID (e.g., `bd-a3f8`); obtained from the plan's `issue` field
 - T0 baseline: retrieved via `artifact_read(issue_number, "T0-baseline")`
 
 ## Requirements
