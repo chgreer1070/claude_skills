@@ -86,7 +86,7 @@ def _make_sqlite() -> SQLiteBackend:
         pytest.param("github", id="GitHubBackend", marks=_GITHUB_MARKER),
     ]
 )
-def backend(request: pytest.FixtureRequest):
+def backend(request: pytest.FixtureRequest) -> BacklogBackend:
     """Parametrized fixture yielding one backend per test run.
 
     Returns InMemoryBackend, SQLiteBackend, or (optionally) GitHubBackend.
@@ -718,7 +718,7 @@ class TestBranchOps:
         """
         # SQLiteBackend raises RuntimeError for branch operations — skip there.
         if isinstance(backend, SQLiteBackend):
-            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
+            pytest.skip("SQLiteBackend does not support branch operations")
 
         # Arrange / Act
         info = backend.create_integration_branch(42, "feature-slug")
@@ -734,7 +734,7 @@ class TestBranchOps:
              a try/except that the protocol does not mandate.
         """
         if isinstance(backend, SQLiteBackend):
-            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
+            pytest.skip("SQLiteBackend does not support branch operations")
 
         # Act
         result = backend.get_integration_branch_status("milestone/99-nonexistent")
@@ -749,7 +749,7 @@ class TestBranchOps:
              from the list would cause CI to believe no branch exists.
         """
         if isinstance(backend, SQLiteBackend):
-            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
+            pytest.skip("SQLiteBackend does not support branch operations")
 
         # Arrange
         backend.create_integration_branch(7, "alpha")
@@ -768,7 +768,7 @@ class TestBranchOps:
              rather than a no-op, letting callers log the action correctly.
         """
         if isinstance(backend, SQLiteBackend):
-            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
+            pytest.skip("SQLiteBackend does not support branch operations")
 
         # Arrange
         info = backend.create_integration_branch(8, "beta")
@@ -788,7 +788,7 @@ class TestBranchOps:
              defensive try/except blocks throughout calling code.
         """
         if isinstance(backend, SQLiteBackend):
-            raise pytest.skip.Exception("SQLiteBackend does not support branch operations", allow_module_level=False)
+            pytest.skip("SQLiteBackend does not support branch operations")
 
         # Act
         result = backend.delete_integration_branch("milestone/999-ghost")

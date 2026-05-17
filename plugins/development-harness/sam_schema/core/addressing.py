@@ -95,11 +95,10 @@ def _warn_legacy_shadow(ref: str, canonical_name: str, all_entries: list[Path]) 
         canonical_name: Filename of the canonical P-file that was resolved.
         all_entries: All entries in the plan directory (pre-sorted).
     """
-    target_num = int(ref)
     legacy_shadow = [
         p
         for p in all_entries
-        if p.name.startswith("tasks-") and (m := _TASKS_NUMERIC_RE.match(p.name)) and int(m.group(1)) == target_num
+        if p.name.startswith("tasks-") and (m := _TASKS_NUMERIC_RE.match(p.name)) and m.group(1) == ref
     ]
     if legacy_shadow:
         shadow_names = ", ".join(p.name for p in legacy_shadow)
@@ -200,8 +199,16 @@ def resolve_plan_address(address: str, plan_dir: Path) -> Path:
     # Handles both P{NNN}-* and QG{NNN}-* files via active_numeric_re.
     # -------------------------------------------------------------------
     if ref.isdigit():
-        target_num = int(ref)
-        p_matches = [p for p in all_entries if (m := active_numeric_re.match(p.name)) and int(m.group(1)) == target_num]
+        p_matches = [
+            p
+            for p in all_entries
+            if (m := active_numeric_re.match(p.name))
+            and (
+                int(m.group(1)) == int(ref)
+                if ref.isdigit() and m.group(1).isdigit()
+                else m.group(1).lower() == ref.lower()
+            )
+        ]
         if len(p_matches) == 1:
             if active_prefix == "P":
                 _warn_legacy_shadow(ref, p_matches[0].name, all_entries)
@@ -217,9 +224,12 @@ def resolve_plan_address(address: str, plan_dir: Path) -> Path:
         # QG plans have no legacy fallback and will raise AddressingError below.
     else:
         # Slug-based reference: match prefix-pattern entries containing the slug.
-        p_slug_matches = [p for p in all_entries if active_numeric_re.match(p.name) and ref in p.name]
-        if p_slug_matches:
-            return p_slug_matches[0]
+        it = (p for p in all_entries if active_numeric_re.match(p.name) and ref in p.name)
+        first = next(it, None)
+        if first is not None:
+            # Slug matching is fuzzy — multiple matches return the first sorted entry
+            # (deterministic tie-break). Collision detection only applies to numeric IDs.
+            return first
         # No prefix-pattern slug match — fall through to legacy fallback.
         # QG plans have no legacy fallback and will raise AddressingError below.
 
@@ -230,10 +240,7 @@ def resolve_plan_address(address: str, plan_dir: Path) -> Path:
     legacy_candidates = [p for p in all_entries if p.name.startswith("tasks-")]
 
     if ref.isdigit():
-        target_num = int(ref)
-        legacy_numeric = [
-            p for p in legacy_candidates if (m := _TASKS_NUMERIC_RE.match(p.name)) and int(m.group(1)) == target_num
-        ]
+        legacy_numeric = [p for p in legacy_candidates if (m := _TASKS_NUMERIC_RE.match(p.name)) and m.group(1) == ref]
         if legacy_numeric:
             return legacy_numeric[0]
     else:
