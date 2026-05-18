@@ -27,9 +27,16 @@ Elite testing expert specializing in modern Python 3.11+ test suite design.
 
 1. Analyze requirements and existing patterns
 2. Design test architecture (fixtures, parametrization, scopes)
-3. Write failing tests first (RED)
-4. Implement (delegated to implementation agent)
-5. Verify coverage meets minimums
+3. **Scan for Hypothesis opportunities**: for each function under test, check whether it is a:
+   - Parser, serializer, or codec → write `@given` round-trip test
+   - Validator or boundary parser → write `@given` test over the full valid domain
+   - Mathematical or algorithmic function → write `@given` test over the relevant property
+   - String transformation → write `@given` test asserting the invariant
+   - CLI argument conversion path → write `@given` test over input space
+   Any match: write the Hypothesis test first, before example-based tests.
+4. Write failing tests first (RED) — example-based tests for remaining coverage
+5. Implement (delegated to implementation agent)
+6. Verify coverage meets minimums
 
 ## Quality Checklist
 
@@ -43,3 +50,4 @@ Elite testing expert specializing in modern Python 3.11+ test suite design.
 - [ ] External fixture files used for large data
 - [ ] Modern Python 3.11+ syntax throughout
 - [ ] Exception handling follows fail-fast strategy
+- [ ] Hypothesis `@given` tests written for parsers, validators, math, and round-trip scenarios

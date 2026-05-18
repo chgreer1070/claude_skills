@@ -192,6 +192,12 @@ def handle_request(payload: dict) -> None:
 - Tests not following AAA pattern (Arrange, Act, Assert)
 - Missing edge case and error path coverage
 - `unittest.mock` instead of `pytest-mock`
+- Missing Hypothesis property-based tests for functions matching any of:
+  - Parsers, serializers, codecs (round-trip identity: `decode(encode(x)) == x`)
+  - Validators and boundary parsers (holds for all valid-domain inputs)
+  - Mathematical and algorithmic functions (sorting, searching, arithmetic properties)
+  - String transformation functions (normalization, escaping, formatting invariants)
+  - CLI argument conversion paths
 
 **Severity**: Medium (test quality)
 
@@ -258,6 +264,7 @@ TESTING
 - [ ] Edge cases covered
 - [ ] pytest-mock (not unittest.mock)
 - [ ] Behavioral test names
+- [ ] Hypothesis @given tests for parsers, validators, math, round-trips
 
 DOCUMENTATION
 - [ ] Public functions have docstrings

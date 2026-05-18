@@ -113,6 +113,13 @@ Look for:
 - Missing type hints
 - Identifier naming violations: acronym-named public functions or methods (`gcd`, `lcm`,
   `bfs`, `dfs`) that should be expanded (see python3-standards.md §1.5)
+- Missing Hypothesis property-based tests: scan for functions that are strong candidates:
+  - Parsers, serializers, and codecs (round-trip: `encode → decode == identity`)
+  - Validators and boundary parsers (`validate_*(x)` should hold for all valid domain inputs)
+  - Mathematical/algorithmic functions (sorting, searching, arithmetic properties)
+  - String transformation functions (normalization, escaping, formatting)
+  - CLI argument parsing paths (any CLI input → typed value conversion)
+  Flag as MEDIUM if a tested function matches one of these patterns but has only example-based tests and no `@given`-decorated test.
 
 ### Step 6: Execute Automated Analysis
 
