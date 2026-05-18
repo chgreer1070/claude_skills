@@ -5,7 +5,7 @@ argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | ite
 user-invocable: true
 ---
 <gate_token>
-!`cat "${DH_STATE_HOME:-${HOME}/.dh}/sessions/${CLAUDE_CODE_SESSION_ID}/.gate-token"`
+!`node "${CLAUDE_SKILL_DIR}/scripts/get-gate-token.mjs"`
 </gate_token>
 
 <input>

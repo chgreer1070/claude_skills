@@ -1,6 +1,6 @@
 ---
 name: hooks-guide
-description: Cross-platform hooks reference for AI coding assistants — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp. Covers hook authoring in Node.js CJS and Python, per-platform event schemas, inline-agent hooks and MCP in agent frontmatter, common JSON I/O, exit codes, best practices, and a fetch script to refresh docs from official sources. Use when writing, reviewing, or debugging hooks for any AI assistant.
+description: Cross-platform hooks reference for AI coding assistants — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp. Covers hook authoring in Node.js (ESM and CJS) and Python, per-platform event schemas, inline-agent hooks and MCP in agent frontmatter, common JSON I/O, exit codes, best practices, and a fetch script to refresh docs from official sources. Use when writing, reviewing, or debugging hooks for any AI assistant.
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 
@@ -21,9 +21,9 @@ flowchart TD
 
     SessionSchema --> Q4
 
-    Q4 -->|Node.js CJS| CJS["Read references/hooks-cjs.md"]
+    Q4 -->|Node.js| CJS["Read references/hooks-nodejs-extension.md"]
     Q4 -->|Python| Py["Read references/hooks-python.md"]
-    Q4 -->|Not sure / both| Both["Read references/hooks-cjs.md<br>then references/hooks-python.md"]
+    Q4 -->|Not sure / both| Both["Read references/hooks-nodejs-extension.md<br>then references/hooks-python.md"]
 
     Agent --> CC["Also read references/claude-code.md<br>for full event schema"]
     Q4 --> Schema["Cross-platform concepts:<br>references/common-schema.md"]
@@ -45,7 +45,7 @@ For deeper Claude Code coverage, these focused skills are available:
 - `references/claude-code.md` — Claude Code hooks full reference (events, matchers, configuration)
 - `references/inline-agent-hooks.md` — hooks, mcpServers, skills, and memory in agent frontmatter
 - `references/github-copilot.md` — GitHub Copilot coding agent hooks
-- `references/hooks-cjs.md` — Node.js CJS authoring guide and templates
+- `references/hooks-nodejs-extension.md` — Node.js authoring guide: extension rules (.mjs/.cjs), templates, anti-patterns
 - `references/hooks-python.md` — Python authoring guide and templates
 - `references/best-practices.md` — cross-platform conventions and anti-patterns
 - `references/platform-coverage.md` — known platforms, fetch URLs, coverage status

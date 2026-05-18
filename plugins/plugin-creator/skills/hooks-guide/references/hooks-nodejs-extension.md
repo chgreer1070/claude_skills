@@ -1,8 +1,10 @@
-# Node.js CJS Hook Authoring Guide
+# Node.js Hook Authoring Guide
+
+> This guide covers Node.js hook scripts specifically. Claude Code hooks are language-agnostic — any executable works. See [hooks-python.md](./hooks-python.md) for Python hooks.
 
 ## Table of Contents
 
-- [File Naming — Use cjs Extension Only](#file-naming--use-cjs-extension-only)
+- [File Extension — Never Use Plain .js](#file-extension--never-use-plain-js)
 - [Script Header](#script-header)
 - [Read stdin](#read-stdin)
 - [execFileSync over execSync](#execfilesync-over-execsync)
@@ -20,15 +22,21 @@
 
 ---
 
-## File Naming — Use cjs Extension Only
+## File Extension — Never Use Plain .js
 
-Name every hook script with the `.cjs` extension. Never use `.js`.
+Name every Node.js hook script with an explicit extension — `.cjs` or `.mjs`. Never use plain `.js`.
 
-**Why:** Projects that set `"type": "module"` in `package.json` treat `.js` files as ES modules. Node.js will reject CommonJS `require()` calls in an ES module context. The `.cjs` extension forces CommonJS resolution regardless of `package.json` configuration.
+**Why:** Plain `.js` inherits its module type from the nearest `package.json` `"type"` field. A `.js` file in a project with `"type": "module"` is treated as ESM; in a project without that field it is CommonJS. Using `.js` for a hook script causes a module type mismatch error if the project's `"type"` field conflicts with the script's actual syntax. Explicit extensions override `package.json` entirely and load correctly regardless of project type:
+
+- `.mjs` — forces ESM resolution (`import` syntax). **Preferred default for new Node.js scripts written from scratch.**
+- `.cjs` — forces CommonJS resolution (`require()` syntax). Use when `require()` is needed (e.g., existing hooks that already use CommonJS).
+
+New Node.js hooks written from scratch: default to `.mjs`. Existing hooks in this repo use CommonJS (`require()`) → keep `.cjs`.
 
 ```text
-hooks/validate-bash.cjs     ← correct
-hooks/validate-bash.js      ← wrong — ESM risk
+hooks/validate-bash.cjs     ← correct — explicit CommonJS, works in any project
+hooks/validate-bash.mjs     ← correct — explicit ESM, works in any project
+hooks/validate-bash.js      ← wrong — module type depends on package.json "type"
 ```
 
 Use lowercase names with hyphens to match the event or purpose:
@@ -234,6 +242,8 @@ Do not write debug logging to stderr in production hooks. It will appear in Clau
 ---
 
 ## Complete Templates
+
+These templates use CommonJS (`require()`) syntax — save them as `.cjs`. For new scripts written from scratch, prefer `.mjs` and replace `require(...)` with `import ... from '...'`.
 
 ### Blocking — PreToolUse exit 2
 
@@ -588,7 +598,7 @@ Wire in `hooks.json`:
 
 ## Anti-Patterns
 
-### Wrong extension
+### Wrong extension for Node.js scripts
 
 ```text
 hooks/validate-bash.js
@@ -598,7 +608,7 @@ hooks/validate-bash.js
 hooks/validate-bash.cjs
 ```
 
-`.js` fails in projects with `"type": "module"`. `.cjs` is explicit and always works.
+Plain `.js` causes module type mismatch errors. See [File Extension — Never Use Plain .js](#file-extension--never-use-plain-js) for the full rule and rationale.
 
 ---
 

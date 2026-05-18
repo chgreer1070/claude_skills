@@ -173,21 +173,28 @@ def write_test_item(backlog_dir: Path) -> object:
 # ---------------------------------------------------------------------------
 
 TEST_GATE_TOKEN = "test-fixed-gate-token-aabbccdd"
+_TEST_SESSION_ID = "test-session-id-for-gate-token"
 
 
 @pytest.fixture(autouse=True)
-def _patch_gate_token(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
-    """Monkeypatch _SESSION_GATE_TOKEN to a fixed value for all non-e2e tests.
+def _patch_gate_token(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    """Write the fixed gate token to a temp session file for all non-e2e tests.
 
-    Skips patching for tests marked with @pytest.mark.e2e so that live
-    validation tests still use the real token generated at server startup.
+    Sets CLAUDE_CODE_SESSION_ID and DH_STATE_HOME so that backlog_core.server._read_gate_token()
+    reads the fixed token. Skips for tests marked with @pytest.mark.e2e so that live
+    validation tests use the real token written by the skill at load time.
     """
     if request.node.get_closest_marker("e2e"):
         return
-    monkeypatch.setattr("backlog_core.server._SESSION_GATE_TOKEN", TEST_GATE_TOKEN)
+    dh_state = tmp_path / "dh_state"
+    token_dir = dh_state / "sessions" / _TEST_SESSION_ID
+    token_dir.mkdir(parents=True, exist_ok=True)
+    (token_dir / ".gate-token").write_text(TEST_GATE_TOKEN, encoding="utf-8")
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", _TEST_SESSION_ID)
+    monkeypatch.setenv("DH_STATE_HOME", str(dh_state))
 
 
 @pytest.fixture
 def gate_token() -> str:
-    """Return the fixed gate token used by the monkeypatched server in tests."""
+    """Return the fixed gate token used by the file-backed server in tests."""
     return TEST_GATE_TOKEN

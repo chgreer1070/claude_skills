@@ -18,7 +18,7 @@ import uuid
 import backlog_core.models as _bc_models
 import pytest
 from backlog_core.models import BacklogConfig
-from backlog_core.server import _SESSION_GATE_TOKEN, mcp
+from backlog_core.server import _read_gate_token, mcp
 
 from tests.helpers import call_mcp_tool
 
@@ -168,7 +168,7 @@ class TestLiveLifecycle:
                 "description": "Live validation test item",
                 "source": "test",
                 "force": True,
-                "gate_token": _SESSION_GATE_TOKEN,
+                "gate_token": _read_gate_token(),
             },
         )
 
@@ -290,7 +290,7 @@ class TestLiveLifecycle:
                 "description": "Item to be resolved",
                 "source": "test",
                 "force": True,
-                "gate_token": _SESSION_GATE_TOKEN,
+                "gate_token": _read_gate_token(),
             },
         )
         assert isinstance(create_result["issue_num"], int)

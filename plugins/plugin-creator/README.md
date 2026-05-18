@@ -63,7 +63,7 @@ Trigger phrases that activate this automatically: "create an agent", "add an age
 
 #### `/hook-creator`
 
-Creates hook scripts for Claude Code plugins. Enforces the mandatory constraints for production hooks: Node.js `.cjs` extension, `execFileSync` over `execSync`, `${CLAUDE_PLUGIN_ROOT}` path anchoring, correct `hookSpecificOutput` schema, and explicit timeouts.
+Creates hook scripts for Claude Code plugins. Enforces the mandatory constraints for production hooks: explicit `.cjs` or `.mjs` extension (never plain `.js`), `execFileSync` over `execSync`, `${CLAUDE_PLUGIN_ROOT}` path anchoring, correct `hookSpecificOutput` schema, and explicit timeouts.
 
 ```text
 /hook-creator
@@ -231,7 +231,7 @@ With this plugin installed, Claude will:
 - Recognize when you describe a plugin, skill, agent, or hook and activate the appropriate creation workflow automatically
 - Validate frontmatter before writing it, catching YAML syntax errors, forbidden multiline indicators, and incorrect field types
 - Use the correct tool format for agent and skill `tools` fields (comma-separated strings, not arrays)
-- Write hook scripts in Node.js `.cjs` only, never Python or bash — the format Claude Code's hook system requires for plugins
+- Write hook scripts in the language that matches the project runtime (Node.js by default; Python when `pyproject.toml` is present); for Node.js always use `.mjs` or `.cjs` — never plain `.js` (see [hooks-nodejs-extension.md](./skills/hooks-guide/references/hooks-nodejs-extension.md))
 - Apply the `${CLAUDE_PLUGIN_ROOT}` environment variable in hook paths rather than hardcoding absolute paths
 - Check skill complexity with token-based thresholds and recommend `references/` extraction or splitting before a skill exceeds Claude's context budget
 - Route refactoring task types to the correct specialist: `SKILL_SPLIT` tasks to `/refactor-skill`, `AGENT_OPTIMIZE` tasks to the `subagent-refactorer` agent, `DOC_IMPROVE` tasks to the `contextual-ai-documentation-optimizer` agent
@@ -334,7 +334,7 @@ Claude will assess whether the skill needs splitting (multiple independent domai
 | Skill not appearing as slash command | Missing `name:` field | `skilllint --fix` adds it from directory name |
 | `agents: Invalid input` | Used directory string instead of array | Change `"agents": "./agents/"` to `["./agents/file.md"]` |
 | Description shows as `>-` | YAML multiline indicator | `skilllint --fix` collapses to single line |
-| Hook not firing | Script not executable | `chmod +x scripts/my-hook.cjs` |
+| Hook not firing | Script not executable | `chmod +x scripts/my-hook.mjs` (or `.cjs`/`.py`) |
 | Path errors after install | Used `../` traversal | Use `${CLAUDE_PLUGIN_ROOT}` or symlinks |
 
 ## Agents
@@ -349,7 +349,7 @@ These agents run internally to implement the skills above. They are not invoked 
 | `subagent-refactorer` | Rewrites agent prompt files using Anthropic prompt engineering methodology — strategic XML tagging, strong imperative instructions, model-tier selection |
 | `contextual-ai-documentation-optimizer` | Quality audit, content optimization, and frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files — three bundled concerns; see routing note below |
 | `plugin-assessor` | Analyzes plugins for structure, frontmatter compliance, orphaned files, and cross-reference validity |
-| `hook-creator` | Generates Node.js `.cjs` hook scripts and wires `hooks.json` |
+| `hook-creator` | Generates hook scripts (Node.js `.mjs`/`.cjs` by default, Python or other language when matching project runtime), wires `hooks.json` |
 | `agent-creator` | Creates agent files from requirements with template selection and plugin.json updates |
 
 Routing within `contextual-ai-documentation-optimizer`:

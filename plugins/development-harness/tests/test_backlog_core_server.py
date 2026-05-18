@@ -174,13 +174,20 @@ async def test_backlog_add_gate_rejects_missing_token():
 
 
 @pytest.mark.e2e
-def test_gate_token_file_written_at_startup() -> None:
-    """Gate token file must exist at startup and contain _SESSION_GATE_TOKEN."""
-    from backlog_core.server import _SESSION_GATE_TOKEN, _gate_token_path
+def test_gate_token_file_readable_at_runtime() -> None:
+    """Gate token file must be readable via _read_gate_token() when CLAUDE_CODE_SESSION_ID is set.
 
-    assert _gate_token_path.exists(), f"Gate token file not written at startup: {_gate_token_path}"
-    assert _gate_token_path.read_text(encoding="utf-8").strip() == _SESSION_GATE_TOKEN
-    assert len(_SESSION_GATE_TOKEN) == 64
+    This is an e2e test that assumes the skill has already written the token file
+    for the current session before the server was started.
+    """
+    import os
+
+    from backlog_core.server import _read_gate_token
+
+    assert os.environ.get("CLAUDE_CODE_SESSION_ID"), "CLAUDE_CODE_SESSION_ID must be set for this e2e test"
+    token = _read_gate_token()
+    assert token is not None, "_read_gate_token() returned None — token file missing or unreadable"
+    assert len(token) == 64, f"Expected 64-char hex token, got length {len(token)}"
 
 
 # ---------------------------------------------------------------------------

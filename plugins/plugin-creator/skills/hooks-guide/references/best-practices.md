@@ -45,7 +45,7 @@ Network operations are inappropriate for hooks. Hooks execute synchronously in t
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/lint.cjs",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/lint.mjs",
             "timeout": 15
           }
         ]
@@ -363,7 +363,7 @@ Async hooks (`"async": true`) are available only on `type: "command"` hooks in C
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/run-tests.cjs",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/run-tests.mjs",
             "async": true,
             "timeout": 300
           }
@@ -460,16 +460,16 @@ Test every hook by piping representative stdin before adding it to configuration
 **Node.js hook test pattern:**
 
 ```bash
-# Test a PreToolUse hook with a Bash tool call
+# Test a PreToolUse hook with a Bash tool call (adjust extension to match your script)
 echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"npm test"},"session_id":"test","cwd":"/tmp"}' \
-  | node ./hooks/validate-bash.cjs
+  | node ./hooks/validate-bash.mjs
 
 # Check exit code
 echo "Exit: $?"
 
 # Validate JSON output
 echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"npm test"},"session_id":"test","cwd":"/tmp"}' \
-  | node ./hooks/validate-bash.cjs | jq .
+  | node ./hooks/validate-bash.mjs | jq .
 ```
 
 **Bash hook test pattern (GitHub Copilot):**
@@ -571,23 +571,22 @@ Plugin structure expects `hooks/hooks.json` to be present. Removing it breaks pl
 
 ---
 
-### Using the `.js` extension in ESM projects
+### Using plain `.js` extension for hook scripts
 
-**Wrong — `.js` extension in a project with `"type": "module"` in package.json:**
+**Wrong — plain `.js` extension:**
 
 ```text
 hooks/validate-bash.js
 ```
 
-**Correct — `.cjs` extension for explicit CommonJS:**
+**Correct — explicit extension matching module syntax:**
 
 ```text
-hooks/validate-bash.cjs
+hooks/validate-bash.cjs   ← CommonJS (require) — works in any project
+hooks/validate-bash.mjs   ← ESM (import) — works in any project
 ```
 
-Node.js treats `.js` files as ESM modules when the nearest `package.json` declares `"type": "module"`. CommonJS `require()` calls fail in ESM context. The `.cjs` extension explicitly identifies the file as CommonJS regardless of the project's module type.
-
-SOURCE: hook-creator.md — "Language — .cjs ONLY" mandatory constraint.
+Plain `.js` fails when the project's `package.json` `"type"` field conflicts with the script's module syntax. Use `.mjs` (ESM, preferred for new scripts) or `.cjs` (CommonJS) — explicit extensions override `package.json` and load correctly in any project. See [hooks-nodejs-extension.md](./hooks-nodejs-extension.md) for the full rule and rationale.
 
 ---
 

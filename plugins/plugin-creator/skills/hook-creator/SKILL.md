@@ -1,6 +1,6 @@
 ---
 name: hook-creator
-description: Guide for creating Claude Code plugin hooks — Node.js .cjs scripts only, hooks.json configuration, event selection, prompt-based vs command hooks, ${CLAUDE_PLUGIN_ROOT} paths, stdio suppression, timeout sizing, and testing. Use when adding hooks to a plugin, creating PreToolUse/PostToolUse/Stop/SubagentStop/SessionStart/UserPromptSubmit hooks, or wiring hook scripts to hooks.json.
+description: Guide for creating Claude Code plugin hooks — language selection heuristic (Node.js default, match project runtime when obvious), hooks.json configuration, event selection, prompt-based vs command hooks, ${CLAUDE_PLUGIN_ROOT} paths, stdio suppression, timeout sizing, and testing. Use when adding hooks to a plugin, creating PreToolUse/PostToolUse/Stop/SubagentStop/SessionStart/UserPromptSubmit hooks, or wiring hook scripts to hooks.json.
 ---
 
 # Hook Creator for Claude Code Plugins
@@ -13,32 +13,44 @@ For all hook events, matchers, and environment variables, load: `Skill(skill: "p
 
 ---
 
-## Language Constraint — Node.js Only
+## Language Selection
 
-Hook scripts in this repository use **Node.js `.cjs` exclusively**.
+Claude Code hooks are language-agnostic — any executable with a shebang works. Choose the language based on context:
 
 ```mermaid
 flowchart TD
-    Start([Need a hook script?]) --> Q1{Language choice}
-    Q1 -->|JavaScript .cjs| Correct[Correct — use Node.js CommonJS]
-    Q1 -->|Python| Wrong1[Prohibited — use .cjs instead]
-    Q1 -->|Bash / shell| Wrong2[Prohibited — use .cjs instead]
-    Q1 -->|TypeScript| Wrong3[Compile step required — write .cjs directly]
-    Correct --> Pattern[Follow Node.js hook pattern below]
+    Start([Need a hook script?]) --> Q1{Does the project have an obvious runtime?}
+    Q1 -->|Yes — Python project pyproject.toml present| Python["Write Python hook<br>#!/usr/bin/env python3<br>See hooks-python.md"]
+    Q1 -->|Yes — other runtime e.g. Ruby Gemfile| Other["Write hook in that language<br>Any executable with shebang works"]
+    Q1 -->|No — general purpose or cross-platform| NodeJS["Default: Node.js<br>Claude Code's presence implies Node.js available"]
+    NodeJS --> Q2{Module syntax?}
+    Q2 -->|import — ESM| MJS["Use .mjs extension<br>Preferred default for new Node.js scripts"]
+    Q2 -->|require — CommonJS| CJS["Use .cjs extension<br>Use when require() is needed"]
+    MJS --> Pattern[Follow Node.js hook pattern below]
+    CJS --> Pattern
+    Python --> Done[Follow language-specific pattern]
+    Other --> Done
 ```
 
-**Evidence**: `orchestrator-discipline` plugin hooks (`pre-tool-orchestrator-read-warning.cjs`, `pre-tool-diagnostic-command-gate.cjs`), `.claude/hooks/session-start-backlog.cjs`, `.claude/hooks/session-start-rtica.cjs`, `.claude/hooks/stop-backlog-reminder.cjs`.
+**Node.js is the default** because Claude Code's presence on a host implies Node.js is available. When the project has an obvious runtime dependency (e.g., a Python project with `pyproject.toml`), write the hook in that language instead — there is no need to introduce a Node.js dependency just for hooks.
 
-SOURCE: Repository observation 2026-02-21 — all hooks use `.cjs` (Node.js CommonJS).
+**For Node.js scripts specifically**: use `.mjs` (ESM, preferred) or `.cjs` (CommonJS). Never use plain `.js`. See [hooks-nodejs-extension.md](../hooks-guide/references/hooks-nodejs-extension.md) for the full rule and rationale.
+
+**For Python hooks**: see `Skill(skill: "plugin-creator:hooks-guide")` → `references/hooks-python.md`.
+
+New Node.js hooks written from scratch: default to `.mjs`. Existing hooks that already use `require()`: keep `.cjs`.
 
 ---
 
 ## Node.js Hook Template
 
-All hooks follow this structure:
+For new scripts use `.mjs` (ESM) with `import` syntax. For hooks that already use `require()`, keep `.cjs`. The `.cjs` template below works in any project — change `require` to `import` and the extension to `.mjs` when writing a new script from scratch.
+
+**`.cjs` template (CommonJS — use when `require()` is needed):**
 
 ```javascript
 #!/usr/bin/env node
+'use strict';
 /**
  * Brief description of what this hook does.
  * Fires on: EventName — ToolMatcher
@@ -117,7 +129,7 @@ The file must exist. Remove entries to disable hooks. Remove the file only when 
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/my-hook.cjs\"",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/my-hook.mjs",
             "timeout": 3
           }
         ]
@@ -138,7 +150,7 @@ The file must exist. Remove entries to disable hooks. Remove the file only when 
 }
 ```
 
-**Path rule**: Always use `${CLAUDE_PLUGIN_ROOT}/hooks/filename.cjs` — never hardcoded paths.
+**Path rule**: Always use `${CLAUDE_PLUGIN_ROOT}/hooks/filename.mjs` (or `.cjs` / `.py` as appropriate) — never hardcoded paths.
 
 SOURCE: `plugins/orchestrator-discipline/hooks.json` (lines 1-25), verified 2026-02-19.
 
@@ -192,7 +204,7 @@ flowchart TD
     Setup --> HookType
     Notification --> HookType
     HookType --> Q2{Decision logic complexity?}
-    Q2 -->|Deterministic rule — fast| Command[type: command — Node.js .cjs]
+    Q2 -->|Deterministic rule — fast| Command[type: command — any executable script]
     Q2 -->|Context-aware — needs reasoning| Prompt[type: prompt — LLM-evaluated]
     Q2 -->|Complex verification with tools| Agent[type: agent — agentic verifier]
     Q2 -->|Send to external service| HTTP[type: http — POST to URL]
@@ -209,7 +221,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     Start([Choose hook type]) --> Q{What kind of logic?}
-    Q -->|Regex/pattern match, path check, fast rule| Command["type: command\nNode.js .cjs script\nFast, deterministic, no API call"]
+    Q -->|Regex/pattern match, path check, fast rule| Command["type: command\nAny executable script\nFast, deterministic, no API call"]
     Q -->|Understand intent, evaluate context, reasoning| Prompt["type: prompt\nLLM evaluated (fast model)\nSlower, flexible, context-aware"]
     Q -->|Complex verification needing tool access| Agent["type: agent\nAgentic verifier with tools\nMost flexible, highest latency"]
     Q -->|Send to external service or webhook| HTTP["type: http\nPOST to URL\nFor remote validation services"]
@@ -368,9 +380,9 @@ Exit code 2 blocks the triggering action. Exit code 0 with `{"ok": false, "reaso
 flowchart TD
     A([Start: add a hook to a plugin]) --> B[Identify event and behavior]
     B --> C{Hook type?}
-    C -->|Command — deterministic| D[Create hooks/myhook.cjs]
+    C -->|Command — deterministic| D["Create hooks/myhook.mjs or .cjs<br>or hooks/myhook.py or hooks/myhook.sh"]
     C -->|Prompt — LLM-evaluated| E[Write prompt string directly in hooks.json]
-    D --> F[Test script directly: echo input-json | node hooks/myhook.cjs]
+    D --> F["Test script directly: echo input-json | node hooks/myhook.mjs"]
     F --> G{Output valid JSON?}
     G -->|No| D
     G -->|Yes| H[Add entry to hooks/hooks.json using correct event + matcher]
@@ -387,11 +399,11 @@ flowchart TD
 **Testing directly before wiring:**
 
 ```bash
-# Test with minimal input
-echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/test.txt"}}' | node ./hooks/my-hook.cjs
+# Test with minimal input (adjust extension to match your script)
+echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/test.txt"}}' | node ./hooks/my-hook.mjs
 
 # Validate JSON output
-echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/test.txt"}}' | node ./hooks/my-hook.cjs | python3 -m json.tool
+echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/test.txt"}}' | node ./hooks/my-hook.mjs | python3 -m json.tool
 ```
 
 ---
@@ -410,7 +422,7 @@ After writing a hook script, register it in `hooks/hooks.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/validate-write.cjs\"",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/validate-write.mjs",
             "timeout": 3
           }
         ]

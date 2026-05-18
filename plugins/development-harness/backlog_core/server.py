@@ -11,7 +11,6 @@ import json as _json
 import logging as _logging
 import os as _os
 import re as _re
-import secrets
 import sqlite3
 import sys
 import time as _time
@@ -1137,24 +1136,28 @@ _args = _parse_args()
 if _args.project_dir is not None:
     _init_models(_args.project_dir)
 
-# Per-session gate token required by backlog_add to enforce skill-mediated item creation.
-# Generated once at server startup. Written to a session-scoped file so skills can
-# inject it at load time via the `!` bash injection mechanism. The in-memory value
-# remains authoritative — the file write is best-effort.
-_SESSION_GATE_TOKEN: str = secrets.token_hex(32)
 
-# Write the token to a session-scoped file for skill load-time injection.
-# Respects DH_STATE_HOME (same resolution as dh_paths._dh_user_root).
-_dh_state_home: str = _os.environ.get("DH_STATE_HOME", "")
-_dh_root: Path = Path(_dh_state_home).expanduser() if _dh_state_home else Path.home() / ".dh"
-_gate_token_path: Path = _dh_root / "sessions" / _os.environ.get("CLAUDE_CODE_SESSION_ID", "default") / ".gate-token"
-try:
-    _gate_token_path.parent.mkdir(parents=True, exist_ok=True)
-    _gate_token_path.write_text(_SESSION_GATE_TOKEN, encoding="utf-8")
-except OSError as _gate_token_err:
-    _logging.getLogger(__name__).warning(
-        "Could not write session gate token to %s: %s", _gate_token_path, _gate_token_err
-    )
+def _read_gate_token() -> str | None:
+    """Read the session gate token written by the work-backlog-item skill at load time.
+
+    The token is generated and written by
+    ``skills/work-backlog-item/scripts/get-gate-token.mjs`` when the skill loads.
+    This function constructs the same path and reads it at request time.
+
+    Returns:
+        The token string, or None when CLAUDE_CODE_SESSION_ID is absent from
+        the environment or when the file cannot be read.
+    """
+    session_id = _os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if not session_id:
+        return None
+    dh_state_home = _os.environ.get("DH_STATE_HOME", "")
+    dh_root = Path(dh_state_home).expanduser() if dh_state_home else Path.home() / ".dh"
+    token_path = dh_root / "sessions" / session_id / ".gate-token"
+    try:
+        return token_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
 
 
 mcp = FastMCP(
@@ -1174,6 +1177,7 @@ mcp = FastMCP(
     )
 )
 async def backlog_add(
+    ctx: Context,
     title: Annotated[str, Field(description="Item title")],
     priority: Annotated[str, Field(description="Priority level: P0, P1, P2, or Ideas")],
     description: Annotated[str, Field(description="Item description")],
@@ -1198,7 +1202,19 @@ async def backlog_add(
         Dict with file_path, title, priority, issue number (if created),
         and output messages/warnings. On error, dict contains an error key.
     """
-    if gate_token != _SESSION_GATE_TOKEN:
+    session_id = _os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if not session_id:
+        await ctx.warning("CLAUDE_CODE_SESSION_ID not set — gate token validation skipped, denying access")
+        return {
+            "error": "CLAUDE_CODE_SESSION_ID is not set in the server environment. Cannot validate gate token. Load /dh:create-backlog-item to ensure the token is available."
+        }
+    expected_token = _read_gate_token()
+    if expected_token is None:
+        await ctx.warning("Gate token file unreadable for session %s", session_id)
+        return {
+            "error": "Gate token file could not be read for this session. Load /dh:create-backlog-item — the skill writes the required token at load time."
+        }
+    if gate_token != expected_token:
         return {
             "error": "Direct backlog_add calls are not permitted. Load and follow /dh:create-backlog-item — it will provide the required gate_token."
         }
