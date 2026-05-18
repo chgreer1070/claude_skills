@@ -81,6 +81,21 @@ def live_items(tmp_path_factory, monkeypatch_class):
     )
 
     test_id = str(uuid.uuid4())[:8]
+
+    # Write gate token file so backlog_add passes its gate validation.
+    # The server reads the token from {DH_STATE_HOME}/sessions/{session_id}/.gate-token
+    # at request time. CLAUDE_CODE_SESSION_ID must also be set in the process environment
+    # so that both the server's validation path and _read_gate_token() (called inline in
+    # test bodies to supply the gate_token parameter) resolve to the same file.
+    live_session_id = f"live-test-session-{test_id}"
+    # Use a fixed-length 64-char hex-style token that is unique to this test run.
+    live_gate_token = str(uuid.uuid4()).replace("-", "") + str(uuid.uuid4()).replace("-", "")
+    live_gate_token = live_gate_token[:64]
+    token_dir = tmp_root / "dh_state" / "sessions" / live_session_id
+    token_dir.mkdir(parents=True, exist_ok=True)
+    (token_dir / ".gate-token").write_text(live_gate_token, encoding="utf-8")
+    monkeypatch_class.setenv("CLAUDE_CODE_SESSION_ID", live_session_id)
+
     ctx: dict = {
         "test_id": test_id,
         "backlog_dir": bd,
