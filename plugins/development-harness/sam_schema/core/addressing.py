@@ -204,9 +204,7 @@ def resolve_plan_address(address: str, plan_dir: Path) -> Path:
             for p in all_entries
             if (m := active_numeric_re.match(p.name))
             and (
-                int(m.group(1)) == int(ref)
-                if ref.isdigit() and m.group(1).isdigit()
-                else m.group(1).lower() == ref.lower()
+                m.group(1).lstrip("0") == ref.lstrip("0") if m.group(1).isdigit() else m.group(1).lower() == ref.lower()
             )
         ]
         if len(p_matches) == 1:
