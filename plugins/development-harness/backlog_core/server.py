@@ -1152,9 +1152,10 @@ try:
     _gate_token_path.parent.mkdir(parents=True, exist_ok=True)
     _gate_token_path.write_text(_SESSION_GATE_TOKEN, encoding="utf-8")
 except OSError as _gate_token_err:
-    import sys as _sys
+    _logging.getLogger(__name__).warning(
+        "Could not write session gate token to %s: %s", _gate_token_path, _gate_token_err
+    )
 
-    print(f"WARNING: gate token file write failed: {_gate_token_path} — {_gate_token_err}", file=_sys.stderr)
 
 mcp = FastMCP(
     "backlog",
@@ -4170,23 +4171,24 @@ async def dispatch_item_status(
         for wave in waves:
             for item in wave.items:
                 if item.issue == issue:
-                    if status == "complete":
-                        mgr.set_item_complete(
-                            milestone=milestone, wave_num=wave.wave_num, issue=issue, result=result, cost=cost
-                        )
-                    elif status == "failed":
-                        mgr.set_item_failed(milestone=milestone, wave_num=wave.wave_num, issue=issue, error=error)
-                    elif status == "skipped":
-                        # Treat skipped the same as failed with a standard message.
-                        mgr.set_item_failed(
-                            milestone=milestone, wave_num=wave.wave_num, issue=issue, error=error or "skipped"
-                        )
-                    else:
-                        return {
-                            "error": f"Invalid status '{status}': must be 'complete', 'failed', or 'skipped'",
-                            "milestone": milestone,
-                            "issue": issue,
-                        }
+                    match status:
+                        case "complete":
+                            mgr.set_item_complete(
+                                milestone=milestone, wave_num=wave.wave_num, issue=issue, result=result, cost=cost
+                            )
+                        case "failed":
+                            mgr.set_item_failed(milestone=milestone, wave_num=wave.wave_num, issue=issue, error=error)
+                        case "skipped":
+                            # Treat skipped the same as failed with a standard message.
+                            mgr.set_item_failed(
+                                milestone=milestone, wave_num=wave.wave_num, issue=issue, error=error or "skipped"
+                            )
+                        case _:
+                            return {
+                                "error": f"Invalid status '{status}': must be 'complete', 'failed', or 'skipped'",
+                                "milestone": milestone,
+                                "issue": issue,
+                            }
                     return {
                         "milestone": milestone,
                         "issue": issue,
