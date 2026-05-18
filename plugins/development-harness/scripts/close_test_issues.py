@@ -1,4 +1,17 @@
-#!/usr/bin/env -S uv --quiet run --active
+#!/usr/bin/env -S uv --quiet run --active --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "gitpython>=3.1.0",
+#   "pygithub>=2.8.1",
+#   "pydantic>=2.12.3",
+#   "ruamel.yaml>=0.18.0",
+#   "tiktoken>=0.12.0",
+#   "marko>=2.0.0",
+#   "typer>=0.21.2",
+#   "python-dotenv>=1.0.0",
+# ]
+# ///
 """Close orphaned [MCP-TEST-*] GitHub issues left by failed e2e test teardown.
 
 Fetches all open issues via backlog_core shared GraphQL client, filters for titles
@@ -18,6 +31,12 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
+
+# Make backlog_core importable when run via `uv run` against the project workspace
+# (which does not install development-harness as an editable package).
+# Pattern mirrors run_backlog_server.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backlog_core.gh_client import GitHubUnavailableError, close_github_issue, get_github, sync_issues_graphql
 from backlog_core.models import Output
