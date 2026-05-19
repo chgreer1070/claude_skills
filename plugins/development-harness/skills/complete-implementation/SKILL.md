@@ -68,7 +68,7 @@ Read the `plan` field from the response.
 ```mermaid
 flowchart TD
     Plan{plan field<br>present and non-empty?}
-    Plan -->|Yes| AutoResolve["Extract plan file path from plan field<br>→ proceed to 'Resolve Plan Address'<br>(existing 6-phase flow)"]
+    Plan -->|Yes| AutoResolve["Extract plan file path from plan field<br>→ proceed to 'Resolve Plan Address'<br>(existing 7-phase flow)"]
     Plan -->|No| PropFlow["→ proceed to 'Proportional Quality Gates'"]
 ```
 
@@ -161,7 +161,7 @@ The `pqg-` prefix (proportional quality gate) distinguishes from the `qg-` prefi
 
 **Step 4 -- SAM dispatch loop**:
 
-Use the same SAM Dispatch Loop as the existing 6-phase flow (see "SAM Dispatch Loop (Phases 1-6)" section). The loop operates identically — 3 tasks instead of 6 is the only structural difference.
+Use the same SAM Dispatch Loop as the existing 7-phase flow (see "SAM Dispatch Loop (Phases T0-T6)" section). The loop operates identically — 3 tasks instead of 7 is the only structural difference.
 
 **Phase-specific post-dispatch actions for proportional gates**:
 
@@ -350,7 +350,7 @@ When the parent story issue number is known (from the plan's `issue` field or th
 mcp__plugin_dh_backlog__artifact_list(issue_number=N)
 ```
 
-If the response contains artifacts, pass the manifest to quality gate agents (Phases 1-6) so they can access plan artifacts via `artifact_read` instead of filesystem paths. This is critical for worktree-isolated agents.
+If the response contains artifacts, pass the manifest to quality gate agents (Phases T0-T6) so they can access plan artifacts via `artifact_read` instead of filesystem paths. This is critical for worktree-isolated agents.
 
 **Fallback**: If `artifact_list` returns an empty manifest or an error, quality gate agents use filesystem path conventions as before. This ensures backward compatibility with issues that predate the artifact manifest system.
 
@@ -438,7 +438,7 @@ This allows re-running `complete-implementation` to resume from the blocked phas
 
 ---
 
-## SAM Dispatch Loop (Phases 0-6)
+## SAM Dispatch Loop (Phases T0-T6)
 
 **Phase task mapping:**
 
@@ -518,7 +518,7 @@ flowchart TD
 
 ## Completion Verification Gate
 
-After the SAM dispatch loop exits, verify all 7 phases reached terminal status before allowing label application.
+After the SAM dispatch loop exits, verify all phases reached terminal status before allowing label application.
 
 ```text
 mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="{QG}")
@@ -526,14 +526,14 @@ mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="{QG}")
 
 ```mermaid
 flowchart TD
-    Status["sam_plan(action=status, plan='{QG}')"] --> Iter["Iterate over all 7 tasks"]
+    Status["sam_plan(action=status, plan='{QG}')"] --> Iter["Iterate over all tasks in the plan"]
     Iter --> Check{For each task:<br>check status}
     Check -->|"status == 'complete'"| PassTask["Task passes"]
     Check -->|"status == 'skipped' AND task_id == 'T5'"| PassTask
     Check -->|"status == 'skipped' AND task_id != 'T5'"| FailUnauth["FAIL — unauthorized skip"]
     Check -->|"status == 'not-started' OR 'in-progress'"| FailIncomplete["FAIL — incomplete phase"]
     Check -->|"status == 'blocked'"| FailBlocked["FAIL — blocked phase"]
-    PassTask --> AllPassed{All 7 tasks<br>passed?}
+    PassTask --> AllPassed{All tasks<br>passed?}
     AllPassed -->|Yes| Proceed["Proceed to Recursive Follow-up Handling"]
     AllPassed -->|No| Stop["STOP — report failures, do NOT apply label"]
     FailUnauth --> AllPassed
@@ -593,7 +593,7 @@ Initialization: `{recursion_depth}` is set to `0` at skill invocation. It increm
 before each call to `Skill(skill="implement-feature")` in the recursion path. A re-run
 of `/complete-implementation` on the same task file starts `{recursion_depth}` at `0`.
 
-After all six phases complete, route any follow-up task files created by Phase 1 (code-reviewer) to the backlog before deciding on recursion. This ensures no follow-up file is orphaned when the orchestrator skips recursion.
+After all phases complete, route any follow-up task files created by Phase 1 (code-reviewer) to the backlog before deciding on recursion. This ensures no follow-up file is orphaned when the orchestrator skips recursion.
 
 ### Step 1: Detect Follow-up Files
 
@@ -839,7 +839,7 @@ Do not recurse. The follow-up is tracked in the backlog.
 
 ## Apply status:verified Label
 
-After all six phases and follow-up routing complete, apply the `status:verified` GitHub label to the parent backlog issue.
+After all phases and follow-up routing complete, apply the `status:verified` GitHub label to the parent backlog issue.
 
 **Beads backend**: No `dh:state:verified` label — skip this section, continue to Final Step.
 
@@ -878,7 +878,7 @@ Stop. Do not proceed to the Final Step commit.
 
 ## Final Step: Commit and Push Remaining Changes
 
-After all phases and follow-up routing are complete, check for uncommitted changes. Phases 1-6 and the Recursive Follow-up Handling steps modify files (task file context manifests, backlog item files, plan annotations). Commit any remaining modifications in a single commit and push to the current branch.
+After all phases and follow-up routing are complete, check for uncommitted changes. Phases T0-T6 and the Recursive Follow-up Handling steps modify files (task file context manifests, backlog item files, plan annotations). Commit any remaining modifications in a single commit and push to the current branch.
 
 ```bash
 git status
