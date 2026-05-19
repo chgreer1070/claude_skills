@@ -102,29 +102,29 @@ class TestPhaseBody:
 class TestBuildQualityGatePlan:
     """build_quality_gate_plan emits 7 tasks with T0 first."""
 
-    def test_plan_contains_seven_tasks(self, built_plan: str) -> None:
-        plan = _parse_yaml(built_plan)
+    def test_plan_contains_seven_tasks(self) -> None:
+        plan = _parse_yaml(build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001"))
         assert len(plan["tasks"]) == 7
 
-    def test_first_task_is_t0(self, built_plan: str) -> None:
-        plan = _parse_yaml(built_plan)
+    def test_first_task_is_t0(self) -> None:
+        plan = _parse_yaml(build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001"))
         assert plan["tasks"][0]["id"] == "T0"
 
-    def test_t0_task_title(self, built_plan: str) -> None:
-        plan = _parse_yaml(built_plan)
+    def test_t0_task_title(self) -> None:
+        plan = _parse_yaml(build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001"))
         assert plan["tasks"][0]["title"] == "Multi-Perspective Review"
 
-    def test_t1_task_second(self, built_plan: str) -> None:
-        plan = _parse_yaml(built_plan)
+    def test_t1_task_second(self) -> None:
+        plan = _parse_yaml(build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001"))
         assert plan["tasks"][1]["id"] == "T1"
 
-    def test_t1_dependencies_unchanged(self, built_plan: str) -> None:
-        plan = _parse_yaml(built_plan)
+    def test_t1_dependencies_unchanged(self) -> None:
+        plan = _parse_yaml(build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001"))
         t1 = plan["tasks"][1]
         assert t1["dependencies"] == []
 
-    def test_t0_body_contains_skill_invocation(self, built_plan: str) -> None:
-        plan = _parse_yaml(built_plan)
+    def test_t0_body_contains_skill_invocation(self) -> None:
+        plan = _parse_yaml(build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001"))
         t0_body = plan["tasks"][0]["body"]
         assert "dh:multi-perspective-review" in t0_body
 
