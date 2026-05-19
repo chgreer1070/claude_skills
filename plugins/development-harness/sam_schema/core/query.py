@@ -174,6 +174,21 @@ def update_plan_fields(
         y.dump(data, buf)
         _atomic_write(file_path, buf.getvalue())
 
+    if set_fields and task_id is None:
+        # Plan-level field updates: load YAML, update each key, write back.
+        # Mirrors the `context` handler above but for arbitrary plan metadata.
+        y = _make_yaml()
+        raw = file_path.read_text(encoding="utf-8")
+        data: dict[str, Any] = y.load(raw)
+        for key, value in set_fields.items():
+            if isinstance(value, str) and "\n" in value:
+                data[key] = LiteralScalarString(value)
+            else:
+                data[key] = value
+        buf = io.StringIO()
+        y.dump(data, buf)
+        _atomic_write(file_path, buf.getvalue())
+
     if set_fields and task_id is not None:
         # Task-level field updates
         update_fields(file_path, task_id, set_fields)

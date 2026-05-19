@@ -121,6 +121,9 @@ class PlanData(TypedDict):
     # Drafting state (see #1770)
     state: NotRequired[PlanState]
 
+    # Optional structured fields
+    acceptance_criteria_structured: NotRequired[list[dict[str, str]]]
+
     # Optional reference fields
     architecture: NotRequired[str | None]
     feature_context: NotRequired[str | None]

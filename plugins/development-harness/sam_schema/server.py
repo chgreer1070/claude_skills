@@ -412,7 +412,7 @@ def _sam_plan_update(plan: str, config: UpdatePlanConfig, plan_dir: str) -> dict
     if config.set_fields_json is not None:
         raw_fields: dict[str, Any] = config.set_fields_json
         validated = _validated_plan_patch(backend, plan, raw_fields)
-        plan_fields = {k: v for k, v in validated.model_dump().items() if k in raw_fields}
+        plan_fields = {k: v for k, v in validated.model_dump(by_alias=True).items() if k in raw_fields}
     backend.update_plan_fields(plan, context=config.context, set_fields=plan_fields)
     return {"updated": True, "address": plan}
 
