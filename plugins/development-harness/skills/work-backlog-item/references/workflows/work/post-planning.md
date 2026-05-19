@@ -1,7 +1,24 @@
 # Post-Planning Output (Steps 4.5 + 4.5a)
 
-<!-- NOTE: This file is only loaded in interactive mode (see plan.md Step 4.5).
-     Auto mode routes directly back to start.md steps 6–8 without loading this file. -->
+## When <mode/> is `auto` (Step 4.5a)
+
+Skip the interactive report. Instead, continue directly to implementation:
+
+1. Invoke implementation:
+
+   ```text
+   Skill(skill: "dh:implement-feature", args: "{plan_address}")
+   ```
+
+2. When all tasks complete, invoke quality gates:
+
+   ```text
+   Skill(skill: "dh:complete-implementation", args: "{plan_address}")
+   ```
+
+3. After completion, proceed to close/resolve path to mark the item done.
+
+Do not stop for user input at any point.
 
 ## Interactive mode (Step 4.5)
 

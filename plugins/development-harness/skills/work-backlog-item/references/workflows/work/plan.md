@@ -49,6 +49,6 @@ flowchart TD
 ```mermaid
 flowchart TD
     Q{What is mode?}
-    Q -->|"interactive (default)"| Report["Load [post-planning.md](./post-planning.md)<br>Output the interactive summary template<br>Present to user — stop here"]
-    Q -->|"auto"| Continue["Do NOT stop for user input<br>Return to start.md and execute step 6<br>(Invoke implement-feature), then step 7<br>(Invoke complete-implementation), then step 8<br>(Close or resolve item) in order"]
+    Q -->|"interactive (default)"| Report["Load [post-planning.md](./post-planning.md)<br>Follow the Interactive mode section<br>Present summary to user — stop here"]
+    Q -->|"auto"| Auto["Load [post-planning.md](./post-planning.md)<br>Follow the auto section (Step 4.5a)<br>Do NOT stop for user input"]
 ```
