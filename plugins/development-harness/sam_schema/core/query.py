@@ -162,29 +162,22 @@ def update_plan_fields(
 
     file_path = _resolve_writable_path(plan_path, task_id or "")
 
-    if context is not None:
-        # Update the plan-level context field via direct load-modify-write.
-        # plan-level fields live in the top-level YAML document; update_fields
-        # operates on task sections and cannot update plan metadata.
+    if context is not None or (set_fields and task_id is None):
+        # Merge context and plan-level set_fields into a single load-modify-write
+        # cycle to avoid the double-write data loss bug: two sequential writes to
+        # the same file would cause the first write's changes to be overwritten by
+        # the second write's stale read.
         y = _make_yaml()
         raw = file_path.read_text(encoding="utf-8")
         data: dict[str, Any] = y.load(raw)
-        data["context"] = LiteralScalarString(context) if "\n" in context else context
-        buf = io.StringIO()
-        y.dump(data, buf)
-        _atomic_write(file_path, buf.getvalue())
-
-    if set_fields and task_id is None:
-        # Plan-level field updates: load YAML, update each key, write back.
-        # Mirrors the `context` handler above but for arbitrary plan metadata.
-        y = _make_yaml()
-        raw = file_path.read_text(encoding="utf-8")
-        data: dict[str, Any] = y.load(raw)
-        for key, value in set_fields.items():
-            if isinstance(value, str) and "\n" in value:
-                data[key] = LiteralScalarString(value)
-            else:
-                data[key] = value
+        if context is not None:
+            data["context"] = LiteralScalarString(context) if "\n" in context else context
+        if set_fields and task_id is None:
+            for key, value in set_fields.items():
+                if isinstance(value, str) and "\n" in value:
+                    data[key] = LiteralScalarString(value)
+                else:
+                    data[key] = value
         buf = io.StringIO()
         y.dump(data, buf)
         _atomic_write(file_path, buf.getvalue())
