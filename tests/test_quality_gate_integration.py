@@ -596,7 +596,7 @@ class TestCompletionGateLogic:
         plan_dir.mkdir()
         plan = _create_qg_plan(plan_dir)
         assert plan.source_path is not None
-        for task_id in ("T1", "T2", "T3", "T4"):
+        for task_id in ("T0", "T1", "T2", "T3", "T4"):
             update_status(plan.source_path, task_id, TaskStatus.COMPLETE, timestamp_field="completed")
         update_status(plan.source_path, "T5", TaskStatus.SKIPPED)
         update_status(plan.source_path, "T6", TaskStatus.COMPLETE, timestamp_field="completed")
@@ -663,6 +663,7 @@ class TestCompletionGateLogic:
         plan_dir.mkdir()
         plan = _create_qg_plan(plan_dir)
         assert plan.source_path is not None
+        update_status(plan.source_path, "T0", TaskStatus.COMPLETE, timestamp_field="completed")
         update_status(plan.source_path, "T1", TaskStatus.COMPLETE, timestamp_field="completed")
         update_status(plan.source_path, "T2", TaskStatus.BLOCKED)
 
