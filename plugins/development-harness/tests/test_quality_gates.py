@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import io
 
-import pytest
 from ruamel.yaml import YAML
 from sam_schema.core.quality_gates import _PHASE_DEFINITIONS, _phase_body, build_quality_gate_plan
 
@@ -98,12 +97,6 @@ class TestPhaseBody:
 # ---------------------------------------------------------------------------
 # build_quality_gate_plan output
 # ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def built_plan() -> str:
-    """Standard quality gate plan used by most TestBuildQualityGatePlan tests."""
-    return build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001")
 
 
 class TestBuildQualityGatePlan:
