@@ -17,9 +17,16 @@ user-invocable: true
 
 ---
 
+> [!IMPORTANT]
+> When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+> A Mermaid process diagram is an executable instruction set. Follow it exactly as written: respect sequence, conditions, loops, parallel paths, and terminal states. Do not improvise, reorder, or skip steps. If any node is ambiguous or missing required detail, pause and ask a clarifying question before continuing.
+> When interacting with a user, report before acting the interpreted path you will follow from the diagram, then execute.
+
 ## 2. The "WORKS" Check
 
 <!-- Converted from prose branch instruction: "Choose A or B based on task type" -->
+
+The following diagram is the authoritative procedure for WORKS Check — determining whether the task output is verified as working. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
@@ -101,6 +108,8 @@ EVIDENCE:
 ## 5. Proportional Response Check
 
 If the task has an `issue-classification` field in its metadata, verify the response matched the issue type. If no `issue-classification` is present, mark N/A and proceed.
+
+The following diagram is the authoritative procedure for Proportional Response Check — verifying that the response scope matched the issue classification. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
@@ -205,6 +214,8 @@ Review the task just completed and list every instance of:
 - **Workarounds** — anything done as a workaround rather than the correct approach
 - **Process concerns** — agent behaviors or system interactions that indicate a systemic problem
 - **Improvement observations** — things noticed that could be better if addressed, even if not blocking
+
+The following diagram is the authoritative procedure for Observations, Gaps, and Backlog Capture — triaging observations from the completed task into backlog items or recorded notes. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
