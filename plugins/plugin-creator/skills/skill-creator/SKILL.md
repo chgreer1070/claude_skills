@@ -4,6 +4,8 @@ description: Use when creating a new skill or updating an existing skill that ex
 user-invocable: true
 license: Complete terms in LICENSE.txt
 ---
+If the user's intent does not match the purpose of this skill, load `plugin-lifecycle` to route to the right skill and process: `Skill(skill="plugin-creator:plugin-lifecycle")`.
+
 
 # Skill Creator
 

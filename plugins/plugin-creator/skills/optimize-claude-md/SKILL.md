@@ -5,6 +5,8 @@ argument-hint: <file-or-directory-path>
 user-invocable: true
 disable-model-invocation: true
 ---
+If the user's intent does not match the purpose of this skill, load `plugin-lifecycle` to route to the right skill and process: `Skill(skill="plugin-creator:plugin-lifecycle")`.
+
 # Optimize AI-Facing Files
 
 Orchestrate multi-phase optimization of AI-facing documentation with measurement, delegation, verification, and comprehensive reporting.
