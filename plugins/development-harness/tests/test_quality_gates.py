@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 
+import pytest
 from ruamel.yaml import YAML
 from sam_schema.core.quality_gates import _PHASE_DEFINITIONS, _phase_body, build_quality_gate_plan
 
@@ -76,6 +77,18 @@ class TestPhaseBody:
         body = _phase_body(0, "P001")
         assert "Quality Gate Phase 0" in body
 
+    def test_phase_0_body_contains_diff_arg(self) -> None:
+        body = _phase_body(0, "P001")
+        assert "--diff" in body
+
+    def test_phase_0_body_contains_issue_arg_when_provided(self) -> None:
+        body = _phase_body(0, "P001", issue="42")
+        assert "--issue 42" in body
+
+    def test_phase_0_body_omits_issue_arg_when_none(self) -> None:
+        body = _phase_body(0, "P001", issue=None)
+        assert "--issue" not in body
+
     def test_phase_1_body_unchanged(self) -> None:
         body = _phase_body(1, "P001")
         assert "Code Review" in body
@@ -87,38 +100,38 @@ class TestPhaseBody:
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def built_plan() -> str:
+    """Standard quality gate plan used by most TestBuildQualityGatePlan tests."""
+    return build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001")
+
+
 class TestBuildQualityGatePlan:
     """build_quality_gate_plan emits 7 tasks with T0 first."""
 
-    def test_plan_contains_seven_tasks(self) -> None:
-        yaml_text = build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001")
-        plan = _parse_yaml(yaml_text)
+    def test_plan_contains_seven_tasks(self, built_plan: str) -> None:
+        plan = _parse_yaml(built_plan)
         assert len(plan["tasks"]) == 7
 
-    def test_first_task_is_t0(self) -> None:
-        yaml_text = build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001")
-        plan = _parse_yaml(yaml_text)
+    def test_first_task_is_t0(self, built_plan: str) -> None:
+        plan = _parse_yaml(built_plan)
         assert plan["tasks"][0]["id"] == "T0"
 
-    def test_t0_task_title(self) -> None:
-        yaml_text = build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001")
-        plan = _parse_yaml(yaml_text)
+    def test_t0_task_title(self, built_plan: str) -> None:
+        plan = _parse_yaml(built_plan)
         assert plan["tasks"][0]["title"] == "Multi-Perspective Review"
 
-    def test_t1_task_second(self) -> None:
-        yaml_text = build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001")
-        plan = _parse_yaml(yaml_text)
+    def test_t1_task_second(self, built_plan: str) -> None:
+        plan = _parse_yaml(built_plan)
         assert plan["tasks"][1]["id"] == "T1"
 
-    def test_t1_dependencies_unchanged(self) -> None:
-        yaml_text = build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001")
-        plan = _parse_yaml(yaml_text)
+    def test_t1_dependencies_unchanged(self, built_plan: str) -> None:
+        plan = _parse_yaml(built_plan)
         t1 = plan["tasks"][1]
         assert t1["dependencies"] == []
 
-    def test_t0_body_contains_skill_invocation(self) -> None:
-        yaml_text = build_quality_gate_plan(slug="test-feature", issue="42", impl_plan_address="P001")
-        plan = _parse_yaml(yaml_text)
+    def test_t0_body_contains_skill_invocation(self, built_plan: str) -> None:
+        plan = _parse_yaml(built_plan)
         t0_body = plan["tasks"][0]["body"]
         assert "dh:multi-perspective-review" in t0_body
 

@@ -94,32 +94,26 @@ def _make_yaml() -> YAML:
     return yaml
 
 
-def _phase_body(phase: int, impl_plan_address: str) -> str:
+def _phase_body(phase: int, impl_plan_address: str, issue: str | None = None) -> str:
     """Build the task body markdown for a quality-gate phase.
 
     Args:
         phase: Phase number (0-6).
         impl_plan_address: Address of the implementation plan, e.g. ``P003``.
+        issue: GitHub issue number, e.g. ``"42"``, or ``None`` to omit.
 
     Returns:
         Markdown string cross-referencing the implementation plan.
     """
-    titles = {
-        0: "Multi-Perspective Review",
-        1: "Code Review",
-        2: "Feature Verification",
-        3: "Integration Check",
-        4: "Documentation Drift Audit",
-        5: "Documentation Update",
-        6: "Context Refinement",
-    }
-    title = titles.get(phase, f"Phase {phase}")
+    phase_def = next((p for p in _PHASE_DEFINITIONS if p["phase"] == phase), None)
+    title = phase_def["title"] if phase_def is not None else f"Phase {phase}"
     if phase == 0:
+        issue_arg = f" --issue {issue}" if issue is not None else ""
         return (
             f"## Quality Gate Phase 0: Multi-Perspective Review\n\n"
             f"Implementation plan: `{impl_plan_address}`\n\n"
             f"Invoke the multi-perspective review skill:\n"
-            f'Skill(skill="dh:multi-perspective-review", args="--diff HEAD~1..HEAD")\n\n'
+            f'Skill(skill="dh:multi-perspective-review", args="--diff HEAD~1..HEAD{issue_arg}")\n\n'
             f"This phase dispatches four parallel reviewer agents (Security, Performance, Quality,\n"
             f"Accessibility). The skill exits non-zero if any perspective returns REJECT.\n"
             f"Mark this task complete only after all four perspectives have returned APPROVE or SKIP.\n"
@@ -169,7 +163,7 @@ def build_quality_gate_plan(
 
     tasks: list[dict[str, Any]] = []
     for defn in _PHASE_DEFINITIONS:
-        body_text = _phase_body(defn["phase"], impl_plan_address)
+        body_text = _phase_body(defn["phase"], impl_plan_address, issue=issue)
         task: dict[str, Any] = {
             "id": defn["id"],
             "title": defn["title"],

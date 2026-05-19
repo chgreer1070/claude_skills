@@ -20,11 +20,18 @@ $ARGUMENTS
 
 ---
 
+> [!IMPORTANT]
+> When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+> A Mermaid process diagram is an executable instruction set. Follow it exactly as written: respect sequence, conditions, loops, parallel paths, and terminal states. Do not improvise, reorder, or skip steps. If any node is ambiguous or missing required detail, pause and ask a clarifying question before continuing.
+> When interacting with a user, report before acting the interpreted path you will follow from the diagram, then execute.
+
 ---
 
 ## Input Format Detection
 
 Parse `$ARGUMENTS` to determine the input type before proceeding:
+
+The following diagram is the authoritative procedure for Input Format Detection. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
@@ -64,6 +71,8 @@ Stop.
 **Step 2 -- Check for linked plan**:
 
 Read the `plan` field from the response.
+
+The following diagram is the authoritative procedure for Resolve Issue Step 2 linked plan check. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
@@ -165,6 +174,8 @@ Use the same SAM Dispatch Loop as the existing 7-phase flow (see "SAM Dispatch L
 
 **Phase-specific post-dispatch actions for proportional gates**:
 
+The following diagram is the authoritative procedure for Proportional Quality Gates phase-specific post-dispatch actions. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
     Done{Which task<br>just completed?}
@@ -185,6 +196,8 @@ mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="{PQG}")
 ```
 
 All 3 tasks must have `status == 'complete'`. No skip whitelist — all 3 tasks are required.
+
+The following diagram is the authoritative procedure for Proportional Quality Gates completion verification. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
@@ -263,6 +276,8 @@ Read the TN-verification artifact via `artifact_read(issue_number={N}, artifact_
 
 The file contains a list of per-criterion `BookendVerification` records — one per `acceptance-criteria-structured` entry. There is no top-level `verdict` field. Aggregate the verdict by scanning all records: the overall result is FAIL if any record has `status: regressed`; otherwise PASS.
 
+The following diagram is the authoritative procedure for Pre-Phase 1 TN Verification Check. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
     Read["artifact_read(issue_number, 'TN-verification')"] --> Exists{Artifact exists?}
@@ -299,46 +314,16 @@ Fix the regressions, then re-run /complete-implementation.
 
 Before proceeding to Artifact Discovery, check for migration signals.
 
-**Detection: scan for migration signals**
+Execute the full gate procedure defined in [./references/migration-fidelity-gate.md](./references/migration-fidelity-gate.md).
 
-Check:
-1. Issue title — contains: "migrat", "convert format", "replace .md", "format conversion", "move from", "transition from"
-2. Issue body / description section — same keywords
-3. P{id}.yaml tasks — read each task's `acceptance_criteria` field for: "delete", "remove source", "after migration complete", "drop the source"
+**Summary of detection signals** (full evaluable criteria in the reference):
 
-Note: `acceptance_criteria` is a dedicated `str` field on the Task model (`sam_schema/core/models.py`) — it can be read directly, not parsed out of a body blob.
+- Issue title or body contains: "migrat", "convert format", "replace .md", "format conversion", "move from", "transition from"
+- Any task `acceptance_criteria` field contains: "delete", "remove source", "after migration complete", "drop the source"
 
-If no signal found → skip this gate and proceed to Artifact Discovery.
+If no signal found — skip gate, proceed to Artifact Discovery.
 
-If any signal found → gate activates.
-
-**Gate logic (when activated)**
-
-Before proceeding, confirm ALL four items. Read the plan artifacts and execution history to find evidence for each.
-
-- [ ] **Fidelity check on real data**: evidence exists (file path or commit SHA) showing a content completeness assertion was run against real production records — not only synthetic fixtures — and passed with zero data loss
-- [ ] **Content completeness verified**: the check verified field-by-field completeness, not only that output is structurally valid (loads without error)
-- [ ] **Constrained field values enumerated**: all distinct values of constrained fields were enumerated from real data before migration and are all handled in the target model
-- [ ] **Deletion deferred or confirmed**: if source files were deleted, deletion occurred after zero-data-loss confirmation
-
-If any item is unconfirmed, emit:
-
-```text
-COMPLETION BLOCKED — Migration Fidelity Gate
-
-Unconfirmed items:
-- [list each unchecked item]
-
-To unblock: run `uv run plugins/development-harness/scripts/verify_migration_fidelity.py`
-against real production data and provide the path to the generated report in
-`.tmp/scratch/reports/`. A passing report (zero data loss, all sections preserved) confirms
-items 1 and 2. Alternatively, a commit SHA showing the completeness assertion was run on
-real files is accepted.
-```
-
-Do NOT build the QG plan, dispatch T1, or apply any SAM state until all four items are confirmed.
-
-If all confirmed → proceed to Artifact Discovery.
+If signal found — confirm all four fidelity items from the reference before proceeding. If any unconfirmed, emit `COMPLETION BLOCKED — Migration Fidelity Gate` (format in reference) and stop.
 
 ---
 
@@ -358,21 +343,9 @@ If the response contains artifacts, pass the manifest to quality gate agents (Ph
 
 ## Pre-Phase 1b: Process Accumulated Concerns
 
-Check the backlog item for a `## Concerns` section accumulated during `/implement-feature`:
+Execute the full procedure defined in [./references/concerns-processing.md](./references/concerns-processing.md).
 
-```text
-mcp__plugin_dh_backlog__backlog_view(selector="#{issue}")
-```
-
-If the item has a `## Concerns` section with unchecked items (`- [ ]`):
-
-1. For each concern, verify whether it is a real issue:
-   - Read the referenced file or run the referenced check
-   - If verified: check it off (`- [x]`) and create a new backlog item via `mcp__plugin_dh_backlog__backlog_add` with the concern as the description, source as "Quality vigilance concern from #{issue}"
-   - If not a real issue: check it off (`- [x] Not confirmed — {reason}`)
-2. Update the concerns section via `mcp__plugin_dh_backlog__backlog_groom(selector="#{issue}", section="Concerns", content="{updated checklist}")`
-
-If no concerns section exists, proceed to Phase 1.
+**Summary**: Read backlog item → if `## Concerns` has unchecked items, verify each (create backlog item if real; mark unconfirmed if not) → update section → proceed to Quality Gate Plan Creation. If no concerns section, proceed immediately.
 
 ---
 
@@ -388,13 +361,15 @@ Extract `{slug}` from the task file path (`plan/P{id}-{slug}.yaml` — strip the
 mcp__plugin_dh_sam__sam_plan(config={"action": "list", "search": "qg-{slug}"})
 ```
 
+The following diagram is the authoritative procedure for Quality Gate Plan Creation Step 1 check for existing QG plan. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
     List["sam_plan(action=list, search='qg-{slug}')"] --> Found{QG plan found?}
     Found -->|No| Create["Call build_quality_gate_plan,<br>then sam_plan(action=create)"]
     Found -->|Yes| Check{All tasks terminal?}
-    Check -->|Yes — COMPLETE or SKIPPED| Skip["Skip to Completion Verification Gate"]
-    Check -->|No — tasks remain| Reset["Reset BLOCKED tasks to NOT_STARTED,<br>resume SAM dispatch loop"]
+    Check -->|"Yes — COMPLETE or SKIPPED"| Skip["Skip to Completion Verification Gate"]
+    Check -->|"No — tasks remain"| Reset["Reset BLOCKED tasks to NOT_STARTED,<br>resume SAM dispatch loop"]
     Create --> Loop["Enter SAM Dispatch Loop"]
     Reset --> Loop
 ```
@@ -495,21 +470,25 @@ The SubagentStop hook marks the task COMPLETE after the sub-agent finishes.
 
 After each dispatched phase completes, run the phase-specific processing before querying `sam_plan(action='ready')` again:
 
+The following diagram is the authoritative procedure for SAM Dispatch Loop phase-specific post-dispatch actions. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
     Done{Which task<br>just completed?}
-    Done -->|T0 Multi-Perspective Review| T0Post["Any REJECT → Recursive Follow-up Handling<br>(same as T1 NEEDS_WORK)."]
+    Done -->|T0 Multi-Perspective Review| T0Post["Any REJECT — trigger Recursive Follow-up Handling<br>(same path as T1 NEEDS_WORK)."]
     Done -->|T1 Code Review| T1Post["Read codebase-analysis artifact.<br>Verdict drives Recursive Follow-up Handling<br>(Step 1 — fix loop or backlog routing)."]
-    Done -->|T4 Drift Audit| T4Post{Drift found<br>in T4 output?}
-    T4Post -->|No drift| SkipT5["sam_task(plan='{QG}', task='T5', config={action:state, status:skipped})"]
-    T4Post -->|Drift found| T5Ready["T5 remains NOT_STARTED — will be<br>dispatched on next loop iteration"]
-    Done -->|T6 Context Refinement| T6Post["Check T6 agent output for<br>DIVERGENCE_REQUIRING_REVIEW block.<br>If present, store for final output."]
-    Done -->|T2, T3, T5| Continue["No phase-specific action —<br>continue loop"]
+    Done -->|T4 Drift Audit| T4Post{"Drift found in T4 output?<br>No drift = 'No documentation drift detected'<br>or empty ## Findings section.<br>Drift = any file paths or outdated sections listed."}
+    T4Post -->|"No drift"| SkipT5["sam_task(plan='{QG}', task='T5',<br>config={action=state, status=skipped})"]
+    T4Post -->|"Drift found"| T5Ready["T5 remains NOT_STARTED — will be<br>dispatched on next loop iteration"]
+    Done -->|T6 Context Refinement| T6Post{"DIVERGENCE_REQUIRING_REVIEW block<br>present in T6 agent output?"}
+    T6Post -->|"Yes"| StoreDiv["Store divergence block for final output"]
+    T6Post -->|"No"| Continue["No phase-specific action — continue loop"]
+    Done -->|"T2, T3, T5"| Continue
     T0Post --> Continue
     T1Post --> Continue
     SkipT5 --> Continue
     T5Ready --> Continue
-    T6Post --> Continue
+    StoreDiv --> Continue
 ```
 
 **Detecting drift in T4 output**: No drift = "No documentation drift detected" or empty `## Findings`. Drift = any file paths or outdated sections listed.
@@ -523,6 +502,8 @@ After the SAM dispatch loop exits, verify all phases reached terminal status bef
 ```text
 mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="{QG}")
 ```
+
+The following diagram is the authoritative procedure for Completion Verification Gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
@@ -646,15 +627,17 @@ Search the backlog using a 2-strategy fallback chain. Strategy 3 (LLM semantic m
 not human semantic queries, so LLM semantic selection would have low fidelity against
 human-authored backlog titles.
 
+The following diagram is the authoritative procedure for Step 2 backlog search strategy. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
     Derive["Derive slug from filename<br>(hyphens → spaces)"] --> S1["Strategy 1 — substring<br>backlog_list(title='{slug}')"]
     S1 --> R1{Results?}
-    R1 -->|One or more matches| UseS1["Use Strategy 1 result"]
-    R1 -->|Zero results| S2["Strategy 2 — filter-first<br>backlog_list(topic='{slug}')"]
+    R1 -->|"One or more matches"| UseS1["Use Strategy 1 result"]
+    R1 -->|"Zero results"| S2["Strategy 2 — filter-first<br>backlog_list(topic='{slug}')"]
     S2 --> R2{Results?}
-    R2 -->|One or more matches| UseS2["Use Strategy 2 result"]
-    R2 -->|Zero results| NoMatch["No match found<br>→ proceed to Step 4 (create new item)"]
+    R2 -->|"One or more matches"| UseS2["Use Strategy 2 result"]
+    R2 -->|"Zero results"| NoMatch["No match found<br>— proceed to Step 4 (create new item)"]
     UseS1 --> Step4["Step 4: Link or Create"]
     UseS2 --> Step4
     NoMatch --> Step4
@@ -701,11 +684,16 @@ For each follow-up file, read its `## Scope` field:
 - If `## Scope: out-of-scope`: route immediately to backlog via `backlog_add` and
   continue to the next follow-up. Do NOT proceed to Step 4 for this follow-up.
 
+The following diagram is the authoritative procedure for Step 3 Classify Follow-up Findings. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
-    Q{"Does the finding touch<br>the same design goals/intent/outcomes<br>as the current task?"}
-    Q -->|"Yes — linting, tests, docs,<br>same design outcomes"| InScope["IN-SCOPE<br>Proceed to Step 4"]
-    Q -->|"No — separate system/domain<br>OR perceived impact warrants<br>own grooming and research"| OutScope["OUT-OF-SCOPE<br>Route to backlog via backlog_add<br>Continue to next follow-up"]
+    ReadScope["Read follow-up file — locate '## Scope' section"] --> ScopeExists{"Does '## Scope' section<br>exist in follow-up file?"}
+    ScopeExists -->|"No — section absent"| WarnDefault["Emit: WARNING: No ## Scope section in {followup_path}.<br>Defaulting to in-scope."]
+    WarnDefault --> InScope["IN-SCOPE — proceed to Step 4"]
+    ScopeExists -->|"Yes"| ScopeValue{"## Scope field value?"}
+    ScopeValue -->|"'out-of-scope'"| OutScope["OUT-OF-SCOPE — route to backlog via backlog_add<br>Continue to next follow-up"]
+    ScopeValue -->|"Any other value (e.g. 'in-scope')"| InScope
 ```
 
 Out-of-scope backlog_add call pattern:
@@ -916,25 +904,4 @@ SendMessage(to="{name}", message={"type": "shutdown_request"})
 
 ## Final Handoff Output
 
-After the commit+push step, output this block to the user:
-
-Call `mcp__plugin_dh_backlog__backlog_list(title="{slug}")` — a slug-filtered search.
-Do NOT substitute a general P1/P2 listing already in context. The filter is mandatory.
-Store the first result. Check `item.plan` as a boolean only (is it set and non-empty?).
-
-```text
-If item found AND item.plan is set (non-empty):
-  Resolve the plan address via SAM — do NOT pass item.plan directly:
-    mcp__plugin_dh_sam__sam_list(search="{slug}")
-  Use the plan address P{id} from the result.
-  Clear context and run:
-    /dh:implement-feature P{id}
-
-If item found AND item.plan is NOT set:
-  Clear context and run:
-    /dh:work-backlog-item {item.title}
-
-If no item found:
-  Clear context and run:
-    /dh:work-backlog-item — nothing queued —
-```
+Execute the full procedure defined in [./references/final-handoff.md](./references/final-handoff.md).
