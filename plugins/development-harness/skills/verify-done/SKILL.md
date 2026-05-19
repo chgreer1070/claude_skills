@@ -197,6 +197,44 @@ If any of these thoughts occur, STOP and run the verification command:
 
 ---
 
+## 8. Observations, Gaps, and Backlog Capture
+
+Review the task just completed and list every instance of:
+
+- **Workflow gaps** — steps that were missing, unclear, or required guessing to proceed
+- **Workarounds** — anything done as a workaround rather than the correct approach
+- **Process concerns** — agent behaviors or system interactions that indicate a systemic problem
+- **Improvement observations** — things noticed that could be better if addressed, even if not blocking
+
+```mermaid
+flowchart TD
+    List["List all instances across the four categories above"] --> Q{"Any items listed?"}
+    Q -->|"None"| None["Record: No observations"]
+    Q -->|"Yes"| Gate{"Any item is contextually significant<br>OR was already flagged during the task<br>as needing a bug or backlog entry?"}
+    Gate -->|"No — minor, not worth a ticket"| ObsOnly["Record as observation only<br>Include in summary below"]
+    Gate -->|"Yes — significant"| Detect{"Which issue system does this project use?"}
+    Detect -->|".beads/dh-backend marker exists"| Beads["bd create --title='...' --description='...' --type=bug --priority=2"]
+    Detect -->|"GitHub remote / dh plugin present"| DH["Skill(skill='dh:work-backlog-item', args='create -- \"...\"')"]
+    Detect -->|"Other"| Other["Create entry in whatever issue system the project uses"]
+    Beads --> Ref["Record issue reference in summary"]
+    DH --> Ref
+    Other --> Ref
+    Ref --> Done(["Observations Check complete"])
+    None --> Done
+    ObsOnly --> Done
+```
+
+```text
+OBSERVATIONS:
+- Workflow gaps:    [list or "none"]
+- Workarounds:      [list or "none"]
+- Process concerns: [list or "none"]
+- Improvements:     [list or "none"]
+- Issues logged:    [issue refs or "none"]
+```
+
+---
+
 ## Quick Reference
 
 ```text
@@ -208,6 +246,7 @@ Proportional Check: [PASS/FAIL/N/A] - Evidence: ___
 Quality Gates: [PASS/FAIL] - Evidence: ___
 Agent Delegation: [PASS/FAIL/N/A] - Evidence: ___
 Honesty Check: [PASS/FAIL]
+Observations: [issue refs logged, or "none"]
 
 VERDICT: [COMPLETE / NOT COMPLETE - reason]
 ```
