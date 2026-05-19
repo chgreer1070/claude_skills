@@ -6,6 +6,10 @@ license: Complete terms in LICENSE.txt
 ---
 If the user's intent does not match the purpose of this skill, load `plugin-lifecycle` to route to the right skill and process: `Skill(skill="plugin-creator:plugin-lifecycle")`.
 
+> [!IMPORTANT]
+> When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+> A Mermaid process diagram is an executable instruction set. Follow it exactly as written: respect sequence, conditions, loops, parallel paths, and terminal states. Do not improvise, reorder, or skip steps. If any node is ambiguous or missing required detail, pause and ask a clarifying question before continuing.
+> When interacting with a user, report before acting the interpreted path you will follow from the diagram, then execute.
 
 # Skill Creator
 
@@ -39,6 +43,8 @@ Skill(skill: "plugin-creator:refactor-skill")
 ```
 
 **When to use skill-creator vs skill-refactor:**
+
+The following diagram is the authoritative procedure for skill tool selection (skill-creator vs skill-refactor). Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
@@ -202,6 +208,8 @@ agent: Explore  # or Plan, general-purpose, custom-agent-name
 
 Control who can invoke your skill:
 
+The following diagram is the authoritative procedure for invocation control configuration. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
     Start(["Choose invocation mode for skill"]) --> Q{"Who should be able<br>to invoke this skill?"}
@@ -277,6 +285,8 @@ Rules: keep references one level deep from SKILL.md. NEVER add ToC, anchor links
 
 ## Skill Creation Process
 
+The following diagram is the authoritative procedure for skill creation. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
     S1["Step 1 — Understand the skill<br>with concrete examples"] --> S2
@@ -341,6 +351,8 @@ Example: When building a `big-query` skill to handle queries like "How many user
 To establish the skill's contents, analyze each concrete example to create a list of the reusable resources to include: scripts, references, and assets.
 
 ### Step 3: Determine Skill Location and Distribution Strategy
+
+The following diagram is the authoritative procedure for skill location and distribution strategy selection. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
@@ -510,6 +522,8 @@ Write instructions for using the skill and its bundled resources.
 For advanced body features (string substitutions, dynamic context injection, extended thinking), activate the `/plugin-creator:claude-skills-overview-2026` skill.
 
 ### Step 6: Packaging a Skill (OPTIONAL — Plugin Distribution Only)
+
+The following diagram is the authoritative procedure for skill packaging and plugin registration. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
