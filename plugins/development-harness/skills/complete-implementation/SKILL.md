@@ -76,7 +76,7 @@ When auto-resolving to the SAM path, output:
 
 ```text
 Issue #{issue_number} has linked plan: {plan_path}
-Proceeding with full 6-phase quality gates.
+Proceeding with full quality gates.
 ```
 
 **Step 3 -- Extract context for proportional gates**:
@@ -378,7 +378,7 @@ If no concerns section exists, proceed to Phase 1.
 
 ## Quality Gate Plan Creation
 
-After the pre-phases complete, set up the SAM-enforced quality gate plan for the 6 phases.
+After the pre-phases complete, set up the SAM-enforced quality gate plan.
 
 Extract `{slug}` from the task file path (`plan/P{id}-{slug}.yaml` — strip the `P{id}-` prefix and `.yaml` suffix).
 
@@ -401,7 +401,7 @@ flowchart TD
 
 ### Step 2: Create QG plan (if not found)
 
-If no QG plan exists, generate the 6-task plan YAML and create it via SAM:
+If no QG plan exists, generate the plan YAML and create it via SAM:
 
 ```python
 # Call the pure function (from sam_schema.core.quality_gates)
@@ -438,14 +438,13 @@ This allows re-running `complete-implementation` to resume from the blocked phas
 
 ---
 
-## SAM Dispatch Loop (Phases 1-6)
-
-The 6 quality gate phases are enforced via a SAM task loop. Each phase is a task in the QG plan. The dependency chain (T1 → T2 → T3 → T4 → T5 → T6) enforces ordered execution — a phase cannot start until the previous phase completes.
+## SAM Dispatch Loop (Phases 0-6)
 
 **Phase task mapping:**
 
 | Task | Phase | Agent |
 |------|-------|-------|
+| T0 | Multi-Perspective Review | dh:multi-perspective-review (orchestrated) |
 | T1 | Code Review | code-reviewer |
 | T2 | Feature Verification | feature-verifier |
 | T3 | Integration Check | integration-checker |
@@ -499,12 +498,14 @@ After each dispatched phase completes, run the phase-specific processing before 
 ```mermaid
 flowchart TD
     Done{Which task<br>just completed?}
+    Done -->|T0 Multi-Perspective Review| T0Post["Any REJECT → Recursive Follow-up Handling<br>(same as T1 NEEDS_WORK)."]
     Done -->|T1 Code Review| T1Post["Read codebase-analysis artifact.<br>Verdict drives Recursive Follow-up Handling<br>(Step 1 — fix loop or backlog routing)."]
     Done -->|T4 Drift Audit| T4Post{Drift found<br>in T4 output?}
     T4Post -->|No drift| SkipT5["sam_task(plan='{QG}', task='T5', config={action:state, status:skipped})"]
     T4Post -->|Drift found| T5Ready["T5 remains NOT_STARTED — will be<br>dispatched on next loop iteration"]
     Done -->|T6 Context Refinement| T6Post["Check T6 agent output for<br>DIVERGENCE_REQUIRING_REVIEW block.<br>If present, store for final output."]
     Done -->|T2, T3, T5| Continue["No phase-specific action —<br>continue loop"]
+    T0Post --> Continue
     T1Post --> Continue
     SkipT5 --> Continue
     T5Ready --> Continue
@@ -517,24 +518,22 @@ flowchart TD
 
 ## Completion Verification Gate
 
-After the SAM dispatch loop exits (no ready tasks), verify all 6 phases reached terminal status before allowing label application.
+After the SAM dispatch loop exits, verify all 7 phases reached terminal status before allowing label application.
 
 ```text
 mcp__plugin_dh_sam__sam_plan(config={"action": "status"}, plan="{QG}")
 ```
 
-Examine each of the 6 tasks:
-
 ```mermaid
 flowchart TD
-    Status["sam_plan(action=status, plan='{QG}')"] --> Iter["Iterate over all 6 tasks"]
+    Status["sam_plan(action=status, plan='{QG}')"] --> Iter["Iterate over all 7 tasks"]
     Iter --> Check{For each task:<br>check status}
     Check -->|"status == 'complete'"| PassTask["Task passes"]
     Check -->|"status == 'skipped' AND task_id == 'T5'"| PassTask
     Check -->|"status == 'skipped' AND task_id != 'T5'"| FailUnauth["FAIL — unauthorized skip"]
     Check -->|"status == 'not-started' OR 'in-progress'"| FailIncomplete["FAIL — incomplete phase"]
     Check -->|"status == 'blocked'"| FailBlocked["FAIL — blocked phase"]
-    PassTask --> AllPassed{All 6 tasks<br>passed?}
+    PassTask --> AllPassed{All 7 tasks<br>passed?}
     AllPassed -->|Yes| Proceed["Proceed to Recursive Follow-up Handling"]
     AllPassed -->|No| Stop["STOP — report failures, do NOT apply label"]
     FailUnauth --> AllPassed

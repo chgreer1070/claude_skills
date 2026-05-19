@@ -23,6 +23,14 @@ from ruamel.yaml.scalarstring import LiteralScalarString
 # Each entry maps directly to a SAM Task field set.
 _PHASE_DEFINITIONS: list[dict[str, Any]] = [
     {
+        "id": "T0",
+        "title": "Multi-Perspective Review",
+        "agent": "task-worker",
+        "dependencies": [],
+        "complexity": "high",
+        "phase": 0,
+    },
+    {
         "id": "T1",
         "title": "Code Review",
         "agent": "code-reviewer",
@@ -90,13 +98,14 @@ def _phase_body(phase: int, impl_plan_address: str) -> str:
     """Build the task body markdown for a quality-gate phase.
 
     Args:
-        phase: Phase number (1-6).
+        phase: Phase number (0-6).
         impl_plan_address: Address of the implementation plan, e.g. ``P003``.
 
     Returns:
         Markdown string cross-referencing the implementation plan.
     """
     titles = {
+        0: "Multi-Perspective Review",
         1: "Code Review",
         2: "Feature Verification",
         3: "Integration Check",
@@ -105,6 +114,16 @@ def _phase_body(phase: int, impl_plan_address: str) -> str:
         6: "Context Refinement",
     }
     title = titles.get(phase, f"Phase {phase}")
+    if phase == 0:
+        return (
+            f"## Quality Gate Phase 0: Multi-Perspective Review\n\n"
+            f"Implementation plan: `{impl_plan_address}`\n\n"
+            f"Invoke the multi-perspective review skill:\n"
+            f'Skill(skill="dh:multi-perspective-review", args="--diff HEAD~1..HEAD")\n\n'
+            f"This phase dispatches four parallel reviewer agents (Security, Performance, Quality,\n"
+            f"Accessibility). The skill exits non-zero if any perspective returns REJECT.\n"
+            f"Mark this task complete only after all four perspectives have returned APPROVE or SKIP.\n"
+        )
     return (
         f"## Quality Gate Phase {phase}: {title}\n\n"
         f"Implementation plan: `{impl_plan_address}`\n\n"
@@ -116,7 +135,7 @@ def _phase_body(phase: int, impl_plan_address: str) -> str:
 def build_quality_gate_plan(
     slug: str, issue: str | None, impl_plan_address: str, phase_4_drift_found: bool | None = None
 ) -> str:
-    """Generate YAML for a 6-task quality-gate plan.
+    """Generate YAML for a 7-task quality-gate plan.
 
     The returned string is intended to be passed directly to ``sam_create``
     as the ``tasks_yaml`` argument. No file I/O is performed.
@@ -134,7 +153,7 @@ def build_quality_gate_plan(
             status ``not-started``.
 
     Returns:
-        YAML string containing plan-level metadata and 6 task definitions.
+        YAML string containing plan-level metadata and 7 task definitions.
         The string is valid YAML parseable by ``ruamel.yaml`` and validates
         against the ``Plan`` model.
     """
