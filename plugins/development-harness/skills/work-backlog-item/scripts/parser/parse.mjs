@@ -48,6 +48,13 @@ try {
     }
   }
 
+  // Normalize mobile autocorrect: em dash (U+2014) and en dash (U+2013) attached to a word
+  // are treated as double-hyphen prefix. e.g. –auto → --auto, —language → --language.
+  // Standalone — and – are also normalised to -- so the delimiter check below catches them.
+  rawArgv = rawArgv.map((arg) =>
+    arg.startsWith('—') || arg.startsWith('–') ? '--' + arg.slice(1) : arg,
+  );
+
   // 1. Find freetext delimiter
   const delimiters = ['--', '—', '–'];
   let delimiterIndex = -1;
