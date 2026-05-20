@@ -41,7 +41,7 @@ Verify the resolved absolute path exists. Determine scope (single file, skill di
 **For all files**:
 
 - Determine file type (CLAUDE.md, SKILL.md, agent definition, reference file)
-- Measure token count: `uvx skilllint@latest check --check <file>`
+- Measure token count: `uvx skilllint@latest check --tokens-only <file>`
 - Record baseline token count
 
 **For SKILL.md files only**:
@@ -90,7 +90,7 @@ CONSTRAINTS:
 - For SKILL.md: evaluate against 8 completeness categories, keep description <1024 chars, no YAML multiline indicators
 - For agent files: preserve required frontmatter fields (name, description)
 - For CLAUDE.md: front-load critical instructions, use decision flow diagrams for complex logic
-- For CLAUDE.md: read `.claude/skills/optimize-claude-md/references/claude-rules-extraction.md` before analyzing; perform rules extraction phase after optimization analysis, before CoVe
+- For CLAUDE.md: read `${CLAUDE_SKILL_DIR}/references/claude-rules-extraction.md` before analyzing; perform rules extraction phase after optimization analysis, before CoVe
 - Signal DONE when optimization complete, BLOCKED when missing required inputs
 
 OUTPUT STRUCTURE:
@@ -122,7 +122,8 @@ Routing within `contextual-ai-documentation-optimizer`:
 
 **If agent signals DONE**:
 
-- Proceed to Phase 5 (Independent Verification)
+- Write the agent's "Optimized Content" output to `.tmp/scratch/optimized-{basename}` (where `{basename}` is the target filename, e.g. `SKILL.md` → `optimized-SKILL.md`). Create `.tmp/scratch/` if absent.
+- Proceed to Phase 5 (Independent Verification) — use `.tmp/scratch/optimized-{basename}` as `{path to optimized version}`
 
 ### Phase 5: Independent Verification
 
@@ -164,7 +165,7 @@ OUTPUT:
 
 **For all files**:
 
-- Measure post-optimization token count using same tool
+- Measure post-optimization token count: `uvx skilllint@latest check --tokens-only .tmp/scratch/optimized-{basename}`
 - Calculate delta: `(post - baseline) / baseline * 100`
 
 **For SKILL.md files only**:
@@ -212,6 +213,8 @@ Report to user with structure:
 ### Phase 8: Apply on Approval
 
 Write optimized content ONLY after user confirms. Do not auto-apply.
+
+On user approval: overwrite the original target path with the content from `.tmp/scratch/optimized-{basename}`, then delete the temp file.
 
 ## Iterative Mode for Large Targets
 
