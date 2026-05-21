@@ -294,7 +294,7 @@ flowchart TD
     S3["Step 3 — Determine skill location<br>and distribution strategy"] --> S4
     S4["Step 4 — Initialize the skill<br>(run init_skill.py — MANDATORY)"] --> S5
     S5["Step 5 — Edit the skill<br>(implement resources and write SKILL.md)"] --> S5R
-    S5R["After Step 5 — Quality review<br>delegate to contextual-ai-documentation-optimizer"] --> S6Q
+    S5R["After Step 5 — Quality review<br>delegate to ai-doc-optimizer"] --> S6Q
     S6Q{"Distributing via plugin<br>marketplace?"}
     S6Q -->|"Yes — plugin distribution"| S6["Step 6 — Package the skill<br>(validate then package)"]
     S6Q -->|"No — project or user level<br>already in final location"| S7
@@ -524,9 +524,9 @@ For advanced body features (string substitutions, dynamic context injection, ext
 
 ### After Step 5: Quality Review
 
-After completing the SKILL.md and all bundled resources, delegate the draft to the `contextual-ai-documentation-optimizer` agent before packaging or evaluation. This agent pre-loads `prompt-optimization`, `audit-skill-completeness`, and the official Claude Code skill guidelines — it verifies the draft against best practices and produces an optimized version with evidence-backed changes.
+After completing the SKILL.md and all bundled resources, delegate the draft to the `ai-doc-optimizer` agent before packaging or evaluation. This agent pre-loads `prompt-optimization`, `audit-skill-completeness`, and the official Claude Code skill guidelines — it verifies the draft against best practices and produces an optimized version with evidence-backed changes.
 
-Task is SKILL.md quality review with subagent_type="plugin-creator:contextual-ai-documentation-optimizer"
+Task is SKILL.md quality review with subagent_type="plugin-creator:ai-doc-optimizer"
    Context to include in the prompt: absolute path to the skill directory (includes SKILL.md and all bundled resources)
    Output: optimized SKILL.md content, bulleted list of changes applied with principle citations, CoVe verification results, and STATUS: DONE or BLOCKED
 
