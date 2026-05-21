@@ -58,7 +58,7 @@ Pre-write SK007 branch: if the existing file is already over SK007, apply `/plug
 
 Dispatch exactly 3 `Agent()` calls in ONE turn (not sequential, not `TeamCreate`):
 
-1. `plugin-creator:skill-auditor` — completeness audit (read-only); output: completeness report
+1. `Agent(subagent_type="plugin-creator:skill-auditor")` — input: `<skill-path>`; output: `.tmp/scratch/reports/skill-sync-{slug}-completeness-YYYYMMDD.md` (read-only)
 2. `plugin-creator:skill-content-updater` (read role) — upstream drift scan; fetches SOURCE: URLs; output: drift report with NEW/STALE/VERIFIED/UNVERIFIABLE verdicts per claim
 3. `general-purpose` — structure validation; checks progressive disclosure, frontmatter schema, broken reference links; output: structure report
 

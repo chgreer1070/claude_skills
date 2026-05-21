@@ -7,22 +7,42 @@ Each Stage 2 read agent writes its report to `.tmp/scratch/reports/` before retu
 Output file: `.tmp/scratch/reports/skill-sync-{slug}-completeness-YYYYMMDD.md`
 
 ```text
-# Completeness Report: {skill-name}
+# Skill Audit: {skill-name}
 # Agent: skill-auditor
-# Date: YYYY-MM-DD
+# Date: YYYYMMDD
+# Skill path: {path}
 
-## Score
-Completeness: COMPLETE | PARTIAL | MISSING
+## skilllint Status
 
-## Findings
+Exit code: {0 | non-zero}
+SK006/SK007: UNDER | AT | OVER — Body tokens: {N}
+Findings: {list of SK006/SK007 violations, or "none"}
 
-### {section or field}
-Status: PRESENT | MISSING | INCOMPLETE
-Assessment: {one sentence}
-Recommendation: {one sentence or "(none)"}
+## Completeness Score: X/24 (Y%)
 
-## Recommended Additions
-- {addition description}: {rationale}
+| Category | Score | Label | Key Findings |
+|----------|-------|-------|--------------|
+| Preparation | N | {label} | ... |
+| Progression | N | {label} | ... |
+| Verification | N | {label} | ... |
+| Scripts | N | {label} | ... |
+| Examples | N | {label} | ... |
+| Anti-Patterns | N | {label} | ... |
+| References | N | {label} | ... |
+| Assets | N | {label} | ... |
+
+## Progressive-Disclosure Structure
+
+COMPLIANT | VIOLATION: {describe the over-budget section and token count}
+
+## Completeness Gaps
+
+- {gap description} — Category: {category}, Priority: HIGH | MEDIUM | LOW
+
+## Recommendations
+
+1. {High priority recommendation}
+2. {Medium priority recommendation}
 ```
 
 ## Agent 2: skill-content-updater — Upstream Drift Report
