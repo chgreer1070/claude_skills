@@ -58,7 +58,15 @@ Assign each citation one of four statuses:
 
 ### Step 4 — Produce drift report
 
-Write a structured drift report as output. Format:
+Write the drift report to:
+
+```text
+.tmp/scratch/reports/skill-sync-{slug}-drift-YYYYMMDD.md
+```
+
+where `{slug}` is the skill's directory name and `YYYYMMDD` is today's date in UTC. Create `.tmp/scratch/reports/` if it does not exist.
+
+Report format:
 
 ```text
 ## Drift Report — <skill-name>
@@ -83,13 +91,15 @@ Checked: <ISO timestamp>
 On success with no drift:
 
 ```text
-STATUS: DONE — all cited SOURCE URLs verified, no drift detected
+STATUS: DONE — all cited SOURCE: URLs verified, no drift detected
+Report: .tmp/scratch/reports/skill-sync-{slug}-drift-YYYYMMDD.md
 ```
 
 On success with findings:
 
 ```text
 STATUS: DONE — drift report produced, <N> STALE, <M> NEW, <K> UNVERIFIABLE
+Report: .tmp/scratch/reports/skill-sync-{slug}-drift-YYYYMMDD.md
 ```
 
 On hard block (tool unavailable, skill unreadable):
