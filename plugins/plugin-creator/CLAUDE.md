@@ -59,7 +59,7 @@ flowchart TD
 
 ## Component Inventory
 
-### Skills (19)
+### Skills
 
 | Skill | User-Invocable | Purpose |
 |-------|---------------|---------|
@@ -67,6 +67,7 @@ flowchart TD
 | `/plugin-creator` | Yes | New-plugin creation workflow — complements `/plugin-lifecycle` for existing plugins |
 | `/agent-creator` | Yes | Create agents from scratch or templates; handles scope (project/user/plugin) |
 | `/skill-creator` | Yes | Create skills from scratch or templates; handles scope and validation |
+| `/skill-sync` | Yes | Sync skill content against upstream documentation — update STALE SOURCE: URLs, add NEW upstream claims, enforce progressive-disclosure structure via /refactor-skill |
 | `/claude-skills-overview-2026` | Yes | Complete reference for Claude Code skills system (January 2026) |
 | `/claude-plugins-reference-2026` | Yes | Complete reference for Claude Code plugins system (January 2026) |
 | `/hooks-guide` | Yes | Cross-platform hooks reference — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp |
