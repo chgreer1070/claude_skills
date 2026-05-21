@@ -56,26 +56,36 @@ Report structure:
 
 ```markdown
 # Skill Audit: {skill-name}
-
-**Date:** YYYYMMDD
-**Skill path:** {path}
+# Agent: skill-auditor
+# Date: YYYYMMDD
+# Skill path: {path}
 
 ## skilllint Status
 
 Exit code: {0 | non-zero}
-Findings: {SK006 / SK007 / none}
-Body tokens: {N}
+SK006/SK007: UNDER | AT | OVER — Body tokens: {N}
+Findings: {list of SK006/SK007 violations, or "none"}
 
 ## Completeness Score: X/24 (Y%)
 
 | Category | Score | Label | Key Findings |
 |----------|-------|-------|--------------|
-| 1. Preparation | N | Label | ... |
-| ... | ... | ... | ... |
+| Preparation | N | {label} | ... |
+| Progression | N | {label} | ... |
+| Verification | N | {label} | ... |
+| Scripts | N | {label} | ... |
+| Examples | N | {label} | ... |
+| Anti-Patterns | N | {label} | ... |
+| References | N | {label} | ... |
+| Assets | N | {label} | ... |
 
 ## Progressive-Disclosure Structure
 
-{COMPLIANT | VIOLATION: describe the section and token count}
+COMPLIANT | VIOLATION: {describe the over-budget section and token count}
+
+## Completeness Gaps
+
+- {gap description} — Category: {category}, Priority: HIGH | MEDIUM | LOW
 
 ## Recommendations
 
