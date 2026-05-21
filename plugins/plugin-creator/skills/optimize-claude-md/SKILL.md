@@ -1,6 +1,6 @@
 ---
 name: optimize-claude-md
-description: "Optimize existing CLAUDE.md, SKILL.md, agent definitions, and other AI-facing files for Claude comprehension and economy. Scope: optimization of existing content only — not upstream sync, not read-only auditing. Measures baseline metrics, delegates to @contextual-ai-documentation-optimizer agent with file-type-specific context, runs independent verification via second agent, measures post-optimization metrics, and presents comprehensive before/after report. Supports iterative mode for large targets. Use when improving prompt effectiveness, reducing token waste, or rewriting instructions for LLM consumption. Invoke with /optimize-claude-md <file-or-directory>."
+description: "Optimize existing CLAUDE.md, SKILL.md, agent definitions, and other AI-facing files for Claude comprehension and economy. Scope: optimization of existing content only — not upstream sync, not read-only auditing. Measures baseline metrics, delegates to @ai-doc-optimizer agent with file-type-specific context, runs independent verification via second agent, measures post-optimization metrics, and presents comprehensive before/after report. Supports iterative mode for large targets. Use when improving prompt effectiveness, reducing token waste, or rewriting instructions for LLM consumption. Invoke with /optimize-claude-md <file-or-directory>."
 argument-hint: <file-or-directory-path>
 user-invocable: true
 disable-model-invocation: true
@@ -51,7 +51,7 @@ Verify the resolved absolute path exists. Determine scope (single file, skill di
 
 **Record metrics** for reporting.
 
-### Phase 3: Delegate to @contextual-ai-documentation-optimizer
+### Phase 3: Delegate to @ai-doc-optimizer
 
 Spawn the optimization agent via Agent tool with enhanced delegation template (see below). Pass file-type-specific context, baseline metrics, and constraints.
 
@@ -105,10 +105,10 @@ OUTPUT STRUCTURE:
 
 </delegation_template>
 
-Routing within `contextual-ai-documentation-optimizer`:
-- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:contextual-ai-documentation-optimizer` (this skill uses this path)
-- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
-- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+Routing by concern:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:ai-doc-optimizer` (this skill uses this path)
+- Audit quality (read-only, no writes, score against completeness categories) → `plugin-creator:skill-auditor`
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → `plugin-creator:skill-content-updater`
 - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ### Phase 4: Handle Agent Response

@@ -75,16 +75,16 @@ Route each task to the appropriate specialized agent based on the **Agent** fiel
 | -------------- | ------------------------------- | ------------------------------------------------------ |
 | SKILL_SPLIT    | `plugin-creator:refactor-skill` | Tasks splitting large skills into smaller focused ones |
 | AGENT_OPTIMIZE | `subagent-refactorer`           | Tasks improving agent prompts and descriptions         |
-| DOC_IMPROVE    | `contextual-ai-documentation-optimizer`      | Tasks improving skill/agent documentation quality      |
-| ORPHAN_RESOLVE | `contextual-ai-documentation-optimizer`      | Tasks integrating orphaned reference files             |
-| STRUCTURE_FIX  | `contextual-ai-documentation-optimizer`      | Tasks fixing broken links or structural issues         |
+| DOC_IMPROVE    | `plugin-creator:ai-doc-optimizer`            | Tasks improving skill/agent documentation quality      |
+| ORPHAN_RESOLVE | `plugin-creator:ai-doc-optimizer`            | Tasks integrating orphaned reference files             |
+| STRUCTURE_FIX  | `general-purpose`                            | Tasks fixing broken links or structural issues         |
 | Validation     | `plugin-assessor`               | Post-refactoring validation tasks                      |
 | Documentation  | `plugin-docs-writer`            | README and documentation generation tasks              |
 
-Routing within `contextual-ai-documentation-optimizer` (DOC_IMPROVE, ORPHAN_RESOLVE, STRUCTURE_FIX):
-- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `contextual-ai-documentation-optimizer`
-- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
-- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+Routing by concern:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:ai-doc-optimizer`
+- Audit quality (read-only, no writes, score against completeness categories) → `plugin-creator:skill-auditor`
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → `plugin-creator:skill-content-updater`
 - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ### Launch Strategy
@@ -252,7 +252,7 @@ LSP server 'gopls' not found in $PATH
 **Agents included in plugin-creator:**
 
 - `subagent-refactorer` - Used for AGENT_OPTIMIZE tasks (✅ included)
-- `contextual-ai-documentation-optimizer` - Used for DOC_IMPROVE and ORPHAN_RESOLVE tasks (✅ included)
+- `ai-doc-optimizer` - Used for DOC_IMPROVE and ORPHAN_RESOLVE tasks (✅ included)
 - `plugin-assessor` - Used for validation tasks (✅ included)
 
 **Known external agent dependencies:**

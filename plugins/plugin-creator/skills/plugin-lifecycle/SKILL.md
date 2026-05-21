@@ -11,12 +11,12 @@ user-invocable: true
 <plugin_intent>$2</plugin_intent>
 <invocation_args>$ARGUMENTS</invocation_args>
 
-> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
+> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` for content optimization — delegate to `subagent_type="plugin-creator:ai-doc-optimizer"`.
 >
-> Routing within this agent:
-> - Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `contextual-ai-documentation-optimizer`
-> - Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
-> - Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+> Routing by concern:
+> - Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:ai-doc-optimizer`
+> - Audit quality (read-only, no writes, score against completeness categories) → `plugin-creator:skill-auditor`
+> - Sync content against upstream docs (add NEW/fix STALE from live sources) → `plugin-creator:skill-content-updater`
 > - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 > [!IMPORTANT]
@@ -495,7 +495,7 @@ Optimize improves quality — descriptions, progressive disclosure, agent prompt
    Context to include in the prompt: plugin path, assessment-REPORT.md (if available from Phase 1)
    Output: improved plugin structure, updated SKILL.md files, better progressive disclosure
 
-2. Task is content quality optimization with subagent_type="plugin-creator:contextual-ai-documentation-optimizer"
+2. Task is content quality optimization with subagent_type="plugin-creator:ai-doc-optimizer"
    Context to include in the prompt: SKILL.md or CLAUDE.md files needing improvement, assessment findings
    Output: optimized documentation with better Claude comprehension
 
