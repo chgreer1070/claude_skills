@@ -137,6 +137,24 @@ Adds an automated documentation sync pipeline to any skill that wraps external d
 /add-doc-updater <target-plugin-or-skill-path>
 ```
 
+#### `/skill-sync`
+
+Updates a skill's content against its cited upstream sources. Use this when a skill references live documentation via `SOURCE:` URLs and that documentation has changed — new API methods added, configuration options renamed, behaviour changed — and you want to bring the skill current without touching its structure or rewriting things that are still accurate.
+
+```text
+/skill-sync <skill-path>
+/skill-sync <plugin-directory-path>
+```
+
+When given a plugin directory, runs on every skill within it. The pipeline:
+
+1. **Token profile** — runs `uvx skilllint` on the existing file and surfaces which 2–3 sections consume the most tokens, so the write step knows its budget before touching anything. If the file is already over the SK007 threshold, applies progressive-disclosure extraction (`references/` split) before proceeding.
+2. **Three parallel read agents** — completeness auditor (scores quality, checks token budget), upstream drift researcher (fetches every `SOURCE:` URL in the skill and classifies each claim as NEW, STALE, VERIFIED, or UNVERIFIABLE), structure validator (checks YAML syntax, citations, code fence specifiers, derived counts).
+3. **Change plan** — synthesizes all three reports into a change plan file written to `.tmp/scratch/plans/`. The write step receives only this file — it invents nothing.
+4. **Write + verify** — a schema-aware write agent executes the change plan exactly, then runs `uvx skilllint` after each file touch. If SK007 fires during writing, the agent extracts the heaviest section to `references/` and retries until the skill is clean.
+
+The pipeline does not pause for review and does not manage commits — it exits after `uvx skilllint` passes on all modified files.
+
 #### `/audit-agent-lifecycle`
 
 Validates that agents can actually accomplish what they claim to do. Runs 8 semantic audits: capability vs configuration alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, and pattern learning. Writes reports to `.claude/audits/`.
@@ -354,10 +372,20 @@ These agents run internally to implement the skills above. They are not invoked 
 | `hook-creator` | Generates hook scripts (Node.js `.mjs`/`.cjs` by default, Python or other language when matching project runtime), wires `hooks.json` |
 | `agent-creator` | Creates agent files from requirements with template selection and plugin.json updates |
 
+### The three documentation-work agents
+
+These three agents replaced `contextual-ai-documentation-optimizer`, which bundled all documentation concerns under a single agent that was easy to misroute. Each agent now has a single scope so orchestrators and skill authors can route precisely.
+
+**`skill-auditor`** — Use when you want to know how complete or well-structured a skill is, without changing anything. The agent runs entirely read-only: it scores the skill against 8 completeness categories, checks whether the file is approaching the SK006/SK007 token thresholds, checks progressive-disclosure structure, and reports all gaps in a structured audit report at `.tmp/scratch/reports/skill-sync-{slug}-completeness-YYYYMMDD.md`. Nothing is written to the skill itself. Route here when a human or orchestrator asks "how good is this skill?" or "what's missing from this skill?" — not when the goal is to fix something.
+
+**`skill-content-updater`** — Use when a skill's cited sources have drifted and you need to bring content current. The agent has two roles in the `/skill-sync` pipeline: in Stage 2 it fetches every `SOURCE:` URL cited in the skill and classifies each claim as NEW (exists upstream, absent from skill), STALE (changed or removed upstream), VERIFIED (matches), or UNVERIFIABLE (URL unreachable); in Stage 5 it receives a change plan file path and executes it exactly — no interpretation, no content invention. Route here when the goal is "sync this skill against what the upstream docs actually say today", not when the goal is "make this skill's prose clearer".
+
+**`ai-doc-optimizer`** — Use when the skill's content is current but needs to be clearer, better structured, or more useful for Claude to follow. The agent rewrites for comprehension: tightens instruction language, applies RT-ICA and CoVe patterns, improves structure and progressive disclosure, and rewrites `description` frontmatter fields to front-load trigger keywords. Route here when the goal is "make this skill work better as AI-facing instruction", not when the goal is "add what's missing from the upstream docs".
+
 Routing by concern:
 
 - Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `ai-doc-optimizer` agent (`plugin-creator:ai-doc-optimizer`)
-- Audit quality (read-only, no writes, score against completeness categories) → `skill-auditor` agent (uses `/plugin-creator:audit-skill-completeness`)
+- Audit quality (read-only, no writes, score against completeness categories) → `skill-auditor` agent (`plugin-creator:skill-auditor`)
 - Sync content against upstream docs (add NEW/fix STALE from live sources) → `skill-content-updater` agent (`plugin-creator:skill-content-updater`)
 - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
