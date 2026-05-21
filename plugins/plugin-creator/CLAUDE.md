@@ -85,7 +85,7 @@ flowchart TD
 | `/plugin-settings` | Yes | Per-project plugin configuration via `.local.md` pattern — YAML frontmatter parsing, implementation patterns |
 | `/component-patterns` | Yes | Component lifecycle, decision framework (commands vs skills vs agents vs hooks vs MCP servers), organization patterns |
 
-### Agents (6)
+### Agents
 
 | Agent | Model | Tools | Purpose |
 |-------|-------|-------|---------|
@@ -93,7 +93,9 @@ flowchart TD
 | `refactor-executor` | sonnet | Read, Write, Edit, Grep, Glob, Bash, Task | Execute refactoring tasks from plans |
 | `refactor-validator` | sonnet | Read, Grep, Glob, Bash | Validate refactoring completeness and quality |
 | `subagent-refactorer` | sonnet | Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Skill, MCP tools | Refactor Claude agents using Anthropic prompt engineering best practices |
-| `contextual-ai-documentation-optimizer` | sonnet | (inherits) | Quality audit, content optimization, and frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files |
+| `skill-auditor` | sonnet | (inherits) | Read-only quality audit and completeness scoring for agents, skills, and CLAUDE.md files |
+| `skill-content-updater` | sonnet | (inherits) | Sync skill content against upstream sources — fetch live docs, classify drift (NEW/STALE/VERIFIED), apply updates |
+| `ai-doc-optimizer` | sonnet | (inherits) | Content optimization and frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files |
 | `plugin-assessor` | sonnet | (inherits) | Analyze plugins for structure, frontmatter, and quality |
 
 ### Scripts (6)
@@ -216,15 +218,15 @@ Validates: plugin.json exists in `.claude-plugin/`; JSON syntax valid; required 
 |------|---------|
 | `SKILL_SPLIT` | `/plugin-creator:refactor-skill` skill |
 | `AGENT_OPTIMIZE` | `subagent-refactorer` agent |
-| `DOC_IMPROVE` | `contextual-ai-documentation-optimizer` agent |
+| `DOC_IMPROVE` | `ai-doc-optimizer` agent |
 | `DOC_UPDATER_ADD` | `/plugin-creator:add-doc-updater` skill |
 | `ORPHAN_RESOLVE` | Manual or context optimizer |
 | `STRUCTURE_FIX` | Direct implementation |
 
-Routing within `contextual-ai-documentation-optimizer` (DOC_IMPROVE and ORPHAN_RESOLVE):
-- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `contextual-ai-documentation-optimizer`
-- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
-- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+Routing by concern (DOC_IMPROVE and ORPHAN_RESOLVE):
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `ai-doc-optimizer` agent
+- Audit quality (read-only, no writes, score against completeness categories) → `skill-auditor` agent (uses `/plugin-creator:audit-skill-completeness`)
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → `skill-content-updater` agent
 - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 `DOC_UPDATER_ADD` applies when: skill wraps external documentation (API specs, CLI refs, frameworks); documentation source updates regularly (weekly, monthly); skill would benefit from automated sync.
@@ -389,20 +391,28 @@ user-invocable: true
 
 ---
 
-## Consolidated Agents (Added v2.6.0)
+## Consolidated Agents
 
 ### subagent-refactorer
 
 Refactors Claude Code subagents using Anthropic prompt engineering best practices. Used for `AGENT_OPTIMIZE` task types. Researches current Anthropic documentation before refactoring; applies strategic XML tagging; optimizes for model selection. Uses the `prompt-optimization` skill (now part of this plugin).
 
-### contextual-ai-documentation-optimizer
+### skill-auditor
 
-Bundles three concerns: (1) quality audit and assessment (read-only scoring), (2) content optimization and rewriting for Claude comprehension, and (3) frontmatter description writing. Used for `DOC_IMPROVE` and `ORPHAN_RESOLVE` task types. Applies positive framing; uses concrete examples; front-loads critical instructions. Uses the `prompt-optimization` skill (now part of this plugin).
+Read-only quality audit and completeness scoring for agents, skills, and CLAUDE.md files. Used for `DOC_IMPROVE` tasks when the goal is assessment without modification. Loads `/plugin-creator:audit-skill-completeness` skill; produces structured completeness reports with SK006/SK007 threshold status.
 
-Routing within this agent:
-- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `contextual-ai-documentation-optimizer`
-- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
-- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+### skill-content-updater
+
+Synchronizes skill content against upstream sources. Fetches live documentation URLs from `SOURCE:` fields, classifies drift as NEW/STALE/VERIFIED/UNVERIFIABLE, and applies updates. Used when a skill wraps external docs that change regularly. Does NOT rewrite or optimize content — use `ai-doc-optimizer` for that.
+
+### ai-doc-optimizer
+
+Content optimization and frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files. Used for `DOC_IMPROVE` and `ORPHAN_RESOLVE` task types. Applies positive framing; uses concrete examples; front-loads critical instructions; applies Anthropic prompt engineering best practices. Uses the `prompt-optimization` skill (now part of this plugin).
+
+Routing by concern:
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `ai-doc-optimizer` agent
+- Audit quality (read-only, no writes, score against completeness categories) → `skill-auditor` agent (uses `/plugin-creator:audit-skill-completeness`)
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → `skill-content-updater` agent
 - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ### plugin-assessor
@@ -480,7 +490,7 @@ LSP servers require separate binary installation — plugins configure the conne
 
 ## Related Plugins
 
-- `prompt-optimization` — now a skill within this plugin; used by `contextual-ai-documentation-optimizer` and `subagent-refactorer` agents
+- `prompt-optimization` — now a skill within this plugin; used by `ai-doc-optimizer` and `subagent-refactorer` agents
 - `holistic-linting` — code quality and linting
 - `python3-development` — Python-specific development patterns
 
@@ -488,7 +498,8 @@ LSP servers require separate binary installation — plugins configure the conne
 
 ## Version History
 
-- **2.6.0** — Consolidated external agents: subagent-refactorer, contextual-ai-documentation-optimizer, plugin-assessor
+- **2.7.0** — Split documentation-optimization agent into three focused agents: skill-auditor, skill-content-updater, ai-doc-optimizer
+- **2.6.0** — Consolidated external agents into plugin: subagent-refactorer, plugin-assessor, and documentation-optimization agents
 - **2.5.0** — Added skill-creator and write-frontmatter-description skills
 - **2.3.0** — Added claude-plugins-reference-2026 and hooks-guide reference skills
 - **2.2.0** — Added claude-skills-overview-2026 reference skill

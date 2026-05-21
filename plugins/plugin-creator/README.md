@@ -167,7 +167,7 @@ Runs the description-drift experiment: spawns all Claude Code agents simultaneou
 
 #### `/optimize-claude-md`
 
-Optimizes CLAUDE.md files, SKILL.md files, agent definitions, and other AI-facing files for Claude comprehension. Measures baseline metrics, runs optimization via the `contextual-ai-documentation-optimizer` agent, verifies with a second agent, then presents a before/after report.
+Optimizes CLAUDE.md files, SKILL.md files, agent definitions, and other AI-facing files for Claude comprehension. Measures baseline metrics, runs optimization via the `ai-doc-optimizer` agent, verifies with a second agent, then presents a before/after report.
 
 ```text
 /optimize-claude-md <file-or-directory-path>
@@ -234,7 +234,7 @@ With this plugin installed, Claude will:
 - Write hook scripts in the language that matches the project runtime (Node.js by default; Python when `pyproject.toml` is present); for Node.js always use `.mjs` or `.cjs` — never plain `.js` (see [hooks-nodejs-extension.md](./skills/hooks-guide/references/hooks-nodejs-extension.md))
 - Apply the `${CLAUDE_PLUGIN_ROOT}` environment variable in hook paths rather than hardcoding absolute paths
 - Check skill complexity with token-based thresholds and recommend `references/` extraction or splitting before a skill exceeds Claude's context budget
-- Route refactoring task types to the correct specialist: `SKILL_SPLIT` tasks to `/refactor-skill`, `AGENT_OPTIMIZE` tasks to the `subagent-refactorer` agent, `DOC_IMPROVE` tasks to the `contextual-ai-documentation-optimizer` agent
+- Route refactoring task types to the correct specialist: `SKILL_SPLIT` tasks to `/refactor-skill`, `AGENT_OPTIMIZE` tasks to the `subagent-refactorer` agent, `DOC_IMPROVE` tasks to the `ai-doc-optimizer` agent
 - Require `name:` in all skill and agent frontmatter per the agentskills.io specification
 
 ### Automatic Behaviors
@@ -347,16 +347,18 @@ These agents run internally to implement the skills above. They are not invoked 
 | `refactor-executor` | Executes refactoring tasks from plans with parallel orchestration |
 | `refactor-validator` | Validates refactoring completeness and quality against original assessment |
 | `subagent-refactorer` | Rewrites agent prompt files using Anthropic prompt engineering methodology — strategic XML tagging, strong imperative instructions, model-tier selection |
-| `contextual-ai-documentation-optimizer` | Quality audit, content optimization, and frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files — three bundled concerns; see routing note below |
+| `skill-auditor` | Read-only quality audit and completeness scoring for agents, skills, and CLAUDE.md files |
+| `skill-content-updater` | Sync skill content against upstream sources — fetch live docs, classify drift (NEW/STALE/VERIFIED), apply updates |
+| `ai-doc-optimizer` | Content optimization and frontmatter description writing for prompts, SKILL.md, and CLAUDE.md files |
 | `plugin-assessor` | Analyzes plugins for structure, frontmatter compliance, orphaned files, and cross-reference validity |
 | `hook-creator` | Generates hook scripts (Node.js `.mjs`/`.cjs` by default, Python or other language when matching project runtime), wires `hooks.json` |
 | `agent-creator` | Creates agent files from requirements with template selection and plugin.json updates |
 
-Routing within `contextual-ai-documentation-optimizer`:
+Routing by concern:
 
-- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:contextual-ai-documentation-optimizer`
-- Audit quality (read-only, no writes, score against completeness categories) → `/plugin-creator:audit-skill-completeness` skill directly
-- Sync content against upstream docs (add NEW/fix STALE from live sources) → general-purpose agent with drift report until `skill-content-updater` lands (backlog #1899)
+- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `ai-doc-optimizer` agent (`plugin-creator:ai-doc-optimizer`)
+- Audit quality (read-only, no writes, score against completeness categories) → `skill-auditor` agent (uses `/plugin-creator:audit-skill-completeness`)
+- Sync content against upstream docs (add NEW/fix STALE from live sources) → `skill-content-updater` agent (`plugin-creator:skill-content-updater`)
 - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
 
 ## Scripts
