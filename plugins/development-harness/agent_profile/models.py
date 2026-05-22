@@ -53,29 +53,6 @@ class AgentMetadata(BaseModel):
     )
 
 
-class ResolvedSkill(BaseModel):
-    """A skill URI fully resolved to its filesystem location and content.
-
-    Produced by ``resolver.py`` after locating and reading a ``SKILL.md`` file
-    and collecting any accompanying reference documents.
-    """
-
-    uri: str = Field(
-        description="Original skill URI as declared in the agent frontmatter, e.g. 'dh:subagent-contract'."
-    )
-    resolved_path: Path = Field(description="Absolute filesystem path to the resolved SKILL.md file.")
-    plugin: str = Field(description="Name of the plugin that owns this skill, e.g. 'development-harness'.")
-    skill_name: str = Field(description="Leaf skill directory name, e.g. 'subagent-contract'.")
-    content: str = Field(description="Full text content of the SKILL.md file.")
-    reference_files: dict[str, str] = Field(
-        default_factory=dict,
-        description=(
-            "Mapping of reference file name to its text content for all .md files "
-            "found in the skill's references/ subdirectory, keyed by filename."
-        ),
-    )
-
-
 class AgentProfile(BaseModel):
     """Complete compiled profile for an agent, ready for context injection.
 
@@ -99,9 +76,13 @@ class AgentProfile(BaseModel):
             "This is the agent's role definition and workflow instructions."
         )
     )
-    skills: list[ResolvedSkill] = Field(
+    skills: list[str] = Field(
         default_factory=list,
-        description="All resolved skills in declaration order, including recursively resolved sub-skills.",
+        description=(
+            "Ordered list of skill URI strings as declared in the agent frontmatter. "
+            "Load each skill into context via ``Skill(skill=uri)`` — resolution is handled "
+            "by the Claude Code SDK, not by this server."
+        ),
     )
     warnings: list[str] = Field(
         default_factory=list,
@@ -137,4 +118,3 @@ from pathlib import Path as _Path
 
 _rebuild_ns = {"Path": _Path}
 AgentEntry.model_rebuild(_types_namespace=_rebuild_ns)
-ResolvedSkill.model_rebuild(_types_namespace=_rebuild_ns)
