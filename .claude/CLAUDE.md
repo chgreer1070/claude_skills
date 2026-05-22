@@ -546,30 +546,11 @@ uv run prek run --files <file>
 
 ### Authentication and Repo Detection
 
-`GITHUB_TOKEN` set in environment — `gh` authenticates automatically. Git remote points to local proxy (`127.0.0.1`), not `github.com`, so `gh` cannot auto-detect the repository. Pass `-R` on every command:
-
-```bash
-gh <command> -R Jamie-BitFlight/claude_skills
-```
+`GITHUB_TOKEN` set in environment — `gh` authenticates automatically. Git remote points to local proxy (`127.0.0.1`), not `github.com`, so `gh` cannot auto-detect the repository. Pass `-R <owner/repo>` on every command. The correct `<owner/repo>` for this checkout is written to `.dh/config.yaml` under `gh.repo` by `setup_gh.py`.
 
 ### Usage Examples
 
-```bash
-# List recent workflow runs
-gh run list -R Jamie-BitFlight/claude_skills --limit=5
-
-# View specific run
-gh run view <run-id> -R Jamie-BitFlight/claude_skills
-
-# View failed job logs
-gh run view <run-id> -R Jamie-BitFlight/claude_skills --log-failed
-
-# Check PR status
-gh pr checks <pr-number> -R Jamie-BitFlight/claude_skills
-
-# Create PR
-gh pr create -R Jamie-BitFlight/claude_skills --title "title" --body "body"
-```
+Load the `/gh` skill — it auto-runs `setup_gh.py --detect-only` at load time to print ready-to-use `gh` commands with the correct `-R` flag for this checkout.
 
 Use `gh` to verify workflow changes — CI output observation is part of Phase 5 (Verify) in the CI Workflow Modification Protocol.
 
