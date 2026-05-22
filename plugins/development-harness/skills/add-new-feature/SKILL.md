@@ -55,6 +55,16 @@ inform your output.
 
 Research-type artifacts (`artifact_type="research"`) are especially valuable — they contain investigation findings gathered before planning began. Phase agents should read these first when present.
 
+**Research artifacts as discovery pointers (not authoritative sources):** Research entries
+record summary findings and upstream source references — they are NOT the primary source.
+Research artifacts are discovery pointers, not authoritative documents.
+The YAML frontmatter of a research artifact may contain `resource_url` and/or `github_url`
+fields pointing to the upstream content. Phase agents receiving a research artifact MUST
+check these fields and fetch the upstream source before adapting content from the summary.
+This is especially important for Phase 1 (feature-researcher) and Phase 3 (architect).
+Failure to fetch the primary source causes information loss from the summary layer to
+propagate into feature context and architecture decisions.
+
 ---
 
 ## Orchestrator Discipline
@@ -67,6 +77,8 @@ You are an orchestrator. You coordinate work across specialized agents. Prefer d
 
 Every phase delegation prompt starts with this block. Fill `{work_type}`, `{feature_name}`, and `{issue}` from the values in the **Template Variables** section at the bottom of this skill.
 
+The `{quality_vigilance}` template variable used in every phase delegation template below expands to the `<quality_vigilance>` block defined here — this is the single canonical definition.
+
 ```text
 You are part of a team that is currently working on the {work_type} {feature_name}.
 Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
@@ -77,6 +89,12 @@ product quality improvements and aligning with the design intent. If you see som
 that seems misaligned, verify it, and then note your concerns and findings concisely
 in your response in a <concerns></concerns> block. Point out duplication, contradictions,
 statements of fact without citation, code smells, missing documentation.
+
+For claims derived from research artifacts: verify the claim against the upstream
+primary source, not just the local research summary. If the research artifact frontmatter
+contains `resource_url` or `github_url`, fetch that URL and check the claim against it.
+Cite the fetched primary URL, not the research summary file path, when the claim originates
+from external upstream content.
 </quality_vigilance>
 ```
 
@@ -98,18 +116,20 @@ Delegation prompt template:
 You are part of a team that is currently working on the {work_type} {feature_name}.
 Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
 
-<quality_vigilance>
-Your task among all other things you are doing is to be consistently striving for
-product quality improvements and aligning with the design intent. If you see something
-that seems misaligned, verify it, and then note your concerns and findings concisely
-in your response in a <concerns></concerns> block. Point out duplication, contradictions,
-statements of fact without citation, code smells, missing documentation.
-</quality_vigilance>
+{quality_vigilance}
 
 Research #{issue}: "{title}".
 If research artifacts exist for this issue, read them via
 artifact_read(issue_number={issue}, artifact_type="research") before starting
 discovery — they contain prior investigation findings that should be incorporated.
+IMPORTANT: Research artifacts are discovery pointers, not authoritative documents.
+After reading the research artifact, inspect its YAML frontmatter for `resource_url`
+and `github_url` fields. If either is present, fetch the upstream source using
+mcp__Ref__ref_read_url (or WebFetch as fallback) and treat it as the authoritative
+primary source. Use the local research summary as an index to the primary source only.
+If the URL is absent or unreachable (4xx/5xx/timeout), log a warning in the
+`## Research Source Notes` section of the feature-context document and proceed from the
+local summary — never hard-fail.
 Produce feature-context-{slug}.md content with WHAT/WHY analysis — problem space, desired
 outcome, stakeholders, risks, open questions.
 Do NOT prescribe HOW to build it.
@@ -158,13 +178,7 @@ Delegation prompt template (one per focus area):
 You are part of a team that is currently working on the {work_type} {feature_name}.
 Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
 
-<quality_vigilance>
-Your task among all other things you are doing is to be consistently striving for
-product quality improvements and aligning with the design intent. If you see something
-that seems misaligned, verify it, and then note your concerns and findings concisely
-in your response in a <concerns></concerns> block. Point out duplication, contradictions,
-statements of fact without citation, code smells, missing documentation.
-</quality_vigilance>
+{quality_vigilance}
 
 Analyze {focus_area} for #{issue}: "{title}".
 Produce {focus_area}.md content documenting what exists today — patterns,
@@ -322,13 +336,7 @@ Delegation prompt template:
 You are part of a team that is currently working on the {work_type} {feature_name}.
 Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
 
-<quality_vigilance>
-Your task among all other things you are doing is to be consistently striving for
-product quality improvements and aligning with the design intent. If you see something
-that seems misaligned, verify it, and then note your concerns and findings concisely
-in your response in a <concerns></concerns> block. Point out duplication, contradictions,
-statements of fact without citation, code smells, missing documentation.
-</quality_vigilance>
+{quality_vigilance}
 
 Design the implementation for #{issue}: "{title}".
 Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context").
@@ -336,6 +344,15 @@ Read the feature context via artifact_read(issue_number={issue}, artifact_type="
 If research artifacts exist for this issue, read them via
 artifact_read(issue_number={issue}, artifact_type="research") for prior research
 findings that should inform the architecture.
+IMPORTANT: Research artifacts are discovery pointers, not authoritative documents.
+After reading any research artifact, inspect its YAML frontmatter for `resource_url`
+and `github_url` fields. If either is present, fetch the upstream source using
+mcp__Ref__ref_read_url (or WebFetch as fallback) and verify currency and completeness
+of the research summary against the primary source before designing. If the URL is
+absent or unreachable (4xx/5xx/timeout), log a warning in the `## Research Source Notes`
+section of the architect document and proceed from the research summary — never hard-fail.
+Additionally, run a WebSearch for current best practices relevant to this feature before
+finalizing the architecture. Training data is stale; current community practice may differ.
 Produce architect-{slug}.md content with interfaces, contracts, data models, module boundaries.
 Do NOT implement — define WHAT to build, not the code.
 
@@ -375,13 +392,7 @@ Delegation prompt template:
 You are part of a team that is currently working on the {work_type} {feature_name}.
 Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
 
-<quality_vigilance>
-Your task among all other things you are doing is to be consistently striving for
-product quality improvements and aligning with the design intent. If you see something
-that seems misaligned, verify it, and then note your concerns and findings concisely
-in your response in a <concerns></concerns> block. Point out duplication, contradictions,
-statements of fact without citation, code smells, missing documentation.
-</quality_vigilance>
+{quality_vigilance}
 
 Decompose #{issue}: "{title}" into executable tasks.
 Read the architecture spec via artifact_read(issue_number={issue}, artifact_type="architect").
@@ -436,13 +447,7 @@ Delegation prompt template:
 You are part of a team that is currently working on the {work_type} {feature_name}.
 Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
 
-<quality_vigilance>
-Your task among all other things you are doing is to be consistently striving for
-product quality improvements and aligning with the design intent. If you see something
-that seems misaligned, verify it, and then note your concerns and findings concisely
-in your response in a <concerns></concerns> block. Point out duplication, contradictions,
-statements of fact without citation, code smells, missing documentation.
-</quality_vigilance>
+{quality_vigilance}
 
 Validate plan P{N} for #{issue}: "{title}".
 Check: AC coverage, dependency DAG, agent assignments, verification steps,
@@ -462,13 +467,7 @@ Delegation prompt template:
 You are part of a team that is currently working on the {work_type} {feature_name}.
 Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
 
-<quality_vigilance>
-Your task among all other things you are doing is to be consistently striving for
-product quality improvements and aligning with the design intent. If you see something
-that seems misaligned, verify it, and then note your concerns and findings concisely
-in your response in a <concerns></concerns> block. Point out duplication, contradictions,
-statements of fact without citation, code smells, missing documentation.
-</quality_vigilance>
+{quality_vigilance}
 
 Add context manifest to plan P{N} for #{issue}: "{title}".
 Read the plan via sam_plan. Write the context manifest via sam_plan.
@@ -491,6 +490,7 @@ Fill these values before constructing each delegation prompt. All values come fr
 | `{goal_from_feature_request}` | The one-sentence goal extracted from the feature context doc (Phase 4 only) |
 | `{domain_skills}` | Pre-formatted YAML list lines (e.g., `- plugin-creator:hook-creator`) collected by the Phase 3 domain signal scan; empty string if no signals matched; passed verbatim into Phase 4 delegation prompt |
 | `{N}` | SAM plan number returned by `sam_plan` after Phase 4 completes |
+| `{quality_vigilance}` | Full `<quality_vigilance>...</quality_vigilance>` block — canonical text defined in §Shared Delegation Preamble above; substitute verbatim when constructing delegation prompts |
 
 ---
 
