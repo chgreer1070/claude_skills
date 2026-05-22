@@ -24,14 +24,24 @@ import os
 import shutil
 import subprocess
 import time
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, TypeAlias, Union
 
 from backlog_core.models import BackendUnavailableError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-__all__ = ["_DEFAULT_BD_TIMEOUT_SECONDS", "BdInvocationError", "BdJsonDecodeError", "BdNotInstalledError", "BdRunner"]
+#: Recursive JSON value type — the full set of values ``json.loads`` can return.
+JsonValue: TypeAlias = Union[str, int, float, bool, "list[JsonValue]", "dict[str, JsonValue]", None]
+
+__all__ = [
+    "_DEFAULT_BD_TIMEOUT_SECONDS",
+    "BdInvocationError",
+    "BdJsonDecodeError",
+    "BdNotInstalledError",
+    "BdRunner",
+    "JsonValue",
+]
 
 _DEFAULT_BD_TIMEOUT_SECONDS: Final[int] = 30
 
@@ -131,6 +141,9 @@ class BdRunner:
 
     Parameters
     ----------
+    timeout_seconds:
+        Maximum number of seconds to wait for any single ``bd`` invocation.
+        Defaults to :data:`_DEFAULT_BD_TIMEOUT_SECONDS`.
     env_overrides:
         Optional mapping of environment variable names to values that are
         merged into every ``bd`` subprocess environment.  Keys in this
@@ -138,9 +151,7 @@ class BdRunner:
         Variables listed in :data:`_BLOCKED_ENV_VARS` are removed first,
         then overrides are applied.  Pass ``None`` (default) to use the
         inherited environment with blocked variables removed.
-    timeout_seconds:
-        Maximum number of seconds to wait for any single ``bd`` invocation.
-        Defaults to :data:`_DEFAULT_BD_TIMEOUT_SECONDS`.
+        Keyword-only parameter.
 
     Notes:
     -----
@@ -151,11 +162,13 @@ class BdRunner:
     """
 
     def __init__(
-        self, *, env_overrides: Mapping[str, str] | None = None, timeout_seconds: int = _DEFAULT_BD_TIMEOUT_SECONDS
+        self, timeout_seconds: int = _DEFAULT_BD_TIMEOUT_SECONDS, *, env_overrides: Mapping[str, str] | None = None
     ) -> None:
         """Store configuration only.  Does not touch the filesystem."""
-        self._env_overrides = env_overrides
         self._timeout_seconds = timeout_seconds
+        self._env_overrides: dict[str, str] = (
+            {k: v for k, v in env_overrides.items() if k not in _BLOCKED_ENV_VARS} if env_overrides else {}
+        )
         self._bd_path: str | None = None
         self._available: bool | None = None
 
@@ -163,7 +176,7 @@ class BdRunner:
     # Public interface
     # ------------------------------------------------------------------
 
-    def run_json(self, argv: Sequence[str]) -> object:
+    def run_json(self, argv: Sequence[str]) -> JsonValue:
         """Run ``bd`` with *argv*, inject ``--json`` if absent, parse output.
 
         Parameters
@@ -174,7 +187,7 @@ class BdRunner:
 
         Returns:
         -------
-        object
+        JsonValue
             Parsed JSON value from ``bd`` stdout.
 
         Raises:
@@ -243,7 +256,7 @@ class BdRunner:
                 encoding="utf-8",
                 errors="replace",
                 check=False,
-                env=self._build_env(),
+                env=self._effective_env(),
             )
             self._available = True
         except (OSError, subprocess.SubprocessError):
@@ -254,16 +267,17 @@ class BdRunner:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _build_env(self) -> dict[str, str]:
-        """Return subprocess environment with blocked vars removed and overrides applied.
+    def _effective_env(self) -> dict[str, str]:
+        """Return the filtered base environment merged with instance-level overrides.
 
-        Blocked variables (see :data:`_BLOCKED_ENV_VARS`) are stripped from
-        both the inherited process environment and from *env_overrides*, so
-        callers cannot inadvertently re-inject a blocked credential.
+        Returns:
+        -------
+        dict[str, str]
+            Environment mapping safe to pass to ``bd`` subprocesses.
         """
         env = _bd_env()
         if self._env_overrides:
-            env.update({k: v for k, v in self._env_overrides.items() if k not in _BLOCKED_ENV_VARS})
+            env.update(self._env_overrides)
         return env
 
     def _resolve_bd_path(self) -> str:
@@ -320,7 +334,7 @@ class BdRunner:
                 encoding="utf-8",
                 errors="replace",
                 check=False,
-                env=self._build_env(),
+                env=self._effective_env(),
             )
         except subprocess.TimeoutExpired as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)

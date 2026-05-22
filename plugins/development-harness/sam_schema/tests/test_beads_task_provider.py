@@ -14,11 +14,9 @@ from sam_schema.core.action_models import TaskDefinition
 from sam_schema.core.backends.beads import BeadsTaskProvider
 from sam_schema.core.exceptions import DocumentNotFoundError, PlanNotFoundError, TaskNotFoundError, TaskValidationError
 
-from .conftest import _FakeBdRunner, make_task_record
+from .conftest import _FakeBdRunner, _ListParentBdRunner, make_task_record
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from sam_schema.core.task_backend_types import DocumentHandle
 
 # ---------------------------------------------------------------------------
@@ -340,7 +338,7 @@ class TestSubprocessCallCounts:
 
     @pytest.mark.parametrize("task_count", [1, 3, 5])
     def test_read_plan_batch_fetches_tasks(
-        self, plan_id_and_runner: tuple[str, _FakeBdRunner], task_count: int, monkeypatch: pytest.MonkeyPatch
+        self, plan_id_and_list_runner: tuple[str, _ListParentBdRunner], task_count: int
     ) -> None:
         """read_plan must issue exactly 1 bd show (epic) + 1 bd list (children batch).
 
@@ -350,35 +348,18 @@ class TestSubprocessCallCounts:
 
         Parametrized over task_count to prove the O(1) invariant regardless of
         how many tasks the plan contains.
+
+        Uses :class:`_ListParentBdRunner`, a ``_FakeBdRunner`` subclass that
+        overrides ``run_json`` to handle ``bd list --parent`` — no instance
+        monkey-patching required.
         """
-        plan_id, runner = plan_id_and_runner
+        plan_id, runner = plan_id_and_list_runner
 
         # Arrange: add task_count tasks to the plan
         epic_id = runner._memory[f"dh.plan-index.{plan_id}"]
         for i in range(task_count):
             make_task_record(runner, plan_id, f"T{i:02d}", title=f"Task {i}", parent_id=epic_id)
 
-        # Register a handler for bd list --parent so the batch call succeeds.
-        # We patch run_json to intercept "list" with "--parent" and return the
-        # child issues that are already in runner._issues with that parent.
-        original_run_json = runner.run_json
-
-        def _patched_run_json(argv: Sequence[str]) -> object:
-            args = list(argv)
-            runner.json_calls.append(args)
-            if args[0] == "list" and "--parent" in args:
-                parent_idx = args.index("--parent")
-                parent_id = args[parent_idx + 1]
-                return [
-                    issue
-                    for issue in runner._issues.values()
-                    if isinstance(issue.get("metadata"), dict) and issue["metadata"].get("parent") == parent_id
-                ]
-            # Delegate everything else to the original (without double-appending)
-            runner.json_calls.pop()  # remove the one we just appended
-            return original_run_json(argv)
-
-        monkeypatch.setattr(runner, "run_json", _patched_run_json)
         runner.json_calls.clear()
 
         # Act
