@@ -8,15 +8,20 @@ When a linter run reveals issues in files the current agent did not modify, the 
 
 Two outcomes are possible. Apply the correct one based on whether the issue blocks the pipeline:
 
+> **Pre-fix gate required**: Before acting on any discovered issue, apply the three-step
+> Proactive Fix Gate from CLAUDE.md (Proactive Fix Gate section): (1) load domain skill,
+> (2) state mission alignment, (3) classify complexity and route to --quick or planning.
+> Do not proceed to any fix step without completing the gate.
+
 ```mermaid
 flowchart TD
     Start([Linter detects issue in file agent did not touch]) --> Q1{Does this issue block CI or the current linter run?}
-    Q1 -->|Yes — exit code nonzero, pipeline fails| Fix[Fix it now\nTreat as a current issue\nApply the appropriate resolution workflow]
-    Q1 -->|No — advisory or informational| Record[Record it in the repo tracking system\nDo not defer silently]
-    Fix --> Verify[Verify fix — linter exits 0\nInclude in resolution report]
+    Q1 -->|Yes — exit code nonzero, pipeline fails| Fix["Apply Proactive Fix Gate<br>If trivial: route to --quick<br>If complex: add to plan"]
+    Q1 -->|No — advisory or informational| Record["Record it in the repo tracking system<br>Do not defer silently"]
+    Fix --> Verify["Verify fix — linter exits 0<br>Include in resolution report"]
     Record --> Discover[Discover the repo tracking system]
     Discover --> Write[Write the work item]
-    Write --> Report[Note in resolution report\n'Pre-existing issues recorded — N items']
+    Write --> Report["Note in resolution report<br>'Pre-existing issues recorded — N items'"]
     Verify --> Done([Continue])
     Report --> Done
 ```

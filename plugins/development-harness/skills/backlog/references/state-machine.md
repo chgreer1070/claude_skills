@@ -20,6 +20,8 @@ stateDiagram-v2
     blocked --> resolved : user cancels item
 
     groomed --> in_milestone : group-items-to-milestone
+    groomed --> in_progress : work-backlog-item --quick (Proactive Fix Gate, trivial classification)
+    needs_grooming --> in_progress : work-backlog-item --quick (Proactive Fix Gate, trivial, new item)
 
     in_milestone --> in_progress : work-backlog-item (RT-ICA APPROVED + planning started)
     in_milestone --> groomed : work-backlog-item (RT-ICA BLOCKED — item pulled back)
@@ -106,6 +108,21 @@ Action:     metadata.plan set to plan file path
              GitHub label: remove status:in-milestone, add status:in-progress
              NOTE: status:in-progress label MUST NOT be set before this point
                    (not at "starting to groom", not at "checking RT-ICA")
+```
+
+### `groomed` → `in-progress` (quick path)
+
+```
+Trigger:    /work-backlog-item --quick — after backlog_update links quick-{slug} plan
+Precondition: Item status is `groomed` OR `needs-grooming` (newly created inline by quick/start.md
+              Step 2 when no prior item exists — gate classification substitutes for grooming)
+              Proactive Fix Gate completed (domain skill loaded, alignment stated, trivial classification)
+              quick-{slug} SAM plan created by sam_plan(action='create')
+Action:     metadata.plan set to quick-{slug}
+             metadata.status = in-progress
+             GitHub label: remove status:groomed (or status:needs-grooming), add status:in-progress
+             NOTE: this transition is distinct from the in-milestone → in-progress path;
+                   it bypasses RT-ICA and milestone assignment intentionally.
 ```
 
 ### `in-progress` → `done`
