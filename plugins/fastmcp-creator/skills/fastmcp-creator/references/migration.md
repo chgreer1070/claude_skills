@@ -519,3 +519,27 @@ async def process(ctx: Context) -> str:
     await ctx.info("Done!")
     return "Processed"
 ```
+
+---
+
+## Migrating to fastmcp-slim (v3.3.0+)
+
+SOURCE: <https://gofastmcp.com/clients/client-only-package.md> (accessed 2026-05-23)
+
+Client-only consumers (scripts or services that call MCP servers but don't host one) can reduce their dependency footprint by switching to `fastmcp-slim`:
+
+```bash
+# Before
+pip install fastmcp
+
+# After (client-only)
+pip install "fastmcp-slim[client]"
+```
+
+No code changes required — the import namespace is identical:
+
+```python
+from fastmcp import Client  # works with both fastmcp and fastmcp-slim
+```
+
+Choose extras based on your LLM provider: `fastmcp-slim[client,openai]`, `fastmcp-slim[client,anthropic]`, `fastmcp-slim[client,gemini]`.

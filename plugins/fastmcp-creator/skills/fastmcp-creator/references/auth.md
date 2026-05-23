@@ -448,6 +448,43 @@ def whoami() -> dict:
 
 ---
 
+## KeycloakAuthProvider (v3.2.0+)
+
+SOURCE: <https://gofastmcp.com/integrations/keycloak.md> (accessed 2026-05-23)
+
+Secure a FastMCP server with Keycloak OAuth. Provides a Docker-based local Keycloak setup with a pre-configured `fastmcp` realm (Dynamic Client Registration enabled, test user included).
+
+```python
+import os
+from fastmcp.server.auth.providers.keycloak import KeycloakAuthProvider
+
+auth = KeycloakAuthProvider(
+    realm_url=os.getenv("KEYCLOAK_REALM_URL") or "http://localhost:8080/realms/myrealm",
+    base_url="http://localhost:8000",
+    # audience="http://localhost:8000",  # Recommended for production
+)
+
+mcp = FastMCP("My Server", auth=auth)
+```
+
+Integration guide with cross-platform start scripts and test user at: <https://gofastmcp.com/integrations/keycloak.md>
+
+---
+
+## ResponseCachingMiddleware — Security Fix (v3.2.2+)
+
+SOURCE: <https://github.com/jlowin/fastmcp/releases> (accessed 2026-05-23)
+
+`ResponseCachingMiddleware` partitions its cache by access token as of v3.2.2. Prior to this fix, different users could see each other's cached responses. Upgrade required for any deployment using `ResponseCachingMiddleware` with multiple users.
+
+---
+
+## Additional Auth Providers
+
+Clerk and AzureB2C providers exist in the Python SDK (`fastmcp.server.auth.providers.clerk`, `fastmcp.server.auth.providers.azure`). Full integration guides are not yet published — refer to the Python SDK reference at <https://gofastmcp.com/python-sdk/fastmcp-server-auth-providers-clerk.md> and <https://gofastmcp.com/python-sdk/fastmcp-server-auth-providers-azure.md>.
+
+---
+
 ## Full OAuth Server (Avoid Unless Necessary)
 
 `OAuthProvider` implements a complete self-hosted OAuth 2.1 authorization server. This is an advanced pattern requiring deep OAuth expertise.

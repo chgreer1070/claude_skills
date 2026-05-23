@@ -659,3 +659,19 @@ Horizon features:
 - **Registry** — catalog of servers across your organization
 
 SOURCE: <https://gofastmcp.com/deployment/prefect-horizon> (accessed 2026-03-05)
+
+---
+
+## fastmcp dev apps (v3.2.0+)
+
+SOURCE: <https://gofastmcp.com/apps/development.md> (accessed 2026-05-23)
+
+Browser preview for app tools without an MCP host. Starts your server and a local dev UI side by side:
+
+```bash
+fastmcp dev apps server.py
+```
+
+Pick a tool from the UI, fill in its arguments, and the rendered Prefab result opens in a new tab. Includes an MCP message inspector panel showing the raw protocol exchange.
+
+Use this during development to verify app tool output before connecting a full MCP client.

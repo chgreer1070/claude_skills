@@ -1,6 +1,6 @@
 ---
 name: fastmcp-creator
-description: Use when building, extending, or debugging FastMCP v3 Python MCP servers. Activates on FastMCP tool/resource/prompt creation, provider and transform implementation (CodeMode, Tool Search), auth setup (MultiAuth, PropelAuth), client SDK usage, nginx reverse proxy deployment, Prefab Apps, and testing. Grounded in local v3.1 docs — zero speculation.
+description: Use when building, extending, or debugging FastMCP v3 Python MCP servers. Activates on FastMCP tool/resource/prompt creation, provider and transform implementation (CodeMode, Tool Search), auth setup (MultiAuth, PropelAuth, KeycloakProvider), client SDK usage, FastMCPApp and Generative UI server building, fastmcp-slim client-only installs, nginx reverse proxy deployment, Prefab Apps, OTEL observability, and testing. Grounded in local v3.3 docs — zero speculation.
 ---
 
 ## Current Environment
@@ -45,6 +45,13 @@ When user intent matches, load the reference file listed — do not rely on trai
 | Add request/response middleware | `Middleware`, built-in middleware | [./references/middleware.md](./references/middleware.md) |
 | Find real-world usage patterns | ProxyProvider, mount(), showcase | [./references/real-world-patterns.md](./references/real-world-patterns.md) |
 | Evaluate MCP server quality | Evaluation harness, QA pairs | [./references/evaluation-guide.md](./references/evaluation-guide.md) |
+| Build interactive app server with UI tools | FastMCPApp, @app.ui(), @app.tool() | [./references/apps.md](./references/apps.md) |
+| LLM writes custom UI at runtime | Generative UI | [./references/apps.md](./references/apps.md) |
+| Use Keycloak for enterprise auth | KeycloakProvider | [./references/auth.md](./references/auth.md) |
+| Install client-only, no server deps | fastmcp-slim | [./references/client-sdk.md](./references/client-sdk.md) |
+| Preview app tools in browser without MCP host | fastmcp dev apps | [./references/deployment.md](./references/deployment.md) |
+| Add OTEL tracing to a server | OTEL instrumentation | [./references/observability.md](./references/observability.md) |
+| Configure persistent cache or OAuth state storage | storage backends | [./references/middleware.md](./references/middleware.md) |
 
 ---
 
@@ -54,7 +61,7 @@ When user intent matches, load the reference file listed — do not rely on trai
 flowchart TD
     Q1{What do you need?}
     Q1 -->|Define tools/resources in this server| LC["LocalProvider — default<br>No mount() needed<br>Source: providers/local.mdx"]
-    Q1 -->|Add another FastMCP server's tools| MC["FastMCPProvider / mount()<br>mcp.mount(sub, namespace='ns')<br>Source: providers/mounting.mdx"]
+    Q1 -->|Add another FastMCP server's tools| MC["FastMCPProvider / mount()<br>mcp.mount(sub, namespace='ns')<br>Source: servers/composition.md"]
     Q1 -->|Wrap remote HTTP MCP server| PC["ProxyProvider<br>create_proxy('http://remote/mcp')<br>Source: providers/proxy.mdx"]
     Q1 -->|Serve files from disk as resources| FC["FileSystemProvider('path/')<br>reload=True for dev, False for prod<br>Source: providers/filesystem.mdx"]
     Q1 -->|Expose Claude/Cursor skill files| SC["SkillsProvider / ClaudeSkillsProvider()<br>skill:// URI scheme<br>Source: providers/skills.mdx"]
@@ -138,19 +145,21 @@ async def long_running(data: str) -> str:
     return "done"
 ```
 
+**Before deploying**: run in-process pytest using the in-memory `Client` transport ([references/testing.md](./references/testing.md)) before switching to HTTP transport. In-process tests are the fastest signal that tools behave as expected.
+
 ---
 
 ## v3 API Corrections
 
 CONSTRAINT: These v2 patterns are deprecated or removed. Generate only the v3 form.
 
-| v2 / wrong pattern | v3 correct pattern | Source |
-|---|---|---|
-| `@mcp.tool()` with parentheses | `@mcp.tool` without parentheses | `quickstart.mdx` |
-| `task=TaskConfig(mode="required")` | `task=True` | `servers/tasks.mdx` |
-| `require_auth` | `require_scopes("scope")` | `servers/authorization.mdx` |
-| `.mcpb` packaging | Prefect Horizon or stdio deploy | `deployment/running-server.mdx` |
-| `ctx.get_state()` / `ctx.set_state()` | Verify in `context.mdx` — not confirmed v3 | `servers/context.mdx` |
+| v2 / wrong pattern | v3 correct pattern | Source | Why |
+|---|---|---|---|
+| `@mcp.tool()` with parentheses | `@mcp.tool` without parentheses | `quickstart.mdx` | v3 unified tool config into constructor kwargs — per-decorator arguments removed |
+| `task=TaskConfig(mode="required")` | `task=True` | `servers/tasks.mdx` | TaskConfig replaced by runtime extra dependency |
+| `require_auth` | `require_scopes("scope")` | `servers/authorization.mdx` | v3 replaced binary auth flags with granular scope-based access control — `require_scopes()` specifies which scopes are required rather than just checking authentication |
+| `.mcpb` packaging | Prefect Horizon or stdio deploy | `deployment/running-server.mdx` | — |
+| `ctx.get_state()` / `ctx.set_state()` (synchronous) | `await ctx.get_state()` / `await ctx.set_state()` | `getting-started/upgrading/from-fastmcp-2.md` | State is now session-scoped and backed by a pluggable storage backend — calls must be awaited; the methods exist in v3 but are async |
 
 ---
 
@@ -161,7 +170,7 @@ CONSTRAINT: These v2 patterns are deprecated or removed. Generate only the v3 fo
 All core features (tools, resources, prompts, providers, transforms, auth, tasks, elicitation,
 client SDK, deployment) are available in FastMCP 3.0.
 
-### FastMCP 3.1 — Available (current)
+### FastMCP 3.1 — Available (baseline for this skill's original content)
 
 The following features were added in FastMCP 3.1.0 and require `fastmcp>=3.1.0`:
 
@@ -178,26 +187,51 @@ The following features were added in FastMCP 3.1.0 and require `fastmcp>=3.1.0`:
 - **`include_unversioned`** option in VersionFilter
 - **`Tool.from_tool()`** — immediate transformation at registration time
 
-SOURCE: <https://github.com/PrefectHQ/fastmcp> releases v3.1.0, v3.1.1 (accessed 2026-03-17)
+SOURCE: <https://github.com/jlowin/fastmcp> releases v3.1.0, v3.1.1 (accessed 2026-05-23)
+
+### FastMCP 3.2 — Available (released 2026-03-30)
+
+The following features were added in FastMCP 3.2 and require `fastmcp>=3.2.0`:
+
+- **FastMCPApp** — provider class for building interactive applications inside MCP; separates LLM-visible UI entry points (`@app.ui()`) from backend tools (`@app.tool()`)
+- **Generative UI** — LLM writes Prefab Python code at runtime instead of calling a pre-built tool with a fixed shape
+- **`fastmcp dev apps`** — browser preview for app tools without an MCP host
+- **KeycloakAuthProvider** — secure a FastMCP server with Keycloak OAuth; Docker-based local setup with pre-configured `fastmcp` realm
+- **`run_in_thread=False`** on `@mcp.tool()` — opt sync tools out of the default threadpool dispatch for thread-affine libraries
+- **`ssl verify` parameter** on `Client` — SSL certificate configuration for development with self-signed certs
+- **`client_log_level` parameter** on `Client` — control client-side log verbosity
+- **`ResponseCachingMiddleware` token-partitioning security fix** (v3.2.2) — cache now partitioned by access token; upgrade required for deployments with multiple users
+
+SOURCE: <https://github.com/jlowin/fastmcp> releases v3.2.x (accessed 2026-05-23)
+
+### FastMCP 3.3 — Available (released 2026-05-15)
+
+The following features were added in FastMCP 3.3 and require `fastmcp>=3.3.0`:
+
+- **fastmcp-slim** — client-only distribution; install `fastmcp-slim[client]` for consumers who only need the FastMCP client without the full server framework; import namespace is identical (`from fastmcp import Client`)
+- **Storage backends** — persistent cache and OAuth state storage backends
+
+SOURCE: <https://github.com/jlowin/fastmcp> releases v3.3.x (accessed 2026-05-23)
 
 ---
 
 ## Reference Files
 
-All 13 v3 reference files sourced from <https://gofastmcp.com> (published docs) and <https://github.com/PrefectHQ/fastmcp> (source code):
+All v3 reference files sourced from <https://gofastmcp.com> (published docs) and <https://github.com/jlowin/fastmcp> (source code):
 
 - [./references/server-core.md](./references/server-core.md) — `FastMCP()`, tools, resources, prompts, context, lifespan, `transforms=` kwarg
 - [./references/providers.md](./references/providers.md) — LocalProvider, FastMCPProvider, ProxyProvider, FileSystemProvider, SkillsProvider
 - [./references/transforms.md](./references/transforms.md) — Namespace, ToolTransform, Enabled, ResourcesAsTools, PromptsAsTools, BM25SearchTransform, RegexSearchTransform, CodeMode
 - [./references/auth.md](./references/auth.md) — `require_scopes`, OAuth variants, token verification, MultiAuth, PropelAuth, `http_client` pooling
 - [./references/client-sdk.md](./references/client-sdk.md) — `Client`, transports, BearerAuth, CIMD, OAuth, sampling, elicitation, `fastmcp discover`, fuzzy matching
-- [./references/apps.md](./references/apps.md) — low-level HTML API, Prefab Apps (experimental)
+- [./references/apps.md](./references/apps.md) — FastMCPApp provider class, Generative UI, low-level HTML API, Prefab Apps
 - [./references/advanced.md](./references/advanced.md) — tasks, elicitation, storage backends, dependency injection, versioning, visibility, Prefab Apps, Google GenAI sampling
 - [./references/middleware.md](./references/middleware.md) — Middleware base class, hook hierarchy, 11 built-in middleware, tag-based access control
 - [./references/deployment.md](./references/deployment.md) — stdio, HTTP, server config, Prefect Horizon, nginx reverse proxy, module mode, `FASTMCP_TRANSPORT`
 - [./references/testing.md](./references/testing.md) — in-memory Client, FastMCPTransport, pytest patterns, inline-snapshot
 - [./references/integrations.md](./references/integrations.md) — Anthropic, OpenAI, Gemini, Google GenAI, FastAPI, GitHub, Auth0, Azure, PropelAuth, Claude Code
 - [./references/migration.md](./references/migration.md) — v2 → v3 breaking changes, from MCP SDK
+- [./references/observability.md](./references/observability.md) — OTEL instrumentation, automatic spans, OTLP exporters, environment variable configuration
 - [./references/real-world-patterns.md](./references/real-world-patterns.md) — ProxyProvider, mount(), SkillsProvider, showcase
 
 Preserved references (not overwritten):

@@ -621,6 +621,49 @@ SOURCE: <https://gofastmcp.com/clients/elicitation> (accessed 2026-03-05)
 
 ---
 
+## fastmcp-slim — Client-Only Package (v3.3.0+)
+
+SOURCE: <https://gofastmcp.com/clients/client-only-package.md> (accessed 2026-05-23)
+
+For consumers who only need the FastMCP client without the full server framework:
+
+```bash
+pip install "fastmcp-slim[client]"
+pip install "fastmcp-slim[client,openai]"
+pip install "fastmcp-slim[client,anthropic]"
+pip install "fastmcp-slim[client,gemini]"
+```
+
+The import namespace is identical to the full package — no code changes required:
+
+```python
+from fastmcp import Client
+
+async with Client("https://example.com/mcp") as client:
+    result = await client.call_tool("my_tool", {"arg": "value"})
+```
+
+## ssl verify Parameter (v3.2.x+)
+
+SOURCE: <https://github.com/jlowin/fastmcp/releases> PR #3487, PR #3491 (accessed 2026-05-23)
+
+The `Client` constructor accepts a `verify` parameter for SSL certificate configuration (useful in development with self-signed certs):
+
+```python
+client = Client("https://localhost:8000/mcp", verify=False)
+```
+
+## client_log_level (v3.2.x+)
+
+Control client-side log verbosity:
+
+```python
+import logging
+client = Client("https://example.com/mcp", client_log_level=logging.DEBUG)
+```
+
+---
+
 ## Callback Handler Summary
 
 PATTERN: Provide multiple handlers at client construction time:

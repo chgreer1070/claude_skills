@@ -304,6 +304,49 @@ SOURCE: <https://gofastmcp.com/apps/low-level> (accessed 2026-03-05)
 
 ---
 
+## FastMCPApp (v3.2.0+)
+
+SOURCE: <https://gofastmcp.com/apps/fastmcp-app.md> (accessed 2026-05-23)
+
+`FastMCPApp` is a provider class for building interactive applications inside MCP. It separates the tools the LLM sees (`@app.ui()`) from the backend tools the UI calls (`@app.tool()`), manages visibility automatically, and gives tool references stable identifiers that survive namespace transforms and server composition.
+
+```python
+from fastmcp import FastMCP, FastMCPApp
+
+app = FastMCPApp("Contacts")
+
+@app.tool()
+def save_contact(name: str, email: str) -> list[dict]:
+    db.append({"name": name, "email": email})
+    return list(db)
+
+@app.ui()
+def contacts_app() -> PrefabApp:
+    """Open the contacts app."""
+    ...
+
+mcp = FastMCP("My Server")
+mcp.mount(app)
+```
+
+- `@app.ui()` — LLM-visible entry point that returns a Prefab UI
+- `@app.tool()` — backend tool, hidden from LLM, called by the UI
+- Tool references are stable identifiers that survive namespace transforms and server composition
+
+**Distinction from Prefab Apps**: FastMCPApp is a structured provider class (v3.2+). Prefab Apps are the lower-level rendering system. FastMCPApp builds on top of Prefab Apps.
+
+---
+
+## Generative UI (v3.2.0+)
+
+SOURCE: <https://gofastmcp.com/apps/generative.md> (accessed 2026-05-23)
+
+With Generative UI, the LLM writes Prefab Python code at runtime instead of calling a pre-built tool with a fixed shape. The model writes UI code tailored to the current data and request. The user watches the UI stream in as the model generates it.
+
+The MCP Apps protocol creates the renderer iframe in parallel with the tool call, so the app is running by the time partial arguments start flowing.
+
+---
+
 ## Prefab Apps (FastMCP 3.1, Experimental)
 
 > **EXPERIMENTAL — FastMCP 3.1+.** Prefab is in active early development; its API changes frequently. Pin `prefab-ui` to a specific version. Not recommended for production.

@@ -178,6 +178,21 @@ async def get_user_preference(key: str, ctx: Context) -> str | None:
 
 SOURCE: <https://gofastmcp.com/servers/context> (accessed 2026-03-17)
 
+### run_in_thread=False (v3.2.0+)
+
+SOURCE: <https://gofastmcp.com/servers/tools.md> (accessed 2026-05-23)
+
+Synchronous tools run in a threadpool by default to avoid blocking the event loop. If your tool holds thread-local state or is bound to a specific thread (UI frameworks like Windows COM, some database drivers), opt out:
+
+```python
+@mcp.tool(run_in_thread=False)
+def my_thread_affine_tool() -> str:
+    # runs on the event loop thread, not a pool thread
+    ...
+```
+
+Use `run_in_thread=False` only for thread-affine code. For ordinary sync tools, the default threadpool dispatch is correct.
+
 ### Async Tools
 
 FastMCP supports both `def` and `async def`. Synchronous tools run in a threadpool automatically.
