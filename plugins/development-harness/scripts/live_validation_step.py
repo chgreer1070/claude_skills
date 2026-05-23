@@ -62,7 +62,13 @@ def check_live_validation(project_root: Path) -> LiveValidationOutcome:
     following the feature verifier Step 8 protocol:
 
     - Sentinel ``agent-browser`` → DEFERRED_BROWSER (no gap).
-    - Sentinel ``claude-skill``  → DEFERRED_SKILL (no gap).
+    - Sentinel ``claude-skill``  → DEFERRED_SKILL (no gap). The caller is responsible
+      for invoking the script manually from the project root::
+
+          ./plugins/development-harness/scripts/run_live_validation_skill.py \
+              --skill-path <path> --query <prompt>
+
+      This function does not call it automatically.
     - Absent live_validation     → GAPS_FOUND with gap message.
     - No quality_gates section   → SKIPPED.
     - Command exits 0            → PASS (no gap).
@@ -94,6 +100,11 @@ def check_live_validation(project_root: Path) -> LiveValidationOutcome:
     if live_val == SENTINEL_AGENT_BROWSER:
         return LiveValidationOutcome(result=LiveValidationResult.DEFERRED_BROWSER, command=live_val)
 
+    # DEFERRED_SKILL is intentional: the claude-skill sentinel signals that live validation
+    # is delegated to a separate manual invocation of the script at:
+    #   ./plugins/development-harness/scripts/run_live_validation_skill.py
+    # The caller supplies --skill-path and --query; those arguments are not available
+    # at this call site and are outside this function's contract.
     if live_val == SENTINEL_CLAUDE_SKILL:
         return LiveValidationOutcome(result=LiveValidationResult.DEFERRED_SKILL, command=live_val)
 
