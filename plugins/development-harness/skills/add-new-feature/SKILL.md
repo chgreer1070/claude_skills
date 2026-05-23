@@ -31,7 +31,7 @@ Before starting any phase, check whether the feature request references a tracke
 ```mermaid
 flowchart TD
     Start([Parse feature_request]) --> Q{"Contains 'GitHub Issue: #N' / '#N'<br>OR 'Beads Issue: bd-ID' / bare beads ID?"}
-    Q -->|Yes — issue selector found| List["Call artifact_list(issue_number=N)<br>to discover registered artifacts<br>(N may be int for GitHub or str for beads)"]
+    Q -->|Yes — issue selector found| List["Call artifact_list(item_id=N)<br>to discover registered artifacts<br>(N may be int for GitHub or str for beads)"]
     Q -->|No — no issue reference| Skip[Skip artifact discovery<br>Proceed normally]
     List --> Found{Artifacts returned?}
     Found -->|Yes| Store["Store artifact list as discovered_artifacts<br>Include paths and types in each<br>phase delegation prompt"]
@@ -45,7 +45,7 @@ When `discovered_artifacts` is non-empty, append this block to each phase delega
 ```text
 <prior_artifacts>
 The following artifacts are already registered for this issue. Read any relevant
-ones via artifact_read(issue_number={issue}, artifact_type="{type}") before
+ones via artifact_read(item_id={issue}, artifact_type="{type}") before
 starting your work — they contain prior research and analysis that should
 inform your output.
 
@@ -120,7 +120,7 @@ Read the details about the milestone and plan you are a part of at backlog_view(
 
 Research #{issue}: "{title}".
 If research artifacts exist for this issue, read them via
-artifact_read(issue_number={issue}, artifact_type="research") before starting
+artifact_read(item_id={issue}, artifact_type="research") before starting
 discovery — they contain prior investigation findings that should be incorporated.
 IMPORTANT: Research artifacts are discovery pointers, not authoritative documents.
 After reading the research artifact, inspect its YAML frontmatter for `resource_url`
@@ -142,14 +142,14 @@ document. Surface any PARTIAL or MISSING capabilities as questions.
 Register your deliverable with:
     artifact_type="feature-context"
     artifact_id="plan/feature-context-{slug}.md"
-    issue_number={issue}
+    item_id={issue}
     agent="feature-researcher"
 ```
 
 After the agent completes, verify the artifact was registered:
 
 ```text
-mcp__plugin_dh_backlog__artifact_list(issue_number={issue}, artifact_type="feature-context")
+mcp__plugin_dh_backlog__artifact_list(item_id={issue}, artifact_type="feature-context")
 ```
 
 If `count == 0`, the agent did not register the artifact. Re-dispatch with an explicit
@@ -188,7 +188,7 @@ Do NOT prescribe changes.
 Register each document with:
     artifact_type="codebase-analysis"
     artifact_id="codebase-{focus}-{slug}"  (logical id — use lowercase focus area, e.g. codebase-patterns-{slug})
-    issue_number={issue}
+    item_id={issue}
     agent="codebase-analyzer"
 
 A single invocation covering multiple focus areas issues one artifact_register call per
@@ -198,7 +198,7 @@ focus area with a distinct artifact_id per focus.
 After the agent completes, verify the artifact was registered:
 
 ```text
-mcp__plugin_dh_backlog__artifact_list(issue_number={issue}, artifact_type="codebase-analysis")
+mcp__plugin_dh_backlog__artifact_list(item_id={issue}, artifact_type="codebase-analysis")
 ```
 
 If `count == 0`, the agent did not register the artifact. Re-dispatch with an explicit
@@ -224,11 +224,14 @@ flowchart TD
     Py --> ManifestFound{Manifest exists?}
     TS --> ManifestFound
     Rust --> ManifestFound
-    ManifestFound -->|Yes| Resolve["Resolve design-spec role from manifest<br>(Python: @python3-development:python-cli-design-spec)"]
-    ManifestFound -->|No| FB
-    Resolve --> Delegate[Delegate to resolved agent]
+    ManifestFound -->|Yes| Resolve["Resolve design-spec role from manifest<br>(Python example: python-engineering:python-cli-design-spec)"]
+    ManifestFound -->|No| FB["Fallback: dispatch dh:task-worker<br>no specialist profile loaded"]
+    Resolve --> Store["Store as {resolved_agent}<br>profile_load(agent_name='{resolved_agent}') in delegation prompt"]
+    Store --> Delegate["Dispatch subagent_type='dh:task-worker'"]
     FB --> Delegate
 ```
+
+Phase 3 always dispatches `subagent_type="dh:task-worker"`. When a specialist is resolved from the language manifest, the orchestrator instructs task-worker to call `mcp__plugin_dh_backlog__profile_load(agent_name="{resolved_agent}")` at the start of its prompt — this is the `agent_profile` MCP tool on the backlog server and is how task-worker loads specialist behavior when no SAM task `agent:` field is available. Use `{resolved_agent}` as the `agent=` metadata in `artifact_register` to record which specialist produced the spec.
 
 ### Domain Signal Detection — Config-Driven (`.dh/skill_discovery.yaml`)
 
@@ -330,19 +333,22 @@ documentation loaded by these skills.
 If `{domain_skills}` is empty, do not add any skill-loading block — proceed directly to
 the delegation prompt below without modification.
 
+Dispatch: `subagent_type="dh:task-worker"`. Build the delegation prompt from the template below.
+
 Delegation prompt template:
 
 ```text
+{specialist_skill_block}
 You are part of a team that is currently working on the {work_type} {feature_name}.
 Read the details about the milestone and plan you are a part of at backlog_view(selector="#{issue}").
 
 {quality_vigilance}
 
 Design the implementation for #{issue}: "{title}".
-Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context").
-[If codebase analysis exists: Read via artifact_read(issue_number={issue}, artifact_type="codebase-analysis").]
+Read the feature context via artifact_read(item_id={issue}, artifact_type="feature-context").
+[If codebase analysis exists: Read via artifact_read(item_id={issue}, artifact_type="codebase-analysis").]
 If research artifacts exist for this issue, read them via
-artifact_read(issue_number={issue}, artifact_type="research") for prior research
+artifact_read(item_id={issue}, artifact_type="research") for prior research
 findings that should inform the architecture.
 IMPORTANT: Research artifacts are discovery pointers, not authoritative documents.
 After reading any research artifact, inspect its YAML frontmatter for `resource_url`
@@ -356,23 +362,39 @@ finalizing the architecture. Training data is stale; current community practice 
 Produce architect-{slug}.md content with interfaces, contracts, data models, module boundaries.
 Do NOT implement — define WHAT to build, not the code.
 
-Register your deliverable with:
-    artifact_type="architect"
-    artifact_id="plan/architect-{slug}.md"
-    issue_number={issue}
-    agent="python-cli-design-spec"
+Register your deliverable and return:
+
+1. Call `artifact_register` with the full spec content:
+
+       mcp__plugin_dh_backlog__artifact_register(
+           item_id={issue},
+           artifact_type="architect",
+           artifact_id="plan/architect-{slug}.md",
+           content="<full spec markdown>",
+           agent="{resolved_agent}"
+       )
+
+2. Return:
+
+       STATUS: DONE
+       path: plan/architect-{slug}.md
 ```
+
+`{specialist_skill_block}` is built by the orchestrator before dispatch:
+
+- When `{resolved_agent}` is set (manifest found): `"Load your specialist profile before starting: mcp__plugin_dh_backlog__profile_load(agent_name='{resolved_agent}'). This is a BLOCKING prerequisite — complete it before reading any artifacts or designing.\n\n"`
+- When no manifest found (fallback): `""` (empty string — task-worker executes directly without a specialist profile)
 
 After the agent completes, verify the artifact was registered:
 
 ```text
-mcp__plugin_dh_backlog__artifact_list(issue_number={issue}, artifact_type="architect")
+mcp__plugin_dh_backlog__artifact_list(item_id={issue}, artifact_type="architect")
 ```
 
 If `count == 0`, the agent did not register the artifact. Re-dispatch with an explicit
-reminder that `artifact_register(content=...)` is the agent's responsibility, not the
-orchestrator's. The orchestrator MUST NOT call `artifact_register` as a workaround —
-the MCP-native rule is that agents own their artifact storage.
+reminder that the agent must call `artifact_register(content=...)` itself — the
+orchestrator MUST NOT call `artifact_register` as a workaround. The MCP-native rule
+is that agents own their artifact storage.
 
 ---
 
@@ -395,8 +417,8 @@ Read the details about the milestone and plan you are a part of at backlog_view(
 {quality_vigilance}
 
 Decompose #{issue}: "{title}" into executable tasks.
-Read the architecture spec via artifact_read(issue_number={issue}, artifact_type="architect").
-Read the feature context via artifact_read(issue_number={issue}, artifact_type="feature-context").
+Read the architecture spec via artifact_read(item_id={issue}, artifact_type="architect").
+Read the feature context via artifact_read(item_id={issue}, artifact_type="feature-context").
 Goal: {goal_from_feature_request}
 Create the plan via sam_plan with CLEAR+CoVe task definitions.
 
@@ -501,3 +523,15 @@ When all phases complete, provide the user:
 - the feature slug
 - the task file path
 - next step: run the `implement-feature` skill with the slug or task file path
+
+---
+
+### Discovered During Implementation
+
+[Date: 2026-05-23 / Session: issue #1527]
+
+**Architect specs routinely exceed 32KB.** A real-world architect spec for a non-trivial feature can reach 32KB or more of markdown. The problem with the pre-#1527 pattern was that the orchestrator received the content inline in the agent response — the JSONL session output grew to 300KB or more, which the orchestrator cannot process. The fix is for the architect agent to call `artifact_register(content=...)` directly: the content stays within the agent's context window and is uploaded to the artifact backend (GitHub Gist); the orchestrator receives only `STATUS: DONE`. No Write tool step is needed or correct.
+
+**`artifact_register` without `content=` is a prohibited pattern.** Calling `artifact_register` with a path but no `content=` stores only a pointer to a local file. That file is unreachable from worktree-isolated agents, CI environments, and any other machine. Always pass `content=` explicitly. Source: `plugins/development-harness/CLAUDE.md` — "Prohibited patterns" section.
+
+**Phase 4 (`sam_plan(action='create')`) auto-registers the `task-plan` artifact** — no separate `artifact_register` call is needed or valid for that type.

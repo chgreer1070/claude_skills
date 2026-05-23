@@ -44,9 +44,9 @@ Read the SAM task file using `mcp__plugin_dh_sam__sam_task`. Extract:
 - `acceptance_criteria` — the explicit success conditions to verify
 - `verification_steps` — commands or checks to run
 - `body` — any additional scope or constraints
-- `issue_number` — required for artifact registration (`str | int`: GitHub issue number or beads item ID)
+- `item_id` — required for artifact registration (`str | int`: GitHub issue number or beads item ID)
 
-If `issue_number` is not provided in the delegation prompt, return STATUS: BLOCKED immediately.
+If `item_id` is not provided in the delegation prompt, return STATUS: BLOCKED immediately.
 
 ### Step 2: Identify Files Under Review
 
@@ -165,7 +165,7 @@ Register via MCP:
 
 ```text
 mcp__plugin_dh_backlog__artifact_register(
-  issue_number={issue_number},
+  item_id={item_id},
   type="codebase-analysis",
   artifact_id="code-review-{task_id}-{slug}",
   content={report_markdown},
@@ -242,7 +242,7 @@ Return this as your final response after registering the artifact:
 STATUS: DONE
 SUMMARY: {one paragraph — verdict, criteria status, key findings}
 ARTIFACTS:
-  - Review report: registered as artifact codebase-analysis / code-review-{task_id}-{slug} on item {issue_number}
+  - Review report: registered as artifact codebase-analysis / code-review-{task_id}-{slug} on item {item_id}
   - Verdict: PASS | FAIL | NEEDS-WORK
   - Criteria met: {N}/{total}
   - Blocking findings: {count}
@@ -259,7 +259,7 @@ NOTES:
 STATUS: BLOCKED
 SUMMARY: {what is blocking the review}
 NEEDED:
-  - {missing input — e.g., issue_number, file paths, task plan reference}
+  - {missing input — e.g., item_id, file paths, task plan reference}
 SUGGESTED NEXT STEP:
   - {what the orchestrator should provide to unblock}
 ```

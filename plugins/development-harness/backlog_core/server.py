@@ -28,7 +28,7 @@ from pydantic import Field
 from ruamel.yaml import YAML as _YAML, YAMLError as _YAMLError
 
 from . import models as _models, operations
-from .artifact_provider import ArtifactBackend, create_artifact_provider
+from .artifact_provider import ArtifactBackend, ItemId, create_artifact_provider
 from .artifact_provider_local import LocalFilesystemArtifactProvider
 from .artifact_registry import ArtifactRegistry
 from .backend_protocol import IssueNode as _IssueNode, get_config as _get_config
@@ -2468,8 +2468,11 @@ def _get_artifact_provider() -> ArtifactBackend:
     )
 )
 async def artifact_register(
-    issue_number: Annotated[
-        str | int, Field(description="GitHub issue number or beads nanoid string (e.g. 'bd-a3f8')")
+    item_id: Annotated[
+        str | int,
+        Field(
+            description="Backlog item identifier — GitHub issue number (int) or beads nanoid string (e.g. 'bd-a3f8')"
+        ),
     ],
     artifact_type: Annotated[
         str,
@@ -2542,9 +2545,9 @@ async def artifact_register(
         )
 
         def _run() -> RegisterResult:
-            manifest = provider.get_manifest(issue_number)
+            manifest = provider.get_manifest(item_id)
             updated_manifest = _artifact_registry.register(manifest, entry)
-            provider.set_manifest(issue_number, updated_manifest)
+            provider.set_manifest(item_id, updated_manifest)
             # Determine action: "updated" if entry pre-existed, "added" otherwise.
             existed = any(
                 e.artifact_type == artifact_type_enum and e.artifact_id == artifact_id for e in manifest.artifacts
@@ -2566,7 +2569,7 @@ async def artifact_register(
 
             content_stored = False
             if upload_content is not None:
-                provider.store_artifact_content(issue_number, artifact_type, artifact_id, upload_content)
+                provider.store_artifact_content(item_id, artifact_type, artifact_id, upload_content)
                 content_stored = True
 
             return RegisterResult(
@@ -2590,12 +2593,15 @@ async def artifact_register(
     )
 )
 async def artifact_list(
-    issue_number: Annotated[
-        str | int, Field(description="GitHub issue number or beads nanoid string (e.g. 'bd-a3f8')")
+    item_id: Annotated[
+        str | int,
+        Field(
+            description="Backlog item identifier — GitHub issue number (int) or beads nanoid string (e.g. 'bd-a3f8')"
+        ),
     ],
     artifact_type: Annotated[str | None, Field(description="Filter by artifact type (optional)")] = None,
 ) -> dict:
-    """Return all artifacts registered for a GitHub issue.
+    """Return all artifacts registered for a backlog item.
 
     Optionally filter by artifact type. Returns an empty list when no
     manifest section exists yet — this is not an error.
@@ -2612,7 +2618,7 @@ async def artifact_list(
         type_filter: ArtifactType | None = ArtifactType(artifact_type) if artifact_type else None
 
         def _run() -> list[dict]:
-            manifest = provider.get_manifest(issue_number)
+            manifest = provider.get_manifest(item_id)
             if type_filter is not None:
                 entries = _artifact_registry.get_by_type(manifest, type_filter)
             else:
@@ -2633,12 +2639,15 @@ async def artifact_list(
     )
 )
 async def artifact_get(
-    issue_number: Annotated[
-        str | int, Field(description="GitHub issue number or beads nanoid string (e.g. 'bd-a3f8')")
+    item_id: Annotated[
+        str | int,
+        Field(
+            description="Backlog item identifier — GitHub issue number (int) or beads nanoid string (e.g. 'bd-a3f8')"
+        ),
     ],
     artifact_type: Annotated[str, Field(description="Artifact type to retrieve")],
 ) -> dict:
-    """Return metadata for a specific artifact type registered on a GitHub issue.
+    """Return metadata for a specific artifact type registered on a backlog item.
 
     If multiple artifacts of the same type exist (e.g. multiple
     codebase-analysis files), all are returned.
@@ -2655,13 +2664,13 @@ async def artifact_get(
         type_enum = ArtifactType(artifact_type)
 
         def _run() -> list[dict]:
-            manifest = provider.get_manifest(issue_number)
+            manifest = provider.get_manifest(item_id)
             entries = _artifact_registry.get_by_type(manifest, type_enum)
             return [e.model_dump(mode="json") for e in entries]
 
         artifacts = await asyncio.to_thread(_run)
         if not artifacts:
-            return {"error": f"No artifacts of type '{artifact_type}' found for issue #{issue_number}", **out.to_dict()}
+            return {"error": f"No artifacts of type '{artifact_type}' found for item #{item_id}", **out.to_dict()}
         return {"artifacts": artifacts, "count": len(artifacts), **out.to_dict()}
     except (ValueError, KeyError) as e:
         return {"error": f"Invalid parameter: {e}", **out.to_dict()}
@@ -2675,12 +2684,15 @@ async def artifact_get(
     )
 )
 async def artifact_read(
-    issue_number: Annotated[
-        str | int, Field(description="GitHub issue number or beads nanoid string (e.g. 'bd-a3f8')")
+    item_id: Annotated[
+        str | int,
+        Field(
+            description="Backlog item identifier — GitHub issue number (int) or beads nanoid string (e.g. 'bd-a3f8')"
+        ),
     ],
     artifact_type: Annotated[str, Field(description="Artifact type whose content to read")],
 ) -> dict:
-    """Read the file content for an artifact registered on a GitHub issue.
+    """Read the file content for an artifact registered on a backlog item.
 
     Content retrieval order:
 
@@ -2706,11 +2718,9 @@ async def artifact_read(
         type_enum = ArtifactType(artifact_type)
 
         def _run() -> ArtifactContent:
-            manifest = provider.get_manifest(issue_number)
+            manifest = provider.get_manifest(item_id)
             entries = _artifact_registry.get_by_type(manifest, type_enum)
-            _require_artifact_entries(
-                entries, f"No artifacts of type '{artifact_type}' found for issue #{issue_number}"
-            )
+            _require_artifact_entries(entries, f"No artifacts of type '{artifact_type}' found for item #{item_id}")
             # Sort by created_at desc so the most recently registered entry comes first.
             # Entries without a timestamp sort last (empty string is smallest; stable sort
             # preserves insertion order among multiple undated entries).
@@ -2724,7 +2734,7 @@ async def artifact_read(
                 )
 
             # 1. Try GitHub comment storage first.
-            github_content = provider.read_artifact_content_from_remote(issue_number, artifact_type, entry.artifact_id)
+            github_content = provider.read_artifact_content_from_remote(item_id, artifact_type, entry.artifact_id)
             if github_content is not None:
                 return ArtifactContent(
                     artifact_type=entry.artifact_type,
@@ -3159,15 +3169,15 @@ def _dispatch_plan_path(milestone_number: int) -> Path:
     return _ds.dispatch_plan_path(milestone_number, _models.get_repo_root())
 
 
-def _try_register_dispatch_plan_artifact(issue_number: int, plan_path: Path) -> None:
+def _try_register_dispatch_plan_artifact(item_id: ItemId, plan_path: Path) -> None:
     """Register the newly written dispatch plan file as a dispatch-plan artifact.
 
     Best-effort: logs a warning on any failure but never raises.  Called after
     ``dispatch_create_plan`` writes the plan file when the caller provides an
-    associated GitHub issue number.
+    associated issue identifier.
 
     Args:
-        issue_number: GitHub issue number to register the artifact against.
+        item_id: Issue number or beads string identifier to register the artifact against.
         plan_path: Absolute or repo-relative path to the created plan file.
     """
     log = _logging.getLogger(__name__)
@@ -3183,16 +3193,13 @@ def _try_register_dispatch_plan_artifact(issue_number: int, plan_path: Path) -> 
             status=ArtifactStatus.CURRENT,
             agent="dispatch_create_plan",
         )
-        manifest = provider.get_manifest(issue_number)
+        manifest = provider.get_manifest(item_id)
         updated_manifest = _artifact_registry.register(manifest, entry)
-        provider.set_manifest(issue_number, updated_manifest)
-        log.info("dispatch_create_plan: registered dispatch-plan artifact %s for issue #%d", plan_path, issue_number)
+        provider.set_manifest(item_id, updated_manifest)
+        log.info("dispatch_create_plan: registered dispatch-plan artifact %s for item %s", plan_path, item_id)
     except (BacklogError, _GithubException) as exc:
         log.warning(
-            "dispatch_create_plan: artifact registration failed for issue #%d (path=%s): %s",
-            issue_number,
-            plan_path,
-            exc,
+            "dispatch_create_plan: artifact registration failed for item %s (path=%s): %s", item_id, plan_path, exc
         )
 
 
@@ -3649,7 +3656,7 @@ def _migrate_classify_plan_file(file_path: Path) -> ArtifactType | None:
     return None
 
 
-_MigrateCandidate = tuple[str, ArtifactType, int | None, str | None]
+_MigrateCandidate = tuple[str, ArtifactType, ItemId | None, str | None]
 
 #: Return type for candidate discovery — (actionable candidates, filtered-out count).
 _MigrateDiscoveryResult = tuple[list[_MigrateCandidate], int]
@@ -3801,7 +3808,7 @@ def _migrate_discover_candidates(
 
 
 def _migrate_register_one(
-    provider: ArtifactBackend, rel_path: str, artifact_type: ArtifactType, issue_number: int
+    provider: ArtifactBackend, rel_path: str, artifact_type: ArtifactType, item_id: ItemId
 ) -> tuple[bool, str]:
     """Register a single artifact, uploading content when available.
 
@@ -3811,7 +3818,7 @@ def _migrate_register_one(
         provider: Initialised ``ArtifactBackend`` instance.
         rel_path: Repo-relative path string.
         artifact_type: Resolved artifact type.
-        issue_number: GitHub issue number (must be positive).
+        item_id: Issue number or beads string identifier.
 
     Returns:
         Tuple of ``(success: bool, message: str)``.
@@ -3823,14 +3830,14 @@ def _migrate_register_one(
         created_at=_datetime.now(UTC).isoformat(),
         agent="artifact-migrate",
     )
-    manifest = provider.get_manifest(issue_number)
+    manifest = provider.get_manifest(item_id)
     existed = any(e.artifact_type == artifact_type and e.artifact_id == rel_path for e in manifest.artifacts)
     updated_manifest = _artifact_registry.register(manifest, entry)
-    provider.set_manifest(issue_number, updated_manifest)
+    provider.set_manifest(item_id, updated_manifest)
 
     local_content = provider.read_local_artifact_content(rel_path)
     if local_content is not None:
-        provider.store_artifact_content(issue_number, str(artifact_type), rel_path, local_content)
+        provider.store_artifact_content(item_id, str(artifact_type), rel_path, local_content)
         content_note = " (content uploaded)"
     else:
         content_note = " (no local file — manifest-only)"
@@ -3874,9 +3881,9 @@ def _migrate_dry_run(issue_number: int | None) -> dict:
             would_register += 1
 
     verify = (
-        f"Use artifact_list(issue_number={issue_number}) to verify registered entries"
+        f"Use artifact_list(item_id={issue_number}) to verify registered entries"
         if issue_number is not None
-        else "Use artifact_list(issue_number=<N>) per issue to verify registered entries"
+        else "Use artifact_list(item_id=<N>) per item to verify registered entries"
     )
     return {
         "dry_run": True,
@@ -3888,16 +3895,16 @@ def _migrate_dry_run(issue_number: int | None) -> dict:
 
 
 def _migrate_queue_manifest_only(
-    provider: ArtifactBackend, issue_number: int, candidates: list[_MigrateCandidate], out: Output
+    provider: ArtifactBackend, item_id: ItemId, candidates: list[_MigrateCandidate], out: Output
 ) -> list[_MigrateCandidate]:
     """Append manifest-only entries (content_stored=False) to the candidate list.
 
-    Called when ``issue_number`` is provided so already-registered entries
+    Called when ``item_id`` is provided so already-registered entries
     without uploaded content are re-processed to trigger the auto-upload path.
 
     Args:
         provider: Initialised provider used to read the manifest.
-        issue_number: Issue whose manifest to inspect.
+        item_id: Issue number or beads string identifier whose manifest to inspect.
         candidates: Existing candidate list (may be mutated by extension).
         out: Output accumulator for warnings.
 
@@ -3905,9 +3912,9 @@ def _migrate_queue_manifest_only(
         Extended candidate list.
     """
     try:
-        manifest = provider.get_manifest(issue_number)
+        manifest = provider.get_manifest(item_id)
     except (BacklogError, _GithubException):
-        out.warn(f"Could not read existing manifest for issue #{issue_number}. Skipping manifest check.")
+        out.warn(f"Could not read existing manifest for item {item_id!r}. Skipping manifest check.")
         return candidates
 
     result = list(candidates)
@@ -3921,7 +3928,7 @@ def _migrate_queue_manifest_only(
             if skip_reason is None
         )
         if not already_queued:
-            result.append((entry.artifact_id, entry.artifact_type, issue_number, None))
+            result.append((entry.artifact_id, entry.artifact_type, item_id, None))
             out.warn(f"Queued manifest-only entry for re-registration: {entry.artifact_id!r}")
     return result
 
@@ -3980,10 +3987,10 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
             run_details.append({"path": rel_path, "type": str(atype), "issue": issue, "outcome": f"FAILED: {exc}"})
 
     verify = (
-        f"Use artifact_read(issue_number={issue_number}, artifact_type='<type>') "
-        f"or artifact_list(issue_number={issue_number}) to verify"
+        f"Use artifact_read(item_id={issue_number}, artifact_type='<type>') "
+        f"or artifact_list(item_id={issue_number}) to verify"
         if issue_number is not None
-        else "Use artifact_list(issue_number=<N>) per issue to verify registered entries"
+        else "Use artifact_list(item_id=<N>) per item to verify registered entries"
     )
     return {"migrated": migrated, "skipped": skipped, "failed": failed, "details": run_details, "verify": verify}
 
@@ -3999,10 +4006,10 @@ def _migrate_live_run(issue_number: int | None, out: Output) -> dict:
     )
 )
 async def artifact_migrate(
-    issue_number: Annotated[
+    item_id: Annotated[
         str | int | None,
         Field(
-            description="Migrate artifacts for a specific issue number only (integer for GitHub, beads nanoid string for beads backend). Omit to scan all issues."
+            description="Migrate artifacts for a specific item only (integer for GitHub, beads nanoid string for beads backend). Omit to scan all items."
         ),
     ] = None,
     dry_run: Annotated[
@@ -4017,8 +4024,8 @@ async def artifact_migrate(
     matching against backlog items), and calls the artifact_register logic
     for each discovered file.
 
-    When ``issue_number`` is provided the tool also checks the existing
-    manifest for that issue: any already-registered entry that has
+    When ``item_id`` is provided the tool also checks the existing
+    manifest for that item: any already-registered entry that has
     ``content_stored=False`` is re-registered so the auto-upload path can
     run and upload the local file content.
 
@@ -4036,10 +4043,10 @@ async def artifact_migrate(
     # artifact_migrate scans plan/research directories by GitHub issue number.
     # Beads string IDs are not supported by the migration scanner — reject early
     # so the caller gets a clear message rather than a type error downstream.
-    if isinstance(issue_number, str):
+    if isinstance(item_id, str):
         return {
             "error": (
-                f"artifact_migrate requires an integer issue number, got {issue_number!r}. "
+                f"artifact_migrate requires an integer item ID, got {item_id!r}. "
                 "Beads string ID filtering is not supported by the migration scanner."
             ),
             **out.to_dict(),
@@ -4047,13 +4054,13 @@ async def artifact_migrate(
 
     if dry_run:
         try:
-            result = await asyncio.to_thread(_migrate_dry_run, issue_number)
+            result = await asyncio.to_thread(_migrate_dry_run, item_id)
         except OSError as exc:
             return {"error": f"Discovery failed: {exc}", **out.to_dict()}
         return {**result, **out.to_dict()}
 
     try:
-        result = await asyncio.to_thread(_migrate_live_run, issue_number, out)
+        result = await asyncio.to_thread(_migrate_live_run, item_id, out)
     except GitHubUnavailableError as exc:
         return {"error": str(exc), **out.to_dict()}
     except (BacklogError, _GithubException, OSError) as exc:
