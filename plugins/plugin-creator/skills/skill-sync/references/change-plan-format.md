@@ -37,9 +37,10 @@ Apply in this order when reports conflict:
 
 1. **Structural fixes first** — address broken links, frontmatter schema violations, and progressive disclosure before content changes
 2. **STALE overrides existing** — a STALE upstream verdict replaces the current text without merging
-3. **NEW requires citation** — only include a NEW upstream claim when the drift report contains a SOURCE: URL and access date
+3. **NEW requires citation** — only include a NEW upstream claim when the drift report contains a SOURCE: URL and access date; URLs that were not verified against the docs index in Stage 2 are UNVERIFIABLE
 4. **SK006 pairs with extraction** — any addition pushing the body past SK006 must include a `## References Extractions` entry for the affected section
 5. **UNVERIFIABLE = preserve** — claims with non-200 or DNS-failure verdicts are left unchanged
+6. **New reference file requires bullet list entry** — when a change adds a new `references/*.md` file, include a separate change entry to add it to the SKILL.md Reference Files bullet list with a one-line description matching the style of existing entries
 
 ## No-Change Exit
 

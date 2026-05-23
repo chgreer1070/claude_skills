@@ -1,0 +1,35 @@
+{
+  "skill_name": "skill-sync",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The fastmcp-creator skill hasn't been updated since March and fastmcp is now on v3.3. Can you sync it against the current upstream docs?",
+      "expected_output": "Pipeline runs all 6 stages: token profile, 3 parallel read agents, synthesis with change plan, clean-tree gate, source-validator agent pre-fetch, write agent applies changes. Modified files pass skilllint.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Run skill-sync on plugins/plugin-creator/skills/skill-creator to check if any SOURCE: URLs have gone stale",
+      "expected_output": "Stage 2 drift scanner fetches all SOURCE: citations, classifies each as VERIFIED/STALE/NEW/UNVERIFIABLE, produces drift report. If all VERIFIED, exits with no-changes plan. If STALE, produces change plan and runs through write stage.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I want to sync the entire plugin-creator plugin against upstream — all its skills need their docs refreshed",
+      "expected_output": "Argument resolved as plugin directory. Pipeline runs once per skill found under skills/. Each skill gets its own change plan. Modified files committed per skill or as a batch.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "skill-sync plugins/python-engineering/skills/uv",
+      "expected_output": "Pipeline runs for the uv skill. Stage 1 profiles token budget. Stage 2 dispatches 3 agents. If SOURCE: URLs cite uv docs, drift scanner fetches and classifies them. Change plan written to .tmp/scratch/plans/. Stages 4.5 and 5 run if changes found.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Check if my aws-deploy skill's documentation is still accurate — the AWS CLI changed their syntax last month",
+      "expected_output": "Pipeline treats this as a sync request. Argument parsing resolves the skill path. Drift scanner fetches SOURCE: URLs and compares against current upstream. Report produced with any STALE or NEW findings. No write stage unless changes confirmed.",
+      "files": []
+    }
+  ]
+}
