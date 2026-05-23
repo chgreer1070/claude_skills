@@ -4,6 +4,144 @@ A checklist for evaluating whether a skill provides everything an AI agent needs
 
 ---
 
+## agentskills.io Best Practice Checks
+
+Five checks derived from agentskills.io design principles. Each check applies to any skill, regardless of purpose type. Evaluate PASS / PARTIAL / FAIL with evidence from SKILL.md.
+
+SOURCE: agentskills.io/skill-creation/best-practices (accessed 2026-05-23). Principle quotes are paraphrased from the source; verdict criteria (PASS/PARTIAL/FAIL) are operationalized from the principles and are not verbatim from agentskills.io.
+
+---
+
+### Check 1: Approach vs Output
+
+**Principle:** "A skill should teach the agent *how to approach* a class of problems, not *what to produce* for a specific instance."
+
+**Question:** Is the skill scoped to a class of problems, or is it a narrow one-shot recipe for a single specific output?
+
+| Verdict | Criteria | Example evidence |
+|---------|----------|-----------------|
+| **PASS** | Skill defines an approach, process, or method applicable to a range of inputs | "Here is how to approach any code review" — the skill adapts to the specific code |
+| **PARTIAL** | Skill covers a class but over-specifies output format or structure | Approach is sound but the expected output section locks to one template |
+| **FAIL** | Skill is a recipe for one specific output type or instance | "Generate a Q3 2024 expense report in this exact format with these exact columns" |
+
+**Generating an eval for FAIL:** Create a prompt that tests whether the skill handles a related-but-different variant. If the skill only works for the exact trained case, the eval will fail.
+
+---
+
+### Check 2: Lean Instructions
+
+**Principle:** "Concise, stepwise guidance with a working example tends to outperform exhaustive documentation. When you find yourself covering every edge case, consider whether most are better handled by the agent's own judgment." (paraphrased from agentskills.io/skill-creation/best-practices, accessed 2026-05-23 — exact wording on site differs)
+
+**Question:** Does the skill over-specify, adding rules that narrow behavior without improving outcomes?
+
+**Scope:** This check applies to procedural instructions and rules only. Anti-pattern examples (wrong/right pairs, contrast demonstrations) are behavioral anchoring points — repetition in examples is intentional and correct. Do not apply this check to the Anti-Patterns category or to example blocks.
+
+| Verdict | Criteria | Example evidence |
+|---------|----------|-----------------|
+| **PASS** | Each instruction has a clear purpose; removing any would reduce quality | Concise steps; each step maps to a failure mode it prevents |
+| **PARTIAL** | Most instructions are purposeful; a rule section feels like padding or restates the same constraint in multiple places | Same prohibition stated in two separate rule blocks (not examples) |
+| **FAIL** | Instructions are exhaustive to the point of constraining valid approaches | More than 10 "never do X" rules; multi-page procedural checklists for simple tasks |
+
+**Generating an eval for FAIL:** Create a prompt that has a valid, high-quality solution the over-constraints would prohibit. Check whether the skill allows it.
+
+---
+
+### Check 3: Reasoning over Directives
+
+**Principle:** "'Do X because Y tends to cause Z' works better than 'ALWAYS do X, NEVER do Y.'"
+
+**Question:** Does the skill explain the *why* behind its rules, or does it rely on bare imperatives?
+
+| Verdict | Criteria | Example evidence |
+|---------|----------|-----------------|
+| **PASS** | Rules include rationale — agent understands cause and effect | "Use openpyxl formulas, not Python-computed values, because Excel can't recalculate hardcoded numbers" |
+| **PARTIAL** | Some rules have rationale; others are bare directives | Mix of explained and unexplained constraints |
+| **FAIL** | Rules are stated as imperatives only — ALWAYS/NEVER with no explanation | "ALWAYS validate before writing. NEVER use inline styles." — no reason given |
+
+**Generating an eval for FAIL:** Create a prompt where the directive would produce the wrong result in an edge case. An agent with understanding of the *why* will adapt; an agent following a bare directive will not.
+
+---
+
+### Check 4: Description Trigger Accuracy
+
+**Principle:** "An under-specified description means the skill won't trigger when it should; an over-broad description means it triggers when it shouldn't."
+
+**Question:** Does the description generate a clear should-trigger / should-not-trigger boundary?
+
+| Verdict | Criteria | Example evidence |
+|---------|----------|-----------------|
+| **PASS** | Description includes specific trigger keywords and scope limits; a reader can generate at least 3 clear should-trigger and 3 clear should-not-trigger cases | "Use when auditing skill quality, checking marketplace readiness..." — specific and bounded |
+| **PARTIAL** | Description covers the main use case but edge cases are ambiguous | "Use for code review" — does it apply to SQL? Infrastructure? Config files? |
+| **FAIL** | Description is too generic (triggers on everything) or too narrow (misses valid uses) | "Use this skill." / "Use only for Python 3.11 async context manager review." |
+
+**Generating an eval for FAIL:** Generate a should-trigger and a should-not-trigger case based on the description. If the boundary is unclear, the eval tests will be inconsistent.
+
+---
+
+### Check 5: Bundle Signal
+
+**Principle:** "If every test run independently wrote a similar helper script, that's a signal to bundle it."
+
+**Question:** Are there operations in this skill that an agent would re-implement from scratch on every invocation — and if so, are they bundled?
+
+| Verdict | Criteria | Example evidence |
+|---------|----------|-----------------|
+| **PASS** | Repetitive operations are bundled as scripts, or the skill has no repetitive operations | Scripts provided for format manipulation; or skill is purely behavioral |
+| **PARTIAL** | Some repetitive operations identified; partial bundling | Core operations scripted but peripheral helpers still generated ad-hoc |
+| **FAIL (risk flag)** | Skill instructs the agent to write a helper each time, or involves operations that are clearly repetitive and deterministic | "Write a Python function to parse the XML" — will be written fresh each invocation |
+
+**Note:** This check identifies a *risk to verify during evaluation*, not a confirmed finding. A FAIL here means: add a behavioral eval that checks whether the agent produces consistent implementations across runs.
+
+**Generating an eval for FAIL:** Run the same prompt twice. Check whether the generated helper is structurally equivalent. Inconsistency confirms the bundle-signal risk.
+
+---
+
+### Mapping FAIL/PARTIAL to Eval Test Cases
+
+For each Check rated FAIL or PARTIAL, suggest 1–2 eval scenarios in the audit report (natural language paragraphs — do not write a JSON file):
+
+| Check | Suggested eval type | What to assert |
+|-------|--------------------|-|
+| 1 — Approach vs Output | Variant prompt (related but different case) | Agent applies the skill's approach rather than refusing or forcing original format |
+| 2 — Lean Instructions | Valid-but-constrained prompt | Agent allows the high-quality solution the over-constraint would prohibit |
+| 3 — Reasoning over Directives | Edge case prompt where directive would fail | Agent adapts based on understanding, not bare rule |
+| 4 — Description accuracy | Should-trigger / should-not-trigger pair | Skill activates on should-trigger; does not interfere on should-not-trigger |
+| 5 — Bundle signal | Repeat same prompt twice | Helper implementations are structurally equivalent across runs |
+
+---
+
+## How to Use This Checklist
+
+**Apply categories selectively based on the skill's purpose.** Categories 1–3 and 5–6 are universal. Categories 4, 7, and 8 are conditional — apply them only when the skill's purpose warrants them.
+
+### When is each conditional category warranted?
+
+**Scripts (Category 4)** — warranted when the skill wraps operations that are:
+- Fragile (format-specific XML manipulation, PDF field filling, coordinate transforms)
+- Error-prone without deterministic code (binary file parsing, LibreOffice automation)
+- Repeatedly rewritten from scratch each invocation (AI generates the same boilerplate every time)
+
+Not warranted when: the skill enforces behavior through instructions Claude internalizes; the task is text-based reasoning; the skill is a reference document or behavioral standard.
+
+**References (Category 7)** — warranted when the skill requires:
+- API schemas, format specifications, or standards the AI cannot reliably reconstruct
+- Domain conventions that are correct-by-convention rather than correct-by-logic (financial modeling color codes, legal citation formats, brand hex values)
+- Documentation for a tool or library that changes over time
+
+Not warranted when: the knowledge is stable and well-represented in training data; the skill is short enough that inline content is sufficient.
+
+**Special case — reference/knowledge skills**: References ARE warranted by definition. The reference files are the product. Score this category against the 0–3 rubric (organization, discoverability, linkage from SKILL.md) rather than marking N/A.
+
+**Assets (Category 8)** — warranted when the skill:
+- Produces output that depends on bundled templates, fonts, or boilerplate (PPTX themes, HTML scaffolds, brand fonts)
+- Benefits from reusable output resources the AI uses (not reads into context)
+
+Not warranted when: the skill produces instructional or behavioral output with no associated output resources.
+
+**If a category is not warranted: absence of scripts/references/assets is correct. It is not a gap. Do not recommend adding them.**
+
+---
+
 ## 1. Preparation — Does the skill ensure prerequisites are met before work begins?
 
 - [ ] Does the skill verify the environment has required tools/dependencies before starting?
