@@ -23,7 +23,7 @@ For these exceptions: update linting config files (`pyproject.toml`, `.vscode/se
 
 If NONE of the above apply:
 
-1. Fix linting smell using `/hollistic-linting:hollistic-linting` Skill (exact methodology for addressing linting issues)
+1. Fix linting smell using `/holistic-linting:holistic-linting` Skill (exact methodology for addressing linting issues)
 2. If unable to fix, document specific blocker
 3. Adding `# type: ignore` or `# noqa` requires explicit user approval
 

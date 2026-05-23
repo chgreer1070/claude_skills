@@ -4,28 +4,17 @@
 
 # Brainstorming Skill
 
-Makes Claude significantly better at generating ideas and creative solutions.
+Teaches Claude 30+ research-validated ideation techniques. Claude applies them automatically
+when you ask for ideas, and runs a structured design dialogue before writing any code or content.
 
-## Why Install This?
+## Problem
 
-When you ask Claude to brainstorm, you might get:
+Unassisted Claude brainstorming tends to produce:
 
-- Generic ideas that don't fit your constraints
-- Shallow suggestions without reasoning
-- Just a few options when you need many perspectives
-- Blue-sky thinking that ignores your budget or timeline
-
-This plugin fixes that by teaching Claude 30+ research-validated brainstorming techniques.
-
-## What Changes
-
-With this plugin installed, Claude will:
-
-- Generate 20-30% more ideas than before (research-validated improvement)
-- Apply structured thinking patterns automatically - role-based perspectives, constraint exploration, analogical thinking
-- Provide reasoning for each idea, making it easier to evaluate and implement
-- Work within your actual constraints (budget, time, resources) instead of ignoring them
-- Break through creative blocks by using inversion, extreme scaling, and cross-domain analogies
+- Generic ideas that ignore your constraints (budget, timeline, audience)
+- Shallow lists without reasoning or trade-offs
+- A single perspective when the problem needs several
+- Immediate implementation when you actually need to explore the solution space first
 
 ## Installation
 
@@ -41,47 +30,79 @@ Then install the plugin:
 /plugin install brainstorming-skill@jamie-bitflight-skills
 ```
 
-## Usage
+## Quick Start
 
-Just install it - it works automatically when you brainstorm. Claude will recognize when you're:
+Just describe what you want to brainstorm. The plugin activates automatically:
 
-- Planning marketing campaigns or content
-- Designing product features
-- Solving problems creatively
-- Making strategic decisions
-- Writing creatively (plots, characters, themes)
-- Generating test cases
+```text
+"Help me brainstorm features for a project management app for freelancers"
+"What are some approaches to reducing churn in our SaaS product?"
+"Generate marketing angles for a developer tool launch"
+"I need ideas for the onboarding flow — budget is tight"
+```
 
-You'll notice Claude asking clarifying questions about your constraints and stakeholders before generating ideas.
+Claude will ask one clarifying question at a time (constraints, stakeholders, success criteria)
+before generating ideas. It will not write code or create content until you have approved a design.
 
-## Example
+## What Changes
 
-**Without this plugin**:
-You: "Help me brainstorm features for a project management app"
-Claude: "Here are some ideas: task lists, calendar view, team chat, file sharing..."
-_(Generic features, no reasoning, ignores your context)_
+**Before this plugin** — "Help me brainstorm features":
 
-**With this plugin**:
-You: "Help me brainstorm features for a project management app"
-Claude: "To generate the most relevant ideas, what's your budget and timeline? Who are your primary users?"
-You: "$20k budget, 6 weeks, targeting freelancers"
-Claude: "I'll generate ideas from three perspectives using constraint-based thinking:
+```
+Here are some ideas: task lists, calendar view, team chat, file sharing, notifications...
+```
 
-**From freelancer perspective** (5 ideas with implementation estimates):
+**After this plugin** — same request:
 
-1. Invoice generation integrated with time tracking - $3k, 1 week
-   _Reasoning: Freelancers cited invoicing as #1 pain point, this addresses billing friction directly_
-2. Client portal with branded workspace - $4k, 1.5 weeks
-   _Reasoning: Builds trust, reduces email back-and-forth by 60% per user research_
+```
+To generate the most relevant ideas, a few quick questions:
+- Who are your primary users?
+- What's your budget and timeline?
 
-**From accountant perspective** (5 ideas)...
-**From client perspective** (5 ideas)...
+[After you answer]
 
-Each idea includes reasoning, cost estimate, and implementation time within your constraints."
+From the freelancer perspective (within your $20k / 6-week constraint):
+  1. Invoice generation integrated with time tracking — $3k, 1 week
+     Reasoning: invoicing is the #1 cited pain point; eliminates billing friction
+  2. Client portal with branded workspace — $4k, 1.5 weeks
+     Reasoning: reduces email back-and-forth, builds client trust
 
-## Requirements
+From the client perspective:
+  ...
 
-- Claude Code v2.0+
+From the accountant perspective:
+  ...
+```
+
+## The Hard Gate
+
+The skill enforces a design-before-build gate. Claude will not invoke an implementation skill,
+write code, scaffold a project, or take any implementation action until the brainstorming
+process is complete and you have approved a design. This applies to every project regardless
+of perceived simplicity.
+
+## Ideation Framework
+
+14 systematic pattern categories including:
+
+- **Perspective Multiplication** — stakeholder angles, role-based viewpoints
+- **Constraint Variation** — artificial constraints to open the idea space
+- **Inversion and Negative Space** — reverse thinking to find non-obvious solutions
+- **Analogical Transfer** — apply patterns from unrelated domains
+- **Systematic Feature Decomposition** — SCAMPER and attribute-based analysis
+- **Scenario Exploration** — future-based and "what if" framing
+- And 8 more documented pattern categories
+
+## When It Activates
+
+The skill activates on:
+
+- Software feature design and component planning
+- Marketing and content campaigns
+- Strategic planning and decision-making
+- Creative writing (plots, characters, themes)
+- Test case generation
+- Any explicit "brainstorm", "generate ideas", or "explore approaches" request
 
 ---
 

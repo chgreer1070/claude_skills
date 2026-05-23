@@ -4,96 +4,66 @@
 
 # Llamafile
 
-Helps Claude set up and manage local AI models on your computer using Mozilla's llamafile.
+Teaches Claude how to install, configure, and manage Mozilla Llamafile — the cross-platform single-file executable format for running GGUF models locally with an OpenAI-compatible API.
 
 ## Why Install This?
 
-Running AI models locally means:
-
-- No API costs or usage limits
-- Works offline or in air-gapped environments
-- Your data never leaves your machine
-- Full control over which models you use
-
-But setting up local LLMs is complicated. You need to:
-
-- Find and download the right binaries and models
-- Configure server settings correctly
-- Integrate with different frameworks (LiteLLM, OpenAI SDK)
-- Debug connection issues and performance problems
-
-This plugin makes Claude an expert at all of that.
+Local LLM inference with llamafile requires knowing platform-specific download commands, correct server flags, GPU acceleration options, and exact API endpoint formats. Without this plugin, Claude gives generic advice but misses specifics like the required `/v1` path prefix, the default port 8080, the `--embedding` flag for embedding endpoints, and integration patterns for LiteLLM and the OpenAI SDK.
 
 ## What Changes
 
 With this plugin installed, Claude will:
 
-- Guide you through downloading llamafile and GGUF models
-- Generate correct server startup commands with optimal flags
-- Help you integrate llamafile with Python code (LiteLLM, OpenAI SDK)
-- Write health-check scripts and process management code
-- Debug connection errors and performance issues
-- Explain configuration options clearly
+- Provide exact download commands for llamafile binaries and GGUF model files
+- Generate correct server startup commands with optimal flags for your hardware
+- Integrate llamafile with Python code via LiteLLM (`model="llamafile/model-name"`) or the OpenAI SDK (`api_base="http://localhost:8080/v1"`)
+- Debug connection errors (refused connections, wrong ports, missing `/v1` prefix)
+- Configure GPU acceleration (CUDA, Metal, Vulkan) vs CPU-only fallback
+- Set up llamafile as a persistent background service
+- Validate API responses via the `/health` endpoint
 
 ## Installation
 
-First, add the marketplace (one-time setup):
-
 ```bash
 /plugin marketplace add Jamie-BitFlight/claude_skills
-```
-
-Then install the plugin:
-
-```bash
 /plugin install llamafile@jamie-bitflight-skills
 ```
 
 ## Usage
 
-Just install it and ask Claude about llamafile. Examples:
+Install and ask Claude about llamafile setup, integration, or troubleshooting:
 
-- "Help me install llamafile and set up a local AI model"
-- "I'm getting connection refused errors with my llamafile server"
-- "Write Python code to use llamafile with LiteLLM"
-- "How do I optimize llamafile for GPU acceleration?"
-- "Create a script to start llamafile as a background process"
+```text
+"Help me install llamafile and run Mistral 7B locally"
+"I'm getting connection refused errors with my llamafile server"
+"Write Python code to use llamafile with LiteLLM"
+"How do I enable GPU acceleration for llamafile on macOS?"
+"Create a script to start llamafile as a background service"
+"Generate embeddings using llamafile"
+```
 
-## Example
+## When to Use
 
-**Without this plugin**: You ask "How do I run a local AI model?" Claude gives generic advice about various tools but lacks specific knowledge about llamafile configuration, troubleshooting, or integration patterns.
+- Setting up local AI inference without cloud API costs
+- Air-gapped or offline environments
+- Privacy-sensitive workloads where data must stay on-device
+- Building developer tools (commit message generators, code reviewers) backed by local models
+- Experimenting with different GGUF models without API charges
+- Integrating local LLMs into Python applications
 
-**With this plugin**: Same question, but Claude:
+## OpenAI-Compatible API
 
-1. Recommends llamafile and explains why
-2. Provides exact download commands for binary and model
-3. Generates correct server startup command with optimal flags
-4. Shows you how to test the API with curl
-5. Writes Python integration code with LiteLLM
-6. Explains common pitfalls (port 8080 vs 8000, missing /v1 prefix)
+Llamafile exposes a local OpenAI-compatible API when started with `--server`:
 
-## What Claude Will Know
+| Endpoint | Purpose |
+|----------|---------|
+| `http://localhost:8080/v1/chat/completions` | Chat completions |
+| `http://localhost:8080/v1/completions` | Text completions |
+| `http://localhost:8080/v1/embeddings` | Embeddings (requires `--embedding` flag) |
+| `http://localhost:8080/health` | Health check |
 
-After installing this plugin, Claude will know:
-
-- How to download and install llamafile binaries and GGUF models
-- Which models to recommend for different use cases
-- All server configuration flags and when to use them
-- How to integrate with LiteLLM and OpenAI SDK (including required URL formats)
-- Common troubleshooting steps for connection and performance issues
-- Process management patterns for running llamafile as a service
-- Security considerations (localhost vs network binding)
+Supported platforms: macOS, Windows, Linux, FreeBSD, OpenBSD, NetBSD — AMD64 and ARM64.
 
 ## Requirements
 
 - Claude Code v2.0+
-
----
-
-> **The Ancient Woe**
->
-> *The ship's navigator whose magic compass only works when within sight of the King's lighthouse, leaving the crew doomed and blind in the open, foggy seas.*
-
-> **The Bard's Decree**
->
-> *"Give me a bottled star! A solitary light that requires no tether to the mainland, that we may divine our path even in the darkest, most isolated dungeon!"*

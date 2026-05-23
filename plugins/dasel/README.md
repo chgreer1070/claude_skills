@@ -14,10 +14,9 @@ When you ask Claude to work with config files, data files, or XML documents, Cla
 
 - Read entire config files into context just to extract one field
 - Write a custom Python or jq script for a simple value lookup or update
-- Suggest a different tool for each format (jq for JSON, yq for YAML, xmllint for XML) with no
-  consistent approach
-- Produce format-specific code that doesn't generalize across your project's file types
-- Not know how to query large XML files (2MB+) that can't be loaded into context
+- Suggest a different tool for each format (jq for JSON, yq for YAML, xmllint for XML)
+- Produce format-specific code that does not generalize across your project's file types
+- Fail to query large XML files (2MB+) that cannot be loaded into context
 
 This plugin gives Claude knowledge of dasel v3 — its query syntax, exploration workflows,
 transformation patterns, and enterprise XML domain knowledge — so Claude uses a single consistent
@@ -116,6 +115,34 @@ Available options:
 /dasel:setup --dry-run    # Preview what would happen without making changes
 ```
 
+## Common dasel Commands
+
+```bash
+# Read a value
+dasel -f config.yaml 'server.port'
+
+# Read from JSON
+dasel -f data.json -i json 'users.[0].name'
+
+# Update a value (safe: writes to temp file then renames)
+dasel put -f config.yaml -o config.yaml -t string 'server.host' 'newhost'
+
+# Convert YAML to JSON
+cat config.yaml | dasel -i yaml -o json > config.json
+
+# Convert JSON to TOML
+cat data.json | dasel -i json -o toml > data.toml
+
+# List all top-level keys
+dasel -f config.yaml 'all()'
+
+# Count array elements
+dasel -f data.json 'len(items)'
+
+# Filter array by condition
+dasel -f data.json 'items.filter(type = "admin").map(name)'
+```
+
 ## Example
 
 **Without this plugin:**
@@ -128,26 +155,26 @@ Claude: The database host is "db.example.com".
 
 ```
 You: Update the server port to 9090 in config.yaml
-Claude: [reads config.yaml into context, writes Python to parse and rewrite YAML, applies it]
+Claude: [reads config.yaml into context, writes Python to parse and rewrite YAML]
 ```
 
 **With this plugin:**
 
 ```
 You: What database host is configured in config.yaml?
-Claude: [runs a targeted dasel query on just that field]
+Claude: [runs: dasel -f config.yaml 'database.host']
 Claude: The database host is "db.example.com".
 ```
 
 ```
 You: Update the server port to 9090 in config.yaml
-Claude: [applies a dasel transformation, writes to a temp file, then renames to avoid data loss]
+Claude: [dasel put -f config.yaml -t int 'server.port' 9090]
 Claude: Done. server.port is now 9090.
 ```
 
 ```
 You: How many beans are in chaosrouter_beans.xml?
-Claude: [runs a count query — no attempt to load the 2MB file into context]
+Claude: [dasel -f chaosrouter_beans.xml -i xml 'len(beans.bean)']
 Claude: chaosrouter_beans.xml contains 47 beans.
 ```
 
@@ -161,13 +188,3 @@ Claude: chaosrouter_beans.xml contains 47 beans.
 
 - [dasel GitHub repository](https://github.com/TomWright/dasel)
 - [dasel v3 documentation](https://daseldocs.tomwright.me)
-
----
-
-> **The Ancient Woe**
->
-> *The frustrated merchant trying to broker a trade between a Frenchman, a Spaniard, and an Italian, wishing to the heavens for a single, universal tongue.*
-
-> **The Bard's Decree**
->
-> *"I care not if thy ledgers are written in the runes of the North or the scrolls of the East! Speak one unified truth, that I may pluck the gold from the chaff without translating every cursed word!"*

@@ -4,28 +4,17 @@
 
 # GitLab CI/CD and Documentation
 
-Makes Claude better at GitLab work: writing pipelines, creating documentation, and testing locally.
+Makes Claude better at GitLab work: writing pipelines, creating GLFM documentation, and testing
+locally with `gitlab-ci-local` before pushing.
 
-## Why Install This?
+## Problem
 
 When working with GitLab projects, Claude sometimes:
 
-- Writes pipelines that fail validation or miss optimizations
-- Creates README files with syntax that doesn't render correctly in GitLab
-- Suggests pushing untested pipeline changes
-- Doesn't use GitLab-specific features like alert blocks or CI Steps
-
-This plugin fixes those problems.
-
-## What Changes
-
-Claude will:
-
-- Write `.gitlab-ci.yml` files with proper caching, parallelization, and optimization
-- Create GitLab documentation that renders correctly the first time
-- Test pipelines locally with `gitlab-ci-local` before pushing
-- Use GitLab features like alert blocks, collapsible sections, and Mermaid diagrams correctly
-- Help set up CI/CD authentication tokens
+- Writes pipelines that fail validation or miss caching and parallelization opportunities
+- Creates README files with Markdown syntax that doesn't render correctly in GitLab (wrong alert format, broken Mermaid)
+- Suggests pushing untested pipeline changes instead of running them locally first
+- Misses GitLab-specific features like CI Steps, collapsible sections, and coverage report integration
 
 ## Installation
 
@@ -41,51 +30,100 @@ Then install the plugin:
 /plugin install gitlab-skill@jamie-bitflight-skills
 ```
 
-## Usage
+## Quick Start
 
-Just install it - works automatically when you work with GitLab projects.
+The skill activates automatically for GitLab tasks. Just describe what you need:
 
-Useful for:
+```text
+"Add a test stage to the pipeline with proper caching"
+"Create a README for this GitLab project"
+"Test this pipeline locally before pushing"
+"Add a collapsible troubleshooting section to the docs"
+"Why is my Docker-in-Docker job failing?"
+```
 
-- "Add a test stage to the pipeline"
-- "Create a README for this GitLab project"
-- "Test this pipeline locally before pushing"
-- "Set up caching for Python dependencies"
-- "Add a collapsible troubleshooting section"
+## What Changes
 
-## Example
+### CI/CD Pipelines
 
-**Without this plugin:**
-You say "add a note about security to the README". Claude writes standard Markdown that doesn't render as an alert in GitLab.
+With this skill, Claude:
 
-**With this plugin:**
-Claude writes proper GLFM alert syntax that renders with styling and icons:
+- Validates `.gitlab-ci.yml` syntax before committing
+- Implements dependency-based cache keys to minimize build time
+- Uses masked variables for all sensitive data
+- Defines timeout limits on every job
+- Tests pipeline changes locally with `gitlab-ci-local` before suggesting a push
+- Uses the `.gitlab-ci.yml` `include` feature for modular configurations
+- Optimizes job dependency graphs to prevent unnecessary execution
+
+### GitLab Flavored Markdown (GLFM)
+
+Claude uses correct GLFM syntax that renders in GitLab:
 
 ```markdown
 > [!important]
-> This requires authentication
+> This requires authentication tokens to be configured.
 ```
 
-## More Examples
+```markdown
+<details>
+<summary>Troubleshooting</summary>
 
-**CI/CD pipelines:** Claude writes pipelines with dependency-based cache keys, parallel jobs, proper artifact management, and GitLab-specific features like coverage reports.
+Full content here — renders as collapsible in GitLab.
+</details>
+```
 
-**Local testing:** Instead of pushing to see failures, Claude suggests testing with `gitlab-ci-local` to catch errors in 30 seconds instead of 5 minutes.
+Mermaid diagrams, task lists, and footnotes use GitLab-specific rendering rules.
 
-**Documentation:** Claude uses correct GLFM syntax - lowercase alerts, single-line summary tags, proper Mermaid diagrams - so your docs render correctly the first time.
+### Local Pipeline Testing (Domain 3)
+
+Instead of push-and-wait, Claude guides local testing with `gitlab-ci-local`:
+
+```bash
+# Install
+npm install -g gitlab-ci-local
+
+# Test a specific job
+gitlab-ci-local <job-name>
+
+# Run all jobs
+gitlab-ci-local
+```
+
+Covers authentication token setup, project-specific variable files, and debugging job failures locally.
+
+## Example
+
+**Without this plugin:** You ask "add a security note to the README". Claude writes standard
+Markdown that displays as a plain blockquote in GitLab.
+
+**With this plugin:** Claude writes GLFM alert syntax that renders with a warning icon:
+
+```markdown
+> [!warning]
+> Running this in production requires the CI_DEPLOY_TOKEN variable to be set.
+```
+
+## Reference
+
+| Domain | Triggers |
+|--------|----------|
+| CI/CD Pipelines | `.gitlab-ci.yml` files, caching, DinD, CI Steps, job optimization |
+| GLFM Documentation | README files, wiki pages, MR descriptions, alert blocks, Mermaid |
+| Local Testing | `gitlab-ci-local`, job debugging, artifact validation, variable setup |
 
 ## What's Included
 
-- CI/CD configuration patterns and optimization strategies
-- GitLab Flavored Markdown complete syntax guide
-- gitlab-ci-local testing setup and usage
-- GitLab CLI (glab) commands for pipeline monitoring
-- `/setup-ci-publish-token` command for CI authentication
-- Official GitLab documentation reference (auto-updated)
+- CI/CD configuration patterns and optimization strategies with reference guides
+- Complete GLFM syntax documentation (alerts, collapsible sections, diagrams, task lists)
+- `gitlab-ci-local` testing setup and usage guide
+- GitLab CI Steps composition reference
+- Pipeline optimization guide (caching strategies, job parallelization, Docker optimization)
 
 ## Requirements
 
 - Claude Code v2.0+
+- `gitlab-ci-local` for local testing (`npm install -g gitlab-ci-local`)
 
 ---
 

@@ -1,214 +1,268 @@
 # Plugin Creator Scripts
 
-Utility scripts for maintaining Claude Code plugins, skills, agents, and commands.
+Utility scripts for maintaining Claude Code plugins, skills, agents, and commands. All scripts have shebangs and executable permissions — invoke them directly or via `uv run`.
 
 ---
 
-## fix_tool_formats.py
+## auto_sync_manifests.py
 
-**Purpose**: Fix invalid tool format patterns in Claude Code frontmatter.
+Automatically maintains `plugin.json` and `marketplace.json` during `git commit`. This is the pre-commit hook that runs silently on every commit — you generally do not need to run it manually.
 
-### What It Fixes
+### What it does
 
-Claude Code requires tool specifications in YAML frontmatter to use **comma-separated string format**:
+Detects CRUD operations on plugin components (skills, agents, commands) from staged git changes, then:
 
-```yaml
-tools: Read, Grep, Glob, Bash
-allowed-tools: Read, Grep, Glob
-```
+1. Updates `plugin.json` component arrays with `./`-prefixed paths
+2. Bumps the plugin semantic version:
+   - **Major** (`X.0.0`): a component was deleted
+   - **Minor** (`0.X.0`): a component was added
+   - **Patch** (`0.0.X`): a component was modified
+3. Updates `marketplace.json` with the new version
+4. Stages the modified manifests automatically
 
-This script automatically converts two invalid formats:
-
-#### 1. YAML List Format → Comma-Separated String
-
-**Before (Invalid)**:
-
-```yaml
-allowed-tools:
-  - Read
-  - Glob
-  - Bash
-```
-
-**After (Valid)**:
-
-```yaml
-allowed-tools: Read, Glob, Bash
-```
-
-#### 2. JSON Array Format → Comma-Separated String
-
-**Before (Invalid)**:
-
-```yaml
-tools: ["Read", "Grep", "Glob", "Write"]
-```
-
-**After (Valid)**:
-
-```yaml
-tools: Read, Grep, Glob, Write
-```
+Double-bump protection prevents version inflation when a commit fails and is retried.
 
 ### Usage
 
 ```bash
-# Run from anywhere - scans all .claude directories recursively
-python3 plugins/plugin-creator/scripts/fix_tool_formats.py
+# Runs automatically as a pre-commit hook — no manual invocation needed
+
+# Full reconcile: fix drift between filesystem and manifests
+./plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile
+
+# Preview what would change without writing
+./plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile --dry-run
+
+# Post-merge CI mode: reconcile marketplace.json and bump version
+./plugins/plugin-creator/scripts/auto_sync_manifests.py --sync-marketplace
 ```
 
-### Scan Locations
+### Arguments
 
-The script recursively scans:
+| Flag | Description |
+|---|---|
+| `--reconcile` | Full directory scan to fix drift between filesystem and manifests |
+| `--dry-run` | Report drift without modifying files (requires `--reconcile`) |
+| `--sync-marketplace` | Post-merge mode: reconcile marketplace.json and bump version (for CI use) |
 
-- `~/.claude/agents/**/*.md`
-- `~/.claude/commands/**/*.md`
-- `~/.claude/skills/**/SKILL.md`
-- `~/repos/**/agents/*.md` (within `.claude` directories)
-- `~/repos/**/commands/*.md` (within `.claude` directories)
-- `~/repos/**/skills/*/SKILL.md` (within `.claude` directories)
+For full documentation including edge cases and troubleshooting, see [README-auto-sync.md](./README-auto-sync.md).
 
-Excludes:
+---
 
-- `.venv/` directories
-- `node_modules/` directories
-- Files outside `.claude` directories
+## check_agent_auto_discovery.py
 
-### Why This Matters
+Regression guard that detects `plugin.json` files where explicit component arrays silently mask auto-discovered agents, skills, or commands.
 
-**Context Pollution Prevention**: Invalid formats written by Claude in earlier sessions become "evidence" in future searches, creating a feedback loop where AI learns incorrect patterns from its own mistakes.
+### Background
 
-**Official Format**: According to [Claude Code documentation](https://code.claude.com/docs/en/sub-agents.md), the `tools` field is:
+Claude Code auto-discovers every `.md` file in a plugin's `agents/`, `commands/`, and `skills/` directories — but only when the corresponding key is **absent** from `plugin.json`. Writing the key with even a single entry overrides auto-discovery: the declared list becomes the complete list and every unlisted file becomes invisible.
 
-- **Type**: `string` (comma-separated)
-- **Not**: JSON array or YAML list
+Two production incidents hit this trap:
 
-### Output Example
+- **2026-03-17**: `python3-development` committed two agents in `"agents": [...]` and 17 of 19 agents disappeared silently.
+- **2026-04-12**: A buggy pre-commit hook auto-added a 2-entry `agents` array, which would have masked 21 of 23 agents.
 
+### What it checks
+
+Fails when any `plugin.json` under `plugins/` contains an `agents`, `commands`, or `skills` key that is a strict subset of the corresponding files on disk, or when the key is an empty list.
+
+### Usage
+
+```bash
+# Check all plugins for auto-discovery violations
+./plugins/plugin-creator/scripts/check_agent_auto_discovery.py
 ```
-Scanning for markdown files with invalid tool formats...
-Found 448 files to check
 
-✓ Fixed: /home/user/.claude/commands/gsd/verify-work.md
-✓ Fixed: /home/user/repos/project/.claude/commands/agent-workflow.md
-
-Fixed: 28 files
-Skipped: 420 files (no changes needed)
-Total: 448 files
-```
+The script exits non-zero on violations and explains the fix: remove the key entirely to restore auto-discovery, or list every file explicitly.
 
 ---
 
 ## create_plugin.py
 
-**Purpose**: Interactive plugin scaffolding tool that creates a new Claude Code plugin with proper structure.
+Interactive plugin scaffolding tool. Prompts for plugin details and creates a new plugin with proper structure and a validated `plugin.json`.
 
-### What It Creates
+### What it creates
 
-- `.claude-plugin/` directory
-- `plugin.json` with validated schema
+- `.claude-plugin/` directory with `plugin.json`
 - Optional `skills/`, `agents/`, `commands/` directories
-- Proper plugin structure following official schema
+- Self-validates with `claude plugin validate` before reporting success
+
+### Subcommands
+
+| Subcommand | Description |
+|---|---|
+| `create` | Interactive wizard — prompts for name, description, author, and which directories to create |
+| `validate` | Validate an existing plugin directory structure |
 
 ### Usage
 
 ```bash
-# Interactive mode - prompts for all details
-uv run plugins/plugin-creator/scripts/create_plugin.py
+# Create a new plugin interactively
+./plugins/plugin-creator/scripts/create_plugin.py create
 
-# The script will ask for:
-# - Plugin name (kebab-case)
-# - Description
-# - Author information
-# - Which directories to create
+# Validate an existing plugin
+./plugins/plugin-creator/scripts/create_plugin.py validate <plugin-path>
 ```
-
-### Validation
-
-The script runs `claude plugin validate` internally before reporting success to ensure the created plugin structure is valid.
 
 ---
 
-## skilllint
+## fix_tool_formats.py
 
-**Purpose**: Comprehensive validation tool for Claude Code plugins with token-based complexity measurement.
+Scans Claude Code frontmatter files and converts invalid tool field formats to the required comma-separated string format.
 
-### Supported Validation Types
+### What it fixes
 
-- Complete plugins (validates all components)
-- Individual SKILL.md files
-- Individual agent .md files
-- Individual command .md files
+Claude Code requires tool specifications in frontmatter to use comma-separated string format:
+
+```yaml
+tools: Read, Grep, Glob, Bash
+```
+
+The script converts two invalid formats:
+
+**YAML list format:**
+
+```yaml
+# Before (invalid)
+allowed-tools:
+  - Read
+  - Glob
+  - Bash
+
+# After (valid)
+allowed-tools: Read, Glob, Bash
+```
+
+**JSON array format:**
+
+```yaml
+# Before (invalid)
+tools: ["Read", "Grep", "Glob", "Write"]
+
+# After (valid)
+tools: Read, Grep, Glob, Write
+```
+
+### Why this matters
+
+Invalid formats written by Claude in earlier sessions become "evidence" in future searches, creating a feedback loop where the AI learns incorrect patterns from its own prior output.
 
 ### Usage
 
 ```bash
-# Validate single file or directory
-uvx skilllint@latest check {path}
+# Fix all .claude directories in the home directory
+./plugins/plugin-creator/scripts/fix_tool_formats.py
 
-# Validate entire plugin
-uvx skilllint@latest check plugins/my-plugin
+# Also scan ~/repos/** directories
+./plugins/plugin-creator/scripts/fix_tool_formats.py --scan-repos
 
-# Auto-fix issues
-uvx skilllint@latest check --fix {path}
-
-# Validate only (no auto-fix)
-uvx skilllint@latest check --check {path}
-
-# Verbose output with details
-uvx skilllint@latest check --verbose {path}
-
-# CI mode (no color)
-uvx skilllint@latest check --no-color {path}
+# Preview changes without writing
+./plugins/plugin-creator/scripts/fix_tool_formats.py --dry-run
 ```
 
-### What It Validates
+### Arguments
 
-- **Frontmatter schema:** YAML syntax, required fields, field types, tools/skills format
-- **Plugin structure:** plugin.json schema, component paths, version consistency
-- **Skill complexity:** Token-based metrics (4000 warning, 6400 error thresholds)
-- **Internal links:** Markdown link validity, progressive disclosure
-- **Component completeness:** Required files, cross-references
+| Flag | Description |
+|---|---|
+| `--scan-repos` | Also scan `~/repos/**` directories (default: off) |
+| `--no-scan-repos` | Scan only `~/.claude/**` (default) |
+| `--dry-run` | Show what would be changed without modifying files |
 
-### What It Auto-Fixes
+### Scan locations
 
-- YAML arrays → comma-separated strings
-- Multiline descriptions → single-line strings
-- Unquoted colons in descriptions — adds quotes to prevent YAML parsing failures
-- Adds `name:` field to plugin skills when absent (derived from directory name; required per agentskills.io spec)
+By default, scans:
 
-### Error Codes
+- `~/.claude/agents/**/*.md`
+- `~/.claude/commands/**/*.md`
+- `~/.claude/skills/**/SKILL.md`
 
-23 error codes across 9 validators - see [ERROR_CODES.md](./ERROR_CODES.md)
+With `--scan-repos`, additionally scans all `.claude` directories under `~/repos/`.
 
-### Schema Coverage
+---
 
-| File Type | Required Fields   | Key Optional Fields                                          |
-| --------- | ----------------- | ------------------------------------------------------------ |
-| Skills    | None              | name, description, model, allowed-tools, user-invocable      |
-| Agents    | name, description | model, tools, disallowedTools, permissionMode, maxTurns, skills, mcpServers, hooks, memory, background, isolation |
-| Commands  | description       | argument-hint, allowed-tools, model, context, agent          |
+## normalize_frontmatter.py
+
+Round-trips every markdown file with YAML frontmatter through `ruamel.yaml` to strip unnecessary quotes. Only the frontmatter block is affected; the body of each file is preserved verbatim.
+
+### What it normalizes
+
+Removes over-quoting introduced by editors or other tools — e.g., `description: "my skill"` becomes `description: my skill`. Quotes required for YAML correctness (such as values containing `:`) are preserved.
+
+### Usage
+
+```bash
+# Apply normalization in-place
+./plugins/plugin-creator/scripts/normalize_frontmatter.py
+
+# Preview changes without writing
+./plugins/plugin-creator/scripts/normalize_frontmatter.py --dry-run
+
+# Specify a different repository root
+./plugins/plugin-creator/scripts/normalize_frontmatter.py --root /path/to/repo
+```
+
+### Arguments
+
+| Flag | Description |
+|---|---|
+| `--dry-run` | Report diffs without writing files |
+| `--root DIRECTORY` | Repository root to search from (default: `.`) |
+
+### Files discovered
+
+- `plugins/**/*.md`
+- `.claude/**/*.md`
+
+Excludes `node_modules/`, `.venv/`, and `*.lock` files.
 
 ---
 
 ## validate-task-file.sh
 
-**Purpose**: Validate refactoring task file format and structure.
+Validates refactoring task file format and structure. Used during plugin refactoring workflows to ensure task files created by the planner agent are correctly formatted before execution begins.
 
 ### Usage
 
 ```bash
-plugins/plugin-creator/scripts/validate-task-file.sh {task-file-path}
+./plugins/plugin-creator/scripts/validate-task-file.sh <path/to/tasks-refactor-*.md>
 ```
 
-### What It Validates
+### What it validates
 
-- Task file follows expected format
-- Task status values are valid (❌ NOT STARTED, 🔄 IN PROGRESS, ✅ COMPLETE)
-- Task metadata is properly structured
-- Dependencies reference valid task IDs
-- Acceptance criteria are present
+- Task structure and required fields
+- Status field format (`❌ NOT STARTED`, `🔄 IN PROGRESS`, `✅ COMPLETE`)
+- Dependency references — all referenced task IDs exist in the same file
+- Acceptance criteria are present for each task
+- Agent assignments are specified
 
-### Use Case
+Exits 0 on pass, non-zero on failure. Prints a summary of errors and warnings.
 
-Used during plugin refactoring workflows to ensure task files created by the planner agent are properly formatted before execution begins.
+---
+
+## Library Modules
+
+These modules are not standalone scripts. They are imported by the scripts above.
+
+| Module | Purpose |
+|---|---|
+| `frontmatter_core.py` | Pydantic models and validation logic for SKILL.md, agent, and command frontmatter. Shared by `normalize_frontmatter.py` and the `skilllint` validators. |
+| `frontmatter_utils.py` | Load/dump helpers for YAML frontmatter using `ruamel.yaml` round-trip mode. Preserves formatting and only adds quotes where YAML syntax requires them. |
+
+---
+
+## Pre-Commit Integration
+
+Two scripts run automatically via `.pre-commit-config.yaml`:
+
+| Hook ID | Script | Trigger pattern | Purpose |
+|---|---|---|---|
+| `auto-sync-manifests` | `auto_sync_manifests.py` | `^plugins/` | Version bumping and manifest maintenance |
+| `check-agent-auto-discovery` | `check_agent_auto_discovery.py` | `^plugins/.*plugin\.json$` | Guard against silent component masking |
+
+---
+
+## Requirements
+
+All Python scripts require Python 3.11+ and `uv`. The scripts use PEP 723 inline metadata to declare their own dependencies — `uv` installs them automatically.
+
+Bash scripts require Bash 5.1+ and standard POSIX utilities.

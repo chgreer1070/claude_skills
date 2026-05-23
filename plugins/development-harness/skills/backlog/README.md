@@ -43,7 +43,7 @@ Priority tiers map directly to file prefixes:
 
 ### The MCP Interface (Primary)
 
-Ten MCP tools are available to Claude in orchestrator sessions via the `mcp__plugin_dh_backlog__` prefix. These are the normal way Claude interacts with the backlog during a session.
+Twelve MCP tools are available to Claude in orchestrator sessions via the `mcp__plugin_dh_backlog__` prefix. These are the normal way Claude interacts with the backlog during a session.
 
 | Tool | What it does |
 |------|-------------|
@@ -57,16 +57,24 @@ Ten MCP tools are available to Claude in orchestrator sessions via the `mcp__plu
 | `backlog_groom` | Write or update the groomed section of an item |
 | `backlog_normalize` | One-off maintenance: rewrite files to canonical format |
 | `backlog_pull` | Pull issue body content from GitHub into local files |
+| `backlog_list_comments` | List comments on a GitHub issue |
+| `backlog_read_comment` | Read a specific comment body |
 
-### The CLI Interface (CI Fallback)
+The MCP server also exposes `artifact_*` tools for plan artifact management and `dispatch_*` tools for milestone wave orchestration. See `/dh:backlog` for the complete reference.
 
-GitHub Actions and environments without an MCP client use the CLI script directly:
+### The CI/CLI Interface (Fallback)
+
+GitHub Actions and environments without an MCP client use `fastmcp call` against the server script directly:
 
 ```bash
-uv run .claude/skills/backlog/scripts/backlog.py <subcommand> [options]
+FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false \
+uv run fastmcp call \
+  --command "uv run --script plugins/development-harness/scripts/run_backlog_server.py" \
+  backlog_list \
+  '{}'
 ```
 
-The CLI subcommands mirror the MCP tools exactly: `add`, `list`, `view`, `sync`, `close`, `resolve`, `update`, `groom`, `normalize`, `pull`.
+Available tools via this interface mirror the MCP tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`, `backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`, and the remaining tools exposed by the server.
 
 ### Companion Skills
 
@@ -74,10 +82,10 @@ The backlog skill is the engine. These skills are the user-facing entry points:
 
 | Skill | Purpose |
 |-------|---------|
-| `/create-backlog-item` | Capture a new item — calls `backlog_add` |
-| `/work-backlog-item` | Work through an item end-to-end — calls list, view, update, close, resolve |
-| `/groom-backlog-item` | Fact-check and assess an item — calls `backlog_groom` and `backlog_update` |
-| `/group-items-to-milestone` | Assign groomed items to a GitHub milestone |
+| `/dh:create-backlog-item` | Capture a new item — calls `backlog_add` |
+| `/dh:work-backlog-item` | Work through an item end-to-end — calls list, view, update, close, resolve |
+| `/dh:groom-backlog-item` | Fact-check and assess an item — calls `backlog_groom` and `backlog_update` |
+| `/dh:group-items-to-milestone` | Assign groomed items to a GitHub milestone |
 
 ## Item Lifecycle
 
@@ -114,7 +122,7 @@ status:in-milestone     status:in-progress  status:verified
 status:done             status:resolved     status:closed
 ```
 
-`status:verified` is applied by `/complete-implementation` after quality gates pass (not part of
+`status:verified` is applied by `/dh:complete-implementation` after quality gates pass (not part of
 the lifecycle state machine, but required by `backlog_resolve` for SAM items with a plan).
 
 The backlog tools manage label transitions. Do not set labels with `gh label` directly — use `backlog_update` with the `status` parameter instead.
@@ -160,7 +168,7 @@ Sections are populated incrementally as the item moves through the lifecycle. A 
 8.  Acceptance Criteria Verification (written by: work-backlog-item close)
 ```
 
-An item is **fully groomed** only when all seven sections (Fact-Check, RT-ICA, Reproducibility, Dependencies, Skills, Agents, Prior Work) are present. Partial grooming is not groomed.
+An item is **fully groomed** only when all required sections (Fact-Check, RT-ICA, Reproducibility, Dependencies, Skills, Agents, Prior Work) are present. Partial grooming is not groomed.
 
 ## MCP Tool Reference
 
@@ -245,7 +253,7 @@ matching without a second `backlog_view` call per item.
 
 #### Matching Behavior — 3-Strategy Fallback Chain
 
-`/work-backlog-item` Step 1 uses `backlog_list` as the backing store for a 3-strategy fallback
+`/dh:work-backlog-item` Step 1 uses `backlog_list` as the backing store for a 3-strategy fallback
 chain when resolving a user query to a backlog item:
 
 ```mermaid
@@ -264,15 +272,14 @@ flowchart TD
     S3["Strategy 3: LLM Semantic<br>backlog_list() — all open items"] --> LLM["LLM selects best match<br>from all titles, types, topics"]
     LLM --> R3{Match found?}
     R3 -->|Yes| Done3([Use LLM-selected item])
-    R3 -->|No| NoMatch([Offer to create via /create-backlog-item])
+    R3 -->|No| NoMatch([Offer to create via /dh:create-backlog-item])
 ```
 
 Strategy 2 derives `type_hint` from keyword groups in the query (`bug`/`fix`/`error` → `Bug`,
 `feature`/`add`/`new` → `Feature`, etc.) and `topic_hint` from the longest non-stop-word.
-Strategy 3 loads all open items and uses the LLM to pick the best semantic match (bounded cost:
-~245 items × ~25 tokens/item ≈ 6,125 tokens).
+Strategy 3 loads all open items and uses the LLM to pick the best semantic match.
 
-`/complete-implementation` follow-up routing uses Strategies 1 and 2 only — Strategy 3 is
+`/dh:complete-implementation` follow-up routing uses Strategies 1 and 2 only — Strategy 3 is
 excluded because follow-up filenames are machine-derived slugs with low semantic fidelity against
 human-authored backlog titles.
 
@@ -346,9 +353,9 @@ mcp__plugin_dh_backlog__backlog_update(
 ```
 
 The `verified=True` parameter applies the `status:verified` label to the linked GitHub Issue and
-removes `status:in-progress` if present. It is called automatically by `/complete-implementation`
+removes `status:in-progress` if present. It is called automatically by `/dh:complete-implementation`
 after quality gates pass. The `status:verified` label is a prerequisite for
-`/work-backlog-item resolve` on SAM items — resolve is blocked if the label is absent (bypass with
+`/dh:work-backlog-item resolve` on SAM items — resolve is blocked if the label is absent (bypass with
 `force=True` on resolve).
 
 ### `backlog_groom` — Write groomed content
@@ -406,13 +413,24 @@ GitHub Issues are the source of truth. The local `~/.dh/projects/{slug}/backlog/
 
 ## Syncing in CI
 
-A GitHub Actions workflow (`backlog-sync.yml`) runs the CLI sync on every push that touches `~/.dh/projects/{slug}/backlog/`:
+GitHub Actions environments without an MCP client use `fastmcp call` against the server script:
 
 ```bash
-uv run .claude/skills/backlog/scripts/backlog.py sync -R {OWNER/REPO}
+FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false \
+uv run fastmcp call \
+  --command "uv run --script plugins/development-harness/scripts/run_backlog_server.py" \
+  backlog_sync \
+  '{"dry_run": false}'
 ```
 
-This is intentional: CI has no MCP client, so the CLI is the correct interface there.
+Set `BACKLOG_BACKEND=sqlite` or `BACKLOG_BACKEND=memory` to test without live GitHub credentials:
+
+```bash
+BACKLOG_BACKEND=memory FASTMCP_SHOW_SERVER_BANNER=false FASTMCP_LOG_ENABLED=false \
+uv run fastmcp call \
+  --command "uv run --script plugins/development-harness/scripts/run_backlog_server.py" \
+  backlog_list '{}'
+```
 
 ## Do Not
 
@@ -421,48 +439,34 @@ This is intentional: CI has no MCP client, so the CLI is the correct interface t
 - Set GitHub labels with `gh label` directly — the backlog tools own label transitions. Use `backlog_update` with `status` parameter instead.
 - Call `backlog_close` for completed work — use `backlog_resolve` instead
 
-If the MCP tools or CLI lack a needed operation, invoke `/backlog-tools-administrator` to extend both simultaneously.
+If the MCP tools or CLI lack a needed operation, invoke `/dh:backlog-tools-administrator` to extend both simultaneously.
 
 ## Package Layout
 
 ```text
-.claude/skills/backlog/
-  SKILL.md                     AI-facing instructions for this skill
-  pyproject.toml               Package: backlog-core (Python >=3.11)
+plugins/development-harness/
+  backlog_core/                  Python package — MCP server and all business logic
+    server.py                    FastMCP server (backlog + artifact + dispatch tools)
+    models.py                    Pydantic models, constants, exceptions
+    parsing.py                   File parsing, item search, frontmatter
+    gh_client.py                 GitHub API: issue CRUD, labels, status
+    operations.py                High-level CRUD combining all modules
+    backends/                    Pluggable backend implementations
+    tests/                       Test suite
   scripts/
-    backlog.py                 Thin Typer CLI wrapper
-  backlog_core/
-    models.py                  Pydantic models, constants, exceptions
-    parsing.py                 File parsing, item search, frontmatter
-    gh_client.py               GitHub API: issue CRUD, labels, status
-    operations.py              High-level CRUD combining all modules
-    server.py                  FastMCP 3.x server (10 MCP tools)
-  templates/
-    item.md                    Per-item file template
-    milestone-archive.md       Milestone completion archive template
-  references/
-    item-schema.md             Canonical frontmatter + body section schema
-    state-machine.md           Full item state machine with transitions
-    known-patterns.md          Regex and parsing gotchas, validated fixes
-  tests/
-    test_backlog_core_models.py    99 tests
-    test_backlog_core_parsing.py   86 tests
-    test_backlog_core_github.py    36 tests
-    test_backlog_core_server.py    44 tests
-    test_backlog_core_operations.py 45 tests
-    test_backlog_gh_first.py       30 tests
-    test_live_validation.py        11 tests
-    test_scenarios.py              29 tests
+    run_backlog_server.py        Entry point for the backlog MCP server
+  skills/backlog/
+    SKILL.md                     AI-facing instructions for this skill
+    references/                  State machine, item schema, known patterns
+    templates/                   Per-item and milestone archive templates
 ```
-
-Total: 380 tests across the `backlog-core` package.
 
 ## Requirements
 
 - Python 3.11 or newer
 - `GITHUB_TOKEN` environment variable (for GitHub operations)
-- `uv` for running the CLI script
-- Dependencies (managed by `uv` / `pyproject.toml`): `fastmcp>=3.0.2`, `pygithub>=2.8.1`, `pydantic>=2.12.3`, `ruamel.yaml>=0.18.0`
+- `uv` for running the server script
+- Dependencies (managed automatically by `uv run --script`): `fastmcp`, `pygithub`, `pydantic`, `ruamel.yaml`
 
 ---
 

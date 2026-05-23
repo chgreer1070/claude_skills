@@ -4,57 +4,71 @@
 
 # Agent Orchestration
 
-Makes Claude more thorough and systematic when handling complex, multi-step tasks.
+This plugin changes how Claude delegates work to sub-agents. Instead of writing vague "fix this" prompts, Claude constructs delegation prompts built on verified observations — telling agents WHERE the problem is, WHAT the success criteria are, and WHY it matters — while leaving HOW to solve it to the agent.
 
 ## Why Install This?
 
-When you ask Claude to do something involving multiple steps or files, Claude sometimes:
+When Claude delegates work to sub-agents, the quality of that work depends entirely on the quality of the delegation prompt. Claude sometimes:
 
-- Fixes only the specific instance you pointed out, missing similar issues elsewhere
-- Says "done" without actually verifying the solution works
-- Applies quick patches that address symptoms instead of root causes
-- Makes assumptions without checking them against the actual codebase
-- Skips important verification steps before marking work complete
+- Tells agents what solution to implement (prescribing HOW) rather than what outcome to achieve (defining WHAT)
+- Passes assumptions stated as facts, causing agents to act on bad premises
+- Repeats information agents can already see in CLAUDE.md, wasting their context
+- Fixes one instance of a bug without checking whether the same pattern exists elsewhere
+- Claims "done" after an agent returns without verifying the actual deliverable
 
-This plugin makes Claude more methodical and complete with complex work.
+This plugin makes delegation systematic and evidence-based.
 
-## What Changes
+## What You Get
 
-With this plugin installed, Claude will:
+### The WHERE / WHAT / WHY framework
 
-**Investigate before implementing**
+Every delegation prompt is built around three questions:
 
-- Gather comprehensive context before jumping to solutions
-- Trace issues through the complete stack to find root causes
-- Distinguish between symptoms and underlying problems
-- Verify observations instead of making assumptions
+**WHERE** — the problem location and scope boundaries
 
-**Think systematically about scope**
+```text
+Authentication module at src/auth/ — OAuth handlers specifically
+```
 
-- When you point out one bug, audit the entire file or module for similar patterns
-- Break complex tasks into clear steps with measurable success criteria
-- Consider related components that might be affected
-- Look for the pattern behind single instances
+**WHAT** — identification criteria and acceptance criteria
 
-**Verify work actually functions**
+```text
+OAuth redirect must return 200 status with valid session token
+```
 
-- Run tests and show you the actual output, not just "tests should pass"
-- Execute code in realistic scenarios, not just isolated unit tests
-- Check that original problems no longer occur
-- Confirm no regressions were introduced
+**WHY** — expected outcome, user requirement, business impact
 
-**Complete all verification before claiming "done"**
+```text
+Users cannot log in with enterprise SSO accounts, blocking customer onboarding
+```
 
-- Provide evidence that solutions work in practice
-- Test edge cases and error handling
-- Update documentation to reflect changes
-- Meet clear completion criteria before reporting success
+Claude defines these three things. The agent decides HOW to achieve them.
 
-## Skills
+### Pre-delegation verification checklist
 
-| Skill                 | Purpose                                                                                            |
-| --------------------- | -------------------------------------------------------------------------------------------------- |
-| `agent-orchestration` | Scientific delegation framework for coordinating sub-agents with observation-based context patterns |
+Before dispatching any agent, Claude verifies:
+
+- All claims in the prompt are labeled as observations, not assumptions
+- Success criteria are observable and measurable
+- Context includes only what the agent cannot find itself (not contents of CLAUDE.md, not project conventions already in scope)
+- The task defines WHAT and WHY — not HOW
+
+### Pattern expansion
+
+When Claude finds a bug in one file, the plugin requires checking whether the same pattern exists elsewhere. A single instance is treated as evidence of a systemic pattern until proven otherwise.
+
+### Parallel dispatch
+
+When a task decomposes into independent subtasks, Claude dispatches agents in parallel using `TeamCreate`. Sequential execution of independent work requires a justification.
+
+### Skills
+
+| Skill | Purpose |
+|---|---|
+| `agent-orchestration` | Full scientific delegation framework — verification checklist, delegation template, anti-patterns, parallel dispatch patterns |
+| `how-to-delegate` | 10-step preparation worksheet — guides through observations, success criteria, world-building context, agent selection, and pre-flight verification before constructing a delegation prompt |
+| `delegate` | Quick delegation template for single-agent prompts — the WHERE/WHAT/WHY format with a checklist |
+| `orchestrating-swarms` | Patterns for large-scale parallel agent coordination — swarm spawning, task decomposition, agent pool management |
 
 ## Installation
 
@@ -72,60 +86,64 @@ Then install the plugin:
 
 ## Usage
 
-Just install it - it works automatically. You'll notice the difference when you give Claude tasks like:
+The plugin is active automatically after installation. When Claude is about to delegate work, it applies the framework before constructing the agent prompt.
 
-**"Fix this bug"**
+Invoke manually when you want Claude to use the full 10-step preparation worksheet:
 
-- Claude investigates the root cause thoroughly
-- Looks for similar bugs in related code
-- Verifies the fix actually works with real test execution
-- Checks for regressions in dependent functionality
+```text
+/agent-orchestration:how-to-delegate
+```
 
-**"Add this feature"**
+Or use the quick delegation template before a specific Agent tool call:
 
-- Claude breaks down the work into clear steps
-- Considers integration with existing systems
-- Tests both success and failure scenarios
-- Provides evidence each acceptance criterion is met
-
-**"Refactor this code"**
-
-- Claude ensures tests pass before starting
-- Verifies behavior remains identical after changes
-- Checks performance isn't degraded
-- Confirms no new issues were introduced
+```text
+/agent-orchestration:delegate
+```
 
 ## Example
 
 **Without this plugin:**
 
-```
-You: "Fix the authentication bug in login.py"
-Claude: [reads file, makes change]
-Claude: "I've fixed the issue by updating the validation logic.
-        The code should work now."
+```text
+Claude → agent: "Fix the authentication bug in login.py.
+                 Update the validation logic."
 ```
 
-Later you discover the same bug exists in three other files, tests are actually failing, and the fix only addressed a symptom.
+The agent receives a HOW, not a WHAT. It implements the prescribed solution without understanding the problem, and may solve the wrong thing.
 
 **With this plugin:**
 
-```
-You: "Fix the authentication bug in login.py"
-Claude: [investigates root cause]
-Claude: "I found the validation issue in login.py. This pattern
-        appears in 4 files total. Let me audit and fix all instances."
-Claude: [fixes all instances, runs tests]
-Claude: "Fixed authentication validation in login.py, signup.py,
-        reset_password.py, and api_auth.py. All tests passing:
+```text
+Claude → agent:
+  Your ROLE_TYPE is sub-agent.
 
-        pytest output:
-        ====== 47 passed in 2.3s ======
+  ECOSYSTEM CONTEXT:
+  - Project: FastAPI application, Python 3.12, uv workspace
+  - Auth module: src/auth/ — handlers for OAuth and session management
 
-        Root cause was missing email format validation before
-        database query. Applied consistent validation across all
-        auth entry points."
+  TASK:
+  Investigate and fix the authentication bug in src/auth/login.py.
+
+  WHERE: src/auth/login.py — validation logic, reported around line 127
+
+  WHAT:
+  - OAuth login returns 200 with a valid session token
+  - No 302 redirect to 404 on enterprise SSO accounts
+  - All existing auth tests pass
+
+  WHY:
+  Users reported: "OAuth login redirects to 404" — enterprise SSO login
+  is broken, blocking customer onboarding.
+
+  Also check src/auth/signup.py and src/auth/reset_password.py for the
+  same validation pattern — single-instance bugs are often systemic.
+
+  SUCCESS CRITERIA:
+  Write findings to .tmp/scratch/reports/auth-fix-YYYYMMDD.md
+  Return: STATUS: DONE + path to report
 ```
+
+The agent receives verified observations, clear success criteria, and autonomy to choose how to fix the problem.
 
 ## Requirements
 
@@ -133,15 +151,13 @@ Claude: "Fixed authentication validation in login.py, signup.py,
 
 ## How It Works
 
-The plugin guides Claude to:
+The plugin loads behavioral instructions that Claude follows when orchestrating work:
 
-- Base decisions on verified observations rather than assumptions
-- Define clear success criteria before starting work
-- Investigate comprehensively using all available tools
-- Provide concrete evidence that solutions actually function
-- Think about scope systematically (one bug often indicates a pattern)
-
-This results in more complete, reliable solutions with less back-and-forth iteration.
+- Decisions are based on verified observations, not assumptions
+- Every delegation prompt defines success criteria the agent can verify independently
+- Context passed to agents contains only what they cannot see themselves
+- Single-instance bugs trigger a pattern audit across related files
+- Parallel dispatch is the default for independent subtasks
 
 ---
 

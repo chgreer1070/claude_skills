@@ -1,46 +1,35 @@
 # rtfp — Read The Fucking Prompt
 
-Scans Claude Code session transcripts to find the strongest user reactions to instruction-following
-failures, reconstructs the assistant output that triggered them, and turns the best exchange into
-a shareable terminal-style artifact.
+Scans a Claude Code session transcript for the single strongest user reaction to an instruction-following failure, reconstructs the assistant output that caused it, and renders the exchange as a shareable terminal-style PNG.
 
-## Why This Exists
+## What It Does
 
-You gave Claude instructions. Clear ones. And at some point it ignored them, and you had a reaction.
+You gave Claude instructions. At some point it ignored them, and you had a reaction.
 
-RTFP finds that moment. It pulls the assistant output that caused it, the task you were working on,
-and your exact reply — and renders them as a shareable image.
+RTFP finds that moment. It scans your session transcript, identifies the most striking instance where the assistant ignored or violated explicit instructions, reconstructs what Claude said and what you were working on, and renders a terminal-style image showing:
 
-It doesn't analyze your session. It doesn't build a report. It finds one exchange and renders it.
+- **task** — one dry line describing what you were doing
+- **claude** — the assistant output that triggered the reaction
+- **user** — your reply, in vivid color
+
+Output is exactly three things. It does not analyze your session or build a report. It finds one exchange and renders it.
 
 ## Installation
 
-Add the marketplace (one-time setup):
-
 ```bash
 /plugin marketplace add Jamie-BitFlight/claude_skills
-```
-
-Install the plugin:
-
-```bash
 /plugin install rtfp@jamie-bitflight-skills
 ```
 
 ## Usage
 
-In any Claude Code session:
-
-```bash
+```text
 /rtfp
 ```
 
-Claude will show you a numbered list of available sessions, ask which one to inspect, scan it,
-and render the PNG. No other steps required.
+Claude lists your available sessions by number, asks which one to inspect, scans it, and writes the PNG. No other steps required.
 
-## What You Get
-
-### Terminal output
+### Example terminal output
 
 ```text
 task:      writing a Claude Code plugin
@@ -54,20 +43,21 @@ PNG written: rtfp_artifact.png
 
 ### The PNG
 
-A dark terminal-style image styled after the Claude Code interface:
+A dark terminal-style image styled after the Claude Code interface — title bar reading "rtfp — Read The Fucking Prompt" with red/yellow/green window dots. Built for sharing in Slack, PR comments, or social posts.
 
-- Title bar: "rtfp — Read The Fucking Prompt" with red/yellow/green window dots
-- `task:` — one dry line describing what you were working on
-- `claude:` — the assistant output that triggered the reaction
-- `user:` — your reply, in vivid color
+## When to Use
 
-<!-- Example PNG: rtfp_example.png (not yet available) -->
+- You want to share a screenshot of Claude ignoring your instructions
+- You're collecting examples of instruction-following failures for evaluation
+- You want the most striking moment from a frustrating session rendered cleanly
+- You need evidence for a bug report or feedback about assistant behavior
 
-Built for sharing. Drop it in a Slack channel, a PR comment, or a post.
+## How It Works
+
+The skill uses a multi-step fan-out scan: it reads the session transcript, dispatches parallel subagents to scan batches of messages for user reactions, merges the flagged candidates, picks the single strongest reaction, reconstructs the surrounding context window, and renders the PNG via a Python script.
 
 ## Requirements
 
 - Claude Code v2.0+
 - Python 3.11+ (via `uv`)
-- At least one Claude Code session transcript on your machine (generated automatically during
-  normal use)
+- At least one Claude Code session transcript (generated automatically during normal use at `~/.claude/projects/`)

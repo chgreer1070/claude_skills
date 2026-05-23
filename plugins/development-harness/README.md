@@ -18,11 +18,39 @@ With this plugin installed, Claude will:
 - Manage a GitHub-backed backlog and escalate to you only when constraints genuinely require human judgment
 - Execute milestone-scale work with true parallel orchestration using isolated git worktrees
 
+## Quick Start
+
+```bash
+# 1. Add the marketplace (one-time setup)
+/plugin marketplace add jamie-bitflight/claude_skills
+
+# 2. Install the harness
+/plugin install development-harness@jamie-bitflight-skills
+
+# 3. (Optional) Full Python specialist support
+/plugin install python3-development@jamie-bitflight-skills
+```
+
+Restart your Claude Code session after installation. Then:
+
+```text
+# Plan a feature
+/dh:add-new-feature "add JWT authentication to the API"
+
+# Execute the plan it produced
+/dh:implement-feature plan/Pa1b2c3d4-jwt-authentication.yaml
+
+# Run quality gates when implementation is done
+/dh:complete-implementation plan/Pa1b2c3d4-jwt-authentication.yaml
+```
+
+---
+
 ## What You Get
 
-### Core Workflow (4 Commands)
+### Core Workflow (3 Commands)
 
-The primary interface is four commands that walk a feature from idea to verified delivery:
+The primary interface is three commands that walk a feature from idea to verified delivery:
 
 #### `/dh:add-new-feature`
 
@@ -61,16 +89,6 @@ What happens:
 - A SubagentStop hook automatically marks tasks complete
 - Bookend tasks run automatically: T0 captures baseline state before implementation begins, TN verifies acceptance criteria after all implementation tasks finish
 
-#### `/dh:start-task`
-
-Claims and executes a single task from a SAM plan. Used directly when you want to run one task at a time rather than the full loop.
-
-```text
-/dh:start-task plan/Pa1b2c3d4-jwt-authentication.yaml T3
-```
-
-Writes an active-task context file for hook tracking. Records divergence classification (`design-refinement` vs `intent-divergence`) when what gets built differs from what was planned.
-
 #### `/dh:complete-implementation`
 
 Runs quality gates after all tasks are complete. Takes either a plan file path or a GitHub issue number.
@@ -80,10 +98,11 @@ Runs quality gates after all tasks are complete. Takes either a plan file path o
 /dh:complete-implementation #42
 ```
 
-**SAM path** (when a linked plan exists) — 6 phases:
+**SAM path** (when a linked plan exists) — 7 phases:
 
 | Phase | Agent | Purpose |
 |---|---|---|
+| T0 | multi-perspective-review | Multi-perspective review before detailed gates |
 | T1 | code-reviewer | Reviews implementation against standards |
 | T2 | feature-verifier | Verifies feature meets acceptance criteria |
 | T3 | integration-checker | Checks integration points and compatibility |
@@ -99,7 +118,47 @@ On completion, applies `status:verified` to the GitHub issue.
 
 ### Backlog Management
 
-GitHub Issues are the source of truth. The plugin exposes 4 commands and 10 MCP tools for managing your backlog with AI assistance.
+GitHub Issues are the source of truth. The plugin exposes workflow commands and a full MCP server for managing your backlog with AI assistance.
+
+#### `/dh:work-backlog-item`
+
+The primary entry point for backlog work. Routes through create, groom, plan, and execute based on the item's current state.
+
+```text
+# Browse interactively
+/dh:work-backlog-item
+
+# Pick up a specific item
+/dh:work-backlog-item #42
+
+# Capture a new item and start working it
+/dh:work-backlog-item create -- "add rate limiting to auth endpoints"
+
+# Trivial fixes — skip grooming and planning
+/dh:work-backlog-item --quick "fix broken link in README"
+
+# Dismiss an item
+/dh:work-backlog-item close "some old idea" --reason out_of_scope
+
+# Mark done with evidence
+/dh:work-backlog-item resolve #42
+```
+
+Workflow modes:
+
+| Mode | When to use |
+|------|-------------|
+| *(no args)* | Interactive browser — pick an item from your backlog |
+| `#N` or title | Load and work a specific item end-to-end |
+| `create -- "description"` | Capture a new item, then proceed through grooming and planning |
+| `--quick {title}` | One-file fixes and trivial patches — skip the full pipeline |
+| `--auto {title}` | Autonomous mode — no interactive prompts, decisions logged |
+| `groom {title}` | Run grooming only |
+| `close {title}` | Dismiss without completing (requires reason) |
+| `resolve {title}` | Mark done with an evidence trail |
+| `progress` | Show current item progress |
+| `resume` | Resume interrupted work |
+| `setup-github` | Initialize labels, project, and milestone in the repo |
 
 #### `/dh:create-backlog-item`
 
@@ -111,14 +170,6 @@ Creates a new backlog item and corresponding GitHub issue.
 
 Supports priorities P0 through P2 and Ideas. Types: Feature, Bug, Refactor, Docs, Chore.
 
-#### `/dh:work-backlog-item`
-
-Works on an existing backlog item through its full lifecycle — from picking it up, through planning and implementation, to completion.
-
-```text
-/dh:work-backlog-item #42
-```
-
 #### `/dh:groom-backlog-item`
 
 Grooms a backlog item: fact-checks claims, maps required resources, identifies gaps, estimates effort, and writes structured acceptance criteria.
@@ -129,9 +180,7 @@ Grooms a backlog item: fact-checks claims, maps required resources, identifies g
 
 #### `/dh:backlog`
 
-Reference overview for all backlog operations and the 10 MCP tools available (`backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`, `backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`).
-
-Local backlog files at `~/.dh/projects/{your-project}/backlog/` are a derived cache. All mutations go through the MCP tools, which sync to GitHub Issues.
+Reference overview for all backlog operations and MCP tools.
 
 ---
 
@@ -169,17 +218,25 @@ Executes a groomed milestone with full parallel isolation. For each wave:
 This is what enables true parallel milestone execution: multiple independent Claude instances, each working on a separate issue in its own worktree, coordinated by the parent orchestrator.
 
 ```bash
+SPAWN="${CLAUDE_SKILL_DIR}/scripts/spawn.py"
+SID=$(uuidgen)
+
 # Spawn a session
-spawn.py spawn --name worker-42 --model haiku "Load /dh:work-backlog-item #42"
+$SPAWN --session-id $SID spawn --name worker-42 --model haiku \
+  "Load /dh:work-backlog-item #42. Execute the full workflow."
+
+# Check status
+$SPAWN --session-id $SID status --name worker-42
 
 # Steer mid-flight
-spawn.py send --name worker-42 "Deprioritize UI. Focus on API contract first."
+$SPAWN --session-id $SID send --name worker-42 \
+  "Deprioritize UI. Focus on API contract first."
 
-# Read the current screen
-spawn.py read --name worker-42
+# Read what's on screen
+$SPAWN --session-id $SID read --name worker-42
 
-# Stop a session
-spawn.py stop --name worker-42
+# Stop when done
+$SPAWN --session-id $SID stop --name worker-42
 ```
 
 ---
@@ -222,10 +279,13 @@ Validation patterns and checklists for verifying task completion. Defines what "
 
 ### Other Skills
 
-- `/dh:dispatch` — Dispatch tasks to agents using teams-first parallel execution. Prefer over `/dh:implement-feature` for milestone-scoped concurrent dispatch.
-- `/dh:interop` — Cross-plugin interoperability reference for plugin authors composing with the harness.
-- `/dh:subagent-contract` — Defines contracts subagents must satisfy when executing SAM tasks.
-- `/dh:dh-meta-docs` — Plugin meta-documentation and internals reference.
+- `/dh:start-task` — Claims and executes a single task from a SAM plan (used when you want to run one task at a time rather than the full loop)
+- `/dh:dispatch` — Dispatch tasks to agents using teams-first parallel execution. Prefer over `/dh:implement-feature` for milestone-scoped concurrent dispatch
+- `/dh:interop` — Cross-plugin interoperability reference for plugin authors composing with the harness
+- `/dh:subagent-contract` — Defines contracts subagents must satisfy when executing SAM tasks
+- `/dh:dh-meta-docs` — Plugin meta-documentation and internals reference
+- `/dh:fact-check` — Verify claims in backlog items against primary sources
+- `/dh:find-cause` — Structured root-cause investigation before fixing
 
 ---
 
@@ -300,9 +360,54 @@ Install the `python3-development` plugin alongside this one for full Python spec
 
 ---
 
+## MCP Servers
+
+The plugin ships three MCP servers that activate automatically after installation.
+
+### `plugin:dh:backlog` — Backlog and GitHub Integration
+
+The primary runtime interface. Exposes tools for all backlog operations, artifact management, dispatch orchestration, and GitHub integration.
+
+**Core backlog tools** (available as `mcp__plugin_dh_backlog__<name>`):
+
+| Tool | Purpose |
+|------|---------|
+| `backlog_add` | Create a new item and GitHub Issue |
+| `backlog_list` | List open items with filters |
+| `backlog_view` | View one item in full detail |
+| `backlog_sync` | Push local items to GitHub |
+| `backlog_close` | Dismiss an item with a reason |
+| `backlog_resolve` | Mark an item done with evidence |
+| `backlog_update` | Set status, attach plan, update content |
+| `backlog_groom` | Write or update the groomed section |
+| `backlog_normalize` | Rewrite files to canonical format |
+| `backlog_pull` | Pull GitHub issue body into local files |
+| `backlog_list_comments` | List comments on a GitHub issue |
+| `backlog_read_comment` | Read a specific comment body |
+
+The server also exposes `artifact_*` tools for plan artifact management and `dispatch_*` tools for milestone wave orchestration. See `/dh:backlog` for the full reference.
+
+### `plugin:dh:sam` — Stateless Agent Methodology (SAM)
+
+Manages task plans and execution state for the `/dh:implement-feature` loop.
+
+| Tool | Purpose |
+|------|---------|
+| `sam_plan` | Create, read, update, and finalize task plans |
+| `sam_task` | Claim, update, and complete individual tasks |
+| `sam_active_task` | Get or clear the active task for the current session |
+
+### `plugin:dh:sequential_thinking` — Sequential Thinking
+
+Provides structured sequential reasoning for complex planning tasks.
+
+**Note**: Both `plugin:dh:backlog` and `plugin:dh:sam` take 10–30 seconds to initialize after a session restart. If a tool is unavailable or `ToolSearch` reports "still connecting", wait and retry before proceeding.
+
+---
+
 ## Agents
 
-The harness ships 15 specialist agents that are invoked automatically during pipeline stages:
+The harness ships 27 specialist agents invoked automatically during pipeline stages:
 
 **Planning and decomposition:**
 
@@ -314,17 +419,23 @@ The harness ships 15 specialist agents that are invoked automatically during pip
 - `feature-researcher` — Studies the problem space: what the feature must do, why it's needed, what constraints apply
 - `codebase-analyzer` — Maps what exists today: patterns, conventions, test approaches, file ownership
 - `ecosystem-researcher` — Researches external dependencies, libraries, and ecosystem context
+- `alignment-analyst` — Compares implementation against design intent during grooming
+- `fact-checker` — Verifies item claims against primary sources
+- `impact-analyst` — Assesses blast radius and affected systems for backlog items
+- `classifier` — Classifies and routes items
 
 **Verification:**
 
 - `feature-verifier` — Verifies the implemented feature meets its original acceptance criteria
 - `integration-checker` — Checks that integrated components are compatible and integration points are sound
+- `contract-verification` — Verifies method signatures and type contracts match the architect spec
 - `t0-baseline-capture` — Records baseline state (test results, metrics, behavior) before implementation begins
 - `tn-verification-gate` — Compares post-implementation state against the T0 baseline to confirm acceptance criteria are met
+- `rtica-assessor` — Runs the RT-ICA information completeness gate
 
 **Context management:**
 
-- `context-gathering` — Builds a context manifest from codebase and documentation
+- `dh-context-gathering` — Builds a context manifest from codebase and documentation
 - `context-refinement` — Updates stored context with discoveries from the completed implementation
 
 **Documentation:**
@@ -332,9 +443,18 @@ The harness ships 15 specialist agents that are invoked automatically during pip
 - `doc-drift-auditor` — Identifies documentation that no longer reflects the implementation
 - `service-docs-maintainer` — Generates and updates service-level documentation
 
+**Review:**
+
+- `code-reviewer` — Independent code review against acceptance criteria (S6 Forensic Review)
+- `reviewer-accessibility`, `reviewer-performance`, `reviewer-quality`, `reviewer-security` — Specialist review agents for the multi-perspective review phase
+
+**Grooming:**
+
+- `backlog-item-groomer` — Grooms a backlog item with RT-ICA assessment and resource map
+
 **Execution:**
 
-- `task-worker` — Universal SAM task executor for implementation tasks
+- `task-worker` — Universal SAM task executor — claims, executes, and reports all implementation tasks
 - `generic-stage-agent` — General-purpose agent for pipeline stages without a specialist
 
 ---
@@ -453,7 +573,7 @@ Restart your Claude Code session after installation to load all components.
 
 ### Cursor IDE
 
-The **`.cursor-plugin/plugin.json`** manifest is for Cursor (see [Plugins reference](https://cursor.com/docs/reference/plugins.md)). MCP entries mirror **Claude Code** for the script path: **`${CLAUDE_PLUGIN_ROOT}/scripts/...`**, because Cursor resolves **`./scripts/...` against `${workspaceFolder}`** (the open project), which points at the wrong tree (e.g. `vm-flightsimulator/scripts/...` instead of the installed plugin). **`DH_PROJECT_ROOT`** is set to **`${workspaceFolder}`** so backlog/SAM resolve the **git repo** you have open. If your Cursor build does not set **`CLAUDE_PLUGIN_ROOT`** for this plugin, override the MCP `args` in **`.cursor/mcp.json`** with an absolute path to `scripts/run_backlog_server.py` under your plugin install, or report the gap to Cursor.
+The **`.cursor-plugin/plugin.json`** manifest is for Cursor (see [Plugins reference](https://cursor.com/docs/reference/plugins.md)). MCP entries mirror **Claude Code** for the script path: **`${CLAUDE_PLUGIN_ROOT}/scripts/...`**, because Cursor resolves **`./scripts/...` against `${workspaceFolder}`** (the open project), which points at the wrong tree. **`DH_PROJECT_ROOT`** is set to **`${workspaceFolder}`** so backlog/SAM resolve the **git repo** you have open. If your Cursor build does not set **`CLAUDE_PLUGIN_ROOT`** for this plugin, override the MCP `args` in **`.cursor/mcp.json`** with an absolute path to `scripts/run_backlog_server.py` under your plugin install.
 
 ---
 
@@ -462,7 +582,7 @@ The **`.cursor-plugin/plugin.json`** manifest is for Cursor (see [Plugins refere
 - Claude Code v2.0+
 - GitHub repository (required for backlog and milestone features)
 - `GITHUB_TOKEN` in your environment (for MCP tool access to Issues)
-- Python 3.11+ (for the MCP server backends — installed automatically)
+- Python 3.11+ (for the MCP server backends — installed automatically via `uv`)
 - `uv` package manager (for running Python components)
 
 ---
@@ -479,7 +599,7 @@ The **`.cursor-plugin/plugin.json`** manifest is for Cursor (see [Plugins refere
 
 **Skip it when:**
 
-- Fixing a one-line typo or a known, trivial bug
+- Fixing a one-line typo or a known, trivial bug (use `/dh:work-backlog-item --quick` instead)
 - Making documentation-only changes
 - Your language plugin already provides its own complete workflow (check for a flow override in its manifest)
 

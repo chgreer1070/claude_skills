@@ -4,69 +4,65 @@
 
 # XDG Base Directory
 
-Makes Claude organize application files properly on Linux and Unix systems.
+Teaches Claude the XDG Base Directory Specification — the Linux standard for where applications store configuration, data, cache, state, and runtime files. Claude applies these conventions automatically when writing code that touches the filesystem.
 
-## Why Install This?
+## What It Does
 
-When you ask Claude to build CLI tools or Python applications, it might:
-
-- Clutter your home directory with files like `~/.myapp-config`
-- Hardcode paths instead of respecting your environment settings
-- Mix configuration files with cache data
-- Break when you try to customize file locations
-
-This plugin teaches Claude the standard Linux file organization conventions.
+Without this plugin, Claude writes code that scatters files across the home directory (`~/.myapp`, `~/.myapp-config`, `~/.myapp.lock`). With it, Claude follows the specification precisely: correct directories, correct environment variable handling, correct validation rules (absolute paths only), and correct separation of config vs data vs cache vs state.
 
 ## What Changes
 
 With this plugin installed, Claude will:
 
-- Store config files in `~/.config/appname/` instead of `~/.appname`
-- Put data files in `~/.local/share/appname/`
-- Put cache in `~/.cache/appname/`
-- Put log files in `~/.local/state/appname/`
-- Respect your XDG environment variables if you've customized them
-- Validate paths correctly (absolute paths only, per specification)
-- Handle cross-platform storage when using the platformdirs library
+- Use `~/.config/appname/` for configuration (not `~/.appname`)
+- Use `~/.local/share/appname/` for persistent data
+- Use `~/.cache/appname/` for regenerable cache files
+- Use `~/.local/state/appname/` for logs, history, and undo buffers
+- Use `/run/user/$UID/appname/` for runtime files (sockets, pipes, locks)
+- Respect all five `$XDG_*` environment variables when set
+- Validate that XDG paths are absolute before using them (per spec rule)
+- Handle cross-platform storage correctly when using the `platformdirs` library
+
+## XDG Environment Variables
+
+| Variable | Default | Use For |
+|----------|---------|---------|
+| `$XDG_CONFIG_HOME` | `$HOME/.config` | Settings, preferences |
+| `$XDG_DATA_HOME` | `$HOME/.local/share` | Databases, generated content |
+| `$XDG_CACHE_HOME` | `$HOME/.cache` | Temporary, regenerable data |
+| `$XDG_STATE_HOME` | `$HOME/.local/state` | Logs, history, recent files |
+| `$XDG_RUNTIME_DIR` | `/run/user/$UID` | Sockets, pipes, lock files |
 
 ## Installation
 
-First, add the marketplace (one-time setup):
-
 ```bash
 /plugin marketplace add Jamie-BitFlight/claude_skills
-```
-
-Then install the plugin:
-
-```bash
 /plugin install xdg-base-directory@jamie-bitflight-skills
 ```
 
 ## Usage
 
-Just install it and it works automatically. You'll notice the difference when you ask Claude to:
+Install and ask Claude to write code that stores files. The skill activates automatically:
 
-- "Create a CLI tool that saves configuration"
-- "Build a Python app that downloads and caches data"
-- "Write a script that logs user history"
-- "Make this app respect XDG environment variables"
-
-## Example
-
-**Without this plugin**:
-
-```python
-# Claude might write this
-config_file = Path.home() / '.myapp' / 'config.toml'
+```text
+"Create a CLI tool that saves user configuration"
+"Build a Python app that caches downloaded data"
+"Write a script that logs command history"
+"Make this app respect XDG environment variables"
+"Where should this app store its database file?"
 ```
 
-Result: Your home directory fills up with dotfiles.
+### Example
 
-**With this plugin**:
+Without this plugin:
 
 ```python
-# Claude writes this instead
+config_file = Path.home() / '.myapp' / 'config.toml'  # pollutes home dir
+```
+
+With this plugin:
+
+```python
 def get_config_dir() -> Path:
     xdg = os.environ.get('XDG_CONFIG_HOME')
     base = Path(xdg) if xdg and Path(xdg).is_absolute() else Path.home() / '.config'
@@ -75,29 +71,17 @@ def get_config_dir() -> Path:
 config_file = get_config_dir() / 'config.toml'
 ```
 
-Result: Clean home directory, proper organization, respects your customizations.
+Clean home directory. Respects user customization. Compliant with the specification.
 
-## What You Get
+## When to Use
 
-- Proper file organization following Linux standards
-- Clean home directory (no more scattered dotfiles)
-- Environment variable support for custom locations
-- Correct handling of config vs data vs cache vs state
-- Cross-platform awareness with platformdirs
-- Test code that validates XDG compliance
+- Writing Python CLI tools or applications that store files
+- Reviewing code that hardcodes `~/.appname` paths
+- Building Linux-native applications that need proper file organization
+- Writing cross-platform code with `platformdirs` that falls back correctly on Linux
+- Testing XDG compliance by overriding `$XDG_*` variables in test environments
 
 ## Requirements
 
 - Claude Code v2.0+
-- Works best for Linux/Unix development
-- Also covers cross-platform apps (macOS, Windows) when using platformdirs
-
----
-
-> **The Ancient Woe**
->
-> *The village hoarder who keeps his gold in the oven, his boots in the icebox, and his legal deeds buried under the pigsty.*
-
-> **The Bard's Decree**
->
-> *"Banish this clutter! Gold to the vault, garments to the wardrobe, and meats to the larder! Let every belonging find its rightful, ancestral home by the laws of the realm!"*
+- Primarily for Linux/Unix development; also covers cross-platform apps (macOS, Windows) via `platformdirs`

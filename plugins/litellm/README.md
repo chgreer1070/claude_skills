@@ -4,99 +4,66 @@
 
 # LiteLLM
 
-Helps Claude write correct Python code when your project calls LLM APIs.
+Teaches Claude the correct patterns for calling LLM APIs from Python using the LiteLLM library — a unified interface for 100+ providers including OpenAI, Anthropic, Google, AWS Bedrock, and local servers like llamafile and Ollama.
 
 ## Why Install This?
 
-When you're building Python applications that need to call LLMs, there are many ways to get it wrong:
-
-- Forgetting the `llamafile/` prefix when connecting to local models
-- Using the wrong API endpoint format
-- Not handling exceptions properly
-- Missing retry logic for unreliable connections
-- Hard-coding a single provider when you want flexibility
-
-Without this plugin, Claude might suggest code patterns that look reasonable but won't work with your setup.
+LiteLLM's unified `completion()` API hides provider-specific quirks, but getting it right requires knowing exact model name prefixes, URL formats, exception types, and async patterns. Without this plugin, Claude writes code that looks correct but fails at runtime — wrong model prefix, wrong endpoint path, unhandled provider-specific errors, missing retry configuration.
 
 ## What Changes
 
 With this plugin installed, Claude will:
 
-- Use the correct model names and prefixes (like `llamafile/gemma-3-3b`)
-- Connect to your local llamafile server on the right port with the right endpoint format
-- Handle exceptions properly using LiteLLM's OpenAI-compatible error types
-- Add retry logic when needed
-- Set up streaming correctly for async responses
-- Know when to use sync vs async patterns
-- Configure environment variables correctly
+- Use correct model name prefixes for every provider (`llamafile/gemma-3-3b`, `bedrock/claude-3-5-sonnet`, `gemini/gemini-1.5-pro`)
+- Connect to local servers with the right endpoint format (`http://localhost:8080/v1` — the `/v1` path is required)
+- Handle exceptions using LiteLLM's OpenAI-compatible error hierarchy with proper retry logic
+- Choose sync vs async patterns correctly, including async streaming
+- Configure retry counts, timeouts, and fallback providers
+- Set up a LiteLLM proxy for centralized LLM gateway deployments
+- Calculate costs and track usage across providers
 
 ## Installation
 
-First, add the marketplace (one-time setup):
-
 ```bash
 /plugin marketplace add Jamie-BitFlight/claude_skills
-```
-
-Then install the plugin:
-
-```bash
 /plugin install litellm@jamie-bitflight-skills
 ```
 
 ## Usage
 
-Just install it - it works automatically. Claude will use this knowledge when you're writing Python code that involves LLMs.
+Install and ask Claude to write LLM-calling Python code. The skill activates automatically when:
 
-## Example
+- Your code imports `litellm` or uses `completion()` patterns
+- You're connecting to a local llamafile or Ollama server
+- You need to switch between OpenAI, Anthropic, and local providers
+- You're adding retry or fallback logic to LLM calls
 
-**Without this plugin**: You say "connect this Python script to my local llamafile server". Claude might write:
+### Example
 
-```python
-response = litellm.completion(
-    model="gemma-3-3b",  # Wrong - missing prefix
-    messages=[{"role": "user", "content": "Hello"}],
-    api_base="http://localhost:8000",  # Wrong port
-)
+```text
+"Write Python code to call my local llamafile server with retry logic"
+"Add streaming support to this LiteLLM completion call"
+"How do I handle rate limit errors from OpenAI using LiteLLM?"
+"Set up LiteLLM with fallback from Anthropic to OpenAI"
 ```
 
-This code fails because the model name needs the `llamafile/` prefix and llamafile runs on port 8080 by default.
+## When to Use
 
-**With this plugin**: Same request, Claude writes:
+- Building CLI tools that call LLMs (commit message generators, code review scripts)
+- Writing Python services that need provider flexibility
+- Integrating llamafile or Ollama into existing Python projects
+- Adding production-grade retry and fallback logic
+- Setting up a centralized LLM proxy for a team or application
 
-```python
-response = litellm.completion(
-    model="llamafile/gemma-3-3b",  # Correct prefix
-    messages=[{"role": "user", "content": "Hello"}],
-    api_base="http://localhost:8080/v1",  # Correct port and endpoint
-    timeout=30.0,
-    num_retries=3,
-)
-```
+## Supported Providers
 
-This works immediately and includes timeout and retry handling.
-
-## When This Helps
-
-This plugin is most useful when you're:
-
-- Building CLI tools that need to call LLMs (like commit message generators)
-- Writing Python apps that use local models via llamafile
-- Creating services that might switch between OpenAI, Anthropic, and local models
-- Adding LLM features to existing Python projects
-- Setting up retry/fallback logic for production systems
+| Category | Providers |
+|----------|-----------|
+| Cloud | OpenAI, Anthropic, Google Gemini, Azure, AWS Bedrock |
+| Local | llamafile, Ollama, LocalAI, vLLM |
+| All others | 100+ via unified `completion()` — same API, same exception types |
 
 ## Requirements
 
 - Claude Code v2.0+
-- Python 3.11+ (for your project - this plugin is just documentation)
-
----
-
-> **The Ancient Woe**
->
-> *The exhausted diplomat who must learn fifty different languages to speak to fifty different lords, when all he wishes to say is, "Please send us grain."*
-
-> **The Bard's Decree**
->
-> *"Fetch me the Universal Translator! One silver trumpet that, when blown, sounds as French in Paris, Spanish in Madrid, and the very voice of the gods in Rome!"*
+- Python 3.11+ in your project

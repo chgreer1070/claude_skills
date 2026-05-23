@@ -4,35 +4,35 @@
 
 # perl-development
 
-Comprehensive Perl 5.30+ development plugin with modular skills for scripting, CPAN ecosystem,
-environment setup, testing, linting, and validation. Includes specialized agents for script
-development, code auditing, and CLI architecture.
+Comprehensive Perl 5.30+ development plugin. Covers modern Perl idioms, CPAN dependency management, environment setup, testing with Test::More, linting with Perl::Critic, and validation — plus three specialized agents for writing, auditing, and architecting Perl code.
 
-## What it does
+## What It Does
 
-Provides end-to-end Perl development support. Skills cover modern Perl idioms, CPAN module
-management with cpanm and Carton, environment setup with local::lib, test design with
-Test::More, linting with Perl::Critic, and script validation. Agents handle new script
-development, existing code auditing, and Perl CLI application architecture.
+Gives Claude deep knowledge of modern Perl development practices. Use it when writing new Perl scripts, reviewing existing code for correctness and style, managing dependencies via CPAN, or building structured Perl CLI applications. The plugin targets Perl 5.30+ and enforces contemporary idioms: strict/warnings, signatures, Path::Tiny, Try::Tiny, and cpanfile-based dependency management.
 
 ## Skills
 
-- `perl-development` — Core Perl 5.30+ scripting guidance with modern best practices
-- `perl-cpan-ecosystem` — CPAN module installation, cpanfile management, cpanm, and Carton
-- `perl-environment-setup` — Setting up Perl development environments and local::lib
-- `perl-testing` — Test design and Test::More patterns for Perl scripts and modules
-- `perl-lint` — Linting with Perl::Critic and static analysis
-- `perl-validate` — Validation patterns for Perl scripts and data handling
+| Skill | What It Covers |
+|-------|---------------|
+| `perl-development` | Core Perl 5.30+ scripting — pragmas, module imports, variable declaration, error handling patterns |
+| `perl-cpan-ecosystem` | CPAN module installation with cpanm, cpanfile authoring, Carton for reproducible installs, local::lib isolation |
+| `perl-environment-setup` | Perl version management, perlbrew/plenv, setting up a development environment from scratch |
+| `perl-testing` | Test design with Test::More, test structure, coverage, and best practices for Perl scripts and modules |
+| `perl-lint` | Static analysis with Perl::Critic — running at configurable severity levels, interpreting output, fixing violations |
+| `perl-validate` | Validation patterns for input data, command-line arguments, and file content in Perl scripts |
 
 ## Agents
 
-- `perl-script-developer` — Writes new Perl scripts from requirements using modern Perl patterns
-- `perl-script-auditor` — Reviews existing scripts for correctness, style, and security issues
-- `perl-cli-architect` — Designs and builds full Perl CLI applications with structured argument handling
+| Agent | What It Does |
+|-------|-------------|
+| `@perl-script-developer` | Writes new Perl scripts from requirements using modern Perl patterns and proper structure |
+| `@perl-script-auditor` | Reviews existing scripts for security vulnerabilities, Perl::Critic violations, anti-patterns, and code smells |
+| `@perl-cli-architect` | Designs and builds full Perl CLI applications — complex option parsing, subcommands, TTY detection, ANSI color |
 
 ## Installation
 
 ```bash
+/plugin marketplace add Jamie-BitFlight/claude_skills
 /plugin install perl-development@jamie-bitflight-skills
 ```
 
@@ -41,14 +41,28 @@ development, existing code auditing, and Perl CLI application architecture.
 ```text
 /perl-development "write a script to parse CSV files and output summary statistics"
 /perl-development:perl-lint "review my Perl script for Perl::Critic violations"
+/perl-development:perl-testing "write Test::More tests for this module"
+/perl-development:perl-cpan-ecosystem "create a cpanfile for these dependencies"
 ```
 
----
+To use a specialized agent, mention it by role:
 
-> **The Ancient Woe**
->
-> *Relying on the ancient, cryptic sorcerer at the edge of town whose spells are utterly incomprehensible, yet without him, the village wells run dry.*
+```text
+"Use the perl-script-auditor to review this script for security issues"
+"Ask the perl-cli-architect to design a CLI tool with subcommands"
+```
 
-> **The Bard's Decree**
->
-> *"Though thy incantations be written in the tongues of madness, bind them in strict laws! Let not thy chaotic magic summon a demon when I merely asked for a lit candle!"*
+## When to Use
+
+- Writing new Perl 5.30+ scripts with modern idioms
+- Auditing legacy Perl code for correctness, style, and vulnerabilities
+- Setting up CPAN dependency management with cpanm, cpanfile, or Carton
+- Building Perl CLI tools with structured argument handling
+- Adding Test::More test suites to Perl code
+- Running Perl::Critic and fixing violations
+- Setting up a Perl development environment on a new machine
+
+## Requirements
+
+- Claude Code v2.0+
+- Perl 5.30+ in your environment (for running Perl code)

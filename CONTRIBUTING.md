@@ -12,7 +12,7 @@ uv run plugins/plugin-creator/scripts/create_plugin.py
 
 Or create manually following the structure:
 
-```
+```text
 plugins/your-plugin-name/
 ├── .claude-plugin/
 │   └── plugin.json
@@ -26,21 +26,21 @@ plugins/your-plugin-name/
 
 ### 2. Validate the Plugin
 
-Before adding to the marketplace, validate the plugin structure:
+Before adding to the marketplace, validate the plugin structure with `skilllint`:
 
 ```bash
-claude plugin validate plugins/your-plugin-name/
+# Validate and auto-fix a single plugin
+uvx skilllint@latest check --fix plugins/your-plugin-name/
+
+# Dry-run to preview fixes before applying
+uvx skilllint@latest check --check plugins/your-plugin-name/
 ```
 
-All validation checks must pass.
+All validation checks must pass with no errors.
 
 ### 3. Update Marketplace
 
-**MANDATORY**: After creating a new plugin, you MUST update `.claude-plugin/marketplace.json`:
-
-#### Add Plugin Entry
-
-Add your plugin to the `plugins` array in `.claude-plugin/marketplace.json`:
+**MANDATORY**: After creating a new plugin, add it to `.claude-plugin/marketplace.json`:
 
 ```json
 {
@@ -49,33 +49,16 @@ Add your plugin to the `plugins` array in `.claude-plugin/marketplace.json`:
 }
 ```
 
-**Alphabetical order is NOT required** - plugins can be in any order.
+The `name` field is the install name users will use (`/plugin install your-plugin-name@jamie-bitflight-skills`). It can differ from the directory name — for example, `development-harness` installs as `dh` and `the-rewrite-room` installs as `rwr`.
 
-#### Bump Marketplace Version
-
-Update the `metadata.version` field using semantic versioning:
-
-- **Major version** (X.0.0): Breaking changes, removed plugins, major restructuring
-- **Minor version** (1.X.0): New plugins added, significant feature additions
-- **Patch version** (1.0.X): Bug fixes, documentation updates, minor improvements
-
-**Example for adding a new plugin:**
-
-```json
-"metadata": {
-  "description": "...",
-  "version": "2.1.0"
-}
-```
-
-Change `2.0.0` → `2.1.0` when adding a plugin.
+**Note:** Plugin and marketplace versions are bumped automatically by the `auto_sync_manifests.py` pre-commit hook when you commit any change under `plugins/`. Do not manually edit version fields in `plugin.json` or `marketplace.json` — the hook handles this.
 
 #### Validate Marketplace JSON
 
 After editing, validate the JSON syntax:
 
 ```bash
-python3 -m json.tool .claude-plugin/marketplace.json > /dev/null && echo "✓ Valid" || echo "✗ Invalid"
+python3 -m json.tool .claude-plugin/marketplace.json > /dev/null && echo "Valid" || echo "Invalid"
 ```
 
 ### 4. Test Locally
@@ -100,81 +83,54 @@ Test the plugin via the local marketplace:
 
 ### 1. Remove Plugin Directory
 
-Delete the plugin directory:
-
 ```bash
 rm -rf plugins/your-plugin-name/
 ```
 
 ### 2. Update Marketplace
 
-**MANDATORY**: Remove the plugin entry from `.claude-plugin/marketplace.json`:
+Remove the plugin entry from `.claude-plugin/marketplace.json`. Find and delete the entire plugin object, including any trailing comma.
 
-Find and delete the entire plugin object:
-
-```json
-{
-  "name": "your-plugin-name",
-  "source": "./plugins/your-plugin-name"
-},
-```
-
-**Important**: Remove the trailing comma if this was the last plugin in the array.
-
-### 3. Bump Version
-
-Update `metadata.version`:
-
-- **Major version** (X.0.0) if the plugin was widely used or removal is breaking
-- **Minor version** (1.X.0) if removing an experimental or rarely-used plugin
-
-### 4. Validate
+### 3. Validate
 
 ```bash
 python3 -m json.tool .claude-plugin/marketplace.json > /dev/null
 ```
 
+Version bumping happens automatically on commit via the pre-commit hook.
+
 ## Updating an Existing Plugin
 
-### When to Bump Marketplace Version
+Make your changes and commit. The `auto_sync_manifests.py` pre-commit hook runs on every commit that touches files under `plugins/` and:
 
-**Do NOT bump** marketplace version for:
+- Bumps the plugin version in `.claude-plugin/plugin.json`
+- Syncs the component arrays (skills, agents, commands) in `plugin.json`
+- Bumps `metadata.version` in `.claude-plugin/marketplace.json` when the set of plugins changes
 
-- Internal plugin improvements
-- Bug fixes within a plugin
-- Documentation updates within a plugin
-- Refactoring that doesn't change functionality
-
-**DO bump** marketplace version (patch) only if:
-
-- The change affects marketplace metadata itself
-- Multiple plugins updated simultaneously as a coordinated release
-
-**Plugin-specific versions** are managed in each plugin's `plugin.json`, not in the marketplace.
+You do not need to manually bump any version field.
 
 ### Plugin Validation
 
-After making changes to any plugin, validate it:
+After making changes to any plugin, validate it before committing:
 
 ```bash
-# Validate single plugin
-claude plugin validate plugins/your-plugin-name/
+# Validate single plugin (auto-fix mode)
+uvx skilllint@latest check --fix plugins/your-plugin-name/
 
 # Validate all plugins
-for plugin in plugins/*/; do
-  echo "=== Validating ${plugin} ==="
-  claude plugin validate "${plugin}"
-done
+uvx skilllint@latest check plugins/
 ```
+
+The `skilllint` pre-commit hook also runs automatically on commit and applies fixes inline.
 
 ## Common Validation Errors
 
-| Error                                     | Cause                               | Fix                                                  |
-| ----------------------------------------- | ----------------------------------- | ---------------------------------------------------- |
-| `name: Plugin name cannot contain spaces` | Plugin name has spaces              | Use kebab-case: `my-plugin` not `My Plugin`          |
-| `agents: Invalid input`                   | Used `"./agents/"` directory string | Use array: `["./agents/file.md"]`                    |
-| `name: Required`                          | Missing name field in plugin.json   | Add `"name": "plugin-name"`                          |
-| Invalid JSON syntax                       | Malformed JSON                      | Run `python3 -m json.tool plugin.json` to find error |
+| Error | Cause | Fix |
+| --- | --- | --- |
+| `name: Plugin name cannot contain spaces` | Plugin name has spaces | Use kebab-case: `my-plugin` not `My Plugin` |
+| `agents: Invalid input` | Used `"./agents/"` directory string | Use array: `["./agents/file.md"]` |
+| `name: Required` | Missing name field in plugin.json | Add `"name": "plugin-name"` |
+| Invalid JSON syntax | Malformed JSON | Run `python3 -m json.tool plugin.json` to find error |
 
 ## Marketplace Description Guidelines
 
@@ -197,12 +153,11 @@ The marketplace description should:
 
 Before submitting a PR:
 
-- [ ] All plugins validate successfully (`claude plugin validate`)
+- [ ] All plugins validate successfully (`uvx skilllint@latest check plugins/`)
 - [ ] `.claude-plugin/marketplace.json` updated (if adding/removing plugins)
 - [ ] Marketplace JSON is valid (`python3 -m json.tool`)
-- [ ] Marketplace version bumped appropriately
 - [ ] Tested locally via marketplace installation
-- [ ] README.md updated (if adding new plugin category)
+- [ ] README.md updated (if adding new plugin to tables — include install name)
 - [ ] Plugin has README.md with usage examples
 
 ## Code Quality
@@ -215,7 +170,7 @@ Validate skill and agent frontmatter:
 # Single file
 uvx skilllint@latest check path/to/SKILL.md
 
-# Entire directory
+# Entire plugin directory
 uvx skilllint@latest check plugins/your-plugin/
 
 # Auto-fix issues (dry-run first)
@@ -230,6 +185,8 @@ Run formatters before committing:
 ```bash
 uv run prek run --files path/to/modified/file.md
 ```
+
+Pre-commit hooks run `ruff`, `ruff-format`, `markdownlint-cli2`, `biome-check`, and `skilllint` automatically on commit. Fix any errors they report before pushing.
 
 ## Questions?
 

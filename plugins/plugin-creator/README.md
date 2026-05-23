@@ -14,12 +14,34 @@ Building a Claude Code plugin involves a lot of moving parts: `plugin.json` sche
 - Skills that grow too large and get truncated from Claude's context budget
 - Agents with weak description triggers that cause misrouting
 - Hooks connected to the wrong events or written in the wrong language
+- `plugin.json` component arrays that override auto-discovery and silently hide agents or skills
 
 This plugin gives Claude a complete reference for all of those systems plus agentic workflows to handle creation, validation, and refactoring.
 
+## Quick Start: From Zero to First Working Skill in 5 Minutes
+
+```bash
+# 1. Install the plugin
+/plugin marketplace add Jamie-BitFlight/claude_skills
+/plugin install plugin-creator@jamie-bitflight-skills
+
+# 2. Create a skill
+/skill-creator
+
+# Claude will ask what the skill should do, then generate the SKILL.md.
+
+# 3. Validate it
+/lint ./plugins/my-plugin/skills/my-new-skill
+
+# 4. Fix any issues automatically
+uvx skilllint@latest check --fix ./plugins/my-plugin/skills/my-new-skill
+```
+
+That's it. Version bumping is automatic on every `git commit`.
+
 ## What You Get
 
-### Commands
+### Creation Workflows
 
 #### `/plugin-lifecycle`
 
@@ -30,7 +52,7 @@ Orchestrates the full plugin development lifecycle from a blank canvas to a mark
 /plugin-lifecycle existing <plugin-path>
 ```
 
-- `new <concept>` — Creates a plugin from scratch. Runs a prerequisite check (RT-ICA), user discussion, parallel research, design, atomic implementation, multi-layer validation, documentation, and final verification.
+- `new <concept>` — Creates a plugin from scratch. Runs a prerequisite check, user discussion, parallel research, design, atomic implementation, multi-layer validation, documentation, and final verification.
 - `existing <plugin-path>` — Improves an existing plugin. Enters at the assessment phase, then proceeds through design, planning, and execution.
 
 #### `/plugin-creator`
@@ -71,6 +93,8 @@ Creates hook scripts for Claude Code plugins. Enforces the mandatory constraints
 
 Trigger phrases: "create a hook", "add a hook to my plugin", "build a PostToolUse hook", "I need a hook that...".
 
+### Validation and Quality
+
 #### `/lint`
 
 Runs the `skilllint` validator on a skill, agent, or plugin directory. Reports token complexity, broken links, frontmatter issues, and structural problems.
@@ -78,6 +102,40 @@ Runs the `skilllint` validator on a skill, agent, or plugin directory. Reports t
 ```text
 /lint <path-to-skill-or-plugin>
 ```
+
+#### `/write-frontmatter-description`
+
+Writes or rewrites frontmatter `description` fields for skills and agents. Enforces single-line format, no YAML multiline indicators, no bare colons, front-loaded critical information, and trigger keywords for tool selection. Use when a description exceeds 1024 characters or fails validation.
+
+#### `/audit-agent-lifecycle`
+
+Validates that agents can actually accomplish what they claim to do. Runs 8 semantic audits: capability vs configuration alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, and pattern learning. Writes reports to `.claude/audits/`.
+
+```text
+/audit-agent-lifecycle <plugin-path>
+```
+
+#### `/audit-skill-lifecycle`
+
+Deep semantic validation of how skills interconnect. Traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences. Generates audit reports to `.claude/audits/`.
+
+```text
+/audit-skill-lifecycle <plugin-path>
+```
+
+#### `/audit-skill-completeness`
+
+Evaluates a single skill's quality against 8 completeness categories derived from Anthropic's official skills repository. Scores preparation, progression, verification, scripts, examples, anti-patterns, references, and assets (0-3 per category). Generates a scored report.
+
+```text
+/audit-skill-completeness <skill-path>
+```
+
+#### `/agent-capability-analyzer`
+
+Runs the description-drift experiment: spawns all Claude Code agents simultaneously to collect self-reported capabilities, then compares them against static frontmatter descriptions. Use to measure how reliable orchestrator routing based on descriptions actually is.
+
+### Refactoring Workflows
 
 #### `/refactor-plugin`
 
@@ -129,13 +187,7 @@ Picks up a specific refactoring task from a task file, updates its status, imple
 /start-refactor-task <task-file-path> [--task <task-id>] [--complete <task-id>]
 ```
 
-#### `/add-doc-updater`
-
-Adds an automated documentation sync pipeline to any skill that wraps external documentation (API references, CLI docs, framework docs). Creates a Python script that downloads upstream docs, processes markdown for AI consumption, and enforces a configurable refresh cooldown.
-
-```text
-/add-doc-updater <target-plugin-or-skill-path>
-```
+### Content Maintenance
 
 #### `/skill-sync`
 
@@ -155,33 +207,15 @@ When given a plugin directory, runs on every skill within it. The pipeline:
 
 The pipeline does not pause for review and does not manage commits — it exits after `uvx skilllint` passes on all modified files.
 
-#### `/audit-agent-lifecycle`
+#### `/add-doc-updater`
 
-Validates that agents can actually accomplish what they claim to do. Runs 8 semantic audits: capability vs configuration alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, and pattern learning. Writes reports to `.claude/audits/`.
-
-```text
-/audit-agent-lifecycle <plugin-path>
-```
-
-#### `/audit-skill-lifecycle`
-
-Deep semantic validation of how skills interconnect. Traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences. Generates audit reports to `.claude/audits/`.
+Adds an automated documentation sync pipeline to any skill that wraps external documentation (API references, CLI docs, framework docs). Creates a Python script that downloads upstream docs, processes markdown for AI consumption, and enforces a configurable refresh cooldown.
 
 ```text
-/audit-skill-lifecycle <plugin-path>
+/add-doc-updater <target-plugin-or-skill-path>
 ```
 
-#### `/audit-skill-completeness`
-
-Evaluates a single skill's quality against 8 completeness categories derived from Anthropic's official skills repository. Scores preparation, progression, verification, scripts, examples, anti-patterns, references, and assets (0-3 per category). Generates a scored report.
-
-```text
-/audit-skill-completeness <skill-path>
-```
-
-#### `/agent-capability-analyzer`
-
-Runs the description-drift experiment: spawns all Claude Code agents simultaneously to collect self-reported capabilities, then compares them against static frontmatter descriptions. Use to measure how reliable orchestrator routing based on descriptions actually is.
+### Optimization
 
 #### `/optimize-claude-md`
 
@@ -197,10 +231,6 @@ Only runs when you invoke it directly — Claude will not trigger this automatic
 
 Guides writing lean AI-facing instructions. Flags content that Claude does not need: discoverable data, over-explained concepts, invented constraints, duplicated content, and stale cached facts.
 
-#### `/write-frontmatter-description`
-
-Writes or rewrites frontmatter `description` fields for skills and agents. Enforces single-line format, no YAML multiline indicators, no bare colons, front-loaded critical information, and trigger keywords for tool selection. Use when a description exceeds 1024 characters or fails validation.
-
 #### `/mission-statement`
 
 Defines a plugin mission statement — purpose, values, anti-patterns, and trade-offs. Produces `mission.json` with `[draft]` status and creates a backlog interview task for refinement. Use when creating a new plugin or auditing alignment.
@@ -209,11 +239,7 @@ Defines a plugin mission statement — purpose, values, anti-patterns, and trade
 /mission-statement <plugin-path>
 ```
 
-#### `/rt-ica` (moved to development-harness)
-
-This skill has moved to the `development-harness` plugin. Use `/dh:rt-ica` instead.
-
-Mandatory pre-planning checkpoint (Reverse Thinking — Information Completeness Assessment). Blocks planning until all prerequisites are verified. Use before creating plans, delegating to agents, or defining acceptance criteria.
+### Configuration References
 
 #### `/memory-and-rules`
 
@@ -273,7 +299,7 @@ Then install the plugin:
 /plugin install plugin-creator@jamie-bitflight-skills
 ```
 
-## Usage
+## Usage Examples
 
 ### Create a new plugin from scratch
 
@@ -283,6 +309,14 @@ Then install the plugin:
 
 Claude will run prerequisite checks, discuss requirements with you, conduct parallel research, design the plugin structure, implement components, validate everything, and produce a marketplace-ready plugin.
 
+### Create a new skill
+
+```bash
+/skill-creator
+```
+
+Claude will ask about the skill's purpose, scope (plugin/project/user), and intended invocation triggers, then write the SKILL.md and validate it.
+
 ### Create a new agent
 
 ```bash
@@ -290,6 +324,14 @@ Claude will run prerequisite checks, discuss requirements with you, conduct para
 ```
 
 Or just say "create an agent that reviews pull requests for security issues" and Claude will activate the workflow automatically.
+
+### Create a hook
+
+```bash
+/hook-creator
+```
+
+Or say "add a PostToolUse hook that logs every file write" and Claude will generate a validated `.mjs` or `.cjs` hook script and wire it into `hooks/hooks.json`.
 
 ### Validate a plugin before committing
 
@@ -333,7 +375,7 @@ Claude will assess whether the skill needs splitting (multiple independent domai
 - Required fields present (`name` and `description` for agents; `name` for plugin skills)
 - Field types match schema (string, bool, object)
 - `tools` and `skills` fields are comma-separated strings, not arrays
-- Token-based skill complexity (SK006: warning, SK007: must split)
+- Token-based skill complexity (SK006: warning threshold, SK007: must split)
 - Internal markdown link validity
 
 ### What `claude plugin validate` checks
@@ -354,6 +396,7 @@ Claude will assess whether the skill needs splitting (multiple independent domai
 | Description shows as `>-` | YAML multiline indicator | `skilllint --fix` collapses to single line |
 | Hook not firing | Script not executable | `chmod +x scripts/my-hook.mjs` (or `.cjs`/`.py`) |
 | Path errors after install | Used `../` traversal | Use `${CLAUDE_PLUGIN_ROOT}` or symlinks |
+| Agents disappear after adding one | Declared partial list in `plugin.json` | Remove the `agents` key — auto-discovery registers everything in `agents/` |
 
 ## Agents
 
@@ -371,32 +414,39 @@ These agents run internally to implement the skills above. They are not invoked 
 | `plugin-assessor` | Analyzes plugins for structure, frontmatter compliance, orphaned files, and cross-reference validity |
 | `hook-creator` | Generates hook scripts (Node.js `.mjs`/`.cjs` by default, Python or other language when matching project runtime), wires `hooks.json` |
 | `agent-creator` | Creates agent files from requirements with template selection and plugin.json updates |
+| `grader` | Grades skill eval runs for the evaluation and optimization workflow |
+| `comparator` | Blind A/B comparison of skill variants for the evaluation workflow |
+| `analyzer` | Analyzes graded eval results and produces improvement recommendations |
 
-### The three documentation-work agents
+### Routing the three documentation-work agents
 
-These three agents replaced `contextual-ai-documentation-optimizer`, which bundled all documentation concerns under a single agent that was easy to misroute. Each agent now has a single scope so orchestrators and skill authors can route precisely.
+These three agents replaced a single bundled documentation agent. Each has a single scope so orchestrators and skill authors can route precisely.
 
-**`skill-auditor`** — Use when you want to know how complete or well-structured a skill is, without changing anything. The agent runs entirely read-only: it scores the skill against 8 completeness categories, checks whether the file is approaching the SK006/SK007 token thresholds, checks progressive-disclosure structure, and reports all gaps in a structured audit report at `.tmp/scratch/reports/skill-sync-{slug}-completeness-YYYYMMDD.md`. Nothing is written to the skill itself. Route here when a human or orchestrator asks "how good is this skill?" or "what's missing from this skill?" — not when the goal is to fix something.
+**`skill-auditor`** — Use when you want to know how complete or well-structured a skill is, without changing anything. The agent runs entirely read-only: it scores the skill against 8 completeness categories, checks whether the file is approaching the SK006/SK007 token thresholds, and reports all gaps. Nothing is written to the skill itself. Route here when a human or orchestrator asks "how good is this skill?" or "what's missing?" — not when the goal is to fix something.
 
-**`skill-content-updater`** — Use when a skill's cited sources have drifted and you need to bring content current. The agent has two roles in the `/skill-sync` pipeline: in Stage 2 it fetches every `SOURCE:` URL cited in the skill and classifies each claim as NEW (exists upstream, absent from skill), STALE (changed or removed upstream), VERIFIED (matches), or UNVERIFIABLE (URL unreachable); in Stage 5 it receives a change plan file path and executes it exactly — no interpretation, no content invention. Route here when the goal is "sync this skill against what the upstream docs actually say today", not when the goal is "make this skill's prose clearer".
+**`skill-content-updater`** — Use when a skill's cited sources have drifted and you need to bring content current. The agent fetches every `SOURCE:` URL cited in the skill and classifies each claim as NEW, STALE, VERIFIED, or UNVERIFIABLE. In write mode, it receives a change plan and executes it exactly — no interpretation, no content invention. Route here when the goal is "sync this skill against what the upstream docs actually say today".
 
-**`ai-doc-optimizer`** — Use when the skill's content is current but needs to be clearer, better structured, or more useful for Claude to follow. The agent rewrites for comprehension: tightens instruction language, applies RT-ICA and CoVe patterns, improves structure and progressive disclosure, and rewrites `description` frontmatter fields to front-load trigger keywords. Route here when the goal is "make this skill work better as AI-facing instruction", not when the goal is "add what's missing from the upstream docs".
+**`ai-doc-optimizer`** — Use when the skill's content is current but needs to be clearer, better structured, or more useful for Claude to follow. The agent rewrites for comprehension: tightens instruction language, applies prompt engineering patterns, improves structure and progressive disclosure, and rewrites `description` frontmatter fields to front-load trigger keywords. Route here when the goal is "make this skill work better as AI-facing instruction".
 
-Routing by concern:
+Routing summary:
 
-- Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `ai-doc-optimizer` agent (`plugin-creator:ai-doc-optimizer`)
-- Audit quality (read-only, no writes, score against completeness categories) → `skill-auditor` agent (`plugin-creator:skill-auditor`)
-- Sync content against upstream docs (add NEW/fix STALE from live sources) → `skill-content-updater` agent (`plugin-creator:skill-content-updater`)
-- Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
+- Optimize existing content → `ai-doc-optimizer` (`plugin-creator:ai-doc-optimizer`)
+- Audit quality (read-only) → `skill-auditor` (`plugin-creator:skill-auditor`)
+- Sync against upstream docs → `skill-content-updater` (`plugin-creator:skill-content-updater`)
+- Rewrite description field only → `/plugin-creator:write-frontmatter-description`
 
 ## Scripts
 
 | Script | Purpose | Usage |
 |---|---|---|
-| `create_plugin.py` | Interactive plugin scaffolding | `uv run plugins/plugin-creator/scripts/create_plugin.py` |
-| `fix_tool_formats.py` | Fix invalid tool field formats across the codebase | `uv run plugins/plugin-creator/scripts/fix_tool_formats.py` |
+| `create_plugin.py` | Interactive plugin scaffolding | `./plugins/plugin-creator/scripts/create_plugin.py create` |
+| `fix_tool_formats.py` | Fix invalid tool field formats across the codebase | `./plugins/plugin-creator/scripts/fix_tool_formats.py` |
+| `normalize_frontmatter.py` | Strip unnecessary YAML quotes from all frontmatter | `./plugins/plugin-creator/scripts/normalize_frontmatter.py` |
+| `check_agent_auto_discovery.py` | Detect `plugin.json` arrays that silently mask auto-discovered components | `./plugins/plugin-creator/scripts/check_agent_auto_discovery.py` |
 | `auto_sync_manifests.py` | Pre-commit hook — syncs plugin.json and bumps versions | Runs automatically on `git commit` |
 | `validate-task-file.sh` | Validate refactoring task file format | `./plugins/plugin-creator/scripts/validate-task-file.sh <path>` |
+
+See [scripts/README.md](./scripts/README.md) for full documentation of each script.
 
 ## Requirements
 

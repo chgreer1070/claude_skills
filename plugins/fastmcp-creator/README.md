@@ -4,130 +4,163 @@
 
 # FastMCP Creator
 
-Build high-quality integrations that connect Claude to external services and APIs.
+Expert-level guidance for building FastMCP v3 Python MCP servers — tools, resources, prompts,
+providers, transforms, auth, testing, and production deployment. Grounded in local v3.1 docs;
+no speculation.
 
-## Why Install This?
+## The Problem It Solves
 
-When you want Claude to interact with external services (Slack, GitHub, databases, web APIs, etc.), you need to build an MCP server - a specialized integration that bridges Claude with those services.
+FastMCP v3 introduced a provider/transform architecture that is fundamentally different from
+v2. Code written from training-data memory uses deprecated syntax — `@mcp.tool()` with
+parentheses, missing `task=True` for background tools, wrong transport flags. This plugin
+loads verified v3.1 reference docs and enforces correct patterns at every step.
 
-Without this plugin, Claude might:
+## What's Inside
 
-- Create basic API wrappers that don't work well with AI workflows
-- Miss important design patterns that make integrations reliable
-- Skip critical error handling and validation
-- Forget to include tests that verify the integration actually works
+| Component | Name | Activates on |
+|-----------|------|--------------|
+| Skill | `fastmcp-creator` | Building, extending, or debugging FastMCP v3 servers |
+| Skill | `fastmcp-client-cli` | Running `fastmcp list` / `fastmcp call` against a running server |
+| Skill | `fastmcp-python-tests` | Writing pytest suites for FastMCP servers |
 
-This plugin makes Claude an expert at building production-ready integrations.
-
-## What Changes
-
-With this plugin installed, Claude will:
-
-- Build integrations optimized specifically for AI use (not just generic API wrappers)
-- Design tools around complete workflows instead of individual API calls
-- Include comprehensive validation using Pydantic (Python) or Zod (TypeScript)
-- Add proper error handling with clear, actionable error messages
-- Create evaluation tests to verify the integration works correctly
-- Follow security best practices (path validation, rate limiting, etc.)
-- Structure responses to be concise and context-efficient
-
-## Installation
-
-First, add the marketplace (one-time setup):
+## Quick Start
 
 ```bash
 /plugin marketplace add Jamie-BitFlight/claude_skills
-```
-
-Then install the plugin:
-
-```bash
 /plugin install fastmcp-creator@jamie-bitflight-skills
 ```
 
-## Usage
+Then ask Claude to build a server:
 
-Just install it - Claude will automatically use this knowledge when you ask it to build MCP servers or integrations.
+```
+Build an MCP server that wraps the GitHub REST API — issues and PRs only.
+```
 
-You'll get the best results when you:
+Claude will load the v3.1 reference docs, select the right provider type and transport, write
+validated Python, and include tests.
 
-- Specify which service you want to integrate (e.g., "build a Slack MCP server")
-- Mention whether you prefer Python (FastMCP v3, fully supported) or TypeScript (legacy reference only — not updated for v3)
-- Describe what workflows you need (e.g., "send messages and search channels")
+## Minimal Server
 
-## What You Can Build
+```python
+from fastmcp import FastMCP
 
-**Communication tools**: Slack, Discord, email services
-**Development platforms**: GitHub, GitLab, Jira, Linear
-**Data sources**: PostgreSQL, SQLite, spreadsheets, web scrapers
-**AI services**: Hugging Face, OpenAI, custom ML models
-**Cloud infrastructure**: AWS, Render, database management
-**Web automation**: Browser control, form filling, page scraping
-**File operations**: JSON manipulation, file system access
+mcp = FastMCP("my-server")
 
-## Example
+@mcp.tool  # no parentheses — v3 canonical syntax
+def greet(name: str) -> str:
+    """Return a greeting."""
+    return f"Hello, {name}!"
 
-**Without this plugin**:
-You ask Claude to "create a GitHub MCP server." Claude builds a basic wrapper that exposes individual API endpoints. When you try to use it, you get cryptic errors, responses are too verbose, and it's missing key validation.
+if __name__ == "__main__":
+    mcp.run()
+```
 
-**With this plugin**:
-Same request, but Claude:
+## What Claude Can Build With This Plugin
 
-1. Studies GitHub's API thoroughly
-2. Designs workflow-oriented tools (like `github_create_pr_with_review_request` instead of separate create/assign tools)
-3. Adds Pydantic validation for all inputs
-4. Creates 10 complex evaluation questions to test the integration
-5. Includes proper error handling with clear messages
-6. Optimizes responses to be concise yet complete
-7. Adds security validations for destructive operations
+**Compose multiple servers**
 
-The result is a production-ready integration you can actually use reliably.
+```python
+mcp.mount(sub_server, namespace="github")
+```
 
-## Supported Languages
+**Wrap a remote HTTP server as stdio**
 
-- **Python** with FastMCP 3.x framework (primary — fully supported through v3.1, all patterns covered). Source: [PrefectHQ/fastmcp](https://github.com/PrefectHQ/fastmcp)
-- **TypeScript/Node.js** — legacy reference only; the included reference file is not updated for FastMCP v3 and covers v2-era patterns
+```python
+from fastmcp import create_proxy
+mcp = create_proxy("http://remote-service/mcp")
+```
 
-Python implementations include:
+**Serve files or Claude skills as resources**
 
-- Input validation with Pydantic
-- Async/await patterns for I/O operations
-- Proper error handling and logging
-- Security best practices
-- Transport options (STDIO, HTTP, `FASTMCP_TRANSPORT` env var); SSE is a client-compatibility option for connecting to legacy servers, not a v3 server transport
-- Server-level transforms (Tool Search, CodeMode for large tool catalogs)
-- MultiAuth and PropelAuth for flexible authentication
-- Prefab Apps for interactive UI components (experimental)
-- nginx reverse proxy deployment guidance
+```python
+from fastmcp.providers import FileSystemProvider
+mcp = FastMCP("docs", providers=[FileSystemProvider("./docs/")])
+```
 
-## What's Included
+**Search large tool catalogs**
 
-When Claude builds an MCP server using this plugin, you get:
+```python
+from fastmcp.transforms import BM25SearchTransform
+```
 
-- Well-structured project with proper configuration
-- Input validation schemas
-- Clear, actionable error messages
-- Comprehensive documentation
-- Evaluation tests (10 complex questions that verify it works)
-- Security patterns (path validation, confirmation flags for destructive operations)
-- Performance optimizations (caching, pagination, character limits)
+**Run long tasks without blocking**
+
+```python
+@mcp.tool(task=True)
+async def long_job(params: str) -> str: ...
+```
+
+**Add auth (OAuth, JWT, PropelAuth)**
+
+```python
+from fastmcp.auth import MultiAuth, require_scopes
+```
+
+**Return interactive UI from tools**
+
+```python
+@mcp.tool(app=True)
+def dashboard() -> PrefabApp: ...
+```
+
+## Skill Trigger Matrix
+
+The `fastmcp-creator` skill activates automatically when you:
+
+- Create or modify a FastMCP server file
+- Ask about tool/resource/prompt creation
+- Need provider composition (`mount()`, `ProxyProvider`, `FileSystemProvider`)
+- Configure transforms (`ToolTransform`, `BM25SearchTransform`, `CodeMode`)
+- Set up authentication (`MultiAuth`, `PropelAuth`, `require_scopes`)
+- Write a FastMCP client (`Client`, transports, `BearerAuth`)
+- Deploy to production (HTTP, stdio, nginx reverse proxy, Prefect Horizon)
+- Migrate from FastMCP v2
+
+## Testing MCP Servers
+
+The `fastmcp-python-tests` skill covers in-memory transport testing (no real network required),
+pytest fixtures, inline snapshots for complex output, async patterns, and the `CliRunner`
+test harness.
+
+```python
+from fastmcp import Client
+import pytest
+
+@pytest.fixture
+def client(mcp_server):  # in-memory transport
+    return Client(mcp_server)
+
+async def test_greet(client):
+    result = await client.call_tool("greet", {"name": "world"})
+    assert result.content[0].text == "Hello, world!"
+```
+
+## Querying a Running Server
+
+The `fastmcp-client-cli` skill covers `fastmcp list` and `fastmcp call`:
+
+```bash
+# Discover what tools a server exposes
+fastmcp list --command "uv run --script server.py"
+
+# Call a tool
+fastmcp call --command "uv run --script server.py" greet '{"name": "world"}'
+```
+
+## Version Coverage
+
+| Version | Status |
+|---------|--------|
+| FastMCP 3.1 | Current — full coverage |
+| FastMCP 3.0 | Available — all core features |
+| FastMCP v2 | Legacy reference; migration guide included |
+| TypeScript | Legacy reference only — not updated for v3 |
 
 ## Requirements
 
 - Claude Code v2.0+
-- For Python servers: Python 3.11+
-- For TypeScript servers: Node.js 18+ (legacy reference only — not updated for FastMCP v3)
-
-## Learn More
-
-After installing, ask Claude questions like:
-
-- "Build me a Slack MCP server with message sending and channel search"
-- "Create an MCP server for my PostgreSQL database"
-- "Build a GitHub integration that can create issues and PRs"
-- "Make an MCP server that scrapes web pages"
-
-Claude will handle the research, implementation, validation, and testing automatically.
+- Python 3.11+
+- `uv` (the plugin's MCP reference server runs via `uv run`)
 
 ---
 

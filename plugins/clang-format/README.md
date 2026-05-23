@@ -4,29 +4,25 @@
 
 # clang-format Configuration
 
-Helps Claude configure clang-format to match your existing code style instead of forcing a style on you.
+Helps Claude configure clang-format to match your existing code style rather than overwrite it.
+Bundles 7 ready-to-use templates, 3 editor integration scripts, and complete reference documentation
+for all clang-format options.
 
-## Why Install This?
+## Problem
 
-Setting up code formatting typically means:
+Introducing clang-format without the right configuration causes:
 
-- Massive whitespace-only commits that pollute git history
+- Thousands of whitespace-only line changes that pollute git history
 - Breaking every in-progress feature branch
-- Days of bikeshedding about brace styles and indent width
-- Copy-pasting config files from the internet and hoping they work
+- Days of bikeshedding over brace styles and indent widths
+- Configs copied from the internet that silently misrepresent your style
 
-This plugin changes that. Claude will analyze your existing code, measure the impact of different configurations, and show you exactly what will change before applying anything.
+This plugin changes that workflow: analyze first, measure impact, confirm before applying.
 
-## What Changes
+## Requirements
 
-With this plugin installed, Claude will:
-
-- Analyze your existing code style before suggesting any formatting configuration
-- Test multiple configuration options and score them by impact (line changes vs whitespace)
-- Show you comparison tables and example diffs before changing anything
-- Ask for your approval before finalizing a configuration
-- Set up editor integration and git hooks automatically
-- Know all 194 clang-format options without needing to search documentation
+- Claude Code v2.0+
+- `clang-format` installed (`apt install clang-format` or `brew install clang-format`)
 
 ## Installation
 
@@ -42,70 +38,83 @@ Then install the plugin:
 /plugin install clang-format@jamie-bitflight-skills
 ```
 
-## Usage
+## Quick Start
 
-Just ask Claude naturally. The plugin works automatically.
+The plugin activates automatically when you mention clang-format or request formatting help.
+Describe what you want and Claude will route to the correct workflow:
 
-### Generate Configuration from Existing Code
+```text
+"Set up clang-format for this C++ project without changing the existing style"
+"Add format-on-save to my editor"
+"Make clang-format run before I commit"
+"Why is clang-format putting braces in the wrong place?"
+```
 
-**You say**: "Set up clang-format for this C++ project, but don't change the existing style"
+## Workflows
 
-**Claude will**:
+### Analyze existing code and generate matching configuration
 
-1. Examine multiple files in your codebase
-2. Identify brace styles, indentation, spacing patterns
-3. Generate several configuration hypotheses
-4. Test each one and measure impact (line changes + whitespace changes)
-5. Show you a comparison table with scores
-6. Present example diffs showing what will change
-7. Ask for approval before creating `.clang-format`
+Claude will:
 
-### Set Up Format-on-Save
+1. Examine representative files (braces, indentation, spacing, line breaking)
+2. Map patterns to the closest built-in template
+3. Generate 3–5 configuration hypotheses as temporary files
+4. Run `clang-format --style=... | diff` on 3–5 samples per hypothesis
+5. Score each hypothesis: line-count changes (weight 10) + whitespace changes (weight 1)
+6. Present a comparison table and example diffs
+7. Wait for your approval before creating `.clang-format`
 
-**You say**: "Set up clang-format to run automatically in my editor"
+**Result:** You see exactly what will change before anything is applied.
 
-**Claude will**: Pick the right integration for your editor (Vim, Emacs, VS Code) and set it up correctly.
+### Create a new configuration from a template
 
-### Add Git Hook
+Pick a template from the seven bundled options:
 
-**You say**: "Make clang-format run before I commit"
+| Template | Style |
+|----------|-------|
+| `google-cpp-modified` | Google C++ with 4-space indent, 120-col limit |
+| `linux-kernel` | Linux kernel (tabs, K&R braces) |
+| `microsoft-visual-studio` | Microsoft/Visual Studio conventions |
+| `modern-cpp17-20` | Modern C++17/20 idioms |
+| `compact-dense` | Space-constrained environments |
+| `readable-spacious` | Readability-first, generous whitespace |
+| `multi-language` | C++, JavaScript, and Java in one file |
 
-**Claude will**: Set up a pre-commit hook that formats only staged files.
+### Set up editor integration
 
-### Troubleshoot Formatting
+Claude installs the correct integration for your editor — Vim, Emacs, VS Code, CLion. For
+pre-commit hooks, the bundled script works with both `pre-commit` (Python) and `prek` (Rust).
 
-**You say**: "Why is clang-format putting my braces in weird places?"
+### Troubleshoot formatting behavior
 
-**Claude will**: Check your configuration, identify the relevant options, explain what's happening, and suggest fixes.
+Claude runs `--dump-config` to find the active configuration, maps your complaint to one of 9
+option categories, consults the relevant reference guide, and suggests targeted fixes.
+
+## What's Bundled
+
+- **7 configuration templates** in `assets/configs/`
+- **3 integration scripts** in `assets/integrations/` — Vim, Emacs/Spacemacs, and pre-commit
+- **Reference documentation** in `references/` — all clang-format options organized by category
+  (braces, indentation, spacing, alignment, line breaking, and more), plus full CLI usage guide
 
 ## Example
 
-**Without this plugin**: You ask "add clang-format". Claude copies a random config file from the internet. You apply it. 2,847 lines change across 93 files. Your git history is now useless.
+**Without this plugin:** Claude copies a config from the internet and applies it. 2,847 lines
+change across 93 files. Your git history is now useless.
 
-**With this plugin**: Same request, but Claude:
+**With this plugin:** Claude analyzes 5 files, tests 3 configurations, and reports:
 
-- Analyzes 5 files in your codebase
-- Tests 3 configuration approaches
-- Reports: "Config A: 34 line changes, Config B: 12 line changes, Config C: 8 line changes"
-- Shows you diffs of what will change in each config
-- Recommends Config C
-- Waits for your approval
+```
+Config A: impact score 340 (34 line changes × 10 + 14 whitespace changes × 1)
+Config B: impact score 128
+Config C: impact score 82  ← recommended
 
-You approve. Claude creates `.clang-format`. You apply it. 8 lines change (real formatting fixes, not whitespace churn). Your git history stays clean.
+Example diff for Config C:
+  - void foo(int x){
+  + void foo(int x) {
+```
 
-## What's Included
-
-This plugin bundles:
-
-- 7 ready-to-use configuration templates (Google, Linux kernel, Microsoft, modern C++, etc.)
-- 3 editor/git integration scripts
-- Complete reference documentation for all clang-format options
-- Systematic workflows for analyzing code style
-
-## Requirements
-
-- Claude Code v2.0+
-- clang-format installed (`apt install clang-format` / `brew install clang-format`)
+You approve Config C. Claude creates `.clang-format`. Eight lines change. Your history stays clean.
 
 ---
 
