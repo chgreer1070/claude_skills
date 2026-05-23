@@ -110,9 +110,10 @@ def live_items(tmp_path_factory, monkeypatch_class):
     # so that both the server's validation path and _read_gate_token() (called inline in
     # test bodies to supply the gate_token parameter) resolve to the same file.
     live_session_id = f"live-test-session-{test_id}"
-    # Use a fixed-length 64-char hex-style token that is unique to this test run.
-    live_gate_token = str(uuid.uuid4()).replace("-", "") + str(uuid.uuid4()).replace("-", "")
-    live_gate_token = live_gate_token[:64]
+    # Token must be {session_id}:{hex} — _read_gate_token() splits on ':' to locate the
+    # session directory, then compares the full string against the file contents.
+    raw_hex = (str(uuid.uuid4()).replace("-", "") + str(uuid.uuid4()).replace("-", ""))[:64]
+    live_gate_token = f"{live_session_id}:{raw_hex}"
     token_dir = tmp_root / "dh_state" / "sessions" / live_session_id
     token_dir.mkdir(parents=True, exist_ok=True)
     (token_dir / ".gate-token").write_text(live_gate_token, encoding="utf-8")
