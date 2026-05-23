@@ -3,12 +3,37 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
 from .models import Entry
 from .parsing import now_iso
 
 ENTRY_RE = re.compile(r"<div><sub>([^<]+)</sub>\s*(.*?)</div>", re.DOTALL)
 STRUCK_RE = re.compile(r"<details><summary>struck:\s*(\S+)\s*—\s*(.*?)</summary>\s*(.*?)</details>", re.DOTALL)
+# Matches ISO 8601 timestamps (with or without sub-second fraction) at the start of a string.
+# Used in two places: detecting unwrapped seeds in the legacy entry path, and filtering
+# entries by the ``since`` parameter (entry IDs may carry a dedup suffix like ``-0``, ``-1``).
+_ISO_TIMESTAMP_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)")
+
+
+def _parse_entry_timestamp(entry_id: str) -> datetime:
+    """Extract the ISO timestamp prefix from an entry ID and return a UTC-aware datetime.
+
+    Returns:
+        UTC-aware datetime parsed from the ISO timestamp prefix of ``entry_id``.
+
+    Raises:
+        ValueError: If ``entry_id`` does not start with a valid ISO timestamp.
+    """
+    m = _ISO_TIMESTAMP_RE.match(entry_id)
+    if not m:
+        msg = f"Entry ID does not contain a valid ISO timestamp prefix: {entry_id!r}"
+        raise ValueError(msg)
+    ts = m.group(1)
+    dt = datetime.fromisoformat(ts)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt
 
 
 def wrap_entry(content: str) -> str:
@@ -126,13 +151,22 @@ def parse_entries(
         content = section_body.strip()
         if not content:
             return []
-        raw_entries = [Entry(id=f"{added_date}T00:00:00Z", content=content)]
+        # If the content begins with an ISO timestamp (now_iso() format), use it
+        # directly as the entry id so that round-trips after an unwrapped seed
+        # preserve the original id rather than reconstructing from added_date.
+        ts_match = _ISO_TIMESTAMP_RE.match(content)
+        entry_id = ts_match.group(1) if ts_match else f"{added_date}T00:00:00Z"
+        raw_entries = [Entry(id=entry_id, content=content)]
     else:
         raw_entries = [_parse_match_to_entry(m) for m in matches]
         _deduplicate_timestamps(raw_entries)
 
     if since:
-        raw_entries = [e for e in raw_entries if (e.id.split("Z")[0] + "Z" if "Z" in e.id else e.id) >= since]
+        since_dt = datetime.fromisoformat(since)
+        if since_dt.tzinfo is None:
+            since_dt = since_dt.replace(tzinfo=UTC)
+
+        raw_entries = [e for e in raw_entries if _parse_entry_timestamp(e.id) >= since_dt]
 
     return _apply_show_filter(raw_entries, show)
 
