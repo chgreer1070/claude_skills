@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "6.3.316"
+    "version": "7.0.0"
   },
   "plugins": [
     {
@@ -32,10 +32,6 @@
     {
       "name": "dasel",
       "source": "./plugins/dasel"
-    },
-    {
-      "name": "development-harness",
-      "source": "./plugins/development-harness"
     },
     {
       "name": "fastmcp-creator",
@@ -131,6 +127,14 @@
     {
       "name": "python-engineering",
       "source": "./plugins/python-engineering"
+    },
+    {
+      "name": "dh",
+      "source": "./plugins/development-harness"
+    },
+    {
+      "name": "rtfp",
+      "source": "./plugins/rtfp"
     }
   ]
 }
