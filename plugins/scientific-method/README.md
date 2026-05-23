@@ -2,29 +2,55 @@
 
 > Use when debugging, investigating root causes, designing experiments, or performing scientific analysis — enforces hypothesis-driven reasoning, evidence-first observation, causality validation, and structured output templates. Use when facing unknowns, repeated failures, or complex investigations requiring rigorous methodology.
 
-**Version**: 1.1.0 | **Author**: [Jamie Nelson](https://github.com/bitflight-devops)
+**Version**: 1.4.18 | **Author**: [Jamie Nelson](https://github.com/bitflight-devops)
 
 ---
 
-## Overview
+## Why Install This?
 
-The `scientific-method` plugin consolidates three investigation and debugging skills into a unified plugin with shared canonical reference files. It replaces the standalone `scientific-thinking`, `experiment-protocol`, and `evidence-first-debugging` skills with a coherent methodology built on a single source of truth.
+When Claude investigates a problem without structure, it:
 
-**Architecture**: Three thin skill wrappers share a `shared/` reference directory. The shared files are the canonical methodology — each skill SKILL.md declares its responsibility scope and loads the relevant shared files.
+- Reads code, forms an interpretation, and treats that interpretation as fact
+- Jumps to a fix before establishing what actually caused the failure
+- Attributes causality without a falsification test ("this must be why it broke")
+- Changes multiple variables at once, making it impossible to know what fixed it
+- Calls an investigation complete when the symptom is gone, not when the cause is proven
+
+This plugin enforces hypothesis-driven methodology. Every investigation follows the same sequence: observe → hypothesize → predict → test → classify causality → conclude. No step skips forward.
 
 ---
 
-## Installation
+## What You Get
 
-```bash
-/plugin install scientific-method@jamie-bitflight-skills
-```
+### Unified investigation template
 
-Or load for the current session only:
+All three skills share a 15-section template filled progressively:
 
-```bash
-claude --plugin-dir ./plugins/scientific-method
-```
+**Before execution (sections 0–7)**:
+- `0 CONTEXT` — goal, system, environment, baseline
+- `1 ISSUE STATEMENT` — symptom, expected vs actual, repro status
+- `2 OBSERVATIONS` — raw signals with evidence IDs, truncation disclosed
+- `3 FACTS` — evidence-cited statements only (no interpretation)
+- `4 HYPOTHESES` — falsifiable H0/H1 pairs with fact references
+- `5 PREDICTIONS` — "If H1 is true, we should observe X when we do Y"
+- `6 EXPERIMENT PLAN` — Path A (confirm H1) and Path B (refute H1) tests
+- `7 CONFOUNDING VARIABLES` — isolation plan
+
+**During and after execution (sections 8–14)**:
+- `8 ACTIONS` — commands and changes with evidence IDs
+- `9 RESULTS` — observed outcomes verbatim, not summarized
+- `10 CAUSALITY CHECK` — each link classified: `causal-supported`, `correlated-only`, `unrelated`, or `unknown`
+- `11 CONCLUSION` — reject or fail-to-reject H0, citing evidence IDs
+- `12 CHANGES` — diff summary
+- `13 VERIFICATION` — verification command and result
+- `14 EVIDENCE LOG` — complete evidence inventory
+
+### Hard evidence rules
+
+- Every observation in section 2 must have an evidence ID
+- Every fact in section 3 must cite an evidence ID from section 2
+- Truncated output must disclose: `total=<N>, shown=<M>, method=<head|tail|grep>`
+- Causality classification in section 10 requires a falsification test — intuition is not sufficient
 
 ---
 
@@ -32,27 +58,23 @@ claude --plugin-dir ./plugins/scientific-method
 
 ### `/scientific-method:scientific-thinking`
 
-**When to use**: Starting any investigation, debugging session, unknown root cause, or complex problem requiring structured reasoning.
+**When to use**: Starting any investigation — debugging session, unknown root cause, repeated failure, complex problem requiring structured reasoning.
 
-Loads the unified investigation template and guides you through hypothesis formation, evidence collection, experiment design, causality validation, and conclusion.
-
-**Invocation**:
+Loads the unified investigation template and guides through all 15 sections. Enforces stage ordering: observations before hypotheses, predictions before experiments, falsification before causality classification.
 
 ```text
 /scientific-method:scientific-thinking
 ```
 
-Or Claude auto-invokes when you describe a debugging problem, investigation, or unknown failure.
+Claude auto-invokes when you describe a debugging problem, unknown failure, or investigation.
 
 ---
 
 ### `/scientific-method:evidence-first-debugging`
 
-**When to use**: Debugging a specific defect, error, or system misbehavior where evidence collection is the priority.
+**When to use**: Debugging a specific defect where evidence collection is the immediate priority.
 
-Focuses on the evidence-gathering and causality-check phases of the investigation template. Enforces observation-before-assumption discipline: raw signals only, verbatim snippets, disclosed truncation.
-
-**Invocation**:
+Focuses on sections 2–3 (observations and facts). Enforces observation-before-assumption discipline: raw signals only, verbatim snippets, truncation disclosed. Provides domain extensions for software debugging and performance analysis.
 
 ```text
 /scientific-method:evidence-first-debugging
@@ -62,11 +84,9 @@ Focuses on the evidence-gathering and causality-check phases of the investigatio
 
 ### `/scientific-method:experiment-protocol`
 
-**When to use**: Designing and running controlled experiments — A/B tests, performance benchmarks, configuration comparisons, or any test requiring isolation of variables.
+**When to use**: Designing and running controlled experiments — A/B tests, performance benchmarks, configuration comparisons, or any test where variable isolation matters.
 
-Produces a structured experiment plan with hypothesis, predictions, confound isolation, and result recording.
-
-**Invocation**:
+Drives the experiment-registry MCP server through a controlled lifecycle. The MCP server owns state validation and methodology enforcement; Claude submits artefacts and advances steps.
 
 ```text
 /scientific-method:experiment-protocol
@@ -84,75 +104,88 @@ Produces structured process-quality artefacts after an investigation reaches `re
 - Result analysis — what worked, what did not, patterns observed across iterations
 - Retrospective — lessons learned, anti-patterns encountered, rubric update recommendations
 
-The SubagentStop hook in this plugin detects `resolved-verified` status in investigation output and
-notifies you to invoke this agent. Pass the full investigation output (all 14 sections) as input.
+Invoke after a completed investigation by passing the full investigation output (all 15 sections) as input.
+
+---
+
+## MCP Server — experiment-registry
+
+The plugin registers a FastMCP server that manages experiment state mechanically. Claude calls it via tool calls; the server validates artefacts and enforces the protocol. Experiment state persists to `.claude/experiments/{id}/state.json`.
+
+**Available tools**:
+
+| Tool | Purpose |
+|---|---|
+| `list_experiment_types` | Lists registered experiment types with names and descriptions |
+| `inspect_experiment_type` | Returns full definition for a type — steps, required artefacts, rubric templates, validators |
+| `start_experiment` | Creates a new experiment instance, returns the first step definition |
+| `get_current_step` | Returns the current step, its required artefacts, and any human input needed |
+| `complete_step` | Advances to the next step after submitting artefacts for the current step |
+| `list_experiments` | Lists experiments for the current project, optionally filtered by status |
+
+**Content validation**:
+
+The server enforces composable validators on artefact submission:
+
+| Validator | Purpose |
+|---|---|
+| `non_empty` | Artefact content is not blank |
+| `file_exists` | Referenced file path exists in the project |
+| `min_length` | Artefact meets minimum character count |
+| `frozen` | Hash-based freeze — artefact cannot change once marked complete |
+| `rubric_scores` | Structured rubric scoring instead of trust-based self-report |
+| `iteration_output` | Output follows prescribed format for the iteration step |
+
+Validation occurs during `complete_step`. Artefacts that fail validation are rejected without state mutation — the step remains incomplete and resubmission is required.
+
+The server enforces sequencing — steps cannot be skipped and artefacts are validated before the experiment advances.
 
 ---
 
 ## Hooks
 
-This plugin registers a `SubagentStop` hook that monitors investigation output. When an investigation
-sub-agent finishes with `status: resolved-verified` in section 14, the hook notifies you that the
-`retrospective-analyst` agent is available to produce a timeline and retrospective.
+A `SubagentStop` hook monitors investigation sub-agent output using a fast Node.js command script (`notify-investigation-complete.cjs`). The script searches the last assistant message for `status: resolved-verified` in section 14. When detected, it notifies you that the `retrospective-analyst` agent is ready to produce a timeline and retrospective.
 
-The hook is informational — it never blocks or fails agent output.
+The hook is informational — it never blocks or modifies agent output. It uses text search only, avoiding LLM round-trips on every subagent stop.
+
+---
+
+## Investigation Workflow
+
+```mermaid
+flowchart TD
+    S0["Sections 0–3: Observation\nRecord ONLY factual observations\nNo interpretation"] --> S4
+    S4["Section 4: Hypothesis\nH0 null + H1 alternative\nBoth must be falsifiable"] --> S5
+    S5["Section 5: Prediction\nIf H1 is true, we should observe..."] --> S6
+    S6["Sections 6–7: Experiment Design\nPath A: confirm H1\nPath B: refute H1\nList confounds"] --> S8
+    S8["Sections 8–9: Execute\nRun experiments\nRecord results verbatim"] --> S10
+    S10["Sections 10–11: Conclusion\nClassify causality\nCite evidence IDs"] --> Done
+    Done{Status?}
+    Done -->|"resolved-verified"| Retro["Invoke retrospective-analyst\nTimeline + retrospective"]
+    Done -->|"unresolved or mitigated"| S0
+```
 
 ---
 
 ## Shared Reference Files
 
-All skills reference these canonical files in `shared/`:
+All skills reference canonical files in `shared/`:
 
 | File | Purpose |
-|------|---------|
-| `shared/investigation-template.md` | 15-section unified investigation template (sections 0–14) |
+|---|---|
+| `shared/investigation-template.md` | 15-section unified investigation template |
 | `shared/evidence-rules.md` | Rules for evidence collection — raw signals, truncation disclosure, verbatim snippets |
-| `shared/causality-check.md` | Causality classification rules — causal-supported, correlated-only, unrelated, unknown |
+| `shared/causality-check.md` | Causality classification — causal-supported, correlated-only, unrelated, unknown |
 | `shared/investigation-workflow.md` | Mermaid workflow diagram for the full investigation lifecycle |
-| `shared/extensions/debugging-extensions.md` | Domain extensions for software debugging investigations |
-| `shared/extensions/performance-extensions.md` | Domain extensions for performance analysis investigations |
-
----
-
-## Investigation Template Overview
-
-The unified investigation template covers 15 sections filled progressively:
-
-**Before execution (sections 0–7)**:
-- `0 CONTEXT` — goal, system, environment, baseline
-- `1 ISSUE STATEMENT` — symptom, expected vs actual, repro status
-- `2 OBSERVATIONS` — raw signals with evidence IDs and truncation disclosure
-- `3 FACTS` — evidence-cited statements only
-- `4 HYPOTHESES` — falsifiable H0/H1 with fact references
-- `5 PREDICTIONS` — observable outcomes if H1 is correct
-- `6 EXPERIMENT PLAN` — Path A/B tests with expected outcomes per hypothesis
-- `7 CONFOUNDING VARIABLES` — isolation plan
-
-**During and after execution (sections 8–14)**:
-- `8 ACTIONS` — commands/changes with evidence
-- `9 RESULTS` — observed outcomes with evidence
-- `10 CAUSALITY CHECK` — causal/correlated/unrelated/unknown classification
-- `11 CONCLUSION` — reject or fail-to-reject H0 with evidence citations
-- `12 CHANGES` — diff summary with key hunks
-- `13 VERIFICATION` — verification command and result
-- `14 EVIDENCE LOG` — complete evidence inventory
-
----
-
-## Key Principles
-
-- **Observation over assumption**: Fill sections 2–3 from raw tool output, not interpretation
-- **Falsifiable hypotheses**: Every H1 must state "If H1 is true, we would observe X"
-- **Evidence-cited facts**: Every fact in section 3 cites an evidence ID from section 2
-- **Causality requires falsification**: Classification in section 10 requires a falsification test, not intuition
-- **Truncation disclosure**: Any truncated output discloses `total=<N>, shown=<M>, method=<head|tail|grep>`
+| `shared/extensions/debugging-extensions.md` | Domain extensions for software debugging |
+| `shared/extensions/performance-extensions.md` | Domain extensions for performance analysis |
 
 ---
 
 ## Migration from Previous Skills
 
-| Old skill | New invocation |
-|-----------|---------------|
+| Old invocation | New invocation |
+|---|---|
 | `/scientific-thinking` | `/scientific-method:scientific-thinking` |
 | `/experiment-protocol` | `/scientific-method:experiment-protocol` |
 | `/evidence-first-debugging:evidence-first-debugging` | `/scientific-method:evidence-first-debugging` |
@@ -161,10 +194,16 @@ Redirect stubs remain at the old locations for backward compatibility.
 
 ---
 
-## Source
+## Installation
 
-Consolidated from:
-- `.claude/skills/scientific-thinking/` (personal skill)
-- `.claude/skills/experiment-protocol/` (personal skill)
-- `plugins/evidence-first-debugging/` (retired plugin, content absorbed)
-- `.claude/knowledge/workflow-diagrams/investigation-workflow.md` (migrated to `shared/`)
+First, add the marketplace (one-time setup):
+
+```bash
+/plugin marketplace add Jamie-BitFlight/claude_skills
+```
+
+Then install the plugin:
+
+```bash
+/plugin install scientific-method@jamie-bitflight-skills
+```
