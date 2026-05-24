@@ -1,6 +1,6 @@
 ---
 name: skill-sync
-description: "Sync a skill's documentation against current upstream sources — check if skill claims still match what the library actually does, update outdated version references, add coverage for newly released APIs, and fix broken source citations. Use when a skill references an old library version, when a library has released updates that may have changed the APIs your skill documents, when asked to sync, refresh, update, or check a skill against upstream docs, when skill documentation may have drifted from current library behavior, or when SOURCE: citations are stale. Accepts a SKILL.md path, skill directory, or plugin directory."
+description: "Sync a skill's content against the upstream library it covers — check whether the API descriptions, version references, and SOURCE: citations inside SKILL.md and its reference files still reflect what the library actually does today. Use when a library has released updates that may have changed the APIs the skill covers, when a skill references an old library version, when asked to sync, refresh, update, or check a skill against upstream docs, when the skill's content may have drifted from current library behavior, or when SOURCE: citations are stale. Accepts a SKILL.md path, skill directory, or plugin directory."
 argument-hint: <skill-path-or-plugin-directory>
 model: sonnet
 user-invocable: true
