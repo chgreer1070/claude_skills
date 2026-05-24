@@ -53,6 +53,12 @@ claude --plugin-dir ./plugins/plugin-name
 
 Complete procedures: [CONTRIBUTING.md](./CONTRIBUTING.md)
 
+## Plugin Deployment Model — Cross-Plugin Boundary Constraint
+
+Plugin scripts (`plugins/*/scripts/*.py`) run inside the plugin cache after installation — an isolated bundle with no access to `.claude/utilities/`, sibling plugins, or any path from the development repository. See [plugin-deployment-model.md](../../plugins/development-harness/docs/plugin-deployment-model.md) for the full model including the cross-plugin-boundary constraint and the RT-ICA condition that must be present in any backlog item proposing to share a utility across the `.claude/` and `plugins/` boundary.
+
+**For codebase analysis agents**: when a backlog item targets scripts spanning `.claude/` and `plugins/` directories, verify deployment context before accepting a shared-utility design.
+
 ## Prerequisite Skills for Plugin Work
 
 Before modifying any plugin file (`plugin.json`, agents, skills, hooks), load these two reference skills:
