@@ -19,7 +19,7 @@ Runs after the grooming swarm completes. The orchestrator (not a subagent) execu
 mcp__plugin_dh_backlog__backlog_view(selector='{item_ref}', summary=false)
 ```
 
-Extract: Impact Radius, Fact-Check, Issue Classification, groomed subsections.
+Extract: Impact Radius, Fact-Check, Issue Classification, Research (if Wave 0 ran), groomed subsections.
 
 2. Re-assess every condition from the initial RT-ICA snapshot:
    - Compare snapshot status to current status per condition.
@@ -142,6 +142,8 @@ Use the `section` filter to read each required section individually. The `sectio
 
 Optional sections (not validated for presence): `Root-Cause Analysis`, `Impact`, `Benefits`,
 `Expected Behavior`, `Files`, `Resources`, `Dependencies`, `Scope`, `Decision`.
+
+**Research section**: intentionally absent from required sections. Wave 0 (`technical-researcher`) is skippable — bug/fix items, items with no researchable technology, and administrative items all bypass it. If Wave 0 was expected to run but `Research` is absent from `sections_index`, log a warning: "Wave 0 completed but Research section not found — check technical-researcher STATUS output." Do not block the groom.
 
 ### Diagnostic Gate — Before Retry or Direct Write
 

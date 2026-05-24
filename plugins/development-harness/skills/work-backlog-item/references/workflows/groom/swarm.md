@@ -52,6 +52,7 @@ Teammates broadcast findings; others react. Sequence:
 ```mermaid
 sequenceDiagram
     participant O as Orchestrator
+    participant TR as technical-researcher
     participant IA as impact-analyst
     participant FC as fact-checker
     participant RT as rtica-assessor
@@ -59,8 +60,16 @@ sequenceDiagram
     participant GR as groomer
     participant AA as alignment-analyst
 
+    Note over O,TR: Wave 0 — pre-swarm research (skip for bug/fix items)
+    O->>TR: spawn (technology, concern from RT-ICA conditions, depth, item_ref)
+    TR->>TR: run 4 angles in parallel (api-state, ecosystem-research, impact-measurement, codebase-auditor)
+    TR->>TR: internal review gate — cross-angle signals, conflict detection
+    TR->>TR: synthesis — write Research section to backlog item via backlog_groom
+    TR-->>O: STATUS: DONE (or BLOCKED — proceed without research context)
+
+    Note over O,AA: Wave 1 — parallel (fact-checker receives Research section as prior context)
     O->>IA: spawn (item details, Files, Evidence, suggested_location)
-    O->>FC: spawn (item claims to verify)
+    O->>FC: spawn (item claims to verify + Research section as prior context if available)
     O->>RT: spawn (item details — waits for IA + FC)
     O->>CL: spawn (item description)
 
@@ -96,10 +105,29 @@ sequenceDiagram
 
 ## No-team fallback
 
+#### Wave 0 (pre-swarm research — runs before spawning any teammate)
+
+Invoke the `technical-researcher` agent with the item's technology and concern.
+
+**Pass:**
+- `technology`: the primary library, protocol, or internal module the item targets (e.g., `"FastMCP 3.2.4"`, `"backlog_core server.py"`, `"work-backlog-item groom SKILL.md flow"`)
+- `concern`: the item's research question, derived from its RT-ICA DERIVABLE/MISSING conditions or description
+- `depth`: `overview` for procedural/fix items, `standard` for features and refactors, `deep` for `unbounded-design` items
+- `item_ref`: the item's `#N` reference — the agent writes the Research section directly to the backlog item
+
+When `technical-researcher` completes, the item's Research section is populated. Read it as prior context before spawning Wave 1 teammates.
+
+**If `technical-researcher` returns `STATUS: BLOCKED`** (all four angles returned only gaps): proceed to Wave 1 without research prior context — do not halt the groom.
+
+**Skip Wave 0 when:**
+- Item type is `type:bug` or `type:fix` — fact-checker covers the primary research need
+- Item has no identifiable technology, library, or internal module to research
+- Item description is a pure administrative or labelling task with no research questions
+
 #### Wave 1 (parallel)
 
 - impact-analyst → `section="Impact Radius"`
-- fact-checker → `section="Fact-Check"`
+- fact-checker → `section="Fact-Check"` — pass Wave 0 Research section as prior context if available
 - classifier → `section="Issue Classification"`, `section="Root-Cause Analysis"`
 
 After Wave 1: read Impact Radius and Fact-Check. If scope expanded, spawn second fact-checker.
@@ -238,6 +266,7 @@ Groomer agent: `subagent_type="dh:backlog-item-groomer"`, model=sonnet.
 
 Input to groomer: item title, description, source, priority, plan address, RT-ICA assessment,
 Fact-Check verdicts, Issue Classification, Root-Cause Analysis (or "N/A"), Impact Radius,
+Research section (from Wave 0 technical-researcher, if available — pass verbatim as prior context),
 and any discovery context.
 
 Orchestrator: before dispatching the groomer, verify your prompt names all required subsections: Reproducibility, Priority, Impact, Benefits, Expected Behavior, Acceptance Criteria, Files, Resources, Dependencies, Effort. A prompt that omits a subsection produces a missing section that cannot be recovered by retry alone.
