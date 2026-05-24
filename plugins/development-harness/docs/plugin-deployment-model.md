@@ -1,58 +1,63 @@
-# Plugin Deployment Model
+# Plugin Deployment Model — The Zip-and-Move Test
 
-## How Claude Code plugins are installed
+## The test to apply before any change to a plugin script
 
-Claude Code plugins are distributed as self-contained bundles. When a plugin is installed from the marketplace or via `claude plugin install`, it is copied into a plugin cache directory:
+Before designing or implementing any change to a script inside a plugin directory, apply this test:
 
-```
+> **If I zip this plugin directory, move it to a completely different path on a different machine, and unzip it — does this script still work?**
+
+If the answer is no, the design is wrong for a distributed plugin. This test catches every cross-boundary dependency before it becomes a runtime failure on a user's machine.
+
+## What survives the zip-and-move
+
+- Paths constructed from `Path(__file__).parent` or `Path(__file__).parents[N]` that stay **within the plugin directory tree**
+- Standard library imports
+- Packages declared in the script's PEP 723 dependencies or the plugin's declared package dependencies
+- `${CLAUDE_PLUGIN_ROOT}` — resolves to wherever the plugin was unzipped
+
+## What breaks the zip-and-move
+
+- Any `sys.path.insert` that reaches **outside** the plugin directory (e.g. to `.claude/utilities/`, to a sibling plugin, to the repo root)
+- Hardcoded paths to development repository locations
+- Imports that rely on a particular directory structure that only exists in the source repository
+- Assumptions that other plugins are installed at a known relative path
+
+## How Claude Code installs plugins
+
+Plugins are copied into a cache directory:
+
+```text
 ~/.claude/plugins/cache/<marketplace>/<plugin-name>/<version>/
 ```
 
-This cache directory has no connection to the source repository. There is no git root. There is no `.claude/utilities/`, no `.claude/skills/`, no `plugins/` directory from the development repository. The plugin exists as an isolated bundle at a path entirely separate from where it was authored.
+This cache directory has no git root, no `.claude/utilities/`, no sibling plugins from the development repo, and no connection to the path where the plugin was authored. The environment variable `${CLAUDE_PLUGIN_ROOT}` resolves to this cache directory.
 
-The environment variable `${CLAUDE_PLUGIN_ROOT}` resolves to the installed plugin's cache directory — not the development repository root.
+## The cross-boundary problem
 
-## What scripts inside a plugin can access
+Scripts in `.claude/skills/*/scripts/` and `.claude/utilities/` run in the user's home directory and can reach `.claude/utilities/` as a sibling. Plugin scripts in `plugins/*/scripts/` cannot — after installation they are inside the plugin cache with no path to `.claude/`.
 
-Scripts bundled inside a plugin (`plugins/<name>/scripts/*.py`) can only reliably access:
+A utility shared between a `.claude/` script and a plugin script cannot live in a single file. Options:
 
-- Files within their own plugin bundle (`${CLAUDE_PLUGIN_ROOT}/...`)
-- Standard system paths (`/usr/lib`, standard Python packages, etc.)
-- User home directory paths (`~/.claude/settings.json`, etc.) when those are expected to exist independently of the plugin
+1. **Duplicate inside each plugin** — copy the utility into the plugin's own `scripts/` directory. Accept the duplication.
+2. **Publish as a package** — declare it as a PEP 723 dependency. Works everywhere.
+3. **Split scope** — `.claude/` scripts share their utility; plugin scripts each carry their own copy.
 
-They **cannot** access:
+## RT-ICA condition for cross-boundary items
 
-- `.claude/utilities/` — this path only exists in the development repository
-- `.claude/skills/` — same
-- Sibling plugin directories — plugins are installed independently and cannot assume other plugins are present or at a known path
-- The development repository root or any path relative to it
+Any backlog item proposing to share code or utilities across the `.claude/` and `plugins/` boundary must include this condition in its RT-ICA:
 
-## The cross-plugin-boundary constraint
+> "All affected scripts share the same deployment context after installation" | AVAILABLE or MISSING
 
-Any utility shared between a plugin script and a `.claude/` script requires that utility to exist in both deployment contexts separately. A single shared file at `.claude/utilities/rich_utils.py` is reachable from `.claude/` scripts running in the user's home directory — but is not reachable from plugin scripts running in the plugin cache.
+If scripts span `.claude/` and `plugins/`, this condition is MISSING. The item must be re-scoped before planning proceeds.
 
-**Consequence**: when a function exists in both `.claude/` scripts and plugin scripts, it cannot be deduplicated into a single shared file. The correct solutions are:
+## Quick reference — does this path survive?
 
-1. **Duplicate within each plugin** — copy the utility into each plugin's own `scripts/` directory. Accept the duplication. The function is small and stable.
-2. **Publish as an installable package** — if the shared utility is large or changes frequently, publish it to PyPI and declare it as a PEP 723 dependency in each script.
-3. **Accept the duplication for plugin scripts, deduplicate for `.claude/` scripts** — `.claude/` scripts sharing a utility at `.claude/utilities/` is valid; plugin scripts cannot participate.
+| Path type | Survives? |
+|---|---|
+| `Path(__file__).parent / "utils.py"` (sibling in same plugin) | Yes |
+| `Path(__file__).parents[1] / "shared.py"` (within plugin bundle) | Yes — if that file is in the bundle |
+| `Path(__file__).parents[3] / ".claude" / "utilities" / "rich_utils.py"` | No — `.claude/` doesn't exist in the cache |
+| `sys.path.insert(0, "/home/user/repos/claude_skills/.claude/utilities")` | No — hardcoded dev path |
+| `importlib.import_module("rich")` (declared PEP 723 dep) | Yes |
 
-## Identifying the deployment context of a script
-
-When analysing a script during codebase analysis or architecture, determine which context it runs in:
-
-| Script location | Deployment context | Can access `.claude/utilities/`? |
-|---|---|---|
-| `.claude/skills/*/scripts/*.py` | User-level skill — runs from the user's `.claude/` directory | Yes — `.claude/utilities/` is a sibling |
-| `.claude/utilities/*.py` | User-level utility — runs from the user's `.claude/` directory | Yes — same directory |
-| `plugins/*/scripts/*.py` | Plugin bundle — runs from plugin cache after installation | No — no connection to development repo |
-
-## Implications for grooming and architecture
-
-Any backlog item proposing to extract a shared utility across the plugin boundary must flag this constraint explicitly. The RT-ICA should include a condition:
-
-> "All affected scripts share the same deployment context" | AVAILABLE or MISSING
-
-If scripts span `.claude/` and `plugins/`, this condition is MISSING — the item must be re-scoped before planning.
-
-SOURCE: Claude Code plugin caching behaviour — `plugins/development-harness/CLAUDE.md` plugin caching section; `plugin-creator:claude-plugins-reference-2026` skill.
+SOURCE: Claude Code plugin caching behaviour — `plugin-creator:claude-plugins-reference-2026` skill (accessed 2026-05-24).
