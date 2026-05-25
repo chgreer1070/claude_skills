@@ -441,7 +441,6 @@ Read the details about the milestone and plan you are a part of at backlog_view(
 Decompose #{issue}: "{title}" into executable tasks.
 Read the architecture spec via artifact_read(item_id={issue}, artifact_type="architect").
 Read the feature context via artifact_read(item_id={issue}, artifact_type="feature-context").
-Goal: {goal_from_feature_request}
 Create the plan via sam_plan with CLEAR+CoVe task definitions.
 
 REQUIRED — skills field propagation:
@@ -531,7 +530,6 @@ Fill these values before constructing each delegation prompt. All values come fr
 | `{work_type}` | "production of the feature" for new features; "fixing of an issue in" for bug fixes |
 | `{feature_name}` | Human-readable feature name from the issue title |
 | `{focus_area}` | One of: `patterns`, `architecture`, `testing`, `conventions` (Phase 2 only) |
-| `{goal_from_feature_request}` | The one-sentence goal extracted from the feature context doc (Phase 4 only) |
 | `{domain_skills}` | Pre-formatted YAML list lines (e.g., `- plugin-creator:hook-creator`) collected by the Phase 3 domain signal scan; empty string if no signals matched; passed verbatim into Phase 4 delegation prompt |
 | `{N}` | SAM plan number returned by `sam_plan` after Phase 4 completes |
 | `{quality_vigilance}` | Full `<quality_vigilance>...</quality_vigilance>` block — canonical text defined in §Shared Delegation Preamble above; substitute verbatim when constructing delegation prompts |
