@@ -139,11 +139,22 @@ local module, enumerate the replacement's capabilities, and produce a coverage m
 (COVERED/PARTIAL/MISSING for each capability). Include the matrix in the feature-context
 document. Surface any PARTIAL or MISSING capabilities as questions.
 
-Register your deliverable with:
-    artifact_type="feature-context"
-    artifact_id="plan/feature-context-{slug}.md"
-    item_id={issue}
-    agent="feature-researcher"
+Register your deliverable and return:
+
+1. Call `artifact_register` with the full feature-context content:
+
+       mcp__plugin_dh_backlog__artifact_register(
+           item_id={issue},
+           artifact_type="feature-context",
+           artifact_id="plan/feature-context-{slug}.md",
+           content="<full feature-context markdown>",
+           agent="feature-researcher"
+       )
+
+2. Return:
+
+       STATUS: DONE
+       path: plan/feature-context-{slug}.md
 ```
 
 After the agent completes, verify the artifact was registered:
