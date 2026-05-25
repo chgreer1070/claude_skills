@@ -4128,7 +4128,7 @@ def update_sam_task_status(
     return {"updated": updated, "issue_number": issue_number, "new_status": new_status, **out.to_dict()}
 
 
-_SAM_SUCCESSFUL_STATUSES: frozenset[str] = frozenset({"complete", "deferred", "closed", "done"})
+_SAM_SUCCESSFUL_STATUSES: frozenset[str] = frozenset({"complete", "deferred", "closed", "done", "skipped"})
 
 
 def _extract_feature_slug(tasks: list[dict[str, object]]) -> str:
