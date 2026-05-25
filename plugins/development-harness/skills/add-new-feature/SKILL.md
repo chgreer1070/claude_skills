@@ -181,7 +181,7 @@ If helpful, delegate to `@dh:codebase-analyzer` for one or more focus areas:
 - testing
 - conventions
 
-Each focus area produces a markdown document. The agent returns the content in its response; the orchestrator then registers it as an artifact.
+Each focus area produces a markdown document. The agent self-registers each document via `artifact_register(content=...)` and returns only `STATUS: DONE` with the artifact ID(s).
 
 Delegation prompt template (one per focus area):
 
@@ -196,14 +196,25 @@ Produce {focus_area}.md content documenting what exists today — patterns,
 conventions, constraints.
 Do NOT prescribe changes.
 
-Register each document with:
-    artifact_type="codebase-analysis"
-    artifact_id="codebase-{focus}-{slug}"  (logical id — use lowercase focus area, e.g. codebase-patterns-{slug})
-    item_id={issue}
-    agent="codebase-analyzer"
+Register each document and return:
 
-A single invocation covering multiple focus areas issues one artifact_register call per
-focus area with a distinct artifact_id per focus.
+1. Call `artifact_register` with the full codebase analysis content for each focus area:
+
+       mcp__plugin_dh_backlog__artifact_register(
+           item_id={issue},
+           artifact_type="codebase-analysis",
+           artifact_id="codebase-{focus}-{slug}",
+           content="<full codebase analysis markdown>",
+           agent="codebase-analyzer"
+       )
+
+   Note: A single invocation covering multiple focus areas issues one `artifact_register` call per
+   focus area with a distinct `artifact_id` per focus.
+
+2. Return:
+
+       STATUS: DONE
+       path: codebase-{focus}-{slug}
 ```
 
 After the agent completes, verify the artifact was registered:
