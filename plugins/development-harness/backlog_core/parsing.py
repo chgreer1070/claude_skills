@@ -485,6 +485,12 @@ def find_item(items: list[BacklogItem], selector: str) -> BacklogItem | None:
         issue_numbers = [parse_issue_number(it.issue) for it in numbered]
         distinct: set[int] = {n for n in issue_numbers if n is not None}
         if len(distinct) == 1:
+            log.warning(
+                "find_item: selector %r matched %d cache rows sharing issue number; returning first match %r",
+                selector,
+                len(matches),
+                matches[0].title,
+            )
             return matches[0]
         raise AmbiguousSelectorError(selector, matches)
     return None

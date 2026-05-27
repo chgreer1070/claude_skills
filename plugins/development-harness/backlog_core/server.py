@@ -1650,6 +1650,7 @@ def _build_compact_manifest(
         "labels": result.labels,
         "status": status,
         "plan_path": plan_path,
+        "section_filter_miss": result.section_filter_miss,
         "_summary": True,
         "_full_chars": full_chars,
         "_hint": (
@@ -1722,6 +1723,7 @@ def _build_over_budget_view(result: _models.ViewItemResult, full_chars: int, sel
         "priority": result.priority,
         "status": result.status,
         "description": result.description,
+        "section_filter_miss": result.section_filter_miss,
         "_over_budget": True,
         "_full_chars": full_chars,
         "_usage": (

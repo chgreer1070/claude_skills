@@ -81,3 +81,14 @@ class TestRequireIntItemIdCoercion:
         """
         with pytest.raises(TypeError, match="GitLabArtifactProvider requires an integer item ID"):
             _require_int_item_id("GitLabArtifactProvider", "bd-a3f8")
+
+    def test_zero_string_raises_type_error(self) -> None:
+        """item_id='0' must raise TypeError because GitHub issue IDs start at 1.
+
+        '0'.isdigit() returns True, so int('0') = 0 would silently pass the
+        isdigit() guard without this check. Zero is not a valid GitHub issue ID
+        and is likely an unsubstituted template placeholder.
+        """
+        # Arrange / Act / Assert
+        with pytest.raises(TypeError, match="requires an integer item ID"):
+            _require_int_item_id("GitHubGistArtifactProvider", "0")

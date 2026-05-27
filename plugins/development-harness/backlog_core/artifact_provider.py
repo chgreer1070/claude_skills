@@ -150,7 +150,14 @@ def _require_int_item_id(cls_name: str, item_id: ItemId) -> int:
     """
     if isinstance(item_id, str):
         if item_id.isdigit():
-            return int(item_id)
+            coerced = int(item_id)
+            if coerced <= 0:
+                msg = (
+                    f"{cls_name} requires an integer item ID, got {item_id!r}. "
+                    "Use BeadsArtifactProvider for string (beads) item identifiers."
+                )
+                raise TypeError(msg)
+            return coerced
         msg = (
             f"{cls_name} requires an integer item ID, got {item_id!r}. "
             "Use BeadsArtifactProvider for string (beads) item identifiers."

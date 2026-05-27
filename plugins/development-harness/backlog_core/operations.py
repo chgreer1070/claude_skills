@@ -2578,6 +2578,10 @@ def _build_sections_compact(body: str) -> list[dict[str, str | int]]:
     entry filters — it always returns all sections with their active and struck
     entry counts.
 
+    Uses ``_SECTION_BOUNDARY_RE`` (``^#{2,3} (.+?)$``) for boundary detection,
+    matching the same rule as ``_build_sections_metadata`` so both functions
+    agree on section structure for the same body.
+
     Args:
         body: Full issue/item body text.
 
@@ -2585,8 +2589,7 @@ def _build_sections_compact(body: str) -> list[dict[str, str | int]]:
         List of dicts, each with ``name`` (str), ``num_entries`` (int active),
         and ``num_struck`` (int struck).
     """
-    section_re = re.compile(r"^### (.+?)$", re.MULTILINE)
-    section_headers = list(section_re.finditer(body))
+    section_headers = list(_SECTION_BOUNDARY_RE.finditer(body))
 
     result: list[dict[str, str | int]] = []
     for i, hdr in enumerate(section_headers):
@@ -2742,41 +2745,61 @@ def _apply_body_section_filter(result: ViewItemResult, body: str, section: str) 
             end = headers[i + 1].start() if i + 1 < len(headers) else len(body)
             body = body[start:end]
             break
+    else:
+        result.section_filter_miss = True
     result.body = body
     return body
 
 
-def _assemble_view_compact(result: ViewItemResult, item: BacklogItem | None, body: str) -> None:
+def _assemble_view_compact(
+    result: ViewItemResult, item: BacklogItem | None, body: str, section: str | None = None
+) -> None:
     """Populate *result* for summary (non-content) view mode.
 
     Sets ``sections_metadata`` and ``sections_index`` without retaining the full
     body.  Delegates to the GitHub-body path when *body* is non-empty, otherwise
     falls back to the local YAML item.
 
+    When *section* is provided, ``sections_metadata`` is narrowed to only the
+    matching section (case-insensitive name match).  ``sections_index`` is
+    omitted when a section filter is active, mirroring the ``include_content=True``
+    path which also omits the index when section is set.
+
     Args:
         result: ViewItemResult to update in-place.
         item: Local BacklogItem for YAML fallback, or ``None``.
         body: Raw body text (may be empty string).
+        section: Optional section-name filter.  When provided, only the matching
+            section's metadata is returned.
     """
     result.body = ""
     result.sections = {}
     if body:
+        all_sections = _build_sections_compact(body)
+        if section is not None:
+            section_lower = section.lower()
+            filtered = [s for s in all_sections if str(s.get("name", "")).lower() == section_lower]
+            if not filtered:
+                result.section_filter_miss = True
+            all_sections = filtered
         result.sections_metadata = [
             _models.SectionMeta(
                 name=str(s.get("name", "")),
                 num_entries=int(s.get("num_entries", 0)),
                 num_struck=int(s.get("num_struck", 0)),
             )
-            for s in _build_sections_compact(body)
+            for s in all_sections
         ]
-        index = _build_sections_index_from_body(body)
-        if index:
-            result.sections_index = index
+        if section is None:
+            index = _build_sections_index_from_body(body)
+            if index:
+                result.sections_index = index
     elif item and item.sections:
         _populate_yaml_item_compact(result, item)
-        index = _render_section_index(item)
-        if index:
-            result.sections_index = index
+        if section is None:
+            index = _render_section_index(item)
+            if index:
+                result.sections_index = index
 
 
 def _assemble_view_content(
@@ -2818,7 +2841,7 @@ def _assemble_view_content(
         if body and (offset > 0 or limit > 0):
             _paginate_body_result(result, body, offset, limit)
     else:
-        _assemble_view_compact(result, item, body)
+        _assemble_view_compact(result, item, body, section=section)
 
 
 # ---------------------------------------------------------------------------
@@ -2856,10 +2879,12 @@ def view_item(
         include_content: When True (default), returns full body and section entries.
             When False, returns metadata and section inventory only (section names
             with entry counts, no body or entry content).
-        section: Optional section filter applied to YAML items that have structured
-            sections but no raw body.  Supports numeric index (``"2"``),
-            comma-separated indices (``"0,2"``), regex (``"/impact.*/``), or
-            substring match.  Ignored when the item has a raw body (GitHub items).
+        section: Optional section name filter.  When the item has a raw body (GitHub
+            items), narrows the body to the matching ``## `` or ``### `` header and
+            sets ``result.section_filter_miss = True`` when no header matches.
+            For YAML items with structured sections but no raw body, supports
+            numeric index (``"2"``), comma-separated indices (``"0,2"``),
+            regex (``"/impact.*/``), or substring match.
 
     Returns:
         ViewItemResult with item/issue details. When ``include_content=True``,
