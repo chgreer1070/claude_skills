@@ -13,7 +13,7 @@
 - `plugins/development-harness/skills/complete-implementation/SKILL.md`
 - `plugins/development-harness/docs/adr-9-close-resolve-semantics.md`
 
-**Last verified**: 2026-03-25
+**Last verified**: 2026-05-27
 
 ## Governing Design Constraint: Context-Fit Complexity
 
@@ -593,7 +593,7 @@ flowchart TD
     P6_DEFER --> P6_APPLY_VERIFIED
 
     P6_APPLY_VERIFIED["Apply status:verified label<br>backlog_update(selector, verified=True)"]
-    P6_APPLY_VERIFIED --> P6_FINAL["Final commit and push<br>Final Handoff Output:<br>'Clear context and run:<br>/dh:work-backlog-item &lt;next-item&gt;'"]
+    P6_APPLY_VERIFIED --> P6_FINAL["Final commit and push<br>Read resolved issue Concerns: surface active entries<br>Final Handoff Output:<br>'Clear context and run:<br>/dh:work-backlog-item &lt;next-item&gt;'"]
 ```
 
 ### Node Contracts
@@ -632,7 +632,7 @@ flowchart TD
 | P6_DEFER | orchestrator | follow-up title | deferred follow-up message | always → P6_APPLY_VERIFIED |
 | P6_APPLY_VERIFIED | `backlog_update` MCP | item selector, `verified=True` | `status:verified` label applied to GitHub Issue | always → P6_RESOLVE |
 | P6_RESOLVE | `backlog_resolve` MCP | item selector, summary | issue closed, item state → resolved | always → P6_FINAL |
-| P6_FINAL | orchestrator | — | final commit, push | terminal |
+| P6_FINAL | orchestrator | resolved issue number `#{N}` (from P6_RESOLVE) | final commit, push; Concerns block displayed if active entries present; slug-search routing output | active concerns → Concerns block + slug-search; no concerns or section absent → slug-search only; backend error → ⚠ warning + slug-search |
 
 **Input modes**: The skill accepts either a plan file path (SAM path → 6-task QG) or an issue number (proportional path → 3-task QG when issue has no linked plan).
 
