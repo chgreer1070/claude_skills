@@ -163,7 +163,7 @@ mcp__plugin_dh_sam__sam_plan(
 )
 ```
 
-The `pqg-` prefix (proportional quality gate) distinguishes from the `qg-` prefix used by full SAM gates. Store the returned plan address as `{PQG}` for use throughout the dispatch loop.
+The `pqg-` prefix (proportional quality gate) distinguishes from the `qg-` prefix used by full SAM gates. Store the returned plan ID as `{PQG}` for use throughout the dispatch loop.
 
 **Step 4 -- SAM dispatch loop**:
 
@@ -393,7 +393,7 @@ mcp__plugin_dh_sam__sam_plan(
 )
 ```
 
-The response contains the QG plan address (e.g., `QG003`). Store it as `{QG}` for use throughout the dispatch loop.
+The response contains the QG plan ID (e.g., `Pdd73f3bd`). Store it as `{QG}` for use throughout the dispatch loop.
 
 ### Step 3: Reset BLOCKED tasks (on re-run)
 
