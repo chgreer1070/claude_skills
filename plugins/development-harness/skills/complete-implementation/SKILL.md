@@ -144,25 +144,22 @@ Store as `acceptance_criteria` (string or None). If none found, set to None.
 
 **Step 3 -- Build proportional quality gate plan**:
 
-Call the pure function:
-
-```python
-tasks_yaml = build_proportional_quality_gate_plan(
-    slug=f"issue-{issue_number}",
-    issue=str(issue_number),
-    modified_files=modified_files,
-    acceptance_criteria=acceptance_criteria,
-)
-```
-
-Create the SAM plan:
+Create the SAM plan directly with 3 tasks:
 
 ```text
-mcp__plugin_dh_sam__sam_create(
-    slug="pqg-issue-{issue_number}",
-    goal="Proportional quality gate verification for issue #{issue_number}",
-    tasks_yaml="{tasks_yaml}",
-    issue="{issue_number}"
+mcp__plugin_dh_sam__sam_plan(
+    config={"action": "create",
+            "slug": "pqg-issue-{issue_number}",
+            "goal": "Proportional quality gate verification for issue #{issue_number}",
+            "issue": {issue_number},
+            "tasks": [
+                {"id": "T1", "title": "Code Review",        "agent": "code-reviewer",   "dependencies": [],    "priority": 1, "complexity": "medium",
+                 "body": "Review files modified for issue #{issue_number}: {modified_files}. Check against acceptance criteria: {acceptance_criteria}"},
+                {"id": "T2", "title": "Test Verification",  "agent": "feature-verifier","dependencies": ["T1"],"priority": 1, "complexity": "medium",
+                 "body": "Verify issue #{issue_number} acceptance criteria are met. Files in scope: {modified_files}"},
+                {"id": "T3", "title": "Acceptance Check",   "agent": "integration-checker","dependencies": ["T2"],"priority": 1, "complexity": "low",
+                 "body": "Confirm acceptance criteria for issue #{issue_number} pass end-to-end: {acceptance_criteria}"}
+            ]}
 )
 ```
 
@@ -366,7 +363,7 @@ The following diagram is the authoritative procedure for Quality Gate Plan Creat
 ```mermaid
 flowchart TD
     List["sam_plan(action=list, search='qg-{slug}')"] --> Found{QG plan found?}
-    Found -->|No| Create["Call build_quality_gate_plan,<br>then sam_plan(action=create)"]
+    Found -->|No| Create["sam_plan(action=create)<br>tasks list from phase mapping table"]
     Found -->|Yes| Check{All tasks terminal?}
     Check -->|"Yes — COMPLETE or SKIPPED"| Skip["Skip to Completion Verification Gate"]
     Check -->|"No — tasks remain"| Reset["Reset BLOCKED tasks to NOT_STARTED,<br>resume SAM dispatch loop"]
@@ -376,25 +373,23 @@ flowchart TD
 
 ### Step 2: Create QG plan (if not found)
 
-If no QG plan exists, generate the plan YAML and create it via SAM:
-
-```bash
-uv run python3 plugins/development-harness/scripts/build_quality_gate_plan.py \
-  --slug "{slug}" \
-  --issue "{issue_number}" \
-  --impl-plan-address "P{N}"
-```
-
-Capture stdout as `tasks_yaml`.
-
-Then create the plan:
+If no QG plan exists, create it directly using the phase mapping table above:
 
 ```text
-mcp__plugin_dh_sam__sam_create(
-    slug="qg-{slug}",
-    goal="Quality gate enforcement for {slug}",
-    tasks_yaml="{tasks_yaml_string}",
-    issue="{issue_number}"
+mcp__plugin_dh_sam__sam_plan(
+    config={"action": "create",
+            "slug": "qg-{slug}",
+            "goal": "Quality gate enforcement for {slug}",
+            "issue": {issue_number},
+            "tasks": [
+                {"id": "T0", "title": "Multi-Perspective Review", "agent": "task-worker",     "dependencies": [],           "priority": 1, "complexity": "high"},
+                {"id": "T1", "title": "Code Review",              "agent": "code-reviewer",   "dependencies": [],           "priority": 1, "complexity": "medium"},
+                {"id": "T2", "title": "Feature Verification",     "agent": "feature-verifier","dependencies": ["T1"],       "priority": 1, "complexity": "medium"},
+                {"id": "T3", "title": "Integration Check",        "agent": "integration-checker","dependencies": ["T2"],   "priority": 1, "complexity": "medium"},
+                {"id": "T4", "title": "Documentation Drift Audit","agent": "doc-drift-auditor","dependencies": ["T3"],     "priority": 1, "complexity": "low"},
+                {"id": "T5", "title": "Documentation Update",     "agent": "service-docs-maintainer","dependencies": ["T4"],"priority": 1, "complexity": "low"},
+                {"id": "T6", "title": "Context Refinement",       "agent": "context-refinement","dependencies": ["T5"],    "priority": 1, "complexity": "medium"}
+            ]}
 )
 ```
 

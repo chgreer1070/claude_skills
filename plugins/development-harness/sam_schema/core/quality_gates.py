@@ -131,8 +131,9 @@ def build_quality_gate_plan(
 ) -> str:
     """Generate YAML for a 7-task quality-gate plan.
 
-    The returned string is intended to be passed directly to ``sam_create``
-    as the ``tasks_yaml`` argument. No file I/O is performed.
+    Returns a YAML string representation of the 7-task plan. Callers pass
+    the individual task dicts to ``sam_plan(action='create', tasks=[...])``.
+    No file I/O is performed.
 
     Args:
         slug: Feature slug used as the plan ``feature`` identifier,
@@ -320,8 +321,8 @@ def build_proportional_quality_gate_plan(
     """Generate YAML for a 3-task proportional quality-gate plan.
 
     Used by ``complete-implementation`` when the input is a GitHub issue
-    number without a linked SAM plan.  The returned string is intended to
-    be passed directly to ``sam_create`` as the ``tasks_yaml`` argument.
+    number without a linked SAM plan.  Returns a YAML string; callers pass
+    the individual task dicts to ``sam_plan(action='create', tasks=[])``.
     No file I/O is performed.
 
     Args:
