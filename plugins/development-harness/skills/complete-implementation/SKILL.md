@@ -378,14 +378,14 @@ flowchart TD
 
 If no QG plan exists, generate the plan YAML and create it via SAM:
 
-```python
-# Call the pure function (from sam_schema.core.quality_gates)
-tasks_yaml = build_quality_gate_plan(
-    slug="{slug}",
-    issue="{issue_number}",       # from plan's issue field, if known
-    impl_plan_address="P{N}",     # implementation plan address
-)
+```bash
+uv run python3 plugins/development-harness/scripts/build_quality_gate_plan.py \
+  --slug "{slug}" \
+  --issue "{issue_number}" \
+  --impl-plan-address "P{N}"
 ```
+
+Capture stdout as `tasks_yaml`.
 
 Then create the plan:
 

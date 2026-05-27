@@ -2515,9 +2515,9 @@ def _build_sections_from_yaml_item(item: BacklogItem) -> dict[str, SectionEntryM
 
 
 def _build_sections_metadata(
-    body: str, show: str | int | None, since: str | None
+    body: str, show: str | int | None, since: str | None, section: str | None = None
 ) -> dict[str, SectionEntryMetadata | GroomedSectionMetadata]:
-    """Extract ``### ``-delimited sections from *body* into a metadata dict.
+    """Extract ``### ``- or ``## ``-delimited sections from *body* into a metadata dict.
 
     Args:
         body: Full issue/item body text.
@@ -2527,20 +2527,23 @@ def _build_sections_metadata(
               keywords is forwarded to ``parse_entries`` for entry-level filtering.
               ``None`` includes all sections with all entries.
         since: If set, filter entries to those on or after this date.
+        section: Explicit section-name filter.  When provided it takes precedence
+                 over any section-name filter derived from *show*.
 
     Returns:
         Mapping of section name to entry metadata.
     """
-    section_re = re.compile(r"^### (.+?)$", re.MULTILINE)
-    section_headers = list(section_re.finditer(body))
+    section_headers = list(_SECTION_BOUNDARY_RE.finditer(body))
 
     # Determine whether show is a section-name filter or an entry-level filter.
-    section_name_filter: str | None = None
+    # The explicit ``section`` parameter takes precedence over a section name derived from ``show``.
+    section_name_filter: str | None = section
     entry_show: str | int | None = "all"
-    if isinstance(show, str) and show not in _ENTRY_FILTER_KEYWORDS:
-        section_name_filter = show
-    elif show is not None:
-        entry_show = show
+    if section_name_filter is None:
+        if isinstance(show, str) and show not in _ENTRY_FILTER_KEYWORDS:
+            section_name_filter = show
+        elif show is not None:
+            entry_show = show
 
     sections: dict[str, SectionEntryMetadata | GroomedSectionMetadata] = {}
     for i, hdr in enumerate(section_headers):
@@ -2714,6 +2717,67 @@ def _populate_yaml_item_compact(result: ViewItemResult, item: BacklogItem) -> No
 # Public API: VIEW — helpers
 # ---------------------------------------------------------------------------
 
+_SECTION_BOUNDARY_RE = re.compile(r"^#{2,3} (.+?)$", re.MULTILINE)
+
+
+def _apply_body_section_filter(result: ViewItemResult, body: str, section: str) -> str:
+    """Narrow *body* and *result.body* to the requested section.
+
+    Scans *body* for the first ``## `` or ``### `` header whose name matches
+    *section* (case-insensitive) and slices the body to that section only.
+    If no matching header is found, *body* and *result.body* are left unchanged.
+
+    Args:
+        result: ViewItemResult to update in-place.
+        body: Full issue body text.
+        section: Section name to filter to.
+
+    Returns:
+        The (possibly narrowed) body slice.
+    """
+    headers = list(_SECTION_BOUNDARY_RE.finditer(body))
+    for i, hdr in enumerate(headers):
+        if hdr.group(1).strip().lower() == section.lower():
+            start = hdr.start()
+            end = headers[i + 1].start() if i + 1 < len(headers) else len(body)
+            body = body[start:end]
+            break
+    result.body = body
+    return body
+
+
+def _assemble_view_compact(result: ViewItemResult, item: BacklogItem | None, body: str) -> None:
+    """Populate *result* for summary (non-content) view mode.
+
+    Sets ``sections_metadata`` and ``sections_index`` without retaining the full
+    body.  Delegates to the GitHub-body path when *body* is non-empty, otherwise
+    falls back to the local YAML item.
+
+    Args:
+        result: ViewItemResult to update in-place.
+        item: Local BacklogItem for YAML fallback, or ``None``.
+        body: Raw body text (may be empty string).
+    """
+    result.body = ""
+    result.sections = {}
+    if body:
+        result.sections_metadata = [
+            _models.SectionMeta(
+                name=str(s.get("name", "")),
+                num_entries=int(s.get("num_entries", 0)),
+                num_struck=int(s.get("num_struck", 0)),
+            )
+            for s in _build_sections_compact(body)
+        ]
+        index = _build_sections_index_from_body(body)
+        if index:
+            result.sections_index = index
+    elif item and item.sections:
+        _populate_yaml_item_compact(result, item)
+        index = _render_section_index(item)
+        if index:
+            result.sections_index = index
+
 
 def _assemble_view_content(
     result: ViewItemResult,
@@ -2738,43 +2802,23 @@ def _assemble_view_content(
 
     if include_content:
         if body:
-            result.sections = _build_sections_metadata(body, show, since)
-            # Prepend section index so agents see it regardless of body source.
-            # Prefer live body data over local YAML cache for cache coherence.
-            index = _build_sections_index_from_body(body)
-            if index:
-                result.body = index + "\n" + body
+            result.sections = _build_sections_metadata(body, show, since, section=section)
+            if section is not None:
+                # Narrow the body to the requested section only.
+                body = _apply_body_section_filter(result, body, section)
+            else:
+                # Prepend section index so agents see it regardless of body source.
+                # Prefer live body data over local YAML cache for cache coherence.
+                index = _build_sections_index_from_body(body)
+                if index:
+                    result.body = index + "\n" + body
         elif item and item.sections:
             _populate_yaml_item_content(result, item, section)
             body = result.body
         if body and (offset > 0 or limit > 0):
             _paginate_body_result(result, body, offset, limit)
     else:
-        body = result.body
-        result.body = ""
-        result.sections = {}
-        if body:
-            result.sections_metadata = [
-                _models.SectionMeta(
-                    name=str(s.get("name", "")),
-                    num_entries=int(s.get("num_entries", 0)),
-                    num_struck=int(s.get("num_struck", 0)),
-                )
-                for s in _build_sections_compact(body)
-            ]
-        elif item and item.sections:
-            _populate_yaml_item_compact(result, item)
-        # Always include section index in summary mode so agents know what sections
-        # exist on first access, without needing a second round-trip.
-        # Prefer live body data over local YAML cache for cache coherence.
-        if body:
-            index = _build_sections_index_from_body(body)
-            if index:
-                result.sections_index = index
-        elif item and item.sections:
-            index = _render_section_index(item)
-            if index:
-                result.sections_index = index
+        _assemble_view_compact(result, item, body)
 
 
 # ---------------------------------------------------------------------------
