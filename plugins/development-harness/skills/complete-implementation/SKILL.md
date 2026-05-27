@@ -448,15 +448,7 @@ mcp__plugin_dh_sam__sam_plan(config={"action": "ready"}, plan="{QG}")
 
 If the result is empty, exit the loop and proceed to Completion Verification Gate.
 
-**2. Claim the task:**
-
-```text
-mcp__plugin_dh_sam__sam_task(plan="{QG}", task="{task_id}", config={"action": "claim"})
-```
-
-If `"claimed": false`, stop — another agent is running this phase. Do not re-dispatch.
-
-**3. Dispatch via start-task:**
+**2. Load the start-task skill:**
 
 ```text
 Skill(skill="start-task", args="plan/{QG}-qg-{slug}.yaml --task {task_id}")
@@ -464,9 +456,9 @@ Skill(skill="start-task", args="plan/{QG}-qg-{slug}.yaml --task {task_id}")
 
 Pass `team_name="{team_name}"` when spawning QG agents so they join the existing implementation team.
 
-The SubagentStop hook marks the task COMPLETE after the sub-agent finishes.
+`start-task` claims the task and marks it COMPLETE on finish via the SubagentStop hook. Do not call `sam_task(action='claim')` in the orchestrator before this step — claiming here causes a double-claim that causes `start-task` to receive `claimed: false` and stop without executing the task body.
 
-**4. Phase-specific post-dispatch actions:**
+**3. Phase-specific post-dispatch actions:**
 
 After each dispatched phase completes, run the phase-specific processing before querying `sam_plan(action='ready')` again:
 

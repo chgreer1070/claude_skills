@@ -149,6 +149,8 @@ def _require_int_item_id(cls_name: str, item_id: ItemId) -> int:
         TypeError: When *item_id* is a ``str`` instance.
     """
     if isinstance(item_id, str):
+        if item_id.isdigit():
+            return int(item_id)
         msg = (
             f"{cls_name} requires an integer item ID, got {item_id!r}. "
             "Use BeadsArtifactProvider for string (beads) item identifiers."
