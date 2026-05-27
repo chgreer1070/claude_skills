@@ -317,18 +317,18 @@ When the parent story issue number is known (`str | int` — GitHub integer ID o
 **T0 delegation prompt addition:**
 
 ```text
-After writing plan/T0-baseline-{slug}.yaml, register it:
-  mcp__plugin_dh_backlog__artifact_register(item_id=N, artifact_type="T0-baseline", path="plan/T0-baseline-{slug}.yaml", agent="t0-baseline-capture")
+Register the baseline content directly via MCP (no file write):
+  mcp__plugin_dh_backlog__artifact_register(item_id=N, artifact_type="T0-baseline", content=<baseline yaml string>, agent="t0-baseline-capture")
 ```
 
 **TN delegation prompt addition:**
 
 ```text
-After writing plan/TN-verification-{slug}.yaml, register it:
-  mcp__plugin_dh_backlog__artifact_register(item_id=N, artifact_type="TN-verification", path="plan/TN-verification-{slug}.yaml", agent="tn-verification-gate")
+Register the verification content directly via MCP (no file write):
+  mcp__plugin_dh_backlog__artifact_register(item_id=N, artifact_type="TN-verification", content=<verification yaml string>, agent="tn-verification-gate")
 ```
 
-If the issue number is not known, skip registration. The artifacts remain discoverable via filesystem conventions.
+If the issue number is not known, skip registration.
 
 ---
 

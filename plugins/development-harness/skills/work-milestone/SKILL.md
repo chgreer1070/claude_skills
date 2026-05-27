@@ -12,7 +12,7 @@ Execute a groomed milestone. Reads the dispatch plan produced by `/groom-milesto
 ## Entry Conditions
 
 - Milestone number provided as argument
-- Dispatch plan exists: `plan/milestone-{N}-dispatch.yaml`
+- Dispatch plan exists and readable via `dispatch_read(milestone_number=N)`
 - All items in dispatch plan are groomed (`groomed: true`)
 - Backlog MCP and SAM MCP responding
 - Clean git state on main (if dirty, run `plugins/development-harness/scripts/prepare_clean_worktree.sh {integration-branch}` and accept/reject the stash prompt)
@@ -23,9 +23,9 @@ Run `/groom-milestone {N}` first if the dispatch plan is missing or stale.
 
 ```mermaid
 flowchart TD
-    Start(["Input: milestone number N"]) --> LoadPlan["Step 1: Load Dispatch Plan<br>Read plan/milestone-{N}-dispatch.yaml<br>Output: waves, conflict groups, quality gates"]
+    Start(["Input: milestone number N"]) --> LoadPlan["Step 1: Load Dispatch Plan<br>Call dispatch_read(milestone_number=N)<br>Output: waves, conflict groups, quality gates"]
 
-    LoadPlan --> Validate{"Step 2: Validate Plan<br>File exists?<br>All items still open?<br>Observable: file + backlog_list_issues(milestone=N)"}
+    LoadPlan --> Validate{"Step 2: Validate Plan<br>Plan found?<br>All items still open?<br>Observable: dispatch_read result + backlog_list_issues(milestone=N)"}
 
     Validate -->|"Plan missing"| Block1(["BLOCKED — run /groom-milestone {N}"])
     Validate -->|"Items changed since groom"| Regroom["Re-run /groom-milestone {N}"]
@@ -262,7 +262,7 @@ Conflict resolution agent receives both branches' diffs and resolves in-place on
 
 | Tool | Purpose |
 |---|---|
-| `read_dispatch_plan` | Read `plan/milestone-{N}-dispatch.yaml` |
+| `dispatch_read(milestone_number=N)` | Read dispatch plan via MCP |
 | `dispatch_wave_start` | Register wave + items in dispatch state DB before spawning (Step 5) |
 | `dispatch_spawn` | Background MCP task that launches parallel kage-bunshin sessions for a wave (Step 5c) |
 | `dispatch_wave_status` | Poll wave progress and detect stale PIDs (Step 6) |
