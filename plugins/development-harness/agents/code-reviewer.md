@@ -174,6 +174,8 @@ mcp__plugin_dh_backlog__artifact_register(
 )
 ```
 
+**CRITICAL — artifact type MUST be `"codebase-analysis"`.** Do NOT use `"audit-report"` (that type is reserved for `dh:doc-drift-auditor`). `complete-implementation` reads the verdict via `artifact_read(item_id, artifact_type="codebase-analysis")` — a wrong type causes the quality gate to silently skip the code review verdict.
+
 Where `{task_id}` is the task identifier from the SAM plan (e.g., `T3`) and `{slug}` is derived from the plan slug. Do not write to `~/.dh/` filesystem paths — register via MCP only.
 
 </workflow>
