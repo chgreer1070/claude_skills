@@ -584,6 +584,10 @@ Retrieve the review report registered by `@dh:code-reviewer` during Phase 1:
 mcp__plugin_dh_backlog__artifact_read(item_id={issue_number}, artifact_type="codebase-analysis")
 ```
 
+**If `artifact_read` returns an error**, discover before falling through to SAM search:
+`artifact_list(item_id={issue_number})` → find entry matching `"code-review-{issue_number}-*"`
+→ re-read with its actual type → emit WARNING if type differs from `"codebase-analysis"`.
+
 Check the `verdict` field in the report:
 
 - `PASS` — no blocking findings; skip the entire routing section (no follow-ups to route)
@@ -596,7 +600,7 @@ Check the `verdict` field in the report:
   or fix task `blocked`): report `COMPLETION BLOCKED — Blocking Code Review Findings Not
   Resolved`, do NOT route to backlog, stop, do not apply `status:verified`.
 
-If `artifact_read` returns an error or the artifact is absent, fall back to the SAM MCP search:
+If `artifact_list` also finds no match, fall back to the SAM MCP search:
 
 ```text
 mcp__plugin_dh_sam__sam_plan(config={"action": "list", "search": "{slug}-followup"})
@@ -608,220 +612,15 @@ If both `artifact_read` and the SAM search return empty: skip the entire routing
 
 **Error handling**: If the SAM fallback returns plans from a different feature slug, filter results to only include plans matching the parent task file's slug.
 
-### Step 2: Search Backlog by Title Keywords
+### Steps 2–5: Route Follow-ups to Backlog
 
-For each follow-up file, derive a search slug from the filename using this algorithm:
+Execute the full follow-up routing procedure defined in [./references/recursive-follow-up-handling.md](./references/recursive-follow-up-handling.md).
 
-```text
-Input:  plan/Pc5d6e7f8-data-validation-followup-1.yaml
-Step 1: Strip directory prefix      --> Pc5d6e7f8-data-validation-followup-1.yaml
-Step 2: Strip .yaml extension       --> Pc5d6e7f8-data-validation-followup-1
-Step 3: Strip P{id}- prefix         --> data-validation-followup-1
-Step 4: Strip -followup-{k} suffix  --> data-validation
-Step 5: Replace hyphens with spaces --> data validation
-Output: "data validation"
-```
-
-Search the backlog using a 2-strategy fallback chain. Strategy 3 (LLM semantic match) is
-**explicitly excluded** from follow-up routing: follow-up filenames are machine-derived slugs,
-not human semantic queries, so LLM semantic selection would have low fidelity against
-human-authored backlog titles.
-
-The following diagram is the authoritative procedure for Step 2 backlog search strategy. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
-
-```mermaid
-flowchart TD
-    Derive["Derive slug from filename<br>(hyphens → spaces)"] --> S1["Strategy 1 — substring<br>backlog_list(title='{slug}')"]
-    S1 --> R1{Results?}
-    R1 -->|"One or more matches"| UseS1["Use Strategy 1 result"]
-    R1 -->|"Zero results"| S2["Strategy 2 — filter-first<br>backlog_list(topic='{slug}')"]
-    S2 --> R2{Results?}
-    R2 -->|"One or more matches"| UseS2["Use Strategy 2 result"]
-    R2 -->|"Zero results"| NoMatch["No match found<br>— proceed to Step 4 (create new item)"]
-    UseS1 --> Step4["Step 4: Link or Create"]
-    UseS2 --> Step4
-    NoMatch --> Step4
-```
-
-**Strategy 1 — substring via `title=`**
-
-```text
-mcp__plugin_dh_backlog__backlog_list(title="{derived_slug}")
-```
-
-Parse the JSON output. For each item, check if the derived slug appears (case-insensitive
-substring match) in the item's `title` field. If one or more items match, use the first
-match as the result and skip Strategy 2.
-
-**Strategy 2 — filter-first via `topic=`**
-
-If Strategy 1 returns zero matches, run:
-
-```text
-mcp__plugin_dh_backlog__backlog_list(topic="{derived_slug}")
-```
-
-The `topic` parameter performs a case-insensitive substring match against `metadata.topic`.
-Follow-up slugs often correspond to the topic area recorded in backlog item metadata, making
-this an effective second-pass filter when title substring fails.
-
-If Strategy 2 returns one or more items, use the first match.
-
-If both strategies return zero results, treat as "no match found" and proceed to Step 4.
-
-**Error handling**: If either `mcp__plugin_dh_backlog__backlog_list` call fails, log the error, skip
-that strategy, and continue to the next strategy (or to Step 4 as "no match found" if all
-strategies fail). If the follow-up filename does not match the expected
-`P{id}-{slug}-followup-{k}.yaml` pattern, log a warning and use the full filename (without
-directory prefix and `.yaml` extension) as the derived slug.
-
-### Step 3: Classify Follow-up Findings
-
-For each follow-up file, read its `## Scope` field:
-
-- If `## Scope` is absent: default to **in-scope** and emit:
-  `WARNING: No ## Scope section in {followup_path}. Defaulting to in-scope.`
-- If `## Scope: out-of-scope`: route immediately to backlog via `backlog_add` and
-  continue to the next follow-up. Do NOT proceed to Step 4 for this follow-up.
-
-The following diagram is the authoritative procedure for Step 3 Classify Follow-up Findings. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
-
-```mermaid
-flowchart TD
-    ReadScope["Read follow-up file — locate '## Scope' section"] --> ScopeExists{"Does '## Scope' section<br>exist in follow-up file?"}
-    ScopeExists -->|"No — section absent"| WarnDefault["Emit: WARNING: No ## Scope section in {followup_path}.<br>Defaulting to in-scope."]
-    WarnDefault --> InScope["IN-SCOPE — proceed to Step 4"]
-    ScopeExists -->|"Yes"| ScopeValue{"## Scope field value?"}
-    ScopeValue -->|"'out-of-scope'"| OutScope["OUT-OF-SCOPE — route to backlog via backlog_add<br>Continue to next follow-up"]
-    ScopeValue -->|"Any other value (e.g. 'in-scope')"| InScope
-```
-
-Out-of-scope backlog_add call pattern:
-
-```text
-backlog_add(
-    title="{derived_title}",
-    body="Quality gate follow-up from #{issue_number}",
-    labels=["type:task"],
-    source="Quality gate follow-up from #{issue_number} — out-of-scope: {followup_path}"
-)
-```
-
-Output: `Out-of-scope finding routed to backlog: {title}`
-
-### Step 4: Link or Create Backlog Item
-
-Based on Step 2 result, for each follow-up file:
-
-**Match found** -- attach follow-up as plan to the existing backlog item:
-
-Extract the plan address from the follow-up file path: `plan/P{id}-{slug}-followup-{k}.yaml` → `P{id}`.
-
-```text
-mcp__plugin_dh_backlog__backlog_update(selector="{matched_item_title}", plan="P{id}")
-```
-
-**No match found** -- create a new backlog item, then attach the follow-up as plan:
-
-```text
-Skill(skill: "dh:create-backlog-item", args: "--auto {derived_title}")
-```
-
-Then attach the follow-up as the plan (extract plan address first — see above):
-
-```text
-mcp__plugin_dh_backlog__backlog_update(selector="{derived_title}", plan="P{id}")
-```
-
-**Error handling**:
-
-- If `mcp__plugin_dh_backlog__backlog_update` fails after creation (title mismatch between what `dh:create-backlog-item` produced and what `update` searched for): re-invoke `mcp__plugin_dh_backlog__backlog_list()`, find the most recently added item, and retry `mcp__plugin_dh_backlog__backlog_update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
-- If `dh:create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `mcp__plugin_dh_backlog__backlog_update` on the duplicate's title to attach the plan.
-
-### Step 5: Recursion Gate
-
-### Guard 1: Depth check
-
-Before evaluating conditions, check the recursion counter:
-
-```text
-If {recursion_depth} >= DH_RECURSIVE_REVIEW_TASK_DEPTH (5):
-
-  Output:
-  RECURSION DEPTH LIMIT REACHED — Systemic Design Issue Detected
-  Follow-up task: {followup_task_file_path}
-  Depth: {recursion_depth} (limit: {DH_RECURSIVE_REVIEW_TASK_DEPTH})
-
-  For all remaining in-scope follow-ups (including this one):
-    backlog_add(
-        title="{derived_title}",
-        body="Depth limit exceeded — review cycle stopped at depth {recursion_depth}",
-        labels=["type:task"],
-        source="Depth limit exceeded on #{issue_number} at depth {recursion_depth}"
-    )
-
-  Stop recursion. Proceed to the Apply status:verified Label step.
-```
-
-If `{recursion_depth}` < 5: continue to Guard 2.
-
-### Guard 2: RT-ICA BLOCKED check
-
-Read the plan artifact linked to the follow-up's backlog item and search for `BLOCKED-FOR-PLANNING` (present only in the planner-rt-ica artifact, not in implement-feature output).
-
-```text
-If the planner-rt-ica artifact for this follow-up contains BLOCKED-FOR-PLANNING:
-
-  Output:
-  RECURSION STOPPED — RT-ICA BLOCKED
-  Follow-up task: {followup_task_file_path}
-  Depth: {recursion_depth}
-  Blocking conditions: {blocking_conditions_from_artifact}
-  Resume: /dh:work-backlog-item {followup_backlog_item_title}
-
-  Stop for this follow-up. Continue to next follow-up if any remain.
-  Do not apply status:verified label for the blocked follow-up.
-```
-
-If no BLOCKED-FOR-PLANNING signal: continue to Condition 1 (ADR-3).
-
-**Evaluation order for each in-scope follow-up:**
-1. Guard 1: depth check (`{recursion_depth} >= 5` → stop all)
-2. Guard 2: RT-ICA BLOCKED check (`BLOCKED-FOR-PLANNING` in plan artifact → stop this follow-up)
-3. Condition 1 (ADR-3): slug match
-4. Condition 2 (ADR-2): High priority
-5. Both Conditions 1 and 2 met → increment depth, recurse
-6. Either not met → defer to backlog
-
-For each follow-up file, evaluate two conditions. BOTH must be true for recursion.
-
-**Condition 1 -- Same session scope (ADR-3)**: The follow-up file's slug matches the parent task file's slug. Extract the slug from each filename: strip the `P{id}-` prefix, then strip `-followup-{k}.yaml` for the follow-up or `.yaml` for the parent. Compare the two slugs.
-
-**Condition 2 -- High priority (ADR-2)**: Read the follow-up file content and extract the `## Priority` section. Only `High` qualifies for immediate recursion.
-
-**If BOTH conditions are met** -- recurse immediately:
-
-Increment {recursion_depth} by 1 before invoking implement-feature.
-
-```text
-Skill(skill="implement-feature", args="{followup_task_file_path}")
-```
-
-Then re-run `complete-implementation` on the follow-up task file.
-
-**If EITHER condition is NOT met** -- defer to backlog:
-
-Log the deferral and output this line to the user:
-
-```text
-Follow-up deferred — to resume: /dh:work-backlog-item <title>
-```
-
-Where `<title>` is the backlog item title the follow-up was linked to in Step 3.
-
-Do not recurse. The follow-up is tracked in the backlog.
-
-**Error handling**: If the follow-up file has no `## Priority` section, default to `Medium` (defer). Log: `No priority found in {followup_path}, defaulting to Medium (deferred).`
+**Summary**:
+- Step 2: Derive a search slug from each follow-up filename; search backlog by title then topic
+- Step 3: Classify scope (in-scope vs out-of-scope); route out-of-scope directly to backlog
+- Step 4: Link follow-up plan to matched backlog item, or create a new item if no match
+- Step 5: Recursion Gate — Guards (depth limit, RT-ICA BLOCKED) then Conditions (slug match + High priority)
 
 ---
 
@@ -843,10 +642,12 @@ If zero items match, skip this section — there is no issue to label.
 
 ### Step 2: Apply the label
 
+Extract `issue_number` from the matched item returned by `backlog_list` in Step 1 (read from the item's `issue` field, e.g. `"#2437"` → `issue_number = 2437`).
+
 Call:
 
 ```text
-mcp__plugin_dh_backlog__backlog_update(selector="{matched_item_title}", verified=True)
+mcp__plugin_dh_backlog__backlog_update(selector="#{issue_number}", verified=True)
 ```
 
 **Error handling**: If the call returns an `error` key, output:
@@ -855,7 +656,7 @@ mcp__plugin_dh_backlog__backlog_update(selector="{matched_item_title}", verified
 COMPLETION BLOCKED — status:verified label could not be applied.
 
 Error: {error}
-Backlog item: {matched_item_title}
+Backlog item: #{issue_number}
 
 Fix the error (check backend credentials and access), then re-run /complete-implementation.
 ```
@@ -904,7 +705,7 @@ SendMessage(to="{name}", message={"type": "shutdown_request"})
 
 **PQG path (issue-only)**: Use `selector="#{issue_number}"`.
 
-**SAM path (plan-linked)**: Use `selector="{matched_item_title}"` from the Apply status:verified Label step. Skip this step if no backlog item was matched in that step.
+**SAM path (plan-linked)**: Use `selector="#{issue_number}"` from the Apply status:verified Label step. Skip this step if no backlog item was matched in that step.
 
 ```text
 mcp__plugin_dh_backlog__backlog_resolve(selector="<selector>", summary="Implementation complete — AC verified PASS")
