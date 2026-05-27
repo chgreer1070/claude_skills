@@ -446,7 +446,7 @@ If the result is empty, exit the loop and proceed to Completion Verification Gat
 **2. Load the start-task skill:**
 
 ```text
-Skill(skill="start-task", args="plan/{QG}-qg-{slug}.yaml --task {task_id}")
+Skill(skill="start-task", args="{QG} --task {task_id}")
 ```
 
 Pass `team_name="{team_name}"` when spawning QG agents so they join the existing implementation team.
