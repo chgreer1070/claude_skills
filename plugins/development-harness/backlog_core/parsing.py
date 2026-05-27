@@ -478,6 +478,14 @@ def find_item(items: list[BacklogItem], selector: str) -> BacklogItem | None:
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
+        numbered = [it for it in matches if parse_issue_number(it.issue) is not None]
+        unnumbered = [it for it in matches if parse_issue_number(it.issue) is None]
+        if unnumbered:
+            raise AmbiguousSelectorError(selector, matches)
+        issue_numbers = [parse_issue_number(it.issue) for it in numbered]
+        distinct: set[int] = {n for n in issue_numbers if n is not None}
+        if len(distinct) == 1:
+            return matches[0]
         raise AmbiguousSelectorError(selector, matches)
     return None
 

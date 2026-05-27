@@ -89,3 +89,38 @@ class TestFindItemByTitleSubstring:
         with pytest.raises(AmbiguousSelectorError) as exc_info:
             find_item(items, "auth")
         assert isinstance(exc_info.value, BacklogError)
+
+
+class TestFindItemSameIssueDedup:
+    """Title-substring matches that share one issue number collapse instead of raising."""
+
+    def test_same_issue_number_collapses_without_raising(self) -> None:
+        """Two cache rows with the same issue number and different titles (prefix drift)
+        must return the first match without raising AmbiguousSelectorError."""
+        items = [
+            _item("add-new-feature orchestrator must not read content", "#2437"),
+            _item("refactor: add-new-feature orchestrator must not read content", "#2437"),
+        ]
+        result = find_item(items, "add-new-feature")
+        assert result is not None
+        assert result.title == "add-new-feature orchestrator must not read content"
+
+    def test_different_issue_numbers_still_raises(self) -> None:
+        """Two genuinely distinct issues that match a selector must still raise."""
+        items = [_item("auth feature", "#10"), _item("auth feature", "#11")]
+        with pytest.raises(AmbiguousSelectorError) as exc_info:
+            find_item(items, "auth")
+        assert len(exc_info.value.matches) == 2
+
+    def test_untracked_row_in_match_set_raises(self) -> None:
+        """One tracked item and one untracked item (empty issue) matching a selector
+        must raise because the untracked row cannot be collapsed by issue number."""
+        items = [_item("cache feature", "#42"), _item("cache feature untracked", "")]
+        with pytest.raises(AmbiguousSelectorError):
+            find_item(items, "cache")
+
+    def test_all_untracked_rows_raise(self) -> None:
+        """Multiple untracked items (empty issue) matching a selector must raise."""
+        items = [_item("cache feature alpha", ""), _item("cache feature beta", "")]
+        with pytest.raises(AmbiguousSelectorError):
+            find_item(items, "cache")
