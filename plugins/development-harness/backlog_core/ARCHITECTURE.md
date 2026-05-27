@@ -134,7 +134,7 @@ Functions that previously raised `typer.Exit(1)` must instead raise one of:
 
 - Constants: `BACKLOG_DIR`, `DEFAULT_REPO`, `SECTION_RE`, `SKIP_STATUS`, `GITHUB_ISSUE_URL_RE`, `GITHUB_ISSUE_TITLE_TRUNCATE`, `MIN_FRONTMATTER_PARTS`, `TYPE_TO_LABEL`, `ROLE_MAP`, `BENEFIT_MAP`, `FUZZY_DUPLICATE_THRESHOLD`, `_COMMIT_PREFIX_RE`, `_FIELD_TO_INDEX`
 - Add new: `PRIORITY_SECTIONS` dict mapping priority strings to section headings (from the `add` command)
-- Exception classes: `BacklogError`, `ItemNotFoundError`, `DuplicateItemError`, `GitHubUnavailableError`, `ValidationError`
+- Exception classes: `BacklogError`, `ItemNotFoundError`, `DuplicateItemError`, `AmbiguousSelectorError`, `GitHubUnavailableError`, `ValidationError`
 - Pydantic models: `Entry`, `Section`, `GroomedData`, `BacklogItem`, `Output`, `IssueStatus`, `PullRequestRef`, `ViewItemResult`, `IssueLocalFields`
 
 **Exports** (public API):
@@ -155,7 +155,7 @@ All constants, all exception classes, all Pydantic models.
 - Selector: `parse_issue_selector()`
 - Item parsing: `parse_item_file()` (legacy `.md` path — deprecated, kept for migration tooling),
   `parse_backlog_from_directory()`, `parse_backlog()`
-- Item search: `find_item()`, `find_fuzzy_duplicates()`
+- Item search: `find_item()` (dedup rule: when multiple title-substring matches share exactly one distinct issue number, returns the first match instead of raising `AmbiguousSelectorError`; still raises when matches have different issue numbers, or when any matching item is unnumbered), `find_fuzzy_duplicates()`
 - Item filtering: `items_needing_issues()`, `items_with_issues()`
 - Issue body: `build_issue_body()`, `build_issue_body_from_file()`
 - Body utilities: `extract_groomed_section()`, `build_body_extra_only()`, `merge_sections()`
