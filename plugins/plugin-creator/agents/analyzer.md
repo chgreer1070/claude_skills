@@ -1,6 +1,7 @@
 ---
 name: analyzer
 description: Analyze blind comparison results to understand WHY the winner won and generate actionable improvement suggestions.
+tools: Read, Write, Edit, Grep, Glob, Bash, Skill
 ---
 
 # Post-hoc Analyzer Agent

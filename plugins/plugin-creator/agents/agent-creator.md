@@ -2,8 +2,9 @@
 name: agent-creator
 description: Creates Claude Code agent files from requirements — handles discovery, template selection, frontmatter generation, scope determination (project/user/plugin), and plugin.json updates. Use when the user asks to create an agent, generate an agent, add an agent to a plugin, or describes agent functionality they need. Trigger phrases — 'create an agent', 'add an agent', 'build a new agent', 'make me an agent that', 'I need an agent for'. Examples — <example>Context — User wants a code review agent. User says 'Create an agent that reviews code for quality issues'. I will use the agent-creator agent to generate the agent configuration. User requesting new agent creation triggers agent-creator.</example> <example>Context — User wants to add agent to plugin. User says 'Add an agent to my plugin that validates configurations'. I will use the agent-creator agent to generate a configuration validator agent. Plugin development with agent addition triggers agent-creator.</example>
 model: sonnet
-tools: Read, Write, Edit, Grep, Glob, Bash
+tools: Read, Write, Edit, Grep, Glob, Bash, Skill
 skills:
+  - plugin-creator:claude-subagent-reference
   - plugin-creator:claude-plugins-reference-2026
   - plugin-creator:hooks-guide
   - plugin-creator:claude-skills-overview-2026
@@ -17,29 +18,27 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 
 <constraints>
 
-**Agents MUST have `name:` field** — as must plugin skills. `name:` is required in all frontmatter per the agentskills.io spec.
+For the complete field specification (all 16 fields with descriptions, env vars, and examples), load `/plugin-creator:claude-subagent-reference` — it is preloaded in this agent's `skills` list.
 
 **Required fields:**
 
-- `name`: lowercase, hyphens only, max 64 chars — REQUIRED
-- `description`: single-line string, max 1024 chars, front-load trigger keywords — REQUIRED. Validate with `uvx skilllint@latest check --fix <file>`
+- `name`: lowercase, hyphens only, max 64 chars — REQUIRED in all agent files per agentskills.io spec
+- `description`: single-line string, max 1024 chars, no multiline YAML indicators (`>-`, `|-`). Front-load trigger keywords. Validate with `uvx skilllint@latest check --fix <file>`
 
-**Configuration fields:**
+**Creation warnings — not covered in the reference skill:**
 
-- `model`: sonnet | opus | haiku | inherit (default: inherit)
-- `tools`: comma-separated string — never YAML arrays. Use `Agent(type1, type2)` to restrict subagent spawning. MCP tools must use exact registered names — no wildcards (e.g., `mcp__Ref__*` fails silently), case-sensitive (e.g., `mcp__Ref__` not `mcp__ref__`). Agents with unresolvable MCP tool names hallucinate success. Verified 2026-03-22.
-- `disallowedTools`: comma-separated denylist — removed from inherited/specified tools
-- `permissionMode`: default | acceptEdits | dontAsk | bypassPermissions | plan
-- `skills`: comma-separated string — injected into context at startup (NOT inherited from parent)
-- `mcpServers`: server name references (list) or inline definitions (object with command/args/cwd)
-- `memory`: user | project | local — persistent memory directory across sessions
-- `maxTurns`: integer — maximum agentic turns before stopping
-- `background`: true — always run as background task
-- `isolation`: worktree — run in temporary git worktree (isolated repo copy)
-- `hooks`: YAML object — lifecycle hooks scoped to this agent
-- `color`: blue/cyan (analysis), green (creation), yellow (validation), red (security), magenta (transformation)
+- **MCP tool names**: must use exact registered names, case-sensitive. Wildcards (`mcp__Ref__*`) and wrong case (`mcp__ref__`) fail silently — agents with unresolvable MCP tool names hallucinate success. Verified 2026-03-22.
+- **Plugin subagent restrictions**: `permissionMode`, `hooks`, and `mcpServers` are silently ignored for agents shipped inside a plugin. Copy the agent to `.claude/agents/` or `~/.claude/agents/` to use these fields.
+- **Subagent spawning**: use `Agent(type1, type2)` in `tools` to restrict which subagent types this agent can spawn when running as main thread via `--agent`. Omit `Agent` entirely to prevent spawning any subagents.
+- **Auto-discovery**: agents in the default `agents/` directory are registered automatically — never add them to `plugin.json`. Declaring the `agents` key overrides auto-discovery entirely (see Phase 5).
 
-**Note**: Use `Agent(type1, type2)` in the `tools` field to restrict which subagent types can be spawned.
+**Color convention for this repository:**
+
+- `blue`/`cyan`: analysis and research agents
+- `green`: creation agents
+- `yellow`: validation agents
+- `red`: security agents
+- `magenta`: transformation agents
 
 </constraints>
 

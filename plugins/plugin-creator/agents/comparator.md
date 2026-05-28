@@ -1,6 +1,7 @@
 ---
 name: comparator
 description: Blind A/B comparison of two skill outputs without knowing which version produced them. Use when comparing skill iterations.
+tools: Read, Write, Edit, Grep, Glob, Bash, Skill
 ---
 
 # Blind Comparator Agent
