@@ -5,19 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "mcpServers": {
-    "fastmcp-reference": {
-      "command": "uv",
-      "args": [
-        "run",
-        "-q",
-        "--with",
-        "fastmcp>=3.0",
-        "fastmcp",
-        "run",
-        "${CLAUDE_PLUGIN_ROOT}/server/server.py:mcp"
-      ]
-    }
   }
 }
