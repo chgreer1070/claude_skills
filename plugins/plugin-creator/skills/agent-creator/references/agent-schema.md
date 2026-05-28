@@ -46,17 +46,6 @@ tools: Read, mcp__ref__ref_read_url
 
 Verified via controlled experiment 2026-03-22.
 
-### Plugin agent field restrictions
-
-`permissionMode`, `hooks`, and `mcpServers` are **silently ignored** when the agent file is
-shipped inside a plugin (`plugins/*/agents/`). Copy the agent to `.claude/agents/` or
-`~/.claude/agents/` to use these fields.
-
-`isolation: worktree` is supported in plugin agents — it is the only `isolation` value.
-
-For the full plugin agent integration rules (auto-discovery, `agents` key override-on-declare
-risk, validation commands), see `/plugin-creator:claude-plugins-reference-2026`.
-
 ---
 
 ## Validation

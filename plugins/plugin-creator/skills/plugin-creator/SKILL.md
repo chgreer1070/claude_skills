@@ -243,6 +243,7 @@ Ask targeted questions to eliminate ambiguity:
 - Delegation scope: What tasks should agents handle?
 - Return format: Summaries or detailed reports?
 - Error handling: Retry, escalate, or fail fast?
+- For agent frontmatter schema (tools, model, permissionMode, memory, hooks, etc.), load `/plugin-creator:claude-subagent-reference`.
 
 **For hook-focused plugins:**
 

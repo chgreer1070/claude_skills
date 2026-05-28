@@ -25,12 +25,11 @@ For the complete field specification (all 16 fields with descriptions, env vars,
 - `name`: lowercase, hyphens only, max 64 chars — REQUIRED in all agent files per agentskills.io spec
 - `description`: single-line string, max 1024 chars, no multiline YAML indicators (`>-`, `|-`). Front-load trigger keywords. Validate with `uvx skilllint@latest check --fix <file>`
 
-**Creation warnings — not covered in the reference skill:**
+**Creation warnings:**
 
 - **MCP tool names**: must use exact registered names, case-sensitive. Wildcards (`mcp__Ref__*`) and wrong case (`mcp__ref__`) fail silently — agents with unresolvable MCP tool names hallucinate success. Verified 2026-03-22.
-- **Plugin subagent restrictions**: `permissionMode`, `hooks`, and `mcpServers` are silently ignored for agents shipped inside a plugin. Copy the agent to `.claude/agents/` or `~/.claude/agents/` to use these fields.
-- **Subagent spawning**: use `Agent(type1, type2)` in `tools` to restrict which subagent types this agent can spawn when running as main thread via `--agent`. Omit `Agent` entirely to prevent spawning any subagents.
 - **Auto-discovery**: agents in the default `agents/` directory are registered automatically — never add them to `plugin.json`. Declaring the `agents` key overrides auto-discovery entirely (see Phase 5).
+- For plugin field restrictions (`permissionMode`, `hooks`, `mcpServers` silently ignored) and `Agent()` spawn syntax, see the preloaded `/plugin-creator:claude-subagent-reference`.
 
 **Color convention for this repository:**
 

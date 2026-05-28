@@ -18,6 +18,14 @@ Provides: SKILL.md format, all 14 frontmatter fields (name, description, allowed
 
 Provides: hook event types (13 events), hook types (command, prompt, agent), hook authoring guides for Python and Node.js (CommonJS), exit codes for PreToolUse decision control, PermissionRequest hooks, tool denial mechanisms (disallowedTools, permission rules, hook-based denial), pre-approval mechanisms (allowed-tools, permissionMode, hook auto-allow), agent frontmatter fields (allowedTools, disallowedTools, mcpServers, permissionMode, background).
 
+## Required for Phases Involving Agents (Phase 4: Create)
+
+4. `Skill(skill="plugin-creator:claude-subagent-reference")`
+
+Provides: all 16 agent frontmatter fields (name, description, tools, disallowedTools, model, permissionMode, maxTurns, skills, mcpServers, hooks, memory, background, effort, isolation, color, initialPrompt) with full descriptions and examples; built-in agents (Explore, Plan, general-purpose); scope and file locations (project, user, plugin, managed, CLI-defined); tool allowlist/denylist and Agent() spawn restriction syntax; all 6 permission modes and protected paths; hooks in frontmatter vs settings.json; memory scopes and what loads at startup; worktree isolation; fork mode (experimental); agent teams vs subagents comparison.
+
+SOURCE: <https://code.claude.com/docs/en/sub-agents.md> (accessed 2026-05-28)
+
 ## Why These Matter
 
 These skills contain the answers to fundamental questions: what is a plugin, what are its capabilities, how are tools assigned/hidden/denied, how is the namespace defined, what environment variables exist, how are MCP servers configured, and what scripting languages to prefer. The lifecycle phases orchestrate the workflow — these reference skills provide the domain expertise.

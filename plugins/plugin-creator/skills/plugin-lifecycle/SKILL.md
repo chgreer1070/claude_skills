@@ -46,6 +46,10 @@ Required for phases involving hooks (Phase 4: Create, Phase 5: Debug):
 
 3. `Skill(skill="plugin-creator:hooks-guide")` — 13 hook event types, exit codes, tool denial mechanisms, agent frontmatter fields
 
+Required for phases involving agents (Phase 4: Create):
+
+4. `Skill(skill="plugin-creator:claude-subagent-reference")` — all 16 agent frontmatter fields with descriptions, built-in agents, scope and file locations, tool restrictions, permission modes, hooks and memory configuration, fork mode, agent teams
+
 Recommended for component selection and plugin configuration decisions:
 
 4. `Skill(skill="plugin-creator:component-patterns")` — component lifecycle, discovery and activation phases, decision framework for choosing commands vs skills vs agents vs hooks vs MCP servers
