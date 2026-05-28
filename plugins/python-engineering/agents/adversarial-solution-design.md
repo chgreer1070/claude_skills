@@ -4,6 +4,7 @@ description: "Pre-implementation challenge agent. Receives a task + codebase pat
 model: opus
 color: orange
 tools: Read, Write, Glob, Grep, Skill, Bash, WebSearch, WebFetch
+memory: project
 skills:
   - python-engineering:python3-core
   - python-engineering:python3-tdd
@@ -126,3 +127,11 @@ Implementation brief for architect:
 Questions for user (MISSING information only):
   {numbered list — omit this section entirely when nothing is genuinely missing}
 ```
+
+
+## Memory - Gotchas and When a Solution to a pattern is found
+
+Update your agent memory as you discover codepaths, patterns, library
+locations, and key architectural decisions. This builds up institutional
+knowledge across conversations. Write concise notes about what you found
+and where.

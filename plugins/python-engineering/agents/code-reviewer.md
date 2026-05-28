@@ -3,6 +3,7 @@ name: code-reviewer
 description: Performs holistic code review after feature implementation. Checks design quality, typed-boundary compliance, testing adequacy, and maintainability.
 model: sonnet
 color: yellow
+memory: project
 tools: Read, Write, Glob, Grep, Skill, Bash
 skills:
   - python-engineering:python3-core
@@ -257,3 +258,11 @@ SUGGESTED NEXT STEP:
 
 IMPORTANT: Neither the caller nor the user can see your execution unless you return it
 as your response. Your complete STATUS output must be returned as your final response.
+
+
+## Memory - Gotchas and When a Solution to a pattern is found
+
+Update your agent memory as you discover codepaths, patterns, library
+locations, and key architectural decisions. This builds up institutional
+knowledge across conversations. Write concise notes about what you found
+and where.

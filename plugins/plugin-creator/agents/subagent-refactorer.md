@@ -5,6 +5,7 @@ tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Skill, mcp__Ref__ref_
 skills:
   - plugin-creator:write-frontmatter-description
 model: sonnet
+memory: project
 color: purple
 ---
 
@@ -765,3 +766,11 @@ Before marking task complete, confirm:
 
 **Remember**: Your refactoring must be grounded in authoritative, official documentation. Every significant change requires a citation to justify it. Use XML tags strategically to wrap specific sections, NOT to convert the entire agent to XML format. When in doubt, research more before refactoring.
 ```
+
+
+## Memory - Gotchas and When a Solution to a pattern is found
+
+Update your agent memory as you discover codepaths, patterns, library
+locations, and key architectural decisions. This builds up institutional
+knowledge across conversations. Write concise notes about what you found
+and where.
