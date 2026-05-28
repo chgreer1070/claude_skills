@@ -16,5 +16,5 @@ Consult this table when a phase fails or produces unexpected output. Each row na
 | claude plugin validate fails with path error | Confirm `.claude-plugin/plugin.json` exists at the plugin root; path must start with `./` |
 | Documentation phase produces no README.md | Re-run documentation task with explicit instruction to create README.md; verify file exists before proceeding |
 | Verify phase passes Layers 1–3 but fails Layer 4 | Read each broken cross-reference; fix with Edit tool; re-run Layer 4 check manually before returning to Phase 5 |
-| STATE.md absent (session resumed) | Read all artifact files in `.claude/plan/{plugin-name}/` to reconstruct current phase; create STATE.md from inferred state |
+| STATE.md absent (session resumed) | Read all artifact files in `.plugin-creator/plans/{plugin-name}/` to reconstruct current phase; create STATE.md from inferred state |
 | Validator output is ambiguous (warnings only, no errors) | Treat as passing — warnings do not block progression; note warnings in STATE.md for future optimization |

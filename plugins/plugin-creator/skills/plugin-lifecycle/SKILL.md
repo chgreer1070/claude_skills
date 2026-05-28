@@ -11,13 +11,7 @@ user-invocable: true
 <plugin_intent>$2</plugin_intent>
 <invocation_args>$ARGUMENTS</invocation_args>
 
-> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` for content optimization — delegate to `subagent_type="plugin-creator:ai-doc-optimizer"`.
->
-> Routing by concern:
-> - Optimize existing content (improve clarity, fix structure, apply Anthropic prompt engineering principles) → `plugin-creator:ai-doc-optimizer`
-> - Audit quality (read-only, no writes, score against completeness categories) → `plugin-creator:skill-auditor`
-> - Sync content against upstream docs (add NEW/fix STALE from live sources) → `plugin-creator:skill-content-updater`
-> - Write/rewrite description field only → `/plugin-creator:write-frontmatter-description` skill directly
+> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` for content optimization, route to the appropriate subagent. Full routing-by-concern table in `references/phase-dispatch-details.md` → "Phase 6 — Optimize".
 
 > [!IMPORTANT]
 > When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
@@ -52,112 +46,26 @@ Required for phases involving agents (Phase 4: Create):
 
 Recommended for component selection and plugin configuration decisions:
 
-4. `Skill(skill="plugin-creator:component-patterns")` — component lifecycle, discovery and activation phases, decision framework for choosing commands vs skills vs agents vs hooks vs MCP servers
-5. `Skill(skill="plugin-creator:plugin-settings")` — .local.md per-project configuration pattern, YAML frontmatter parsing from hooks, configuration-driven behavior
+5. `Skill(skill="plugin-creator:component-patterns")` — component lifecycle, discovery and activation phases, decision framework for choosing commands vs skills vs agents vs hooks vs MCP servers
+6. `Skill(skill="plugin-creator:plugin-settings")` — .local.md per-project configuration pattern, YAML frontmatter parsing from hooks, configuration-driven behavior
 
 ## Workflow Overview
 
-The following diagram is the authoritative procedure for plugin lifecycle routing. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+The authoritative top-level routing diagram lives in `references/master-workflow-diagram.md`. Load it once at session start to determine the entry phase from `<invocation_args>`. After routing, each Phase section below carries its own authoritative gate diagram for in-phase behavior.
 
-```mermaid
-flowchart TD
-    Start(["/plugin-lifecycle <invocation_args/>"]) --> Q1{"First argument is?"}
-    Q1 -->|"new — create from scratch"| RTICA["Phase 0 — RT-ICA Prerequisite Check"]
-    Q1 -->|"existing — improve existing plugin"| IntentQ{"Intent from plugin_intent<br>or stated in conversation?"}
+Argument-to-phase routing summary:
 
-    %% Existing path: intent routing
-    IntentQ -->|"blank — not provided"| AskIntent["Ask the user:<br>What do you want to do with this plugin?<br>validate · fix bugs · audit · refactor ·<br>create component skill/agent/hook ·<br>adjust workflow · add hooks · change hooks ·<br>test capabilities · evaluate/optimize ·<br>something else"]
-    AskIntent --> IntentQ
-    IntentQ -->|"validate / fix-bugs / debug"| Debug["Phase 5 — Debug"]
-    IntentQ -->|"audit / assess"| Assess["Phase 1 — Assess"]
-    IntentQ -->|"refactor / optimize / evaluate"| Optimize["Phase 6 — Optimize"]
-    IntentQ -->|"create / skill / agent / workflow / hooks"| Create["Phase 4 — Create"]
-    IntentQ -->|"test / verify"| Verify["Phase 7 — Verify"]
-    IntentQ -->|"something else"| AskMore["Ask a clarifying question<br>to determine appropriate entry phase"]
-    AskMore --> IntentQ
-
-    %% Existing path: Assess then route (reached from audit intent)
-    Assess --> AssessFile{"File .claude/plan/NAME/assessment-REPORT.md<br>exists and is non-empty?"}
-    AssessFile -->|"No — assessor did not complete"| Assess
-    AssessFile -->|"Yes — assessment written"| AssessGate{"Run: uvx skilllint@latest check PATH<br>Exit code?"}
-    AssessGate -->|"0 — no validation errors"| Optimize["Phase 6 — Optimize"]
-    AssessGate -->|"non-zero — errors found"| Debug["Phase 5 — Debug"]
-
-    %% New path: RT-ICA gate
-    RTICA --> RTICAGate{"RT-ICA decision?"}
-    RTICAGate -->|"BLOCKED — one or more conditions MISSING"| RTICABlock(["STOP — present missing inputs to user<br>Do not proceed until resolved"])
-    RTICAGate -->|"APPROVED — all conditions available or derivable"| Discuss["Phase 0.5 — Discussion"]
-
-    %% New path: Discussion gate — file must exist before Research
-    Discuss --> DiscussGate{"File .claude/plan/NAME/discuss-CONTEXT.md<br>exists and is non-empty?"}
-    DiscussGate -->|"Yes — preferences captured"| Mission["Phase 0.6 — Draft Mission Statement"]
-    Mission --> Research["Phase 2 — Research"]
-    DiscussGate -->|"No — file absent or empty"| Discuss
-
-    %% New path: Research gate
-    Research --> ResearchGate{"File .claude/plan/NAME/research-FINDINGS.md<br>exists and is non-empty?"}
-    ResearchGate -->|"Yes — all 4 researcher outputs merged"| Design["Phase 3 — Design"]
-    ResearchGate -->|"No — merge incomplete or file absent"| Research
-
-    %% New path: Design gate with iteration limit
-    Design --> DesignGate{"design-PLAN.md exists<br>AND plan-checker returns PASS?"}
-    DesignGate -->|"PASS — plan complete and verified"| Create["Phase 4 — Create"]
-    DesignGate -->|"FAIL — iteration count < 3"| Design
-    DesignGate -->|"FAIL — iteration count = 3 (limit reached)"| DesignEscalate(["STOP — escalate to user<br>Plan checker has failed 3 times"])
-
-    %% New path: Create gate
-    Create --> CreateGate{"All files listed in design-PLAN.md<br>exist at their specified paths?"}
-    CreateGate -->|"Yes — all components created"| Debug
-    CreateGate -->|"No — one or more files missing"| Create
-
-    %% Shared Debug phase (both paths converge here)
-    Debug --> DebugGate{"Run: uvx skilllint@latest check PATH<br>Exit code 0 AND 0 errors?<br>(warnings acceptable)"}
-    DebugGate -->|"Yes — 0 errors, validation passes"| Optimize
-    DebugGate -->|"No — errors remain"| Debug
-
-    %% Optimize gate
-    Optimize --> OptGate{"Run: uvx skilllint@latest check PATH<br>Output contains 'Score:' line?"}
-    OptGate -->|"Score >= 80 — quality target met"| Docs["Phase 6.5 — Documentation"]
-    OptGate -->|"Score < 80 — quality below target"| Optimize
-    OptGate -->|"No score in output — user acceptance required"| OptUser{"User accepts current quality?"}
-    OptUser -->|"Yes — user accepts"| Docs
-    OptUser -->|"No — continue improving"| Optimize
-
-    %% Documentation gate
-    Docs --> DocsGate{"File {plugin-path}/README.md<br>exists and is non-empty?"}
-    DocsGate -->|"Yes — documentation complete"| Verify["Phase 7 — Verify"]
-    DocsGate -->|"No — README.md absent or empty"| Docs
-
-    %% Verify: 4 discrete layers
-    Verify --> VL1{"Layer 1 — Run: uvx skilllint@latest check PATH<br>Exit code 0?"}
-    VL1 -->|"Yes — structural validation passes"| VL2{"Layer 2 — Run: claude plugin validate PATH<br>Exit code 0?"}
-    VL1 -->|"No — structural errors found"| VerifyFail["Return to Phase 5 — Debug<br>with Layer 1 error details"]
-    VL2 -->|"Yes — runtime validation passes"| VL3{"Layer 3 — skilllint output<br>contains SK006 or SK007 for any skill?"}
-    VL2 -->|"No — runtime validation fails"| VerifyFail
-    VL3 -->|"No SK006/SK007 — all skills within token limits"| VL4{"Layer 4 — all internal links resolve,<br>all plugin.json skill paths exist,<br>all agent references point to existing files?"}
-    VL3 -->|"Yes — SK006 or SK007 present"| VerifyFail
-    VL4 -->|"Yes — cross-reference integrity confirmed"| Done(["Write .claude/plan/NAME/SUMMARY.md<br>Plugin is marketplace-ready"])
-    VL4 -->|"No — broken cross-references found"| VerifyFail
-    VerifyFail --> Debug
-```
+- `new <concept>` → Phase 0 (RT-ICA Prerequisite Check)
+- `existing <plugin-path>` with no intent → ask user for intent, then route by intent
+- `existing` + `validate` / `fix-bugs` / `debug` → Phase 5 (Debug)
+- `existing` + `audit` / `assess` → Phase 1 (Assess), then Phase 5 or Phase 6 based on validator exit code
+- `existing` + `refactor` / `optimize` / `evaluate` → Phase 6 (Optimize)
+- `existing` + `create` / `skill` / `agent` / `workflow` / `hooks` → Phase 4 (Create)
+- `existing` + `test` / `verify` → Phase 7 (Verify)
 
 ## Artifact System
 
-All work artifacts are stored in `.claude/plan/{plugin-name}/`:
-
-```text
-.claude/plan/{plugin-name}/
-├── PROJECT.md                # Vision and goals
-├── STATE.md                  # Current phase, decisions, blockers
-├── discuss-CONTEXT.md        # Phase 0.5 output — user preferences (new path only)
-├── research-FINDINGS.md      # Phase 2 output (new path only)
-├── design-PLAN.md            # Phase 3 output (new path only)
-├── assessment-REPORT.md      # Phase 1 output (existing path only)
-├── validation-REPORT.md      # Phase 7 output
-└── SUMMARY.md                # Completion record
-```
-
-`{plugin-path}/mission.json` — Phase 0.6 output — plugin mission statement with `status: "draft"` (new path); created by `mission-statement` skill at the plugin root (not inside `.claude/plan/`).
+All work artifacts are stored in `.plugin-creator/plans/{plugin-name}/`. The full directory layout, per-artifact descriptions, and `STATE.md` read/update protocol live in `references/artifact-templates.md` → "Artifact Directory Layout".
 
 Before starting any phase, read `STATE.md` if it exists to determine current progress. After completing each phase, update `STATE.md` with the phase completed and any decisions made.
 
@@ -167,31 +75,7 @@ Before starting any phase, read `STATE.md` if it exists to determine current pro
 
 Entry condition: User provides `new <concept>`.
 
-Before creating any plugin, verify all prerequisites are in place. Perform this RT-ICA assessment:
-
-```text
-RT-ICA SUMMARY
-
-Goal:
-- Create a Claude Code plugin for [purpose]
-
-Success Output:
-- Functional plugin that [specific outcome]
-
-Conditions (reverse prerequisites):
-1. Purpose clarity     | Requires: Clear problem statement   | Why: Determines plugin scope
-2. Target users        | Requires: Who will use this         | Why: Shapes UX decisions
-3. Component selection | Requires: Skills vs Agents vs Hooks | Why: Architecture
-4. Existing solutions  | Requires: Check for similar plugins | Why: Avoid duplication
-5. Source material     | Requires: Documentation/APIs to encode | Why: Content accuracy
-6. Verification method | Requires: How to test the plugin works | Why: Quality gate
-
-Verification:
-- [Check each condition: AVAILABLE / DERIVABLE / MISSING]
-
-Decision:
-- [APPROVED / BLOCKED]
-```
+Before creating any plugin, verify all prerequisites are in place. Perform an RT-ICA assessment using the `RT-ICA SUMMARY` template in `references/artifact-templates.md`. The assessment checks 6 conditions (purpose clarity, target users, component selection, existing solutions, source material, verification method) and returns APPROVED or BLOCKED.
 
 The following diagram is the authoritative procedure for Phase 0 RT-ICA decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
@@ -210,51 +94,15 @@ Entry condition: RT-ICA gate returned APPROVED.
 
 Before research, identify gray areas and capture user preferences to guide all subsequent phases.
 
-Ask targeted questions to eliminate ambiguity:
+Ask targeted questions to eliminate ambiguity. The full question set (skill-focused / agent-focused / hook-focused plugins) and the `discuss-CONTEXT.md` artifact template live in `references/artifact-templates.md`. For agent-focused plugin decisions (tools, model, permissionMode, memory, hooks), also load `/plugin-creator:claude-subagent-reference`.
 
-For skill-focused plugins:
-
-- Activation triggers: When should Claude auto-load vs user-invoke?
-- Tool restrictions: Full access or limited tools?
-- Output format: Verbose explanations or terse instructions?
-- Reference structure: Inline content or progressive disclosure?
-
-For agent-focused plugins:
-
-- Delegation scope: What tasks should agents handle?
-- Return format: Summaries or detailed reports?
-- Error handling: Retry, escalate, or fail fast?
-
-For hook-focused plugins:
-
-- Trigger events: Which tool/session events matter?
-- Hook type: Command, prompt, or agent verification?
-- Timeout handling: Fail silently or block?
-
-Save preferences to `.claude/plan/{plugin-name}/discuss-CONTEXT.md`:
-
-```markdown
-# Plugin Discussion: {plugin-name}
-Date: {ISO timestamp}
-
-## Scope Decisions
-- {question}: {user preference}
-
-## UX Preferences
-- Invocation: {user-invoked | model-invoked | both}
-- Verbosity: {terse | balanced | verbose}
-
-## Technical Choices
-- {choice}: {preference with rationale}
-```
-
-These preferences guide all subsequent research and planning phases.
+Save preferences to `.plugin-creator/plans/{plugin-name}/discuss-CONTEXT.md` using the template from the artifact-templates file. These preferences guide all subsequent research and planning phases.
 
 The following diagram is the authoritative procedure for Phase 0.5 discussion completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
-    Q{"File .claude/plan/NAME/discuss-CONTEXT.md<br>exists and is non-empty?"}
+    Q{"File .plugin-creator/plans/NAME/discuss-CONTEXT.md<br>exists and is non-empty?"}
     Q -->|"Yes — user preferences captured and written"| Next["Proceed to Phase 2 — Research"]
     Q -->|"No — file absent or empty"| Retry["Re-run Phase 0.5 discussion<br>Ask targeted questions again<br>Write preferences to discuss-CONTEXT.md"]
     Retry --> Q
@@ -266,16 +114,14 @@ flowchart TD
 
 Entry condition: User provides `existing <plugin-path>`.
 
-1. Task is plugin assessment with Skill(skill="plugin-creator:assessor")
-   Context to include in the prompt: plugin directory path from `<plugin_target/>`
-   Output: `.claude/plan/{plugin-name}/assessment-REPORT.md` — assessment report with design map and task file
+Dispatch the assessor with the plugin directory path. Full task spec (context, output) in `references/phase-dispatch-details.md` → "Phase 1 — Assess".
 
 The following diagram is the authoritative procedure for Phase 1 Assess decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
     %% Gate 1: assessor output must exist before validator can be meaningful
-    AssessFile{"File .claude/plan/NAME/assessment-REPORT.md<br>exists and is non-empty?"}
+    AssessFile{"File .plugin-creator/plans/NAME/assessment-REPORT.md<br>exists and is non-empty?"}
     AssessFile -->|"No — assessor did not complete"| RetryAssess["Re-run assessor skill<br>with plugin directory path"]
     RetryAssess --> AssessFile
     AssessFile -->|"Yes — assessment written"| ValidatorGate{"Run: uvx skilllint@latest check PATH<br>Exit code?"}
@@ -291,11 +137,7 @@ Entry condition: Discussion phase completed and discuss-CONTEXT.md written.
 
 Before research begins, draft an initial mission statement for the plugin. This anchors all subsequent phases to the plugin's purpose and values and creates a backlog interview task for async human refinement.
 
-1. Task is mission statement drafting with Skill(skill="plugin-creator:mission-statement")
-   Context to include in the prompt: plugin concept from `<plugin_target/>`, path to discuss-CONTEXT.md
-   Output: `{plugin-path}/mission.json` with `status: "draft"` — a GitHub backlog interview task is created automatically by the skill
-
-The mission statement is never a blocker. Research and all subsequent phases proceed without waiting for the interview. The `[draft]` status on `mission.json` signals this is a hypothesis, not a decision.
+Dispatch the mission-statement skill. Full task spec in `references/phase-dispatch-details.md` → "Phase 0.6 — Mission Statement Draft".
 
 The following diagram is the authoritative procedure for Phase 0.6 completion gate.
 
@@ -313,73 +155,36 @@ flowchart TD
 
 Entry condition: Discussion phase completed and discuss-CONTEXT.md written.
 
-Spawn all four researchers in a single message to run concurrently. Merge results into `research-FINDINGS.md` before proceeding to Design.
+First run Researcher 0 (feature discovery) to produce the feature context. Then spawn Researchers 1–4 in a single message to run concurrently with that context as input. Merge results into `research-FINDINGS.md` before proceeding to Design.
 
-1. Task is feature discovery with Skill(skill="plugin-creator:feature-discovery")
-   Context to include in the prompt: plugin concept from `<plugin_target/>` (everything after "new"), discuss-CONTEXT.md
-   Output: `.claude/plan/{plugin-name}/feature-context-{slug}.md` — feature context document
+Full prompts, contexts, and outputs for all five researchers live in `references/phase-2-researcher-prompts.md`. Summary:
 
-2. Task is existing solutions research with subagent_type="plugin-creator:plugin-assessor"
-   Context to include in the prompt: plugin concept, feature context from step 1
-   Prompt for researcher: Search `plugins/` and `~/.claude/skills/` for similar functionality. Report what exists, gaps to fill, patterns to follow or avoid.
-   Output: `.claude/plan/{plugin-name}/research-1-existing.md`
+- Researcher 0 — Feature discovery → `feature-context-{slug}.md`
+- Researcher 1 — Existing solutions → `research-1-existing.md`
+- Researcher 2 — Claude Code features → `research-2-features.md`
+- Researcher 3 — Architecture patterns → `research-3-architecture.md`
+- Researcher 4 — Pitfalls and official docs → `research-4-pitfalls.md`
 
-3. Task is Claude Code features research with subagent_type="plugin-creator:plugin-assessor"
-   Context to include in the prompt: plugin concept, feature context from step 1
-   Prompt for researcher: What capabilities should this plugin use — dynamic context injection (`!command`), subagent execution (`context: fork`), hooks (which events?), MCP/LSP integration opportunities? Report recommended features with rationale.
-   Output: `.claude/plan/{plugin-name}/research-2-features.md`
-
-4. Task is architecture patterns research with subagent_type="plugin-creator:plugin-assessor"
-   Context to include in the prompt: plugin concept, feature context from step 1
-   Prompt for researcher: How do well-structured plugins organize — skill directory structure, reference file patterns, agent definitions, hook configurations? Report recommended structure based on similar plugins.
-   Output: `.claude/plan/{plugin-name}/research-3-architecture.md`
-
-5. Task is pitfalls and official docs research with subagent_type="general-purpose"
-   Context to include in the prompt: plugin concept, feature context from step 1
-   Prompt for researcher: Fetch `https://code.claude.com/docs/en/plugins-reference.md` and `https://code.claude.com/docs/en/skills.md`. Identify schema requirements (comma-separated strings NOT arrays), common mistakes, deprecations or new features. Report gotchas to avoid.
-   Output: `.claude/plan/{plugin-name}/research-4-pitfalls.md`
-
-After all four researchers complete, consolidate into `research-FINDINGS.md`:
-
-```markdown
-# Research Findings: {plugin-name}
-Date: {ISO timestamp}
-
-## 1. Existing Solutions
-{Researcher 1 findings}
-
-## 2. Recommended Features
-{Researcher 2 findings}
-
-## 3. Architecture Patterns
-{Researcher 3 findings}
-
-## 4. Pitfalls & Requirements
-{Researcher 4 findings}
-
-## Synthesis
-- Key insights: {combined learnings}
-- Recommended approach: {synthesis}
-```
+After all four parallel researchers complete, consolidate into `.plugin-creator/plans/{plugin-name}/research-FINDINGS.md` using the template in `references/artifact-templates.md`.
 
 The following diagram is the authoritative procedure for Phase 2 Research decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
     %% All 4 individual research files must exist before merge is valid
-    R1{"File .claude/plan/NAME/research-1-existing.md<br>exists and is non-empty?"}
+    R1{"File .plugin-creator/plans/NAME/research-1-existing.md<br>exists and is non-empty?"}
     R1 -->|"No — researcher 1 (existing solutions) failed"| Retry1["Re-spawn researcher 1<br>with more specific prompt"]
     Retry1 --> R1
-    R1 -->|"Yes"| R2{"File .claude/plan/NAME/research-2-features.md<br>exists and is non-empty?"}
+    R1 -->|"Yes"| R2{"File .plugin-creator/plans/NAME/research-2-features.md<br>exists and is non-empty?"}
     R2 -->|"No — researcher 2 (Claude Code features) failed"| Retry2["Re-spawn researcher 2<br>with more specific prompt"]
     Retry2 --> R2
-    R2 -->|"Yes"| R3{"File .claude/plan/NAME/research-3-architecture.md<br>exists and is non-empty?"}
+    R2 -->|"Yes"| R3{"File .plugin-creator/plans/NAME/research-3-architecture.md<br>exists and is non-empty?"}
     R3 -->|"No — researcher 3 (architecture patterns) failed"| Retry3["Re-spawn researcher 3<br>with more specific prompt"]
     Retry3 --> R3
-    R3 -->|"Yes"| R4{"File .claude/plan/NAME/research-4-pitfalls.md<br>exists and is non-empty?"}
+    R3 -->|"Yes"| R4{"File .plugin-creator/plans/NAME/research-4-pitfalls.md<br>exists and is non-empty?"}
     R4 -->|"No — researcher 4 (pitfalls/docs) failed"| Retry4["Re-spawn researcher 4<br>with more specific prompt"]
     Retry4 --> R4
-    R4 -->|"Yes — all 4 researcher outputs exist"| Merge{"File .claude/plan/NAME/research-FINDINGS.md<br>exists and is non-empty?"}
+    R4 -->|"Yes — all 4 researcher outputs exist"| Merge{"File .plugin-creator/plans/NAME/research-FINDINGS.md<br>exists and is non-empty?"}
     Merge -->|"Yes — merge complete"| Next["Proceed to Phase 3 — Design"]
     Merge -->|"No — merge not yet written"| DoMerge["Consolidate all 4 research files<br>into research-FINDINGS.md"]
     DoMerge --> Merge
@@ -391,18 +196,7 @@ flowchart TD
 
 Entry condition: Research gate passed.
 
-1. Task is prerequisite check with Skill(skill="dh:rt-ica")
-   Context to include in the prompt: research-FINDINGS.md, plugin concept, user requirements from discuss-CONTEXT.md
-   Output: APPROVED or BLOCKED verdict — if BLOCKED, resolve blockers before proceeding
-
-2. Task is design plan creation with subagent_type="general-purpose"
-   Context to include in the prompt: research-FINDINGS.md, rt-ica output, discuss-CONTEXT.md
-   Output: `.claude/plan/{plugin-name}/design-PLAN.md` — design plan with XML task specs defining every skill, agent, and hook to create. Each task must have: single responsibility, testable `<verify>` command, clear `<done>` criteria.
-
-3. Task is plan verification with subagent_type="general-purpose"
-   Context to include in the prompt: design-PLAN.md, discuss-CONTEXT.md, research-FINDINGS.md key sections
-   Prompt: Verify this plan achieves the plugin goals. Check: (1) do tasks cover all required components? (2) are tasks truly atomic? (3) are `<verify>` commands testable? (4) are there gaps between tasks? (5) does sequence respect dependencies? Return PASS or FAIL with specific issues.
-   Output: PASS verdict (proceed) or FAIL with feedback (return to step 2)
+Execute three dispatch steps: (1) prerequisite check via `dh:rt-ica`, (2) design plan creation, (3) plan verification. Full task specs in `references/phase-dispatch-details.md` → "Phase 3 — Design". Track plan-checker iteration count in `STATE.md`; escalate to user on the third FAIL.
 
 The following diagram is the authoritative procedure for Phase 3 Design decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
@@ -423,21 +217,7 @@ flowchart TD
 
 Entry condition: Design gate passed (new plugin path) OR user selected a create intent on the existing plugin path (no design plan required — use the user's stated component description directly).
 
-For each component defined in `design-PLAN.md`, invoke the appropriate creator skill:
-
-1. Task is skill creation with Skill(skill="plugin-creator:skill-creator")
-   Context to include in the prompt: design-PLAN.md task spec for this skill, plugin path
-   Output: `{plugin-path}/skills/{skill-name}/SKILL.md` and any bundled resources
-
-2. Task is agent creation with Skill(skill="plugin-creator:agent-creator")
-   Context to include in the prompt: design-PLAN.md task spec for this agent, plugin path
-   Output: `{plugin-path}/agents/{agent-name}.md`
-
-3. Task is hook creation with Skill(skill="plugin-creator:hook-creator")
-   Context to include in the prompt: design-PLAN.md task spec for this hook, plugin path
-   Output: hook scripts and hooks.json configuration
-
-Repeat for each planned component. Create `plugin.json` via `uv run plugins/plugin-creator/scripts/create_plugin.py` if it does not exist.
+For each component defined in `design-PLAN.md`, invoke the appropriate creator skill (skill-creator, agent-creator, or hook-creator). Full task specs in `references/phase-dispatch-details.md` → "Phase 4 — Create". For agent-frontmatter decisions during agent creation, also load `/plugin-creator:claude-subagent-reference`. Create `plugin.json` via `uv run plugins/plugin-creator/scripts/create_plugin.py` if it does not exist.
 
 The following diagram is the authoritative procedure for Phase 4 Create decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
@@ -455,37 +235,7 @@ flowchart TD
 
 Entry condition: Create gate passed (new path) OR Assess gate failed (existing path).
 
-Debug fixes validation errors. Run the validator first to identify issues:
-
-```bash
-uvx skilllint@latest check <plugin-path>
-```
-
-The following diagram is the authoritative procedure for Phase 5 Debug error routing and completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
-
-```mermaid
-flowchart TD
-    %% Entry: run validator to get current error list
-    RunValidator["Run: uvx skilllint@latest check PATH<br>Capture full output"] --> HasErrors{"Exit code 0<br>AND 0 errors in output?<br>(warnings are acceptable)"}
-    HasErrors -->|"Yes — 0 errors, validation passes"| Next["Proceed to Phase 6 — Optimize"]
-    HasErrors -->|"No — errors remain"| Q{"Error type in validator output?"}
-
-    %% Route each error type to its fix, then loop back to re-validate
-    Q -->|"SK007 — skill exceeds token limit (hard error)"| Split["Invoke: Skill(skill='plugin-creator:refactor-skill')<br>Context = oversized SKILL.md path<br>Output = split skill files at same plugin path"]
-    Q -->|"SK006 — skill approaching token limit (warning)"| Extract["Extract content to references/ directory<br>Update SKILL.md to reference extracted files<br>Output = reduced SKILL.md + new references/ file"]
-    Q -->|"Broken link error (LINK01 or similar)"| Links["Read the file containing the broken link<br>Verify the target path exists on disk<br>Fix with Edit tool — update or remove the broken reference"]
-    Q -->|"Frontmatter issues (FM-series errors)"| Lint["Invoke: Skill(skill='plugin-creator:lint', args='--fix PATH')<br>Context = file path + validator output<br>Output = corrected frontmatter in the file"]
-    Q -->|"Tool format issues (array instead of string)"| Tools["Invoke: Skill(skill='plugin-creator:lint', args='--fix PATH')<br>Output = fixed comma-separated string in frontmatter"]
-    Q -->|"Other structural errors"| Manual["Read the validator error message<br>Identify the file and line referenced<br>Apply Edit fix directly to that file<br>Verify fix is consistent with plugin schema"]
-
-    %% All fix paths loop back to re-validate
-    Split --> RunValidator
-    Extract --> RunValidator
-    Links --> RunValidator
-    Lint --> RunValidator
-    Tools --> RunValidator
-    Manual --> RunValidator
-```
+Debug fixes validation errors. Run `uvx skilllint@latest check <plugin-path>` first to identify issues. The authoritative Phase 5 error-routing diagram lives in `references/phase-gate-diagrams.md` — load it when entering this phase. It routes SK007, SK006, broken links, frontmatter errors, tool format errors, and other structural errors to their specific fix and loops back to re-validate.
 
 ---
 
@@ -495,17 +245,7 @@ Entry condition: Debug gate passed OR Assess gate passed with no errors.
 
 Optimize improves quality — descriptions, progressive disclosure, agent prompts, documentation. This phase is not about fixing errors (that is Debug) but about raising quality.
 
-1. Task is structural plugin improvement with Skill(skill="plugin-creator:refactor-plugin")
-   Context to include in the prompt: plugin path, assessment-REPORT.md (if available from Phase 1)
-   Output: improved plugin structure, updated SKILL.md files, better progressive disclosure
-
-2. Task is content quality optimization with subagent_type="plugin-creator:ai-doc-optimizer"
-   Context to include in the prompt: SKILL.md or CLAUDE.md files needing improvement, assessment findings
-   Output: optimized documentation with better Claude comprehension
-
-3. Task is agent prompt optimization with subagent_type="plugin-creator:subagent-refactorer"
-   Context to include in the prompt: agent .md files needing improvement
-   Output: optimized agent prompts using Anthropic best practices
+Execute three dispatches: (1) structural plugin improvement via `refactor-plugin`, (2) content quality optimization via `ai-doc-optimizer`, (3) agent prompt optimization via `subagent-refactorer`. Full task specs in `references/phase-dispatch-details.md` → "Phase 6 — Optimize".
 
 The following diagram is the authoritative procedure for Phase 6 Optimize completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
@@ -530,12 +270,7 @@ flowchart TD
 
 Entry condition: Optimize phase complete.
 
-Generate comprehensive documentation for the plugin:
-
-1. Task is plugin documentation generation with subagent_type="plugin-creator:plugin-assessor"
-   Context to include in the prompt: plugin path, all SKILL.md files, agent files, plugin.json, assess-REPORT.md or design-PLAN.md (whichever is available)
-   Prompt: Generate comprehensive documentation. Create: README.md with installation, usage, and examples; `docs/skills.md` if multiple skills exist; configuration guide if hooks or MCP servers are included. Ensure all features are documented, installation instructions are accurate, and examples are runnable.
-   Output: `{plugin-path}/README.md` and any additional documentation files
+Generate comprehensive documentation for the plugin by dispatching `plugin-assessor` with the full set of plugin artifacts. Full task spec (context, prompt, output) in `references/phase-dispatch-details.md` → "Phase 6.5 — Documentation".
 
 The following diagram is the authoritative procedure for Phase 6.5 Documentation completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
@@ -553,55 +288,7 @@ flowchart TD
 
 Entry condition: Documentation phase complete.
 
-Run multi-layer validation:
-
-1. Task is recursive validation with Skill(skill="plugin-creator:ensure-complete")
-   Context to include in the prompt: plugin path, task file (if applicable)
-   Output: `.claude/plan/{plugin-name}/validation-REPORT.md`
-
-2. Layer 1 — Structural validation:
-
-   ```bash
-   uvx skilllint@latest check <plugin-path>
-   ```
-
-3. Layer 2 — Runtime validation:
-
-   ```bash
-   claude plugin validate <plugin-path>
-   ```
-
-4. Layer 3 — Token complexity: Check `skilllint` output for SK006/SK007 warnings on all skills.
-
-5. Layer 4 — Cross-reference integrity: Verify all internal links resolve, all skills referenced in plugin.json exist, all agent references in skills point to existing agent files.
-
-The following diagram is the authoritative procedure for Phase 7 Verify 4-layer validation gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
-
-```mermaid
-flowchart TD
-    %% Layer 1: structural validator
-    VL1{"Layer 1 — Run: uvx skilllint@latest check PATH<br>Exit code 0 AND 0 errors in output?"}
-    VL1 -->|"Yes — structural validation passes"| VL2{"Layer 2 — Run: claude plugin validate PATH<br>Exit code 0?"}
-    VL1 -->|"No — structural errors found"| Fail1["Capture Layer 1 error details<br>Proceed to Phase 5 — Debug with these errors"]
-
-    %% Layer 2: runtime validator
-    VL2 -->|"Yes — runtime validation passes"| VL3{"Layer 3 — Does skilllint output<br>contain SK006 or SK007 for any skill?"}
-    VL2 -->|"No — runtime validation fails"| Fail2["Capture Layer 2 error details<br>Check .claude-plugin/plugin.json exists<br>Check all paths start with ./<br>Proceed to Phase 5 — Debug with these errors"]
-
-    %% Layer 3: token complexity
-    VL3 -->|"No SK006/SK007 — all skills within token limits"| VL4{"Layer 4 — For every internal link in all SKILL.md and agent files:<br>does the target file exist on disk?<br>For every skill in plugin.json: does the SKILL.md exist?<br>For every agent reference in skills: does the agent .md exist?"}
-    VL3 -->|"Yes — SK006 or SK007 present"| Fail3["Identify which skills triggered SK006/SK007<br>Proceed to Phase 5 — Debug targeting those skills"]
-
-    %% Layer 4: cross-reference integrity — attempt inline fix before returning to Debug
-    VL4 -->|"Yes — all cross-references resolve"| Done(["Write .claude/plan/NAME/SUMMARY.md<br>Plugin is marketplace-ready"])
-    VL4 -->|"No — one or more broken cross-references"| Fail4["List each broken reference with file path and line<br>Fix with Edit tool directly<br>Re-run Layer 4 check"]
-    Fail4 --> VL4
-
-    %% Layers 1-3 failures route to Phase 5
-    Fail1 --> DebugReturn["Proceed to Phase 5 — Debug"]
-    Fail2 --> DebugReturn
-    Fail3 --> DebugReturn
-```
+Run multi-layer validation. Full task spec in `references/phase-dispatch-details.md` → "Phase 7 — Verify". The authoritative 4-layer validation gate diagram lives in `references/phase-gate-diagrams.md` — load it when entering this phase. Any layer failure routes to Phase 5 (Debug).
 
 ---
 
@@ -626,7 +313,7 @@ Key rules:
 - SK007 (token limit exceeded) — run `/plugin-creator:refactor-skill`; editing alone is not sufficient
 - SK006 (approaching limit) — extract content to `references/` and re-validate
 - RT-ICA BLOCKED — do not proceed to Discussion or Research until all conditions resolve
-- STATE.md absent — read all `.claude/plan/{plugin-name}/` artifacts to reconstruct phase
+- STATE.md absent — read all `.plugin-creator/plans/{plugin-name}/` artifacts to reconstruct phase
 
 ---
 

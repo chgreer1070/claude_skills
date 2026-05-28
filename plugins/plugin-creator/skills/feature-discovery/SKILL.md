@@ -268,7 +268,7 @@ def generate_slug(input_text: str) -> str:
 
 ### Step 7: Write Output Document
 
-Write findings to an appropriate location in the project's planning directory (e.g., `plan/feature-context-{slug}.md` or `.claude/plan/feature-context-{slug}.md`)
+Write findings to an appropriate location in the project's planning directory (e.g., `plan/feature-context-{slug}.md` or `.plugin-creator/plans/feature-context-{slug}.md`)
 
 ## Scope Creep Recognition
 

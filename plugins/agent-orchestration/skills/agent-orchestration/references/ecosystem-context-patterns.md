@@ -87,7 +87,7 @@ Information that exists nowhere the agent can see — session-specific or task-s
 ECOSYSTEM CONTEXT:
 - The `gh` CLI is pre-authenticated for GitHub operations (issues, PRs, API queries)
 - CI logs for PR #42 accessible via MCP GitHub tool
-- Recent linting reports in `.claude/reports/` show previously resolved issues
+- Recent linting reports in `.tmp/reports/` show previously resolved issues
 </eg>
 
 **Why this works:**
@@ -129,7 +129,7 @@ Database seed data is loaded at localhost:5432
 Point to locations that would require extra exploration to discover organically:
 
 <eg>
-Recent linting reports in `.claude/reports/` document previously resolved issues
+Recent linting reports in `.tmp/reports/` document previously resolved issues
 Package validation scripts in `./scripts/` — see README.md for usage
 Architecture decision records in `./docs/adr/`
 </eg>
@@ -171,7 +171,7 @@ The section only earns its place when it contains information the agent cannot f
 |---|---|---|
 | Authenticated CLI state (`gh` is logged in) | YES | Session-specific, varies per run |
 | Task-specific access (CI logs for PR #42) | YES | Specific to this delegation |
-| Non-obvious doc location (`.claude/reports/`) | YES | Saves discovery time |
+| Non-obvious doc location (`.tmp/reports/`) | YES | Saves discovery time |
 | Runtime state (docker running, DB seeded) | YES | Varies per session |
 | "Full project context available" | NO | Always true; inherited |
 | "Check `<functions>` for MCP tools" | NO | In tool descriptions; inherited |

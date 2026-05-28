@@ -196,7 +196,7 @@ flowchart TD
 **PROJECT-SPECIFIC RESOURCES** (scripts, reports, docs):
 
 ```text
-[Example: "Validation scripts in ./scripts/ — check README.md" or "Previous fixes documented in .claude/reports/"]
+[Example: "Validation scripts in ./scripts/ — check README.md" or "Previous fixes documented in .tmp/reports/"]
 ```
 
 ---

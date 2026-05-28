@@ -109,7 +109,7 @@ Writes or rewrites frontmatter `description` fields for skills and agents. Enfor
 
 #### `/audit-agent-lifecycle`
 
-Validates that agents can actually accomplish what they claim to do. Runs 8 semantic audits: capability vs configuration alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, and pattern learning. Writes reports to `.claude/audits/`.
+Validates that agents can actually accomplish what they claim to do. Runs 8 semantic audits: capability vs configuration alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, and pattern learning. Writes reports to `.plugin-creator/audits/`.
 
 ```text
 /audit-agent-lifecycle <plugin-path>
@@ -117,7 +117,7 @@ Validates that agents can actually accomplish what they claim to do. Runs 8 sema
 
 #### `/audit-skill-lifecycle`
 
-Deep semantic validation of how skills interconnect. Traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences. Generates audit reports to `.claude/audits/`.
+Deep semantic validation of how skills interconnect. Traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences. Generates audit reports to `.plugin-creator/audits/`.
 
 ```text
 /audit-skill-lifecycle <plugin-path>
@@ -363,7 +363,7 @@ Claude will assess whether the skill needs splitting (multiple independent domai
 # Review the assessment report and task plan
 /implement-refactor my-plugin
 # After all tasks complete:
-/ensure-complete .claude/plan/tasks-refactor-my-plugin.md
+/ensure-complete .plugin-creator/plans/tasks-refactor-my-plugin.md
 ```
 
 ## Validation Reference

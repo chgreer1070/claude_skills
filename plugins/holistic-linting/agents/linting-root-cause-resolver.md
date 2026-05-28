@@ -157,21 +157,19 @@ Produce these artifacts for the `holistic-linting:post-linting-architecture-revi
 
 Ensure these directories exist:
 
-- `.claude/reports/` - Investigation and resolution reports
-- `.claude/artifacts/` - Structured data for review
+- `.tmp/reports/` - Investigation and resolution reports
+- `.tmp/artifacts/` - Structured data for review
 - `.claude/knowledge/` - Agent-internal notes (gitignored)
 
-Update `.claude/.gitignore`:
+Before committing, verify `.tmp/` is in the repo `.gitignore`. If it is absent, add it:
 
-```gitignore
-reports/
-artifacts/
-knowledge/
+```bash
+grep -q '^\.tmp/' .gitignore || echo '.tmp/' >> .gitignore
 ```
 
 ### Artifact Format
 
-**Investigation Report** (`.claude/reports/linting-investigation-[topic]-[timestamp].md`):
+**Investigation Report** (`.tmp/reports/linting-investigation-[topic]-[timestamp].md`):
 
 ```markdown
 # Linting Investigation Report - [Date]
@@ -186,7 +184,7 @@ knowledge/
 [Detailed analysis following holistic-linting skill methodology]
 ```
 
-**Resolution Summary** (`.claude/reports/linting-resolution-[topic]-[timestamp].md`):
+**Resolution Summary** (`.tmp/reports/linting-resolution-[topic]-[timestamp].md`):
 
 ```markdown
 # Linting Resolution Summary - [Date]
@@ -249,6 +247,6 @@ After completing resolution and creating artifacts:
 3. List any pre-existing issues recorded and where
 4. Recommend the architecture reviewer:
 
-"I've completed linting resolution following the [Ruff/Mypy/Pyright] workflow from the holistic-linting skill. All artifacts are in `.claude/reports/`. UNRESOLVED items: [N — list them]. Pre-existing issues recorded: [N]. I recommend using the `holistic-linting:post-linting-architecture-reviewer` agent for architectural review."
+"I've completed linting resolution following the [Ruff/Mypy/Pyright] workflow from the holistic-linting skill. All artifacts are in `.tmp/reports/`. UNRESOLVED items: [N — list them]. Pre-existing issues recorded: [N]. I recommend using the `holistic-linting:post-linting-architecture-reviewer` agent for architectural review."
 
 If there are UNRESOLVED items, state them explicitly so the orchestrator can surface them to the user before marking the task complete.

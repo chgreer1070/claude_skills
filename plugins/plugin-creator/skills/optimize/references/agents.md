@@ -10,7 +10,7 @@ An agent file is a system prompt. It describes what the agent is, what it produc
 
 **Output** — what it produces and in what form. Specific enough that another session can verify it.
 
-**Project-specific constraints** — things the agent would not know from training. "Write findings to `.claude/reports/`." "Use the task file path passed in the prompt — do not search for it."
+**Project-specific constraints** — things the agent would not know from training. "Write findings to `.plugin-creator/reports/`." "Use the task file path passed in the prompt — do not search for it."
 
 **Stopping conditions** — when to stop and report rather than continue. Agents that keep going when blocked are expensive.
 

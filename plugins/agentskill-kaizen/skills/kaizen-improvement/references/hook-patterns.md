@@ -81,7 +81,7 @@ When analysis shows subagents sending research as messages instead of writing to
   "SubagentStart": [{
     "hooks": [{
       "type": "prompt",
-      "prompt": "Inject this context into the subagent: 'CRITICAL: Write all research findings to files, not messages. Messages are lost during context compaction. Write to .claude/ or .planning/ directory.'"
+      "prompt": "Inject this context into the subagent: 'CRITICAL: Write all research findings to files, not messages. Messages are lost during context compaction. Write to .tmp/ or .planning/ directory.'"
     }]
   }]
 }

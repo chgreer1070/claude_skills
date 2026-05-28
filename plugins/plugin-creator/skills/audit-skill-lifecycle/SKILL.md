@@ -1,6 +1,6 @@
 ---
 name: audit-skill-lifecycle
-description: Audit skill lifecycle by tracing call chains, detecting circular dependencies, finding instruction contradictions, identifying duplicated datasets, analyzing bidirectional coherence, discovering scriptable sequences, and learning patterns. Use when checking skill coherence, validating skill workflow, finding semantic gaps in plugin structure, or auditing plugin before marketplace submission. Generates audit reports to .claude/audits/ with findings by dimension.
+description: Audit skill lifecycle by tracing call chains, detecting circular dependencies, finding instruction contradictions, identifying duplicated datasets, analyzing bidirectional coherence, discovering scriptable sequences, and learning patterns. Use when checking skill coherence, validating skill workflow, finding semantic gaps in plugin structure, or auditing plugin before marketplace submission. Generates audit reports to .plugin-creator/audits/ with findings by dimension.
 argument-hint: <plugin-path>
 model: sonnet
 user-invocable: true
@@ -60,7 +60,7 @@ Execute 7 audit dimensions as defined in `references/skill-lifecycle-audit.md`. 
 
 ### Step 3: Report Generation
 
-Write audit artifacts to `.claude/audits/` directory:
+Write audit artifacts to `.plugin-creator/audits/` directory:
 
 - `audit-report-{slug}.md` — Full findings organized by dimension with severity (error/warning/info)
 - `call-graph-{slug}.md` — Visual call graph (mermaid format) with annotations
@@ -192,7 +192,7 @@ Each specialist delegation returns verdict: `CONFIRMED_ISSUE`, `FALSE_POSITIVE`,
 
 ## Output Format
 
-The audit produces artifacts in `.claude/audits/`:
+The audit produces artifacts in `.plugin-creator/audits/`:
 
 ### audit-report-{slug}.md
 

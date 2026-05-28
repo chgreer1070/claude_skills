@@ -1,6 +1,6 @@
 # Plugin Assessment Report Format
 
-Use this template when writing assessment reports. Write the report inline in your response unless the plugin is large (>20 files), in which case write it to `.claude/reports/plugin-assessment-{plugin-name}.md`.
+Use this template when writing assessment reports. Write the report inline in your response unless the plugin is large (>20 files), in which case write it to `.plugin-creator/reports/plugin-assessment-{plugin-name}.md`.
 
 ## Report Structure
 

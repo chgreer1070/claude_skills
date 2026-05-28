@@ -171,7 +171,7 @@ VERIFICATION REQUIREMENTS:
 ECOSYSTEM CONTEXT:
 - [Authenticated CLIs available: e.g., "`gh` CLI is pre-authenticated for GitHub operations"]
 - [Session-specific access: e.g., "CI logs for PR #42 accessible via MCP GitHub tool"]
-- [Non-obvious doc locations: e.g., "linting reports in `.claude/reports/`"]
+- [Non-obvious doc locations: e.g., "linting reports in `.tmp/reports/`"]
 - [Omit anything already in CLAUDE.md — agents inherit CLAUDE.md and do not need it repeated]
 ```
 
@@ -203,7 +203,7 @@ Include only session-specific or task-specific facts that exist nowhere the agen
 **Non-obvious document locations** — file locations the agent would not discover without a hint:
 
 ```text
-- Recent linting reports in `.claude/reports/` document previously resolved issues
+- Recent linting reports in `.tmp/reports/` document previously resolved issues
 - Package validation scripts in `./scripts/` — see README.md for usage
 ```
 
@@ -243,7 +243,7 @@ All four lines are already in CLAUDE.md or tool descriptions. This section adds 
 ECOSYSTEM CONTEXT:
 - The `gh` CLI is pre-authenticated for GitHub operations (issues, PRs, API queries)
 - CI logs for PR #42 accessible via MCP GitHub tool
-- Recent linting reports in `.claude/reports/` show resolved issues for reference
+- Recent linting reports in `.tmp/reports/` show resolved issues for reference
 ```
 
 These three lines are not in any CLAUDE.md and vary per session.

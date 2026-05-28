@@ -1,6 +1,6 @@
 ---
 name: audit-agent-lifecycle
-description: Audit agent lifecycle — validates agent execution capability against configuration. Accepts plugin path, runs 8 semantic audits (capability vs config alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, pattern learning), writes reports to .claude/audits/. Use when auditing agent lifecycle, checking agent capabilities, verifying tool access, finding dead agents, validating agent contract alignment, or confirming agents can execute workflows.
+description: Audit agent lifecycle — validates agent execution capability against configuration. Accepts plugin path, runs 8 semantic audits (capability vs config alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, pattern learning), writes reports to .plugin-creator/audits/. Use when auditing agent lifecycle, checking agent capabilities, verifying tool access, finding dead agents, validating agent contract alignment, or confirming agents can execute workflows.
 argument-hint: <plugin-path>
 model: sonnet
 user-invocable: true
@@ -40,7 +40,7 @@ These two audits are complementary:
 | Call graph direction | Skill → Skill, Skill → Agent | Agent → Agent, Agent → Skill |
 | Contradiction scope | Cross-skill instructions | Cross-agent and agent-vs-skill |
 
-Run `/audit-skill-lifecycle` first to map workflow graphs, then this audit validates agents can execute those workflows. Both share the same `patterns.md` file in `.claude/audits/`.
+Run `/audit-skill-lifecycle` first to map workflow graphs, then this audit validates agents can execute those workflows. Both share the same `patterns.md` file in `.plugin-creator/audits/`.
 
 ## Workflow
 
@@ -93,7 +93,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/update-agent-map.mjs --name "<agent-id>" --capa
 4. Export the dataset:
 
 ```bash
-node $CLAUDE_PLUGIN_ROOT/scripts/update-agent-map.mjs dump --file .claude/audits/agent-map.json
+node $CLAUDE_PLUGIN_ROOT/scripts/update-agent-map.mjs dump --file .plugin-creator/audits/agent-map.json
 ```
 
 5. Perform inline gap analysis — compare `description` against `capabilities` in the exported JSON.
@@ -111,7 +111,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/populate-agent-descriptions.mjs
 4. After all Tasks complete, export the dataset:
 
 ```bash
-node $CLAUDE_PLUGIN_ROOT/scripts/update-agent-map.mjs dump --file .claude/audits/agent-map.json
+node $CLAUDE_PLUGIN_ROOT/scripts/update-agent-map.mjs dump --file .plugin-creator/audits/agent-map.json
 ```
 
 5. Perform gap analysis across all agents in the exported JSON.
@@ -159,7 +159,7 @@ Output: revised agent file at agents/<agent-name>.md with corrected frontmatter 
 
 ### Step 4: Report Generation
 
-Write audit artifacts to `.claude/audits/`:
+Write audit artifacts to `.plugin-creator/audits/`:
 
 1. `agent-audit-report-{slug}.md` — Full findings organized by dimension
 2. `agent-dependency-graph-{slug}.md` — Visual graph of agent-to-agent and agent-to-skill delegation

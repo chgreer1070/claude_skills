@@ -34,7 +34,7 @@ Phase 0.5: Discussion
   Verbosity: terse or explanatory?
   > terse — just the commands
 
-  Preferences saved to .claude/plan/git-workflow-helper/discuss-CONTEXT.md
+  Preferences saved to .plugin-creator/plans/git-workflow-helper/discuss-CONTEXT.md
 
 Phase 2: Research
   Spawning 4 parallel researchers...
@@ -48,7 +48,7 @@ Phase 3: Design
   RT-ICA on design inputs: APPROVED
   Generating design plan...
   Plan checker: PASS (3 tasks, all atomic, all verifiable)
-  Saved: .claude/plan/git-workflow-helper/design-PLAN.md
+  Saved: .plugin-creator/plans/git-workflow-helper/design-PLAN.md
 
 Phase 4: Create
   Creating skill: git-commit-helper/SKILL.md ✓
@@ -76,7 +76,7 @@ Phase 7: Verify
   Layer 3 (token complexity): all skills within limits ✓
   Layer 4 (cross-references): all links resolve ✓
 
-  Wrote .claude/plan/git-workflow-helper/SUMMARY.md
+  Wrote .plugin-creator/plans/git-workflow-helper/SUMMARY.md
   Plugin is marketplace-ready.
 ```
 
@@ -91,7 +91,7 @@ Loading domain knowledge skills...
 
 Phase 1: Assess
   Running assessor...
-  Assessment saved: .claude/plan/my-data-tool/assessment-REPORT.md
+  Assessment saved: .plugin-creator/plans/my-data-tool/assessment-REPORT.md
 
   Running validator: uvx skilllint@latest check plugins/my-data-tool
   Exit code: 1

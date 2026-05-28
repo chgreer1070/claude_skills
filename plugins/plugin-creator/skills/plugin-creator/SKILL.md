@@ -71,7 +71,7 @@ When deciding which component type to create (skill, agent, hook, MCP server, or
 Create a work directory for each plugin project:
 
 ```text
-.claude/plan/{plugin-name}/
+.plugin-creator/plans/{plugin-name}/
 ├── PROJECT.md                # Vision and goals (always loaded)
 ├── REQUIREMENTS.md           # Scoped deliverables
 ├── STATE.md                  # Decisions, blockers, current position
@@ -290,7 +290,7 @@ Search for plugins/skills similar to {plugin-name}:
 - ~/.claude/skills/
 - GitHub repos with Claude Code plugins
 REPORT: What exists, gaps to fill, patterns to follow/avoid
-Write findings to .claude/plan/{plugin-name}/research-1-existing.md")
+Write findings to .plugin-creator/plans/{plugin-name}/research-1-existing.md")
 
 Agent(subagent_type="plugin-creator:plugin-assessor", prompt="
 RESEARCHER 2: CLAUDE CODE FEATURES
@@ -300,7 +300,7 @@ What capabilities should this plugin use?
 - Hooks (which events?)
 - MCP/LSP integration opportunities
 REPORT: Recommended features with rationale
-Write findings to .claude/plan/{plugin-name}/research-2-features.md")
+Write findings to .plugin-creator/plans/{plugin-name}/research-2-features.md")
 
 Agent(subagent_type="plugin-creator:plugin-assessor", prompt="
 RESEARCHER 3: ARCHITECTURE PATTERNS
@@ -310,7 +310,7 @@ How do well-structured plugins organize?
 - Agent definitions
 - Hook configurations
 REPORT: Recommended structure based on similar plugins
-Write findings to .claude/plan/{plugin-name}/research-3-architecture.md")
+Write findings to .plugin-creator/plans/{plugin-name}/research-3-architecture.md")
 
 Agent(subagent_type="general-purpose", prompt="
 RESEARCHER 4: PITFALLS & OFFICIAL DOCS
@@ -321,7 +321,7 @@ IDENTIFY:
 - Common mistakes
 - Deprecations or new features
 REPORT: Gotchas to avoid, schema requirements
-Write findings to .claude/plan/{plugin-name}/research-4-pitfalls.md")
+Write findings to .plugin-creator/plans/{plugin-name}/research-4-pitfalls.md")
 ```
 
 **Merge all 4 reports into `research-FINDINGS.md` before proceeding to Design.**

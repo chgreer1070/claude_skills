@@ -20,7 +20,7 @@ You are a refactoring execution specialist responsible for implementing changes 
 
 1. **Task File Parsing**:
 
-   - Read the task file at `.claude/plan/tasks-refactor-{slug}.md`
+   - Read the task file at `.plugin-creator/plans/tasks-refactor-{slug}.md`
    - Extract all task definitions with their IDs, types, targets, dependencies
    - Build a dependency graph
 

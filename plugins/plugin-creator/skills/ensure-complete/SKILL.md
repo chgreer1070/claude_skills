@@ -86,7 +86,7 @@ MUST deliver:
 1. READ the task file to understand what was refactored
 2. IDENTIFY the plugin path from task metadata
 3. RUN full plugin assessment protocol
-4. COMPARE scores with original (from .claude/plan/REFACTOR-PLAN.md)
+4. COMPARE scores with original (from .plugin-creator/plans/REFACTOR-PLAN.md)
 5. RETURN STATUS output with validation findings
 </instructions>
 """
@@ -408,7 +408,7 @@ Phase 3 Issues: [list from documentation audit]
 
 <context>
 WHERE to write:
-- Task file: .claude/plan/tasks-refactor-{plugin-slug}-followup-{N}.md
+- Task file: .plugin-creator/plans/tasks-refactor-{plugin-slug}-followup-{N}.md
 - N = next sequential number
 
 WHAT to include:
@@ -447,7 +447,7 @@ After determining follow-up status:
 
 Follow-up Tasks Needed: [YES/NO]
 [If YES]:
-  Follow-up Task File: .claude/plan/tasks-refactor-{slug}-followup-{N}.md
+  Follow-up Task File: .plugin-creator/plans/tasks-refactor-{slug}-followup-{N}.md
   Tasks Created: [count]
 [If NO]:
   All issues resolved or within acceptable thresholds
@@ -494,7 +494,7 @@ Phase 4 - Gap Identification:   [DONE/BLOCKED]
 FOLLOW-UP TASKS:
 ----------------
 [If tasks were created, list them here]
-- .claude/plan/tasks-refactor-{slug}-followup-{N}.md
+- .plugin-creator/plans/tasks-refactor-{slug}-followup-{N}.md
 
 NEXT STEPS:
 -----------
@@ -531,7 +531,7 @@ This ensures the plugin is truly refactored and meets all quality standards.
 
 When refactoring is complete (no follow-up tasks):
 
-1. READ .claude/plan/REFACTOR-PLAN.md
+1. READ .plugin-creator/plans/REFACTOR-PLAN.md
 2. MOVE the plugin entry from "Active Refactoring Projects" to "Completed Refactoring Projects"
 3. ADD completion date and score improvement
 
@@ -557,5 +557,5 @@ When refactoring is complete (no follow-up tasks):
 **IF task file path is invalid**:
 
 1. DISPLAY error message: "Task file not found: {path}"
-2. LIST available task files in .claude/plan/
+2. LIST available task files in .plugin-creator/plans/
 3. ASK user to provide correct path

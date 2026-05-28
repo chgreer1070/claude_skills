@@ -69,6 +69,6 @@ READ every file completely. CITE specific file:line for all issues. ASSIGN prior
 
 Write the assessment report following [./skills/assessor/references/assessment-report-format.md](./skills/assessor/references/assessment-report-format.md). Use scoring criteria from [./skills/assessor/references/scoring-criteria.md](./skills/assessor/references/scoring-criteria.md).
 
-For plugins with >20 files, write the report to `.claude/reports/plugin-assessment-{plugin-name}.md` and return the path. For smaller plugins, present inline.
+For plugins with >20 files, write the report to `.plugin-creator/reports/plugin-assessment-{plugin-name}.md` and return the path. For smaller plugins, present inline.
 
 Return STATUS: DONE with the overall score and marketplace readiness determination, or STATUS: BLOCKED with the specific missing input.

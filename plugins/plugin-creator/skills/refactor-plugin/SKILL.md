@@ -57,8 +57,8 @@ Skill(skill="plugin-creator:assessor", args="<plugin_path/>")
 This generates:
 
 - Plugin Assessment Report
-- Refactoring Design Map at `.claude/plan/refactor-design-{slug}.md`
-- Task File at `.claude/plan/tasks-refactor-{slug}.md`
+- Refactoring Design Map at `.plugin-creator/plans/refactor-design-{slug}.md`
+- Task File at `.plugin-creator/plans/tasks-refactor-{slug}.md`
 
 ### Step 4: Review Plan
 
@@ -73,8 +73,8 @@ Plugin: <plugin_path/>
 Assessment Score: [X/100]
 
 Plan Files Created:
-- Design: .claude/plan/refactor-design-{slug}.md
-- Tasks: .claude/plan/tasks-refactor-{slug}.md
+- Design: .plugin-creator/plans/refactor-design-{slug}.md
+- Tasks: .plugin-creator/plans/tasks-refactor-{slug}.md
 
 Tasks Summary:
 - Total tasks: [N]

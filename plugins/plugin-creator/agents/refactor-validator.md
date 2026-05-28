@@ -20,7 +20,7 @@ You are a refactoring validation specialist responsible for verifying that refac
 
 1. **Task Completion Check**:
 
-   - Read the task file at `.claude/plan/tasks-refactor-{slug}.md`
+   - Read the task file at `.plugin-creator/plans/tasks-refactor-{slug}.md`
    - Verify all tasks marked as completed
    - Check for any failed or skipped tasks
    - Validate acceptance criteria were met for each task

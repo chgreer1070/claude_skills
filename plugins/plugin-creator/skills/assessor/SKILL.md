@@ -30,8 +30,8 @@ RETURN to the orchestrator after Phase 4 completes so parallel agent execution c
 
 ```
 TaskCreate(subject="Phase 1: Generate Plugin Assessment Report", description="Generate comprehensive Plugin Assessment Report by analyzing plugin structure, quality, and refactoring opportunities", activeForm="Generating Plugin Assessment Report")
-TaskCreate(subject="Phase 2: Create refactoring design map", description="Create detailed refactoring design specification at .claude/plan/refactor-design-{slug}.md showing how each identified issue should be addressed", activeForm="Creating refactoring design map")
-TaskCreate(subject="Phase 3: Create task file", description="Create implementation task file at .claude/plan/tasks-refactor-{slug}.md with dependencies, verification steps, and parallel execution opportunities", activeForm="Creating refactoring task file")
+TaskCreate(subject="Phase 2: Create refactoring design map", description="Create detailed refactoring design specification at .plugin-creator/plans/refactor-design-{slug}.md showing how each identified issue should be addressed", activeForm="Creating refactoring design map")
+TaskCreate(subject="Phase 3: Create task file", description="Create implementation task file at .plugin-creator/plans/tasks-refactor-{slug}.md with dependencies, verification steps, and parallel execution opportunities", activeForm="Creating refactoring task file")
 TaskCreate(subject="Phase 3: Update REFACTOR-PLAN.md", description="Update REFACTOR-PLAN.md index with new checklist items for this refactoring project", activeForm="Updating REFACTOR-PLAN.md index")
 TaskCreate(subject="Phase 4: Gather refactoring context", description="Gather comprehensive refactoring context for task file including skill content summaries and cross-references", activeForm="Gathering refactoring context")
 TaskCreate(subject="Final: Return to orchestrator", description="Return to orchestrator with execution plan and parallelization groups", activeForm="Returning execution plan to orchestrator")
@@ -216,7 +216,7 @@ Tier 4 - Completeness (if run):
   Below-Threshold Skills: [list]
 
 Assessment Report: [inline or note location]
-Audit Reports: .claude/audits/
+Audit Reports: .plugin-creator/audits/
 ```
 
 4. CONFIRM all sections are populated before proceeding to Phase 2
@@ -257,7 +257,7 @@ WHAT patterns to follow:
 
 <success_criteria>
 MUST deliver:
-1. Refactoring design file written to .claude/plan/refactor-design-{plugin-slug}.md
+1. Refactoring design file written to .plugin-creator/plans/refactor-design-{plugin-slug}.md
 2. Design addresses ALL issues from assessment report
 3. Clear transformation specifications for each refactoring target
 4. Dependency mapping between refactoring tasks
@@ -312,7 +312,7 @@ Example: "python3-development" → "python3-development"
 </file_naming>
 
 <output_file_structure>
-WRITE the specification to: .claude/plan/refactor-design-{plugin-slug}.md
+WRITE the specification to: .plugin-creator/plans/refactor-design-{plugin-slug}.md
 
 MUST use this exact structure:
 
@@ -397,14 +397,14 @@ Tasks that can run simultaneously:
 After the python-cli-design-spec agent completes, YOU MUST:
 
 1. **UPDATE TASK**: Mark "Phase 2: Create refactoring design map" as `in_progress` before verification
-2. VERIFY the agent created the design file at .claude/plan/refactor-design-{plugin-slug}.md
+2. VERIFY the agent created the design file at .plugin-creator/plans/refactor-design-{plugin-slug}.md
 3. READ the design file to confirm all sections are populated
 4. DISPLAY this structured summary:
 
 ```
 === PHASE 2 COMPLETE: Refactoring Designed ===
 
-Design File: .claude/plan/refactor-design-{plugin-slug}.md
+Design File: .plugin-creator/plans/refactor-design-{plugin-slug}.md
 Total Refactoring Targets: [count]
 
 Skill Splits Planned: [count]
@@ -440,14 +440,14 @@ Agent(
 Your ROLE_TYPE is sub-agent.
 
 <design_file_location>
-READ the refactoring design from Phase 2 at: .claude/plan/refactor-design-{plugin-slug}.md
+READ the refactoring design from Phase 2 at: .plugin-creator/plans/refactor-design-{plugin-slug}.md
 </design_file_location>
 
 <context>
 WHERE you are planning:
-- Plan directory: .claude/plan/
-- Task file destination: .claude/plan/tasks-refactor-{plugin-slug}.md
-- Plan index: .claude/plan/REFACTOR-PLAN.md (create if not exists)
+- Plan directory: .plugin-creator/plans/
+- Task file destination: .plugin-creator/plans/tasks-refactor-{plugin-slug}.md
+- Plan index: .plugin-creator/plans/REFACTOR-PLAN.md (create if not exists)
 
 WHAT task structure to follow:
 - Dependency-based ordering (NO temporal language)
@@ -458,7 +458,7 @@ WHAT task structure to follow:
 
 <success_criteria>
 MUST deliver:
-1. Task file written to .claude/plan/tasks-refactor-{plugin-slug}.md
+1. Task file written to .plugin-creator/plans/tasks-refactor-{plugin-slug}.md
 2. REFACTOR-PLAN.md created/updated with checklist items
 3. ALL tasks follow the exact format specified
 4. Dependencies correctly mapped between tasks
@@ -468,16 +468,16 @@ MUST deliver:
 
 <exploration_steps>
 EXECUTE these steps in order:
-1. READ .claude/plan/refactor-design-{plugin-slug}.md (design from Phase 2)
-2. READ .claude/plan/REFACTOR-PLAN.md if it exists
-3. GLOB .claude/plan/tasks-*.md to identify existing task files
+1. READ .plugin-creator/plans/refactor-design-{plugin-slug}.md (design from Phase 2)
+2. READ .plugin-creator/plans/REFACTOR-PLAN.md if it exists
+3. GLOB .plugin-creator/plans/tasks-*.md to identify existing task files
 </exploration_steps>
 
 <planning_steps>
 PERFORM these planning steps:
 
 1. **Create task file**:
-   WRITE to .claude/plan/tasks-refactor-{plugin-slug}.md
+   WRITE to .plugin-creator/plans/tasks-refactor-{plugin-slug}.md
 
    MUST follow this exact format for each task:
 
@@ -572,7 +572,7 @@ PERFORM these planning steps:
 
 2. **Create/Update REFACTOR-PLAN.md**:
 
-   IF .claude/plan/REFACTOR-PLAN.md does not exist, CREATE it:
+   IF .plugin-creator/plans/REFACTOR-PLAN.md does not exist, CREATE it:
 
    ```markdown
    # Plugin Refactoring Plan Index
@@ -608,7 +608,7 @@ ALWAYS specify:
 </constraints>
 
 <available_resources>
-- Full read/write access to .claude/plan/ directory
+- Full read/write access to .plugin-creator/plans/ directory
 - Refactoring design document from Phase 2
 </available_resources>
 """
@@ -620,9 +620,9 @@ ALWAYS specify:
 After the swarm-task-planner agent completes, YOU MUST:
 
 1. **UPDATE TASKS**: Mark these as `in_progress` before verification:
-   - "Phase 3: Create task file at .claude/plan/tasks-refactor-{slug}.md"
+   - "Phase 3: Create task file at .plugin-creator/plans/tasks-refactor-{slug}.md"
    - "Phase 3: Update REFACTOR-PLAN.md with new checklist items"
-2. VERIFY the task file was created at .claude/plan/tasks-refactor-{plugin-slug}.md
+2. VERIFY the task file was created at .plugin-creator/plans/tasks-refactor-{plugin-slug}.md
 3. VERIFY REFACTOR-PLAN.md exists and has the new entry
 4. READ both files to confirm completeness
 5. DISPLAY this structured summary:
@@ -630,7 +630,7 @@ After the swarm-task-planner agent completes, YOU MUST:
 ```
 === PHASE 3 COMPLETE: Tasks Planned ===
 
-Task File: .claude/plan/tasks-refactor-{plugin-slug}.md
+Task File: .plugin-creator/plans/tasks-refactor-{plugin-slug}.md
 REFACTOR-PLAN.md: Updated
 
 Total Tasks: [count]
@@ -669,18 +669,18 @@ Agent(
 Your ROLE_TYPE is sub-agent.
 
 <task_file>
-.claude/plan/tasks-refactor-{plugin-slug}.md
+.plugin-creator/plans/tasks-refactor-{plugin-slug}.md
 </task_file>
 
 <design_spec>
-.claude/plan/refactor-design-{plugin-slug}.md
+.plugin-creator/plans/refactor-design-{plugin-slug}.md
 </design_spec>
 
 <context>
 WHERE you are researching:
 - Plugin: ./plugins/<plugin_name/>
-- Design spec: .claude/plan/refactor-design-{plugin-slug}.md
-- Task file: .claude/plan/tasks-refactor-{plugin-slug}.md
+- Design spec: .plugin-creator/plans/refactor-design-{plugin-slug}.md
+- Task file: .plugin-creator/plans/tasks-refactor-{plugin-slug}.md
 
 WHAT to gather:
 1. Current skill content summaries (for split planning)
@@ -721,7 +721,7 @@ After the context-gathering agent completes:
 ```
 === PHASE 4 COMPLETE: Context Gathered ===
 
-Task File: .claude/plan/tasks-refactor-{plugin-slug}.md
+Task File: .plugin-creator/plans/tasks-refactor-{plugin-slug}.md
 Context Manifest: [added/updated]
 Skills Analyzed: [count]
 Cross-References Mapped: [count]
@@ -753,8 +753,8 @@ Plugin Path: ./plugins/<plugin_name/>
 DELIVERABLES:
 -------------
 ✓ Assessment Report: Generated (Phase 1)
-✓ Refactoring Design: .claude/plan/refactor-design-{plugin-slug}.md
-✓ Task File: .claude/plan/tasks-refactor-{plugin-slug}.md
+✓ Refactoring Design: .plugin-creator/plans/refactor-design-{plugin-slug}.md
+✓ Task File: .plugin-creator/plans/tasks-refactor-{plugin-slug}.md
 ✓ REFACTOR-PLAN.md: Updated
 ✓ Context Manifest: Added to task file
 
@@ -800,8 +800,8 @@ PARALLELIZATION GROUPS (can launch simultaneously):
 
 FILES TO REVIEW BEFORE EXECUTION:
 ---------------------------------
-- .claude/plan/refactor-design-{plugin-slug}.md (refactoring design)
-- .claude/plan/tasks-refactor-{plugin-slug}.md (implementation tasks)
+- .plugin-creator/plans/refactor-design-{plugin-slug}.md (refactoring design)
+- .plugin-creator/plans/tasks-refactor-{plugin-slug}.md (implementation tasks)
 ================================================================================
 ```
 

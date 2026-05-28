@@ -79,7 +79,7 @@ flowchart TD
 | `/refactor-plugin` | Yes | Complete plugin refactoring workflow |
 | `/refactor-skill` | Yes | Split oversized skills into smaller focused skills |
 | `/start-refactor-task` | Yes | Execute individual refactoring tasks |
-| `/audit-agent-lifecycle` | Yes | Audit agent lifecycle patterns and write findings to `.claude/audits/patterns.md` |
+| `/audit-agent-lifecycle` | Yes | Audit agent lifecycle patterns and write findings to `.plugin-creator/audits/patterns.md` |
 | `/agent-capability-analyzer` | Yes | Analyze agent capability gaps and generate improvement recommendations |
 | `/command-development` | Yes | Legacy `.claude/commands/` format reference — command frontmatter, arguments, bash execution, AskUserQuestion |
 | `/mcp-integration` | Yes | MCP server configuration within plugins — stdio, SSE, HTTP, WebSocket types, authentication, tool naming |

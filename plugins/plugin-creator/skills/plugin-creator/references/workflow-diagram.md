@@ -65,7 +65,7 @@ flowchart TD
     AskHook --> Save
     AskAll --> Save
 
-    Save["Save all answers to<br>.claude/plan/{plugin-name}/discuss-CONTEXT.md —<br>scope decisions, UX preferences,<br>technical choices with rationale"]
+    Save["Save all answers to<br>.plugin-creator/plans/{plugin-name}/discuss-CONTEXT.md —<br>scope decisions, UX preferences,<br>technical choices with rationale"]
     Save --> Done(["Preferences captured —<br>proceed to Phase 1 Research"])
 ```
 
@@ -77,20 +77,20 @@ flowchart TD
 flowchart TD
     Start(["Preferences captured from Phase 0.5"]) --> Spawn["Spawn all 4 researchers<br>in a single message — they run concurrently"]
 
-    Spawn --> R1["Researcher 1 — subagent_type='plugin-creator:plugin-assessor'<br>Task: search plugins/ and ~/.claude/skills/ for similar functionality;<br>identify gaps and patterns to follow or avoid;<br>write to .claude/plan/{plugin-name}/research-1-existing.md"]
+    Spawn --> R1["Researcher 1 — subagent_type='plugin-creator:plugin-assessor'<br>Task: search plugins/ and ~/.claude/skills/ for similar functionality;<br>identify gaps and patterns to follow or avoid;<br>write to .plugin-creator/plans/{plugin-name}/research-1-existing.md"]
 
-    Spawn --> R2["Researcher 2 — subagent_type='plugin-creator:plugin-assessor'<br>Task: identify which Claude Code features the plugin should use<br>(dynamic context, hooks, MCP/LSP, subagent execution);<br>write to .claude/plan/{plugin-name}/research-2-features.md"]
+    Spawn --> R2["Researcher 2 — subagent_type='plugin-creator:plugin-assessor'<br>Task: identify which Claude Code features the plugin should use<br>(dynamic context, hooks, MCP/LSP, subagent execution);<br>write to .plugin-creator/plans/{plugin-name}/research-2-features.md"]
 
-    Spawn --> R3["Researcher 3 — subagent_type='plugin-creator:plugin-assessor'<br>Task: analyze architecture patterns from well-structured plugins<br>(skill directories, reference files, agent definitions, hook configs);<br>write to .claude/plan/{plugin-name}/research-3-architecture.md"]
+    Spawn --> R3["Researcher 3 — subagent_type='plugin-creator:plugin-assessor'<br>Task: analyze architecture patterns from well-structured plugins<br>(skill directories, reference files, agent definitions, hook configs);<br>write to .plugin-creator/plans/{plugin-name}/research-3-architecture.md"]
 
-    Spawn --> R4["Researcher 4 — subagent_type='general-purpose'<br>Task: fetch https://code.claude.com/docs/en/plugins-reference.md<br>and https://code.claude.com/docs/en/skills.md;<br>identify schema requirements, common mistakes, deprecations;<br>write to .claude/plan/{plugin-name}/research-4-pitfalls.md"]
+    Spawn --> R4["Researcher 4 — subagent_type='general-purpose'<br>Task: fetch https://code.claude.com/docs/en/plugins-reference.md<br>and https://code.claude.com/docs/en/skills.md;<br>identify schema requirements, common mistakes, deprecations;<br>write to .plugin-creator/plans/{plugin-name}/research-4-pitfalls.md"]
 
     R1 --> Merge
     R2 --> Merge
     R3 --> Merge
     R4 --> Merge
 
-    Merge["Wait for all 4 to complete —<br>merge into .claude/plan/{plugin-name}/research-FINDINGS.md<br>with sections: Existing Solutions, Recommended Features,<br>Architecture Patterns, Pitfalls and Requirements, Synthesis"]
+    Merge["Wait for all 4 to complete —<br>merge into .plugin-creator/plans/{plugin-name}/research-FINDINGS.md<br>with sections: Existing Solutions, Recommended Features,<br>Architecture Patterns, Pitfalls and Requirements, Synthesis"]
     Merge --> Done(["research-FINDINGS.md written —<br>proceed to Phase 2 Design"])
 ```
 
@@ -109,7 +109,7 @@ flowchart TD
     Q -->|"FAIL — specific issues listed"| Fix["Return issues to Plan agent;<br>re-delegate 2a with the checker's<br>feedback as additional input"]
     Fix --> Plan
 
-    Q -->|"PASS — no issues listed"| Save["2c — Save approved plan to<br>.claude/plan/{plugin-name}/design-PLAN.md<br>with status APPROVED and plan checker reviewer ID"]
+    Q -->|"PASS — no issues listed"| Save["2c — Save approved plan to<br>.plugin-creator/plans/{plugin-name}/design-PLAN.md<br>with status APPROVED and plan checker reviewer ID"]
     Save --> Done(["design-PLAN.md written —<br>proceed to Phase 3 Implementation"])
 ```
 

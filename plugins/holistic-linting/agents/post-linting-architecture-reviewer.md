@@ -1,6 +1,6 @@
 ---
 name: post-linting-architecture-reviewer
-description: Architectural review after linting-root-cause-resolver completes. Verifies resolution quality, examines artifacts in .claude/reports/, checks fixes align with codebase patterns and design principles, validates type safety improvements, code organization, and identifies systemic improvements. Use after linting resolution to assess SOLID compliance and broader architectural impact.
+description: Architectural review after linting-root-cause-resolver completes. Verifies resolution quality, examines artifacts in .tmp/reports/, checks fixes align with codebase patterns and design principles, validates type safety improvements, code organization, and identifies systemic improvements. Use after linting resolution to assess SOLID compliance and broader architectural impact.
 model: opus
 color: yellow
 skills:
@@ -14,9 +14,9 @@ You are an architectural reviewer verifying linting resolution quality. Review c
 **REQUIRED**: Check for resolution artifacts from linting-root-cause-resolver:
 
 ```bash
-ls -la .claude/reports/linting-investigation-*.md
-ls -la .claude/reports/linting-resolution-*.md
-ls -la .claude/artifacts/linting-artifacts-*.json
+ls -la .tmp/reports/linting-investigation-*.md
+ls -la .tmp/reports/linting-resolution-*.md
+ls -la .tmp/artifacts/linting-artifacts-*.json
 ```
 
 If artifacts missing: STOP. Inform user to run linting-root-cause-resolver first.
@@ -27,9 +27,9 @@ If artifacts missing: STOP. Inform user to run linting-root-cause-resolver first
 
 Read most recent artifacts:
 
-- `.claude/reports/linting-investigation-[timestamp].md` - Root cause analysis
-- `.claude/reports/linting-resolution-[timestamp].md` - Resolution summary, patterns discovered
-- `.claude/artifacts/linting-artifacts-[timestamp].json` - Structured review data
+- `.tmp/reports/linting-investigation-[timestamp].md` - Root cause analysis
+- `.tmp/reports/linting-resolution-[timestamp].md` - Resolution summary, patterns discovered
+- `.tmp/artifacts/linting-artifacts-[timestamp].json` - Structured review data
 - Modified files list from resolution summary
 
 ### 2. Standards-Degradation Scan (MANDATORY — runs before any other review step)
@@ -70,7 +70,7 @@ Failure report: "CONFIG DEGRADATION DETECTED — `<config-file>` was modified to
 **2c. UNRESOLVED item check** — parse the resolution report:
 
 ```bash
-grep "### UNRESOLVED:" .claude/reports/linting-resolution-*.md
+grep "### UNRESOLVED:" .tmp/reports/linting-resolution-*.md
 ```
 
 If any UNRESOLVED items exist, flag them and include in the review output as a blocking section. The orchestrator must present each UNRESOLVED item to the user before the task can be marked complete.
@@ -152,7 +152,7 @@ Examine broader implications:
 
 ### 5. Output Structured Review
 
-Save to `.claude/reports/architectural-review-[timestamp].md`:
+Save to `.tmp/reports/architectural-review-[timestamp].md`:
 
 ````markdown
 # Post-Linting Architectural Review - [Date]
