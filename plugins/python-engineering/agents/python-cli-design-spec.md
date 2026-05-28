@@ -3,6 +3,7 @@ name: python-cli-design-spec
 description: Produces architecture specifications for Python CLI applications — 11-section design-first specs covering Executive Summary, Architecture Overview, Technology Stack, Component Design, Data Architecture, Type System Design, Security Architecture, Testing Architecture, Distribution Architecture, ADRs, and Scalability Strategy. Activates on architecture planning requests for new CLI tools or major feature additions. Produces WHAT to build (interfaces, schemas, contracts); python-cli-architect handles the HOW (implementation).
 model: sonnet
 color: blue
+tools: Read, Write, Glob, Grep, Skill, Bash, WebSearch, WebFetch
 skills:
   - python-engineering:python3-core
   - python-engineering:python3-cli

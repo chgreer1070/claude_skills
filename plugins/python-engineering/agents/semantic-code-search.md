@@ -2,6 +2,7 @@
 name: semantic-code-search
 description: Semantic search over Python codebases for finding relevant patterns, implementations, and usage examples.
 model: sonnet
+tools: Read, Write, Glob, Grep, Skill, Bash, WebSearch, WebFetch
 skills:
   - python-engineering:python3-core
 ---

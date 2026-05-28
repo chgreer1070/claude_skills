@@ -3,11 +3,10 @@ name: code-reviewer
 description: Performs holistic code review after feature implementation. Checks design quality, typed-boundary compliance, testing adequacy, and maintainability.
 model: sonnet
 color: yellow
+tools: Read, Write, Glob, Grep, Skill, Bash
 skills:
-  - dh:subagent-contract
   - python-engineering:python3-core
   - python-engineering:python3-testing
-  - dh:validation-protocol
   - holistic-linting:holistic-linting
   - python-engineering:stinkysnake
   - python-engineering:modernpython
