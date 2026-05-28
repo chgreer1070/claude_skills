@@ -13,9 +13,10 @@ You are a Claude Code agent architect specializing in creating high-quality, foc
 
 ## Quick Reference
 
-- `references/agent-schema.md` - Complete frontmatter specification
-- `references/agent-templates.md` - Role-based archetypes and guidance for finding patterns
-- `references/agent-examples.md` - Real-world agent implementations
+- `/plugin-creator:claude-subagent-reference` — Canonical frontmatter specification (all 16 fields, env vars, examples). Load this for any field lookup.
+- `references/agent-schema.md` — Creation-specific additions: YAML multiline bug, MCP tool casing, plugin restrictions, unverified fields
+- `references/agent-templates.md` — Role-based archetypes and guidance for finding patterns
+- `references/agent-examples.md` — Real-world agent implementations
 
 **Related Skills:**
 
@@ -313,78 +314,6 @@ AFTER saving the agent file:
 4. **Confirm success** to user with file location
 
 </workflow>
-
----
-
-## Agent Frontmatter Schema
-
-<schema>
-
-### Required Fields
-
-| Field         | Type   | Constraints                           | Description             |
-| ------------- | ------ | ------------------------------------- | ----------------------- |
-| `name`        | string | max 64 chars, lowercase, hyphens only | Unique identifier       |
-| `description` | string | max 1024 chars                        | Delegation trigger text |
-
-### Optional Fields
-
-| Field             | Type    | Default   | Options/Description                                                           |
-| ----------------- | ------- | --------- | ----------------------------------------------------------------------------- |
-| `model`           | string  | inherit   | `sonnet`, `opus`, `haiku`, `inherit`                                          |
-| `tools`           | string  | inherited | Comma-separated allowlist. Use `Agent(type)` to restrict subagent spawning    |
-| `disallowedTools` | string  | none      | Comma-separated denylist — removed from inherited/specified tools             |
-| `permissionMode`  | string  | default   | `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, `plan`              |
-| `skills`          | string  | none      | Comma-separated skill names — injected into context at startup (NOT inherited)|
-| `hooks`           | object  | none      | Scoped hook configurations as a YAML object                                   |
-| `mcpServers`      | list/obj| none      | MCP servers — server name references or inline `{command, args, cwd}` defs    |
-| `memory`          | string  | none      | `user`, `project`, `local` — persistent memory directory across sessions      |
-| `maxTurns`        | integer | none      | Maximum agentic turns before the subagent stops                               |
-| `background`      | boolean | false     | `true` to always run as a background task                                     |
-| `isolation`       | string  | none      | `worktree` — run in temporary git worktree (isolated repo copy)               |
-| `color`           | string  | none      | UI-only visual identifier in Claude Code                                      |
-
-</schema>
-
----
-
-## Model Selection Guide
-
-<model_guide>
-
-| Model     | Cost   | Speed    | Capability | Use When                                             |
-| --------- | ------ | -------- | ---------- | ---------------------------------------------------- |
-| `haiku`   | Low    | Fast     | Basic      | Simple read-only analysis, quick searches            |
-| `sonnet`  | Medium | Balanced | Strong     | Most agents - code review, debugging, docs           |
-| `opus`    | High   | Slower   | Maximum    | Complex reasoning, difficult debugging, architecture |
-| `inherit` | Parent | Parent   | Parent     | Agent should match conversation context              |
-
-**Decision Tree:**
-
-1. Is it read-only exploration? → `haiku`
-2. Does it need to reason about complex code? → `sonnet`
-3. Does it need deep architectural understanding? → `opus`
-4. Should it match the user's current model? → `inherit`
-
-</model_guide>
-
----
-
-## Permission Mode Guide
-
-<permission_guide>
-
-| Mode                | File Edits   | Bash Commands       | Use Case                     |
-| ------------------- | ------------ | ------------------- | ---------------------------- |
-| `default`           | Prompts      | Prompts             | Security-conscious workflows |
-| `acceptEdits`       | Auto-accepts | Prompts destructive | Documentation writers        |
-| `dontAsk`           | Auto-denies  | Auto-denies         | Read-only analyzers          |
-| `bypassPermissions` | Skips all    | Skips all           | Trusted automation only      |
-| `plan`              | Disabled     | Disabled            | Planning/research phases     |
-
-**CRITICAL**: Use `bypassPermissions` sparingly and document why.
-
-</permission_guide>
 
 ---
 
