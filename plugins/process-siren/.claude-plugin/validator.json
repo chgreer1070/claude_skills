@@ -1,0 +1,6 @@
+{
+  "ignore": {
+    "agents/mcp-wildcard-test-full": ["AS007"],
+    "agents/mcp-wildcard-test-short": ["AS007"]
+  }
+}

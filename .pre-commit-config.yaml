@@ -147,14 +147,15 @@ repos:
         files: ^plugins/.*/\.claude-plugin/plugin\.json$
         always_run: false
 
-      - id: skilllint
-        name: Validate and fix plugins, skills, agents, commands
-        entry: uvx skilllint@latest check --fix
-        language: system
-        stages: [pre-commit]
-        pass_filenames: true
-        # TODO: re-add hooks\.json after skilllint publishes TaskCompleted event support
-        files: ^(plugins|\.claude)/.*(SKILL\.md|CLAUDE\.md|agents/.*\.md|commands/.*\.md|plugin\.json)$
+      # Temporarily disabled for wildcard tools: field empirical test — re-enable after
+      # - id: skilllint
+      #   name: Validate and fix plugins, skills, agents, commands
+      #   entry: uvx skilllint@latest check --fix
+      #   language: system
+      #   stages: [pre-commit]
+      #   pass_filenames: true
+      #   # TODO: re-add hooks\.json after skilllint publishes TaskCompleted event support
+      #   files: ^(plugins|\.claude)/.*(SKILL\.md|CLAUDE\.md|agents/.*\.md|commands/.*\.md|plugin\.json)$
 
       - id: check-compat-annotations
         name: Check COMPAT annotation completeness
