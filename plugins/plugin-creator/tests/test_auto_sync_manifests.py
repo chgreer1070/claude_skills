@@ -24,9 +24,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -1781,3 +1785,466 @@ class TestSyncMarketplaceMode:
 
         # Assert
         assert exit_code == 1
+
+
+# ============================================================================
+# Phase 1 — Base-ref refactor: behavioral RED tests
+#
+# These tests define the contract for the origin/main → main → HEAD resolver
+# refactor described in .tmp/scratch/reports/version-bump-adversarial.md.
+#
+# Mock seams introduced by this refactor (not yet present in the codebase):
+#   resolve_base() -> str | None
+#       Returns the best available base ref: "origin/main" → "main" → None
+#       (HEAD is the terminal fallback when None is returned).
+#   _read_ref_json(ref: str, filepath: str | Path) -> object | None
+#       Reads a JSON file at the given git ref. Replaces the HEAD-specific
+#       _read_head_json for base-version resolution.
+#
+# RED rationale per test is documented in the "Why RED" comment.
+# ============================================================================
+
+
+class TestWorkingBehindBase:
+    """Test the working < base scenario — the only behavior the refactor changes.
+
+    Report table (adversarial.md lines 57-61):
+        working < base  →  CURRENT behavior wrong; refactor yields base + step
+        working == base →  behavior unchanged (base+step == current+step)
+        working > base  →  behavior unchanged (guard skips both ways)
+    """
+
+    def test_working_behind_base_bumps_from_base_not_working(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Working copy behind main: version must be derived from base, not from working.
+
+        Tests: update_plugin_json — working < base scenario (THE FIX)
+        How: Plugin file at 1.2.1; base (origin/main) at 1.2.5; patch change.
+             Expect result 1.2.6 (base + patch step), NOT 1.2.2 (working + step).
+        Why: Two concurrent PR branches both start at 1.2.0.  Branch A merges and
+             main advances to 1.2.1.  Branch B rebases; its working copy is still
+             at 1.2.1 (already bumped on the branch) but base is now 1.2.5 (after
+             further merges).  The hook must derive the new version from base so
+             branch B yields 1.2.6, not a collision at 1.2.2.
+
+        Why RED: Current code bumps from current_version (1.2.1) → 1.2.2.
+                 The new seams resolve_base / _read_ref_json do not exist yet →
+                 AttributeError for seam-based path; wrong value for HEAD-fallback
+                 path.  Either way the assertion 1.2.6 fails today.
+        """
+        # Arrange
+        monkeypatch.chdir(tmp_path)
+
+        plugin_name = "test-plugin"
+        # Working copy is at 1.2.1 — already bumped on the branch
+        working_data = {"name": "test-plugin", "version": "1.2.1", "skills": ["./skills/my-skill"]}
+        plugin_json = _make_plugin_json(tmp_path, plugin_name, working_data)
+
+        # Base (origin/main) is at 1.2.5 — main advanced after branch B diverged
+        base_data = {"name": "test-plugin", "version": "1.2.5", "skills": ["./skills/my-skill"]}
+
+        # Post-refactor seam: resolve_base returns "origin/main"; _read_ref_json
+        # returns the base version when asked to read at that ref.
+        monkeypatch.setattr(auto_sync, "resolve_base", lambda: "origin/main")
+        monkeypatch.setattr(auto_sync, "_read_ref_json", lambda _ref, _fp: dict(base_data))
+
+        changes = _changes_with_modified_skill()
+
+        # Act
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+
+        # Assert — version derived from base (1.2.5 + patch = 1.2.6), not from working (1.2.2)
+        assert updated is True
+        assert version == "1.2.6"
+        assert json.loads(plugin_json.read_text(encoding="utf-8"))["version"] == "1.2.6"
+
+    def test_working_ahead_of_base_skips_bump(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Working copy already ahead of base: guard must skip the bump.
+
+        Tests: update_plugin_json — working > base with HEAD ≠ base
+        How: Working=1.2.1, HEAD=1.2.1, base=1.2.0.  The working copy has been
+             bumped on this branch (working > base).  Expect skip.
+
+        Why RED: Current guard compares working vs HEAD (both 1.2.1 → equal →
+                 not "already bumped" → proceeds to bump to 1.2.2).
+                 Post-refactor guard compares working vs base (1.2.1 > 1.2.0 →
+                 skips).  Current code bumps when it should skip, so assertion
+                 updated is False fails today.
+        """
+        # Arrange
+        monkeypatch.chdir(tmp_path)
+
+        plugin_name = "test-plugin"
+        # Working copy already bumped on this branch to 1.2.1
+        working_data = {"name": "test-plugin", "version": "1.2.1", "skills": []}
+        _make_plugin_json(tmp_path, plugin_name, working_data)
+
+        # HEAD is also 1.2.1 — this branch's last commit already has the bump
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: {"name": "test-plugin", "version": "1.2.1"})
+
+        # Base (origin/main) is 1.2.0 — the branch diverged from 1.2.0
+        base_data = {"name": "test-plugin", "version": "1.2.0", "skills": []}
+        monkeypatch.setattr(auto_sync, "resolve_base", lambda: "origin/main")
+        monkeypatch.setattr(auto_sync, "_read_ref_json", lambda _ref, _fp: dict(base_data))
+
+        changes = _changes_with_modified_skill()
+
+        # Act
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+
+        # Assert — guard skips: working (1.2.1) already ahead of base (1.2.0)
+        assert updated is False
+        assert version == "1.2.1"
+
+    def test_working_equals_base_bumps_normally(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Working == base: hook bumps normally; behavior unchanged from today.
+
+        Tests: update_plugin_json — working == base, normal bump path
+        How: Both file and base at 1.2.0; patch change → expect 1.2.1.
+        Why: Report line 60 confirms this case is unchanged (base+step == current+step).
+             Included as a regression guard alongside the working < base fix.
+
+        Why RED: resolve_base / _read_ref_json not yet present → AttributeError.
+                 The assertion value (1.2.1) matches current output, but the test
+                 fails because the seam attributes are absent.
+        """
+        # Arrange
+        monkeypatch.chdir(tmp_path)
+
+        plugin_name = "test-plugin"
+        working_data = {"name": "test-plugin", "version": "1.2.0", "skills": []}
+        _make_plugin_json(tmp_path, plugin_name, working_data)
+
+        base_data = {"name": "test-plugin", "version": "1.2.0", "skills": []}
+        monkeypatch.setattr(auto_sync, "resolve_base", lambda: "main")
+        monkeypatch.setattr(auto_sync, "_read_ref_json", lambda _ref, _fp: dict(base_data))
+
+        changes = _changes_with_modified_skill()
+
+        # Act
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+
+        # Assert — normal bump proceeds: 1.2.0 + patch = 1.2.1
+        assert updated is True
+        assert version == "1.2.1"
+
+    def test_manual_bump_preserved_when_working_far_ahead_of_base(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Manual major/minor bump is not clobbered by the hook.
+
+        Tests: update_plugin_json — manual bump safety property (q1 from adversarial.md)
+        How: Developer manually sets version to 2.0.0; base is 1.2.0.
+             working (2.0.0) > base (1.2.0) → guard skips; 2.0.0 preserved.
+        Why: Adversarial.md challenge q1 confirms any manual bump makes
+             working > base, which trips the guard.  This test locks that in.
+
+        Why RED: resolve_base / _read_ref_json not yet present → AttributeError.
+        """
+        # Arrange
+        monkeypatch.chdir(tmp_path)
+
+        plugin_name = "test-plugin"
+        working_data = {"name": "test-plugin", "version": "2.0.0", "skills": []}
+        _make_plugin_json(tmp_path, plugin_name, working_data)
+
+        base_data = {"name": "test-plugin", "version": "1.2.0", "skills": []}
+        monkeypatch.setattr(auto_sync, "resolve_base", lambda: "origin/main")
+        monkeypatch.setattr(auto_sync, "_read_ref_json", lambda _ref, _fp: dict(base_data))
+
+        changes = _changes_with_modified_skill()
+
+        # Act
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+
+        # Assert — manual bump preserved; hook does not overwrite 2.0.0
+        assert updated is False
+        assert version == "2.0.0"
+
+
+class TestResolveBase:
+    """Test the resolve_base() function — ref resolution order contract.
+
+    Contract: origin/main → main → None (HEAD is caller's terminal fallback).
+    All tests are seam-level RED: resolve_base does not exist yet.
+    """
+
+    def test_resolve_base_prefers_origin_main(self, monkeypatch: Any) -> None:
+        """When origin/main is present, resolve_base must return 'origin/main'.
+
+        Tests: resolve_base resolution order — origin/main available
+        How: Monkeypatch subprocess so git rev-parse --verify origin/main exits 0.
+        Why: origin/main is the freshest available base and should be preferred
+             over local main per adversarial.md Approach A.
+
+        Why RED: resolve_base does not exist → AttributeError.
+        """
+        import subprocess as _subprocess
+
+        def _fake_run(cmd: list[str], **_kwargs: Any) -> Any:
+            """Return success for origin/main, failure for everything else."""
+
+            class _Result:
+                returncode: int
+
+            r = _Result()
+            if "origin/main" in cmd:
+                r.returncode = 0
+            else:
+                r.returncode = 1
+            return r
+
+        monkeypatch.setattr(_subprocess, "run", _fake_run)
+
+        # Act
+        result = auto_sync.resolve_base()
+
+        # Assert
+        assert result == "origin/main"
+
+    def test_resolve_base_falls_back_to_main_when_origin_absent(self, monkeypatch: Any) -> None:
+        """When origin/main is absent but main is present, resolve_base returns 'main'.
+
+        Tests: resolve_base resolution order — main fallback
+        How: Monkeypatch subprocess so origin/main fails, main succeeds.
+        Why: Local main is the next-best base when origin is unavailable
+             (shallow clone, fresh checkout).
+
+        Why RED: resolve_base does not exist → AttributeError.
+        """
+        import subprocess as _subprocess
+
+        def _fake_run(cmd: list[str], **_kwargs: Any) -> Any:
+            class _Result:
+                returncode: int
+
+            r = _Result()
+            r.returncode = 0 if "main" in cmd and "origin/main" not in cmd else 1
+            return r
+
+        monkeypatch.setattr(_subprocess, "run", _fake_run)
+
+        result = auto_sync.resolve_base()
+
+        assert result == "main"
+
+    def test_resolve_base_returns_none_when_neither_ref_present(self, monkeypatch: Any) -> None:
+        """When neither origin/main nor main is present, resolve_base returns None.
+
+        Tests: resolve_base resolution order — neither ref present
+        How: Monkeypatch subprocess so all rev-parse calls fail (shallow CI clone).
+        Why: In the manifest-sync CI job, fetch-depth: 1 means origin/main is
+             absent.  The caller uses HEAD as the terminal fallback when None.
+
+        Why RED: resolve_base does not exist → AttributeError.
+        """
+        import subprocess as _subprocess
+
+        def _fake_run(_cmd: list[str], **_kwargs: Any) -> Any:
+            class _Result:
+                returncode = 1
+
+            return _Result()
+
+        monkeypatch.setattr(_subprocess, "run", _fake_run)
+
+        result = auto_sync.resolve_base()
+
+        assert result is None
+
+
+class TestGracefulFallbackNoBaseRef:
+    """Test that the hook degrades to HEAD-based behavior when no base ref exists.
+
+    When origin/main and main are both absent (fresh clone, CI shallow checkout),
+    the hook must not raise and must exit 0 with a sensible version bump.
+    """
+
+    def test_update_plugin_json_exits_cleanly_when_base_unavailable(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """No base ref → hook falls back to HEAD comparison without crashing.
+
+        Tests: Graceful degradation in update_plugin_json when resolve_base → None
+        How: resolve_base returns None (no origin/main, no main); _read_head_json
+             returns the current committed version (1.2.0); working file also 1.2.0.
+             Expect normal patch bump to 1.2.1 (same as today's HEAD-based behavior).
+        Why: Adversarial.md challenge q2 — terminal HEAD fallback is non-negotiable.
+             CI manifest-sync runs with fetch-depth: 1; must not crash.
+
+        Why RED: resolve_base does not exist → AttributeError.
+        """
+        # Arrange
+        monkeypatch.chdir(tmp_path)
+
+        plugin_name = "test-plugin"
+        working_data = {"name": "test-plugin", "version": "1.2.0", "skills": []}
+        _make_plugin_json(tmp_path, plugin_name, working_data)
+
+        # No base ref available — resolve_base returns None
+        monkeypatch.setattr(auto_sync, "resolve_base", lambda: None)
+
+        # HEAD has the same version (normal commit scenario)
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: {"name": "test-plugin", "version": "1.2.0"})
+
+        changes = _changes_with_modified_skill()
+
+        # Act — must not raise; must return valid (updated, version) tuple
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+
+        # Assert — falls back to HEAD-based path; bumps normally; no crash
+        assert updated is True
+        assert version == "1.2.1"
+
+
+# ============================================================================
+# Area N: _read_ref_json integration tests — real git subprocess
+# ============================================================================
+
+# integration: exercises real git subprocess
+
+
+# Minimal environment for hermetic git operations.  Only PATH is inherited so
+# git can locate its binary; all identity fields are set explicitly to avoid
+# depending on the host global git config or commit-signing settings.
+_GIT_ENV: dict[str, str] = {
+    "GIT_AUTHOR_NAME": "Test",
+    "GIT_AUTHOR_EMAIL": "t@t",
+    "GIT_COMMITTER_NAME": "Test",
+    "GIT_COMMITTER_EMAIL": "t@t",
+    "PATH": os.environ["PATH"],
+}
+
+
+def _init_git_repo(repo: Path, *, files: dict[str, str]) -> None:
+    """Initialise a minimal git repo in *repo* with one commit containing *files*.
+
+    Args:
+        repo: Directory to initialise as a git repo (must already exist).
+        files: Mapping of relative path → file content to write and commit.
+    """
+
+    def _run(*args: str) -> None:
+        subprocess.run(list(args), cwd=repo, check=True, capture_output=True, env=_GIT_ENV)
+
+    _run("git", "init")
+    _run("git", "config", "commit.gpgsign", "false")
+    _run("git", "config", "user.email", "t@t")
+    _run("git", "config", "user.name", "Test")
+
+    for rel_path, content in files.items():
+        full_path = repo / rel_path
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        full_path.write_text(content, encoding="utf-8")
+        _run("git", "add", rel_path)
+
+    _run("git", "commit", "-m", "initial")
+
+
+def _git_commit_file(repo: Path, rel_path: str, content: str, message: str = "update") -> None:
+    """Overwrite *rel_path* in *repo* and create a new commit.
+
+    Args:
+        repo: Root of the git repository.
+        rel_path: Repo-root-relative path of the file to update.
+        content: New file content.
+        message: Commit message.
+    """
+    full_path = repo / rel_path
+    full_path.parent.mkdir(parents=True, exist_ok=True)
+    full_path.write_text(content, encoding="utf-8")
+    subprocess.run(["git", "add", rel_path], cwd=repo, check=True, capture_output=True, env=_GIT_ENV)
+    subprocess.run(["git", "commit", "-m", message], cwd=repo, check=True, capture_output=True, env=_GIT_ENV)
+
+
+@pytest.mark.integration
+class TestReadRefJson:
+    """Integration tests for _read_ref_json — exercises the real git subprocess.
+
+    These tests use tmp_path and real git repos so that the ``git show
+    {ref}:{path}`` subprocess at line 360 of auto_sync_manifests.py is
+    exercised against actual commits, not mocked return values.
+
+    Coverage target: lines 355-368 (the non-HEAD branch of _read_ref_json).
+    """
+
+    def test_read_ref_json_returns_content_at_ref(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Reading HEAD returns the committed JSON dict for that path.
+
+        Tests: _read_ref_json delegation to _read_head_json when ref == "HEAD"
+        How: Create a temp git repo with a committed plugin.json; call
+             _read_ref_json("HEAD", path) and assert the returned dict matches
+             the written content.
+        Why: Verifies that the HEAD-delegation path produces the correct result
+             so callers can rely on it when no historical ref is needed.
+        """
+        # Arrange
+        data = {"name": "my-plugin", "version": "1.0.0"}
+        rel_path = ".claude-plugin/plugin.json"
+        _init_git_repo(tmp_path, files={rel_path: json.dumps(data)})
+        monkeypatch.chdir(tmp_path)
+
+        # Act
+        result = auto_sync._read_ref_json("HEAD", rel_path)
+
+        # Assert
+        assert result == data
+
+    def test_read_ref_json_reads_historical_ref(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Reading HEAD~1 returns the committed JSON at that older commit.
+
+        Tests: _read_ref_json git-show subprocess for non-HEAD refs (line 360)
+        How: Commit plugin.json with version "1.0.0", then commit again with
+             "2.0.0".  Call _read_ref_json("HEAD~1", path) and assert version
+             is "1.0.0" (historical state, not working tree or HEAD).
+        Why: This is the core mechanism of the fix — reading base version from
+             origin/main must return the *committed* content at that ref, not
+             the current working copy.  This test is the only one that directly
+             exercises line 360.
+        """
+        # Arrange
+        rel_path = ".claude-plugin/plugin.json"
+        _init_git_repo(tmp_path, files={rel_path: json.dumps({"version": "1.0.0"})})
+        _git_commit_file(tmp_path, rel_path, json.dumps({"version": "2.0.0"}), message="bump to 2.0.0")
+        monkeypatch.chdir(tmp_path)
+
+        # Act — read the first commit, not HEAD
+        result = auto_sync._read_ref_json("HEAD~1", rel_path)
+
+        # Assert — historical content, not current
+        assert isinstance(result, dict)
+        assert result["version"] == "1.0.0"
+
+    def test_read_ref_json_returns_none_for_missing_file(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Returns None when the path does not exist at HEAD — no exception raised.
+
+        Tests: _read_ref_json HEAD delegation → _read_head_json non-zero exit
+        How: Initialise a temp git repo (no plugin.json committed) and call
+             _read_ref_json("HEAD", "nonexistent/path.json").
+        Why: Callers depend on None-return-on-absence to detect an unversioned
+             plugin; any exception here would crash the pre-commit hook.
+        """
+        # Arrange — repo has no file at the queried path
+        _init_git_repo(tmp_path, files={"README.md": "hello"})
+        monkeypatch.chdir(tmp_path)
+
+        # Act
+        result = auto_sync._read_ref_json("HEAD", "nonexistent/path.json")
+
+        # Assert
+        assert result is None
+
+    def test_read_ref_json_returns_none_for_invalid_ref(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Returns None when the git ref does not exist — no exception raised.
+
+        Tests: _read_ref_json git-show subprocess non-zero exit (line 361-362)
+        How: Initialise a temp git repo and call _read_ref_json with a branch
+             name that was never created.
+        Why: When origin/main does not exist (fresh clone, shallow fetch),
+             git show exits non-zero.  The hook must treat this as "no base
+             version" and fall back gracefully rather than propagating an error.
+        """
+        # Arrange — repo exists but the queried ref does not
+        _init_git_repo(tmp_path, files={".claude-plugin/plugin.json": json.dumps({"version": "1.0.0"})})
+        monkeypatch.chdir(tmp_path)
+
+        # Act
+        result = auto_sync._read_ref_json("nonexistent-branch", ".claude-plugin/plugin.json")
+
+        # Assert
+        assert result is None

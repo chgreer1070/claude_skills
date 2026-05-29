@@ -750,11 +750,11 @@ class TestRealPluginsIntegration:
         """
         # Arrange / Act
         async with Client(mcp) as client:
-            result = await client.call_tool("list", {"plugin": "development-harness"})
+            result = await client.call_tool("list", {"plugin": "dh"})
 
         # Assert
         assert result.data["count"] >= 1
-        assert result.data["plugin_filter"] == "development-harness"
+        assert result.data["plugin_filter"] == "dh"
 
     async def test_profile_load_task_worker_returns_nonempty_body(self) -> None:
         """profile_load for 'task-worker' returns a non-empty instruction body.
@@ -771,7 +771,7 @@ class TestRealPluginsIntegration:
         assert result.is_error is False
         assert "error" not in result.data
         assert result.data["name"] == "task-worker"
-        assert result.data["plugin"] == "development-harness"
+        assert result.data["plugin"] == "dh"
         assert len(result.data["body"]) > 0
         assert isinstance(result.data["skills"], list)
         # Skills are raw URI strings, not dicts — resolution is caller's responsibility.

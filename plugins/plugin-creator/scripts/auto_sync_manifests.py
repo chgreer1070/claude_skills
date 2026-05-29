@@ -301,33 +301,91 @@ def _read_head_json(filepath: str | Path) -> object | None:
     return parsed
 
 
-def _version_already_bumped(filepath: str | Path, version_key_path: list[str]) -> bool:
-    """Check if the working copy version is already greater than HEAD.
+def resolve_base() -> str | None:
+    """Resolve the best available base ref for version comparison.
 
-    Compares the version in the current file against the version in the
-    last commit (``HEAD``).  If the working version is strictly greater,
-    a bump has already occurred and the caller should skip bumping again.
+    Tries refs in order: origin/main → main.
+    Returns None when no ref is resolvable (fresh or shallow clone).
+
+    In the CI ``manifest-sync`` job (``fetch-depth: 1``), ``origin/main`` is
+    absent.  Returning ``None`` causes callers to fall back to HEAD-based
+    behaviour — identical to the pre-refactor logic — so shallow clones are
+    fully supported without any CI-side changes.
+
+    Returns:
+        The first resolvable ref string, or None if none resolve.
+    """
+    if _GIT_PATH is None:
+        return None
+
+    candidates = ["origin/main", "main"]
+
+    for ref in candidates:
+        result = subprocess.run(
+            [_GIT_PATH, "rev-parse", "--verify", "--quiet", ref], capture_output=True, text=True, check=False
+        )
+        if result.returncode == 0:
+            return ref
+
+    return None
+
+
+def _read_ref_json(ref: str, filepath: str | Path) -> object | None:
+    """Read and parse JSON content of a file at an arbitrary git ref.
+
+    When ``ref`` is ``"HEAD"``, delegates to ``_read_head_json`` so that
+    existing monkeypatches of ``_read_head_json`` in tests remain effective.
+
+    Args:
+        ref: Git ref (branch, tag, or ``HEAD``) to read the file from.
+        filepath: Path to the JSON file relative to the repo root.
+
+    Returns:
+        Parsed JSON data, or None if the file does not exist at the ref
+        or cannot be parsed.
+    """
+    if ref == "HEAD":
+        return _read_head_json(filepath)
+
+    if _GIT_PATH is None:
+        return None
+
+    # Normalise to forward slashes for git show (handles Windows paths).
+    rel_path = Path(filepath).as_posix()
+    result = subprocess.run([_GIT_PATH, "show", f"{ref}:{rel_path}"], capture_output=True, text=True, check=False)
+    if result.returncode != 0:
+        return None
+
+    try:
+        parsed: object = json.loads(result.stdout)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    return parsed
+
+
+def _is_ahead_of_ref(filepath: str | Path, version_key_path: list[str], ref: str) -> bool:
+    """Check if the working copy version is strictly greater than a given ref.
 
     Args:
         filepath: Path to the JSON file (relative to repo root).
         version_key_path: Keys to traverse to reach the version value.
             For ``plugin.json``: ``["version"]``
             For ``marketplace.json``: ``["metadata", "version"]``
+        ref: Git ref to compare the working copy version against.
 
     Returns:
-        True if the current file version is strictly greater than HEAD,
-        meaning a bump already happened.  Returns False if versions are
-        equal, HEAD lacks the file, or any parsing error occurs.
+        True if the current file version is strictly greater than the
+        version at ``ref``.  Returns False if versions are equal, the ref
+        lacks the file, or any parsing error occurs.
     """
-    head_data = _read_head_json(filepath)
-    if head_data is None:
+    ref_data = _read_ref_json(ref, filepath)
+    if ref_data is None:
         return False
 
-    head_version = _extract_version_from_json(head_data, version_key_path)
-    if head_version is None:
+    ref_version = _extract_version_from_json(ref_data, version_key_path)
+    if ref_version is None:
         return False
 
-    # Read the current working copy version
     current_path = Path(filepath)
     if not current_path.exists():
         return False
@@ -341,7 +399,26 @@ def _version_already_bumped(filepath: str | Path, version_key_path: list[str]) -
     if current_version is None:
         return False
 
-    return current_version > head_version
+    return current_version > ref_version
+
+
+def _version_already_bumped(filepath: str | Path, version_key_path: list[str]) -> bool:
+    """Check if the working copy version is already greater than HEAD.
+
+    Backwards-compatible alias for ``_is_ahead_of_ref(..., "HEAD")``.
+
+    Args:
+        filepath: Path to the JSON file (relative to repo root).
+        version_key_path: Keys to traverse to reach the version value.
+            For ``plugin.json``: ``["version"]``
+            For ``marketplace.json``: ``["metadata", "version"]``
+
+    Returns:
+        True if the current file version is strictly greater than HEAD,
+        meaning a bump already happened.  Returns False if versions are
+        equal, HEAD lacks the file, or any parsing error occurs.
+    """
+    return _is_ahead_of_ref(filepath, version_key_path, "HEAD")
 
 
 def _write_json_lf(path: Path, content: str) -> None:
@@ -526,19 +603,161 @@ def _update_component_arrays(data: dict[str, list[str] | str], changes: Componen
     return modified
 
 
+def _determine_bump_type(changes: ComponentChanges) -> Literal["major", "minor", "patch"]:
+    """Derive the semver bump type from component changes.
+
+    Args:
+        changes: Component changes with added, deleted, and modified lists.
+
+    Returns:
+        ``"major"`` when components were deleted (breaking change),
+        ``"minor"`` when components were added (new feature),
+        ``"patch"`` for pure modifications.
+    """
+    if changes["deleted"]:
+        return "major"
+    if changes["added"]:
+        return "minor"
+    return "patch"
+
+
+def _write_plugin_version(
+    plugin_json_path: Path,
+    data: dict[str, list[str] | str],
+    from_version: str,
+    bump_type: Literal["major", "minor", "patch"],
+    current_version: str,
+) -> tuple[bool, str]:
+    """Bump the version in *data*, write the file, and return the outcome.
+
+    Skips the write when the computed new content already matches the file on
+    disk — acting as a secondary idempotency guard after the version-comparison
+    guard in callers.
+
+    Args:
+        plugin_json_path: Absolute or cwd-relative path to the plugin.json file.
+        data: Parsed plugin.json dict to mutate and write.
+        from_version: The version string to apply the bump step to.
+        bump_type: Semver bump category.
+        current_version: The working-copy version (returned unchanged when the
+            write is skipped).
+
+    Returns:
+        ``(True, new_version)`` when the file was written,
+        ``(False, current_version)`` when the write was skipped.
+    """
+    new_version = bump_version(from_version, bump_type)
+    existing_content = plugin_json_path.read_text(encoding="utf-8")
+    data["version"] = new_version
+    new_content = _format_json(data)
+    if new_content == existing_content:
+        return False, current_version
+    _write_json_lf(plugin_json_path, new_content)
+    return True, new_version
+
+
+def _extract_str_version(json_data: object, key: str) -> str | None:
+    """Extract a top-level string version field from a parsed JSON object.
+
+    Args:
+        json_data: Parsed JSON — expected to be a dict.
+        key: Top-level key holding the version string (e.g. ``"version"``).
+
+    Returns:
+        The version string, or None if absent or not a string.
+    """
+    if not isinstance(json_data, dict):
+        return None
+    raw = cast("dict[str, object]", json_data).get(key)
+    return raw if isinstance(raw, str) else None
+
+
+def _update_from_base_ref(
+    plugin_json_path: Path,
+    data: dict[str, list[str] | str],
+    current_version: str,
+    base_ref: str,
+    changes: ComponentChanges,
+) -> tuple[bool, str] | None:
+    """Attempt to update plugin.json using a resolved base ref.
+
+    Compares the working-copy version against the version at *base_ref*.  If
+    the working copy is already strictly ahead, the bump is skipped.
+    Otherwise, the bump is derived from *base_ref* so concurrent branches
+    never land on the same version number.
+
+    Args:
+        plugin_json_path: Path to the plugin.json file.
+        data: Parsed plugin.json dict — mutated in place on write.
+        current_version: Version string read from the working copy.
+        base_ref: Resolved git ref (e.g. ``"origin/main"`` or ``"main"``).
+        changes: Component changes for this plugin.
+
+    Returns:
+        ``(updated, version)`` when the base ref path was authoritative,
+        or ``None`` when the plugin is absent at *base_ref* (caller should
+        fall back to HEAD-based logic).
+    """
+    base_data = _read_ref_json(base_ref, str(plugin_json_path))
+    base_ver = _extract_str_version(base_data, "version") if base_data is not None else None
+    if base_ver is None:
+        return None
+
+    ahead = _is_ahead_of_ref(plugin_json_path, ["version"], base_ref)
+    if ahead:
+        return False, current_version
+
+    modified = _update_component_arrays(data, changes)
+    if modified or changes["modified"]:
+        return _write_plugin_version(plugin_json_path, data, base_ver, _determine_bump_type(changes), current_version)
+    return False, current_version
+
+
+def _update_from_head(
+    plugin_json_path: Path, data: dict[str, list[str] | str], current_version: str, changes: ComponentChanges
+) -> tuple[bool, str]:
+    """Update plugin.json using HEAD as the comparison base (fallback path).
+
+    Used when no base ref is resolvable (shallow CI clones, fresh checkouts)
+    or when the plugin does not yet exist on the base branch.  Behaviour is
+    identical to the pre-refactor implementation.
+
+    Args:
+        plugin_json_path: Path to the plugin.json file.
+        data: Parsed plugin.json dict — mutated in place on write.
+        current_version: Version string read from the working copy.
+        changes: Component changes for this plugin.
+
+    Returns:
+        ``(updated, version)``
+    """
+    if _version_already_bumped(str(plugin_json_path), ["version"]):
+        return False, current_version
+
+    modified = _update_component_arrays(data, changes)
+    if modified or changes["modified"]:
+        return _write_plugin_version(
+            plugin_json_path, data, current_version, _determine_bump_type(changes), current_version
+        )
+    return False, current_version
+
+
 def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[bool, str]:
     """Update plugin.json based on component changes.
 
+    Resolves a base ref (origin/main → main) and bumps from the base version
+    when available, so that concurrent PR branches never collide on the same
+    version number.  Falls back to HEAD-based comparison when no base ref is
+    resolvable (shallow CI clones, fresh checkouts).
+
     Args:
-        plugin_name: Name of the plugin
-        changes: {
-            'added': [{'component_type': 'skill', 'component_path': 'skills/foo'}],
-            'deleted': [{'component_type': 'agent', 'component_path': 'agents/bar.md'}],
-            'modified': [...],
-        }
+        plugin_name: Name of the plugin directory under ``plugins/``.
+        changes: Component changes with ``added``, ``deleted``, and
+            ``modified`` lists.
 
     Returns:
-        (updated: bool, new_version: str)
+        ``(updated, version)`` — updated is True when the file was written;
+        version is the new version on update or the unchanged version otherwise.
     """
     plugin_json_path = Path(f"plugins/{plugin_name}/.claude-plugin/plugin.json")
 
@@ -550,41 +769,13 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
 
     current_version = cast("str", data.get("version", "0.0.0"))
 
-    # Skip if the version was already bumped (e.g., user manually edited
-    # plugin.json in the same commit, or commit retry after hook failure).
-    if _version_already_bumped(str(plugin_json_path), ["version"]):
-        return False, current_version
-    bump_type: Literal["major", "minor", "patch"] = "patch"
-    modified = False
+    base_ref = resolve_base()
+    if base_ref is not None:
+        result = _update_from_base_ref(plugin_json_path, data, current_version, base_ref, changes)
+        if result is not None:
+            return result
 
-    # Determine bump type based on changes
-    if changes["deleted"]:
-        bump_type = "major"  # Breaking change
-    elif changes["added"]:
-        bump_type = "minor"  # New feature
-
-    # Update component arrays
-    modified = _update_component_arrays(data, changes)
-
-    # Bump version if changes were made
-    if modified or changes["modified"]:
-        new_version = bump_version(current_version, bump_type)
-        existing_content = plugin_json_path.read_text(encoding="utf-8")
-
-        data["version"] = new_version
-        new_content = _format_json(data)
-
-        # Skip write when the formatted output already matches the file.
-        # The primary double-bump defence is the _version_already_bumped
-        # guard above — this check provides an additional safety net.
-        if new_content == existing_content:
-            return False, current_version
-
-        _write_json_lf(plugin_json_path, new_content)
-
-        return True, new_version
-
-    return False, current_version
+    return _update_from_head(plugin_json_path, data, current_version, changes)
 
 
 def _read_plugin_name(plugin_dir_name: str) -> str:

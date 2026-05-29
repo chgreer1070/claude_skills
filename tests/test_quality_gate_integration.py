@@ -474,13 +474,17 @@ class TestQGReadinessSequencing:
         assert ready[0].id == "T4"
 
     @pytest.mark.integration
-    def test_t6_not_ready_after_t5_skipped(self, tmp_path: Path) -> None:
-        """T6 is not ready when T5 is marked SKIPPED.
+    def test_t6_ready_after_t5_skipped(self, tmp_path: Path) -> None:
+        """T6 is ready when T5 is marked SKIPPED.
 
-        Tests: SKIPPED is terminal but does not satisfy dependency readiness
-        How: Mark T1-T4 complete, mark T5 skipped, then query get_ready_tasks
-        Why: Readiness now gates on successful dependencies only,
-             not skipped/failed
+        Tests: SKIPPED is terminal and satisfies dependency readiness (fix for #2457)
+        How: Mark T0-T4 complete, mark T5 skipped, then query get_ready_tasks
+        Why: SKIPPED is in SUCCESSFUL_STATUSES — a conditionally-skipped T5
+             (doc update with no drift found) must not deadlock T6 (context
+             refinement).  When T5 is skipped the plan can still complete by
+             running T6 and then marking it done; see also
+             test_gate_t5_skipped_with_rest_complete_is_terminal which encodes
+             the terminal state after T6 completes.
         """
         # Arrange
         plan_dir = tmp_path / "plan"
@@ -494,8 +498,9 @@ class TestQGReadinessSequencing:
         # Act
         ready = get_ready_tasks(plan.source_path)
 
-        # Assert
-        assert ready == []
+        # Assert — T5 skipped satisfies T6's dependency; T6 becomes ready
+        assert len(ready) == 1
+        assert ready[0].id == "T6"
 
     @pytest.mark.integration
     def test_no_tasks_ready_when_all_complete(self, tmp_path: Path) -> None:
