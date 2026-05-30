@@ -88,18 +88,6 @@ class _FakeBdRunner(BdRunner):
                 raise BdInvocationError(f"Issue not found: {issue_id}", args, 1, "", "")
             return self._issues[issue_id]
 
-        if cmd == "claim":
-            if len(args) < 2:
-                raise BdInvocationError("claim requires an ID", args, 1, "", "")
-            issue_id = args[1]
-            if issue_id not in self._issues:
-                raise BdInvocationError(f"Issue not found: {issue_id}", args, 1, "", "")
-            issue = self._issues[issue_id]
-            if issue["status"] not in ("open", "not-started"):
-                raise BdInvocationError(f"Cannot claim issue in status {issue['status']!r}", args, 2, "", "")
-            issue["status"] = "hooked"
-            return issue
-
         if cmd == "ready":
             # Always raise BdInvocationError: let BeadsTaskProvider fall back to
             # its local dependency-evaluation path, which correctly handles blocked tasks.
@@ -176,23 +164,32 @@ class _FakeBdRunner(BdRunner):
         if issue_id not in self._issues:
             raise BdInvocationError(f"Issue not found: {issue_id}", args, 1, "", "")
         issue = self._issues[issue_id]
-        # Parse --flag value pairs from remaining args
+        # Parse --flag value pairs and standalone flags from remaining args
         rest = args[2:]
         i = 0
-        while i < len(rest) - 1:
+        while i < len(rest):
             flag = rest[i]
-            val = rest[i + 1]
-            if flag == "--title":
-                issue["title"] = val
-            elif flag == "--description":
-                issue["description"] = val
-            elif flag == "--priority":
-                issue["priority"] = int(val)
-            elif flag == "--notes":
-                issue["notes"] = val
-            elif flag == "--status":
-                issue["status"] = val
-            i += 2
+            if flag == "--claim":
+                # Atomic claim: open → hooked; non-open statuses are not claimable.
+                if issue["status"] not in ("open", "not-started"):
+                    raise BdInvocationError(f"Cannot claim issue in status {issue['status']!r}", args, 2, "", "")
+                issue["status"] = "hooked"
+                i += 1
+            elif flag in ("--title", "--description", "--notes", "--status", "--priority") and i + 1 < len(rest):
+                val = rest[i + 1]
+                if flag == "--title":
+                    issue["title"] = val
+                elif flag == "--description":
+                    issue["description"] = val
+                elif flag == "--priority":
+                    issue["priority"] = int(val)
+                elif flag == "--notes":
+                    issue["notes"] = val
+                elif flag == "--status":
+                    issue["status"] = val
+                i += 2
+            else:
+                i += 1
         return ""
 
     def _handle_create(self, args: list[str]) -> dict[str, Any]:
@@ -266,7 +263,13 @@ class _ListParentBdRunner(_FakeBdRunner):
     """
 
     def run_json(self, argv: Sequence[str]) -> JsonValue:
-        """Handle ``list --parent`` locally; delegate all other commands."""
+        """Handle ``list --parent`` (with optional ``--all``) locally; delegate all other commands.
+
+        The production code passes ``--all`` alongside ``--parent`` so that closed
+        tasks are included in the batch result.  This override accepts both forms:
+        ``["list", "--parent", <id>]`` and ``["list", "--parent", <id>, "--all"]``.
+        All matching child issues are returned regardless of status.
+        """
         args = list(argv)
         if args and args[0] == "list" and "--parent" in args:
             self.json_calls.append(args)

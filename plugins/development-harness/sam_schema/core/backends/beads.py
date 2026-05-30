@@ -626,7 +626,7 @@ class BeadsTaskProvider:
         # --parent flag is unsupported or the response fails to parse.
         children_by_bd_id: dict[str, BeadsIssueRaw] = {}
         try:
-            raw_children = self._runner.run_json(["list", "--parent", epic_id])
+            raw_children = self._runner.run_json(["list", "--parent", epic_id, "--all"])
             children_by_bd_id = {issue.id: issue for issue in parse_issue_list(raw_children)}
         except BdNotInstalledError:
             raise
@@ -812,7 +812,7 @@ class BeadsTaskProvider:
         """
         bd_id, _is_bookend, _bookend_type = self._bd_id_for_task(plan_id, task_id)
         try:
-            self._runner.run_json(["claim", bd_id])
+            self._runner.run_text(["update", bd_id, "--claim"])
         except BdInvocationError:
             return False
         else:

@@ -138,6 +138,29 @@ class TestReadPlan:
         assert plan["feature"] == "test-plan"
         assert len(plan["tasks"]) == 2
 
+    def test_read_plan_passes_all_flag_to_list(self, plan_id_and_list_runner: tuple[str, _ListParentBdRunner]) -> None:
+        """read_plan must pass ``--all`` to ``bd list --parent`` so closed tasks are included.
+
+        Regression test for BUG-B: the original call omitted ``--all``, which
+        caused ``bd list --parent`` to exclude closed/completed child issues.
+        This meant ``sam_plan status`` reported incorrect completion percentages
+        after tasks were closed.
+        """
+        plan_id, runner = plan_id_and_list_runner
+        epic_id = runner._memory[f"dh.plan-index.{plan_id}"]
+        make_task_record(runner, plan_id, "T01", status="closed", parent_id=epic_id)
+        runner.json_calls.clear()
+
+        provider = BeadsTaskProvider(runner=runner)
+        provider.read_plan(plan_id)
+
+        list_calls = [c for c in runner.json_calls if c[0] == "list"]
+        assert len(list_calls) == 1
+        assert "--all" in list_calls[0], (
+            "read_plan must pass --all to bd list --parent so closed tasks are included; "
+            "without --all, completed tasks are excluded and completion_pct is always 0%"
+        )
+
 
 # ---------------------------------------------------------------------------
 # bd show list-wrapping — parse_show_issue call sites
@@ -257,6 +280,34 @@ class TestClaimTask:
         with pytest.raises(TaskNotFoundError):
             provider.claim_task(plan_id, "T99")
 
+    def test_claim_uses_update_not_claim_command(self, fake_runner: _FakeBdRunner) -> None:
+        """claim_task must call ``bd update --claim`` — not the non-existent ``bd claim``.
+
+        Regression test for BUG-A: the original code called run_json(["claim", id])
+        which does not exist in bd 1.0.4.  The correct invocation routes through
+        run_text(["update", id, "--claim"]).
+        """
+        plan_id = "Pclaim04"
+        runner = fake_runner
+        epic_id = runner._new_id()
+        runner._issues[epic_id] = runner._make_issue(epic_id, "epic", issue_type="epic")
+        runner._memory[f"dh.plan-index.{plan_id}"] = epic_id
+        bd_id = make_task_record(runner, plan_id, "T01", status="open", parent_id=epic_id)
+
+        provider = BeadsTaskProvider(runner=runner)
+        provider.claim_task(plan_id, "T01")
+
+        # Must NOT appear in json_calls (bd claim does not exist in bd 1.0.4)
+        claim_json_calls = [c for c in runner.json_calls if c and c[0] == "claim"]
+        assert claim_json_calls == [], (
+            "claim_task must not call run_json(['claim', ...]) — bd claim does not exist in bd 1.0.4"
+        )
+
+        # Must appear in text_calls as bd update --claim
+        update_claim_calls = [c for c in runner.text_calls if c[0] == "update" and "--claim" in c]
+        assert len(update_claim_calls) == 1
+        assert bd_id in update_claim_calls[0]
+
 
 # ---------------------------------------------------------------------------
 # update_task_status
@@ -351,6 +402,46 @@ class TestDocumentRoundTrip:
 # ---------------------------------------------------------------------------
 # append_task
 # ---------------------------------------------------------------------------
+
+
+class TestGetPlanStatus:
+    def test_completion_pct_includes_closed_tasks(
+        self, plan_id_and_list_runner: tuple[str, _ListParentBdRunner]
+    ) -> None:
+        """get_plan_status must reflect closed tasks in completion_pct.
+
+        Regression test for BUG-B: without ``--all`` on the ``bd list --parent``
+        call, closed issues are excluded from the batch result.  The plan then
+        shows 0 tasks and 0% completion even after all work is done.
+        """
+        plan_id, runner = plan_id_and_list_runner
+        epic_id = runner._memory[f"dh.plan-index.{plan_id}"]
+        make_task_record(runner, plan_id, "T01", status="closed", parent_id=epic_id)
+        make_task_record(runner, plan_id, "T02", status="closed", parent_id=epic_id)
+
+        provider = BeadsTaskProvider(runner=runner)
+        status = provider.get_plan_status(plan_id)
+
+        assert status["total_tasks"] == 2, (
+            "Both closed tasks must be visible to get_plan_status; "
+            "without --all on bd list --parent, closed tasks are excluded"
+        )
+        assert status["completion_pct"] == pytest.approx(100.0)
+
+    def test_completion_pct_mixed_open_and_closed(
+        self, plan_id_and_list_runner: tuple[str, _ListParentBdRunner]
+    ) -> None:
+        """get_plan_status must count only closed tasks toward completion_pct."""
+        plan_id, runner = plan_id_and_list_runner
+        epic_id = runner._memory[f"dh.plan-index.{plan_id}"]
+        make_task_record(runner, plan_id, "T01", status="closed", parent_id=epic_id)
+        make_task_record(runner, plan_id, "T02", status="open", parent_id=epic_id)
+
+        provider = BeadsTaskProvider(runner=runner)
+        status = provider.get_plan_status(plan_id)
+
+        assert status["total_tasks"] == 2
+        assert status["completion_pct"] == pytest.approx(50.0)
 
 
 class TestAppendTask:
