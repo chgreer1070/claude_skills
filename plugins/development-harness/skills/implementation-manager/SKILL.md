@@ -152,13 +152,16 @@ skills: []
 - `in-progress` — task is claimed and being executed
 - `complete` — task is done
 - `blocked` — task cannot proceed
+- `deferred` — task is intentionally postponed
+- `skipped` — task was bypassed without execution
+- `failed` — task execution ended in failure
 
 ### Dependency Resolution
 
 A task is "ready" when:
 
 1. Status is `not-started`
-2. All dependencies have status `complete` (or no dependencies)
+2. All dependencies have status `complete`, `deferred`, or `skipped` (or no dependencies)
 
 ## Hook Integration
 
