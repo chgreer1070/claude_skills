@@ -523,6 +523,77 @@ class TestADR002TypeWidening:
 
 
 # ---------------------------------------------------------------------------
+# TestBdShowListWrapping — regression for BACKLOG_BACKEND=beads crash
+# ---------------------------------------------------------------------------
+
+
+class TestBdShowListWrapping:
+    """bd show --json returns [dict] in production; all three affected methods must handle it.
+
+    BUG-2: artifact_register, artifact_list, artifact_read crashed because
+    parse_issue() expected a dict but received a list.  These tests confirm
+    each call site now works with the production-shape list output.
+    """
+
+    def test_get_manifest_bd_handles_list_wrapped_response(
+        self, provider: BeadsArtifactProvider, mock_runner: MagicMock
+    ) -> None:
+        """get_manifest_bd succeeds when run_json returns [dict] (production bd show shape)."""
+        mock_runner.run_json.return_value = [_raw_issue(metadata=None)]
+
+        result = provider.get_manifest_bd(_ISSUE_ID)
+
+        assert result.artifacts == []
+
+    def test_store_artifact_content_bd_handles_list_wrapped_response(
+        self, provider: BeadsArtifactProvider, mock_runner: MagicMock
+    ) -> None:
+        """store_artifact_content_bd succeeds when run_json returns [dict]."""
+        mock_runner.run_json.return_value = [_raw_issue(notes=None)]
+
+        provider.store_artifact_content_bd(_ISSUE_ID, "architect", "plan/foo.md", "content")
+
+        mock_runner.run_text.assert_called_once()
+
+    def test_read_artifact_content_from_remote_bd_handles_list_wrapped_response(
+        self, provider: BeadsArtifactProvider, mock_runner: MagicMock
+    ) -> None:
+        """read_artifact_content_from_remote_bd succeeds when run_json returns [dict]."""
+        notes = (
+            "<!-- artifact-content:type=architect:id=plan/foo.md -->\n"
+            "content\n"
+            "<!-- /artifact-content:type=architect:id=plan/foo.md -->"
+        )
+        mock_runner.run_json.return_value = [_raw_issue(notes=notes)]
+
+        result = provider.read_artifact_content_from_remote_bd(_ISSUE_ID, "architect", "plan/foo.md")
+
+        assert result == "content"
+
+    def test_round_trip_register_list_read(self, provider: BeadsArtifactProvider, mock_runner: MagicMock) -> None:
+        """Round-trip: store then read returns the original content with list-wrapped show output."""
+        notes_before: list[str] = [None]  # type: ignore[list-item]
+
+        def capture_notes_update(argv: list[str]) -> None:
+            if "--notes" in argv:
+                notes_before[0] = argv[argv.index("--notes") + 1]
+
+        mock_runner.run_text.side_effect = capture_notes_update
+        mock_runner.run_json.return_value = [_raw_issue(notes=None)]
+
+        provider.store_artifact_content_bd(_ISSUE_ID, "research", "plan/research.md", "my content")
+
+        # Now simulate reading back by returning the stored notes in the next run_json call.
+        stored_notes = notes_before[0]
+        mock_runner.run_json.return_value = [_raw_issue(notes=stored_notes)]
+        mock_runner.run_text.side_effect = None
+
+        result = provider.read_artifact_content_from_remote_bd(_ISSUE_ID, "research", "plan/research.md")
+
+        assert result == "my content"
+
+
+# ---------------------------------------------------------------------------
 # TestExtractManifestFromMetadata
 # ---------------------------------------------------------------------------
 

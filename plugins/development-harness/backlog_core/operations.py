@@ -27,6 +27,7 @@ from . import models as _models
 from .artifact_provider import create_artifact_provider
 from .artifact_registry import ArtifactRegistry
 from .backend_protocol import IssueCommentNode, IssueNode, MilestoneFullNode, get_config
+from .backends.beads_backend import BeadsBackend as _BeadsBackend
 from .entry_blocks import ENTRY_RE, _render_entry_raw, generate_diff, parse_entries, strike_entry as strike_entry_block
 from .models import (
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
@@ -2127,12 +2128,26 @@ def refresh_local_cache_from_github(
 
 
 def _item_derived_status(item: BacklogItem, status_map: dict[int, IssueStatus]) -> str:
-    """Return the GitHub status string for an item, defaulting to 'needs-grooming'."""
+    """Return the effective status string for an item.
+
+    For items with a numeric GitHub issue reference, looks up the live status
+    from *status_map*.  For items with a non-integer issue reference (e.g. a
+    beads nanoid ``"bd-a3f8"``) or no issue at all, falls back to the locally
+    cached ``item.status`` field.  This prevents beads and other string-ID
+    backends from always returning ``"needs-grooming"`` when the status map is
+    empty (ADR-002).
+
+    Returns:
+        Status string — either the GitHub label value from *status_map* or the
+        local ``item.status`` value, defaulting to ``"needs-grooming"`` when
+        neither is available.
+    """
     num = parse_issue_number(item.issue)
     if num is not None:
         info = status_map.get(num)
         return info.status if info is not None else "needs-grooming"
-    return "needs-grooming"
+    # Non-integer issue ref (beads nanoid) or no issue — use local YAML status.
+    return item.status or "needs-grooming"
 
 
 def _filter_open_items(
@@ -2244,10 +2259,22 @@ def _build_list_entry(item: BacklogItem, status_map: dict[int, IssueStatus]) -> 
     if item.groomed:
         entry["groomed"] = item.groomed
     if item.issue:
-        num = parse_issue_number(item.issue) or 0
-        info = status_map.get(num)
-        entry["status"] = info.status if info is not None else ""
-        entry["milestone"] = info.milestone if info is not None else ""
+        num = parse_issue_number(item.issue)
+        if num is not None:
+            info = status_map.get(num)
+            entry["status"] = info.status if info is not None else ""
+            entry["milestone"] = info.milestone if info is not None else ""
+        else:
+            # Non-integer issue ref (e.g. beads nanoid "bd-a3f8"): status_map
+            # cannot be keyed by int, so use the locally cached status field.
+            # Milestone is not tracked locally for string-ID backends.
+            entry["status"] = item.status or ""
+            entry["milestone"] = ""
+    elif item.status:
+        # No issue reference at all (e.g. beads item never linked to a backend
+        # issue).  Expose the locally cached status so consumers and filters
+        # can see the real state rather than finding no ``status`` key.
+        entry["status"] = item.status
     return entry
 
 
@@ -2294,7 +2321,15 @@ def list_items(
     # are included based on include_closed.
     open_items = [it for it in items if not it.skip and it.section]
     open_items = _filter_closed_items(open_items, include_closed)
-    status_map = batch_fetch_statuses(open_items, repo)
+    # BeadsBackend.batch_fetch_statuses raises NotImplementedError (ADR-002):
+    # beads issue IDs are strings and cannot be keyed by int.  For beads, the
+    # local YAML status field is authoritative — skip the batch fetch entirely
+    # and pass an empty map.  _item_derived_status and _build_list_entry both
+    # fall back to item.status when the map is empty.
+    if isinstance(get_config().backend, _BeadsBackend):
+        status_map: dict[int, IssueStatus] = {}
+    else:
+        status_map = batch_fetch_statuses(open_items, repo)
     open_items = _filter_open_items(open_items, section, title, status, status_map, type_=type_, topic=topic)
     result_items = [_build_list_entry(it, status_map) for it in open_items]
     return {"items": result_items, "count": len(result_items), **out.to_dict()}
@@ -3267,13 +3302,54 @@ def _apply_issue_status_labels(
     result: dict[str, str | int | bool | list[str]],
     output: Output,
 ) -> None:
-    """Apply GitHub issue status labels (in-progress, verified) when item has an issue."""
-    if not item.issue:
+    """Apply status changes for the item.
+
+    For items with a numeric GitHub issue reference, applies GitHub status
+    labels via the backend (in-progress, verified).
+
+    For items with no integer issue reference — including beads items whose
+    ``item.issue`` field is empty (beads has no GitHub issue creation path)
+    or holds a non-numeric beads nanoid — writes the status directly to the
+    local YAML cache file via :func:`update_item_metadata`.  This prevents the
+    status change from becoming a silent no-op for beads backends (BUG-3).
+
+    The ``apply_status_in_progress`` backend call is still issued when
+    ``item.issue`` is a non-integer beads nanoid (e.g. ``"bd-a3f8"``) so that
+    ``bd update --claim`` is called on the beads issue.  When ``item.issue`` is
+    empty the title is used as the beads selector by
+    :meth:`~BeadsBackend.apply_status_in_progress`.
+
+    Args:
+        item: Resolved BacklogItem.
+        status: Status string to set (e.g. ``"in-progress"``), or ``None``.
+        verified: When ``True``, apply the verified status label.
+        repo: GitHub repo slug (e.g. ``"owner/repo"``).
+        result: Partial result dict mutated in place with ``"status"`` / ``"verified"`` / ``"error"`` keys.
+        output: Output aggregator for info/warning messages.
+    """
+    has_integer_issue = parse_issue_number(item.issue) is not None
+    is_beads = isinstance(get_config().backend, _BeadsBackend)
+
+    if not item.issue and not is_beads:
+        # No issue on a non-beads backend — nothing to do.
         return
+
     if status == "in-progress":
-        apply_status_in_progress(item, repo, output=output)
+        if is_beads:
+            # Backend call: bd update <id-or-title> --claim
+            apply_status_in_progress(item, repo, output=output)
+            # Local YAML update: write status so list_items reflects the change.
+            if item.file_path:
+                update_item_metadata(Path(item.file_path), {"metadata": {"status": "in-progress"}}, output=output)
+        elif has_integer_issue:
+            apply_status_in_progress(item, repo, output=output)
         result["status"] = "in-progress"
+
     if verified:
+        if not has_integer_issue:
+            # verified label requires a GitHub integer issue — no-op for beads.
+            result["verified"] = True
+            return
         try:
             apply_status_verified(item, repo, output=output)
         except GithubException as e:

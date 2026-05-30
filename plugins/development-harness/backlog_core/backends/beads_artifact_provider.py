@@ -54,7 +54,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from backlog_core.backends.bd_runner import BdRunner
-from backlog_core.backends.beads_models import BeadsIssueRaw, parse_issue
+from backlog_core.backends.beads_models import BeadsIssueRaw, parse_show_issue
 from backlog_core.models import ArtifactManifest
 
 # dh_paths lives one level above backlog_core (at plugin root).
@@ -432,7 +432,7 @@ class BeadsArtifactProvider:
             bd_runner.BdInvocationError: When ``bd show`` or ``bd update`` fails.
         """
         raw = self._runner.run_json(["show", issue_id])
-        issue = parse_issue(raw)
+        issue = parse_show_issue(raw)
         current_notes = issue.notes or ""
 
         open_sentinel = _SENTINEL_OPEN_TMPL.format(artifact_type=artifact_type, path=path)
@@ -471,7 +471,7 @@ class BeadsArtifactProvider:
             bd_runner.BdInvocationError: When ``bd show`` fails.
         """
         raw = self._runner.run_json(["show", issue_id])
-        issue = parse_issue(raw)
+        issue = parse_show_issue(raw)
         notes = issue.notes or ""
         return _extract_content_block(notes, artifact_type, path)
 
@@ -572,7 +572,7 @@ class BeadsArtifactProvider:
             pydantic.ValidationError: When the stored manifest JSON is corrupt.
         """
         raw = self._runner.run_json(["show", issue_id])
-        issue = parse_issue(raw)
+        issue = parse_show_issue(raw)
         if issue.metadata is None:
             return ArtifactManifest(issue_number=0), issue
         if (manifest := _extract_manifest_from_metadata(issue.metadata)) is None:

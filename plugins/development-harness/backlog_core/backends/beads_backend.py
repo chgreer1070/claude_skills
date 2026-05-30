@@ -30,7 +30,7 @@ from pydantic import ValidationError
 
 from backlog_core import github_sync, rendering as _rendering
 from backlog_core.backends.bd_runner import BdInvocationError, BdNotInstalledError, BdRunner
-from backlog_core.backends.beads_models import BeadsStatus, parse_issue, parse_issue_list
+from backlog_core.backends.beads_models import BeadsStatus, parse_issue_list, parse_show_issue
 from backlog_core.models import (
     BackendAvailability,
     BackendStatus,
@@ -340,7 +340,7 @@ class BeadsBackend:
         """
         issue_ref = item.issue or item.title
         raw = self._runner.run_json(["show", issue_ref])
-        parsed = parse_issue(raw)
+        parsed = parse_show_issue(raw)
         return str(parsed.status)
 
     def view_enrich_from_github(self, result: ViewItemResult, issue_num: str, repo: str = "") -> bool:
@@ -360,12 +360,15 @@ class BeadsBackend:
         """
         try:
             raw = self._runner.run_json(["show", issue_num])
-            parsed = parse_issue(raw)
+            parsed = parse_show_issue(raw)
         except (BdNotInstalledError, BdInvocationError) as exc:
             _log.debug("view_enrich_from_github: bd invocation failed for %r: %s", issue_num, exc)
             return False
         except ValidationError as exc:
             _log.debug("view_enrich_from_github: validation error for %r: %s", issue_num, exc)
+            return False
+        except ValueError as exc:
+            _log.debug("view_enrich_from_github: bd show returned empty result for %r: %s", issue_num, exc)
             return False
 
         result.status = str(parsed.status)

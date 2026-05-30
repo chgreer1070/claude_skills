@@ -33,7 +33,7 @@ from __future__ import annotations
 from enum import IntEnum, StrEnum
 from typing import Annotated, Final, NewType
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter
 
 from backlog_core.backends.bd_runner import JsonValue
 
@@ -54,6 +54,7 @@ __all__ = [
     "parse_issue",
     "parse_issue_list",
     "parse_ready_list",
+    "parse_show_issue",
 ]
 
 # ---------------------------------------------------------------------------
@@ -93,7 +94,14 @@ class BeadsStatus(StrEnum):
 
 
 class BeadsIssueType(StrEnum):
-    """Issue type labels returned by the ``bd`` CLI."""
+    """Issue type labels returned by the ``bd`` CLI.
+
+    Core built-in types are defined by ``bd issue types``.  Custom types
+    are user-configurable via ``bd config set types.custom``; unknown values
+    cause a ``ValidationError`` at parse time.
+
+    SOURCE: ``bd issue types`` output, bd CLI 1.0.4 (verified 2026-05-29).
+    """
 
     TASK = "task"
     BUG = "bug"
@@ -101,6 +109,9 @@ class BeadsIssueType(StrEnum):
     EPIC = "epic"
     CHORE = "chore"
     DECISION = "decision"
+    SPIKE = "spike"
+    STORY = "story"
+    MILESTONE = "milestone"
     MOLECULE = "molecule"
     GATE = "gate"
     EVENT = "event"
@@ -132,7 +143,9 @@ class BeadsIssueRaw(BaseModel):
         id: Beads nanoid-prefixed identifier, e.g. ``bd-a3f8``.
         title: Short human-readable summary.
         status: Current lifecycle status.
-        type: Issue classification.
+        type: Issue classification.  Accepts both ``"type"`` (legacy) and
+            ``"issue_type"`` (bd CLI 1.0.4+) as JSON keys via
+            ``AliasChoices``.
         priority: Numeric priority (0 = critical, 4 = backlog).
         description: Long-form description body, may be absent.
         notes: Supplementary notes, may be absent.
@@ -141,7 +154,8 @@ class BeadsIssueRaw(BaseModel):
             The ``bd`` CLI may represent dot-notation keys (``dh.artifacts``) as
             either a nested dict ``{"dh": {"artifacts": ...}}`` or a flat key
             ``{"dh.artifacts": ...}`` — both are accepted at parse time.
-        assignee: Username of the assigned user, may be absent.
+        assignee: Username of the assigned user, may be absent.  Accepts both
+            ``"assignee"`` and ``"owner"`` (bd CLI 1.0.4+) as JSON keys.
         created_at: ISO-8601 creation timestamp, may be absent.
         updated_at: ISO-8601 last-update timestamp, may be absent.
         closed_at: ISO-8601 closure timestamp, absent when issue is open.
@@ -152,13 +166,13 @@ class BeadsIssueRaw(BaseModel):
     id: _BeadsIdField
     title: str
     status: Annotated[BeadsStatus, Field(strict=False)]
-    type: Annotated[BeadsIssueType, Field(strict=False)]
+    type: Annotated[BeadsIssueType, Field(strict=False, validation_alias=AliasChoices("type", "issue_type"))]
     priority: Annotated[BeadsPriority, Field(strict=False)]
     description: str | None = None
     notes: str | None = None
     metadata: dict[str, object] | None = None
     labels: list[str] | None = None
-    assignee: str | None = None
+    assignee: Annotated[str | None, Field(default=None, validation_alias=AliasChoices("assignee", "owner"))]
     created_at: str | None = None
     updated_at: str | None = None
     closed_at: str | None = None
@@ -315,3 +329,44 @@ def parse_dependency_list(data: JsonValue) -> list[BeadsDependencyRaw]:
         When *data* is not a list or any element fails validation.
     """
     return _dep_list_adapter.validate_python(data)
+
+
+def parse_show_issue(data: JsonValue) -> BeadsIssueRaw:
+    """Validate and return a single issue from ``bd show <id> --json`` output.
+
+    ``bd show`` wraps the issue in a single-element JSON array (``[{...}]``).
+    This function unwraps the list when present so callers do not need to know
+    the CLI's wrapping convention.  A plain dict is also accepted for
+    compatibility with mocked output and any future ``bd`` version that drops
+    the wrapper.
+
+    Use this function — not :func:`parse_issue` — whenever the source command
+    is ``bd show``.  :func:`parse_issue` expects a bare dict and will fail on a
+    list-wrapped response.
+
+    Parameters
+    ----------
+    data:
+        Parsed JSON value returned by :meth:`~bd_runner.BdRunner.run_json` for
+        a ``bd show <id>`` invocation.  Expected to be either a single-element
+        list ``[{...}]`` or a bare dict ``{...}``.
+
+    Returns:
+    -------
+    BeadsIssueRaw
+        Validated issue model.
+
+    Raises:
+    ------
+    ValueError
+        When *data* is a list but contains zero elements (the issue was not
+        found or ``bd show`` returned an empty array).
+    pydantic.ValidationError
+        When the unwrapped dict does not conform to :class:`BeadsIssueRaw`.
+    """
+    if isinstance(data, list):
+        if not data:
+            msg = "bd show returned an empty list — the requested issue was not found."
+            raise ValueError(msg)
+        return parse_issue(data[0])
+    return parse_issue(data)

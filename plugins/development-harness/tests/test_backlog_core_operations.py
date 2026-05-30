@@ -448,6 +448,269 @@ class TestListItemsFiltering:
 
 
 # ---------------------------------------------------------------------------
+# list_items — beads backend (BUG-1)
+# ---------------------------------------------------------------------------
+
+
+class TestListItemsBeadsBackend:
+    """list_items does not crash and returns correct status with BeadsBackend.
+
+    BUG-1: batch_fetch_statuses raises NotImplementedError for beads because
+    beads IDs are strings with no integer representation (ADR-002).  The fix
+    detects BeadsBackend via isinstance and passes status_map={} instead.
+    _item_derived_status and _build_list_entry both fall back to item.status
+    when the map is empty.
+    """
+
+    def _make_beads_backend_config(self, mocker: MockerFixture) -> None:
+        """Patch get_config() to return a BacklogConfig backed by BeadsBackend."""
+        from unittest.mock import MagicMock
+
+        from backlog_core.backend_protocol import BacklogConfig as _BPConfig
+        from backlog_core.backends.bd_runner import BdRunner
+        from backlog_core.backends.beads_backend import BeadsBackend
+
+        runner = MagicMock(spec=BdRunner)
+        runner.is_available.return_value = True
+        beads_backend = BeadsBackend(runner=runner)
+        patched = _BPConfig(backend=beads_backend)
+        mocker.patch("backlog_core.operations.get_config", return_value=patched)
+
+    def test_list_items_beads_does_not_call_batch_fetch_statuses(self, mocker: MockerFixture) -> None:
+        """list_items with BeadsBackend must not call batch_fetch_statuses.
+
+        Tests: BUG-1 crash prevention.
+        How: Swap backend to BeadsBackend; assert batch_fetch_statuses is never
+             called (it would raise NotImplementedError for beads).
+        Why: Calling batch_fetch_statuses on BeadsBackend raises NotImplementedError
+             (ADR-002).  The fix must skip that call entirely.
+        """
+        self._make_beads_backend_config(mocker)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[])
+        mock_batch = mocker.patch("backlog_core.operations.batch_fetch_statuses")
+
+        list_items(from_github=False)
+
+        mock_batch.assert_not_called()
+
+    def test_list_items_beads_returns_local_status_for_items_without_integer_issue(self, mocker: MockerFixture) -> None:
+        """list_items with BeadsBackend returns item.status from local YAML.
+
+        Tests: BUG-1 correct status reporting for beads items.
+        How: Inject a BacklogItem with issue="" and status="in-progress"; verify
+             the returned entry carries that status.
+        Why: With status_map={} and no integer issue, _build_list_entry must read
+             item.status rather than returning an empty string.
+        """
+        self._make_beads_backend_config(mocker)
+        beads_item = BacklogItem(
+            title="Beads Task",
+            section="P1",
+            skip=False,
+            metadata=BacklogItemMetadata(
+                source="test", added="2026-01-01", priority="P1", status="in-progress", issue=""
+            ),
+        )
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[beads_item])
+
+        result = list_items(from_github=False)
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert items[0]["status"] == "in-progress"
+
+    def test_list_items_beads_returns_local_status_for_items_with_beads_nanoid(self, mocker: MockerFixture) -> None:
+        """list_items with BeadsBackend returns item.status for nanoid issue refs.
+
+        Tests: BUG-1 status fallback when item.issue is a non-integer beads ID.
+        How: Inject a BacklogItem with issue="bd-a3f8" (truthy but non-integer)
+             and status="open"; verify the entry status equals "open".
+        Why: parse_issue_number("bd-a3f8") returns None, so the status must fall
+             through to item.status rather than returning "" or "needs-grooming".
+        """
+        self._make_beads_backend_config(mocker)
+        beads_item = BacklogItem(
+            title="Beads Nanoid Task",
+            section="P2",
+            skip=False,
+            metadata=BacklogItemMetadata(
+                source="test", added="2026-01-01", priority="P2", status="open", issue="bd-a3f8"
+            ),
+        )
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[beads_item])
+
+        result = list_items(from_github=False)
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert items[0]["status"] == "open"
+        assert items[0]["milestone"] == ""
+
+
+# ---------------------------------------------------------------------------
+# _apply_issue_status_labels — beads backend (BUG-3)
+# ---------------------------------------------------------------------------
+
+
+class TestApplyIssueStatusLabelsBeads:
+    """_apply_issue_status_labels writes local YAML status for beads items.
+
+    BUG-3: the guard ``if not item.issue: return`` caused status changes to be
+    silent no-ops for beads items whose issue field is empty (beads has no GitHub
+    issue creation path).  The fix writes status directly to the local YAML file
+    and calls apply_status_in_progress on the backend when status="in-progress".
+    """
+
+    def _make_beads_config(self, mocker: MockerFixture) -> None:
+        """Patch get_config() to return a BacklogConfig backed by BeadsBackend."""
+        from unittest.mock import MagicMock
+
+        from backlog_core.backend_protocol import BacklogConfig as _BPConfig
+        from backlog_core.backends.bd_runner import BdRunner
+        from backlog_core.backends.beads_backend import BeadsBackend
+
+        runner = MagicMock(spec=BdRunner)
+        runner.is_available.return_value = True
+        self._beads_runner = runner
+        beads_backend = BeadsBackend(runner=runner)
+        patched = _BPConfig(backend=beads_backend)
+        mocker.patch("backlog_core.operations.get_config", return_value=patched)
+
+    def test_status_in_progress_writes_local_yaml_for_beads_item_without_issue(
+        self, mocker: MockerFixture, tmp_path: Path
+    ) -> None:
+        """status="in-progress" writes to local YAML for a beads item with no issue.
+
+        Tests: BUG-3 local YAML update.
+        How: Patch get_config to return BeadsBackend; call _apply_issue_status_labels
+             with a BacklogItem that has issue="" and a real file path; assert
+             update_item_metadata is called with status="in-progress".
+        Why: Without this fix, the function returns immediately at
+             ``if not item.issue`` and the YAML is never updated.
+        """
+        from backlog_core.operations import _apply_issue_status_labels
+
+        self._make_beads_config(mocker)
+        mock_update = mocker.patch("backlog_core.operations.update_item_metadata")
+        mocker.patch("backlog_core.operations.apply_status_in_progress")
+
+        filepath = tmp_path / "p1-beads-task.yaml"
+        filepath.write_text("stub", encoding="utf-8")
+        item = BacklogItem(
+            title="Beads Task",
+            section="P1",
+            skip=False,
+            metadata=BacklogItemMetadata(source="test", added="2026-01-01", priority="P1", status="open", issue=""),
+            file_path=str(filepath),
+        )
+        result: dict[str, str | int | bool | list[str]] = {"title": item.title}
+        out = Output()
+
+        _apply_issue_status_labels(item, "in-progress", False, "", result, out)
+
+        assert result.get("status") == "in-progress"
+        mock_update.assert_called_once_with(filepath, {"metadata": {"status": "in-progress"}}, output=out)
+
+    def test_status_in_progress_calls_bd_update_claim_for_beads_item_without_issue(
+        self, mocker: MockerFixture, tmp_path: Path
+    ) -> None:
+        """status="in-progress" issues bd update --claim via apply_status_in_progress.
+
+        Tests: BUG-3 backend call.
+        How: Patch get_config to return BeadsBackend with a fake runner; assert
+             apply_status_in_progress is called so bd update --claim runs.
+        Why: apply_status_in_progress issues ``bd update <selector> --claim``.
+             The selector falls back to item.title when item.issue is empty.
+        """
+        from backlog_core.operations import _apply_issue_status_labels
+
+        self._make_beads_config(mocker)
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_in_progress")
+        mocker.patch("backlog_core.operations.update_item_metadata")
+
+        filepath = tmp_path / "p1-beads-claim.yaml"
+        filepath.write_text("stub", encoding="utf-8")
+        item = BacklogItem(
+            title="Beads Claim Task",
+            section="P1",
+            skip=False,
+            metadata=BacklogItemMetadata(source="test", added="2026-01-01", priority="P1", status="open", issue=""),
+            file_path=str(filepath),
+        )
+        result: dict[str, str | int | bool | list[str]] = {"title": item.title}
+        out = Output()
+
+        _apply_issue_status_labels(item, "in-progress", False, "", result, out)
+
+        mock_apply.assert_called_once_with(item, "", output=out)
+
+    def test_status_in_progress_calls_bd_update_claim_for_beads_nanoid_issue(
+        self, mocker: MockerFixture, tmp_path: Path
+    ) -> None:
+        """status="in-progress" calls apply_status_in_progress for nanoid item.issue.
+
+        Tests: BUG-3 backend call when item.issue holds a beads nanoid.
+        How: Use item.issue="bd-a3f8" (truthy, non-integer); assert
+             apply_status_in_progress is called with the correct argv.
+        Why: Beads items synced from bd may have a nanoid in item.issue.
+             The fix must route these through apply_status_in_progress.
+        """
+        from backlog_core.operations import _apply_issue_status_labels
+
+        self._make_beads_config(mocker)
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_in_progress")
+        mocker.patch("backlog_core.operations.update_item_metadata")
+
+        filepath = tmp_path / "p1-beads-nanoid.yaml"
+        filepath.write_text("stub", encoding="utf-8")
+        item = BacklogItem(
+            title="Beads Nanoid Task",
+            section="P1",
+            skip=False,
+            metadata=BacklogItemMetadata(
+                source="test", added="2026-01-01", priority="P1", status="open", issue="bd-a3f8"
+            ),
+            file_path=str(filepath),
+        )
+        result: dict[str, str | int | bool | list[str]] = {"title": item.title}
+        out = Output()
+
+        _apply_issue_status_labels(item, "in-progress", False, "", result, out)
+
+        mock_apply.assert_called_once_with(item, "", output=out)
+        assert result.get("status") == "in-progress"
+
+    def test_github_backend_status_in_progress_unchanged(self, mocker: MockerFixture) -> None:
+        """Non-beads backend: status="in-progress" path is unaffected by the fix.
+
+        Tests: Regression guard — GitHub path must still call apply_status_in_progress
+               and must NOT call update_item_metadata for status changes.
+        How: Keep default GitHub backend; inject item with issue="#7"; assert
+             apply_status_in_progress is called and update_item_metadata is not.
+        Why: The beads-specific code path must not affect existing GitHub behaviour.
+        """
+        from backlog_core.operations import _apply_issue_status_labels
+
+        mock_apply = mocker.patch("backlog_core.operations.apply_status_in_progress")
+        mock_update = mocker.patch("backlog_core.operations.update_item_metadata")
+
+        item = BacklogItem(
+            title="GitHub Task",
+            section="P1",
+            skip=False,
+            metadata=BacklogItemMetadata(source="test", added="2026-01-01", priority="P1", status="open", issue="#7"),
+        )
+        result: dict[str, str | int | bool | list[str]] = {"title": item.title}
+        out = Output()
+
+        _apply_issue_status_labels(item, "in-progress", False, "", result, out)
+
+        mock_apply.assert_called_once_with(item, "", output=out)
+        mock_update.assert_not_called()
+        assert result.get("status") == "in-progress"
+
+
+# ---------------------------------------------------------------------------
 # view_item
 # ---------------------------------------------------------------------------
 

@@ -26,6 +26,7 @@ from backlog_core.backends.beads_models import (
     parse_issue,
     parse_issue_list,
     parse_ready_list,
+    parse_show_issue,
 )
 from hypothesis import given, settings, strategies as st
 from pydantic import ValidationError
@@ -393,6 +394,144 @@ def test_beads_issue_raw_model_validate() -> None:
     issue = BeadsIssueRaw.model_validate(data)
     assert issue.type == BeadsIssueType.CHORE
     assert issue.priority == BeadsPriority.P3
+
+
+# ---------------------------------------------------------------------------
+# parse_show_issue — list-or-dict normalisation for bd show output
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_parse_show_issue_accepts_plain_dict() -> None:
+    """parse_show_issue handles a plain dict — the historic mock-test shape."""
+    data: dict[str, object] = {"id": "bd-a3f8", "title": "t", "status": "open", "type": "task", "priority": 2}
+    issue = parse_show_issue(data)
+    assert issue.id == "bd-a3f8"
+
+
+@pytest.mark.unit
+def test_parse_show_issue_unwraps_single_element_list() -> None:
+    """parse_show_issue unwraps [dict] returned by bd show --json in production."""
+    inner: dict[str, object] = {"id": "bd-a3f8", "title": "t", "status": "open", "type": "task", "priority": 2}
+    issue = parse_show_issue([inner])
+    assert issue.id == "bd-a3f8"
+
+
+@pytest.mark.unit
+def test_parse_show_issue_raises_on_empty_list() -> None:
+    """parse_show_issue raises ValueError when bd show returns an empty array."""
+    with pytest.raises(ValueError, match="empty list"):
+        parse_show_issue([])
+
+
+@pytest.mark.unit
+def test_parse_show_issue_list_result_equals_dict_result() -> None:
+    """Parsing [dict] and dict produce identical BeadsIssueRaw instances."""
+    inner: dict[str, object] = {"id": "bd-a3f8", "title": "t", "status": "open", "type": "task", "priority": 2}
+    from_list = parse_show_issue([inner])
+    from_dict = parse_show_issue(inner)
+    assert from_list == from_dict
+
+
+@pytest.mark.unit
+def test_parse_show_issue_propagates_validation_error_from_invalid_dict() -> None:
+    """parse_show_issue raises ValidationError when the unwrapped dict is malformed."""
+    invalid: dict[str, object] = {"id": "INVALID_ID", "title": "t", "status": "open", "type": "task", "priority": 2}
+    with pytest.raises(ValidationError):
+        parse_show_issue(invalid)
+
+
+# ---------------------------------------------------------------------------
+# bd CLI 1.0.4 compatibility — issue_type / owner field aliases
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_parse_issue_accepts_issue_type_key() -> None:
+    """parse_issue accepts the bd 1.0.4 'issue_type' JSON key in place of 'type'.
+
+    bd CLI 1.0.4 renamed the field from 'type' to 'issue_type'.
+    AliasChoices("type", "issue_type") must accept both names.
+
+    SOURCE: bd CLI 1.0.4 live output (verified 2026-05-29).
+    """
+    data: dict[str, object] = {
+        "id": "cs-h0l",
+        "title": "Test issue",
+        "status": "open",
+        "priority": 2,
+        "issue_type": "task",
+    }
+    issue = parse_issue(data)
+    assert issue.type == BeadsIssueType.TASK
+
+
+@pytest.mark.unit
+def test_parse_issue_accepts_owner_as_assignee() -> None:
+    """parse_issue maps the bd 1.0.4 'owner' JSON key to the assignee field.
+
+    bd CLI 1.0.4 uses 'owner' where the model field is 'assignee'.
+    AliasChoices("assignee", "owner") must accept both names without data loss.
+
+    SOURCE: bd CLI 1.0.4 live output (verified 2026-05-29).
+    """
+    data: dict[str, object] = {
+        "id": "cs-9ds",
+        "title": "field-check",
+        "status": "open",
+        "priority": 2,
+        "issue_type": "story",
+        "owner": "jamie@bitflight.io",
+    }
+    issue = parse_issue(data)
+    assert issue.assignee == "jamie@bitflight.io"
+
+
+@pytest.mark.unit
+def test_parse_issue_list_from_bd_v1_0_4_fixture() -> None:
+    """parse_issue_list parses real bd 1.0.4 output with issue_type and owner keys.
+
+    Uses the bd_list_v1_0_4.json fixture captured from bd CLI 1.0.4.
+    """
+    data = _load_json("bd_list_v1_0_4.json")
+    issues = parse_issue_list(data)
+
+    assert len(issues) == 2
+    assert issues[0].type == BeadsIssueType.TASK
+    assert issues[0].assignee is None
+    assert issues[1].type == BeadsIssueType.STORY
+    assert issues[1].assignee == "jamie@bitflight.io"
+
+
+@pytest.mark.unit
+def test_parse_show_issue_from_bd_v1_0_4_fixture() -> None:
+    """parse_show_issue unwraps and parses real bd 1.0.4 show output.
+
+    Uses the bd_show_v1_0_4.json fixture captured from bd CLI 1.0.4.
+    bd show wraps the response in a single-element list.
+    """
+    data = _load_json("bd_show_v1_0_4.json")
+    issue = parse_show_issue(data)
+
+    assert issue.id == "cs-9ds"
+    assert issue.type == BeadsIssueType.STORY
+    assert issue.assignee == "jamie@bitflight.io"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("raw_type", "expected"),
+    [("spike", BeadsIssueType.SPIKE), ("story", BeadsIssueType.STORY), ("milestone", BeadsIssueType.MILESTONE)],
+)
+def test_bd_1_0_4_issue_types_coerce_to_enum(raw_type: str, expected: BeadsIssueType) -> None:
+    """bd 1.0.4 built-in issue types spike/story/milestone coerce to enum members.
+
+    These types exist in bd CLI 1.0.4 but were absent from the original enum.
+
+    SOURCE: ``bd issue types`` output, bd CLI 1.0.4 (verified 2026-05-29).
+    """
+    data: dict[str, object] = {"id": "cs-abc", "title": "t", "status": "open", "issue_type": raw_type, "priority": 2}
+    assert parse_issue(data).type == expected
 
 
 # ---------------------------------------------------------------------------
