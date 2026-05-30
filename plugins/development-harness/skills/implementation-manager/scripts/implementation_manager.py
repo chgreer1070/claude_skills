@@ -66,6 +66,7 @@ if _SAM_PACKAGES_DIR not in sys.path:
 # dh_paths is in plugins/development-harness/ — resolvable via the uv workspace
 # (root pyproject.toml pythonpath includes the plugin directory).
 import dh_paths
+from sam_schema.core.dependencies import SUCCESSFUL_STATUSES as _SUCCESSFUL_STATUSES
 from sam_schema.core.models import STATUS_MAP
 from sam_schema.core.query import claim_task as sam_claim_task, load_plan as sam_load_plan
 from sam_schema.readers.detect import FormatDetectionError
@@ -121,10 +122,6 @@ _YAML_STATUS_TO_ENUM_REVERSE: dict[TaskStatus, str] = {
     TaskStatus.SKIPPED: "skipped",
     TaskStatus.FAILED: "failed",
 }
-
-# Statuses that satisfy a dependency requirement.  FAILED is excluded: a failed
-# parent must not unblock its downstream tasks.
-_SUCCESSFUL_STATUSES: frozenset[TaskStatus] = frozenset({TaskStatus.COMPLETE, TaskStatus.DEFERRED, TaskStatus.SKIPPED})
 
 # Statuses that end a task's lifecycle (includes failure).  Used for plan-done checks.
 _TERMINAL_STATUSES: frozenset[TaskStatus] = frozenset({

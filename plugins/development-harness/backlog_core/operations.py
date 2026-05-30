@@ -82,6 +82,15 @@ from .parsing import (
 from .rendering import SECTION_HEADING
 from .yaml_io import load_item, save_item
 
+# sam_schema may not be installed in all environments (e.g. direct-script execution).
+# Guard the import; fall back to the full alias set when unavailable.
+try:
+    from sam_schema.core.dependencies import SUCCESSFUL_STATUSES as _SAM_CORE_SUCCESSFUL_STATUSES
+
+    _SAM_SUCCESSFUL_STATUSES: frozenset[str] = _SAM_CORE_SUCCESSFUL_STATUSES | {"closed", "done"}
+except ImportError:
+    _SAM_SUCCESSFUL_STATUSES = frozenset({"complete", "deferred", "closed", "done", "skipped"})
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
 
@@ -4195,9 +4204,6 @@ def update_sam_task_status(
     repo = get_github()
     updated = update_task_status(repo, issue_number, new_status, output=out)
     return {"updated": updated, "issue_number": issue_number, "new_status": new_status, **out.to_dict()}
-
-
-_SAM_SUCCESSFUL_STATUSES: frozenset[str] = frozenset({"complete", "deferred", "closed", "done", "skipped"})
 
 
 def _extract_feature_slug(tasks: list[dict[str, object]]) -> str:
