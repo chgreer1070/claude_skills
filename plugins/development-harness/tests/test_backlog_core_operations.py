@@ -228,12 +228,12 @@ class TestAddItemCreatesLocalFile:
 
         mock_try_gh.assert_called_once()
 
-    def test_add_item_calls_github_and_returns_issue_num(self, mocker: MockerFixture) -> None:
-        """Verify add_item calls try_get_github and returns issue_num on success.
+    def test_add_item_calls_github_and_returns_item_ref(self, mocker: MockerFixture) -> None:
+        """Verify add_item calls try_get_github and returns item_ref on success.
 
-        Tests: add_item GH-first integration path.
-        How: Patch try_get_github to return a mock repo, verify it was called.
-        Why: GH-first design requires GitHub to be contacted before local file write.
+        Tests: add_item backend-first integration path.
+        How: Patch try_get_github to return a mock repo, verify item_ref is returned.
+        Why: Backend-first design requires the backend to be contacted before local file write.
         """
         mock_repo = mocker.Mock()
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
@@ -241,14 +241,14 @@ class TestAddItemCreatesLocalFile:
 
         result = add_item(title="GH First Item", description="desc", priority="P1")
 
-        assert result.get("issue_num") == 42
+        assert result.get("item_ref") == "#42"
 
-    def test_add_item_returns_issue_num_from_github(self, mocker: MockerFixture) -> None:
-        """Verify add_item return dict includes issue_num when GitHub issue is created.
+    def test_add_item_returns_item_ref_from_github(self, mocker: MockerFixture) -> None:
+        """Verify add_item return dict includes item_ref when backend issue is created.
 
-        Tests: add_item issue_num in return value.
-        How: Mock create_issue_for_item to return 99.
-        Why: Callers display the issue number to confirm GH-first creation.
+        Tests: add_item item_ref in return value for integer-ID backends.
+        How: Mock create_issue_for_item to return 99; expect item_ref == '#99'.
+        Why: item_ref is the canonical selector string used by all downstream callers.
         """
         mock_repo = mocker.Mock()
         mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
@@ -256,7 +256,7 @@ class TestAddItemCreatesLocalFile:
 
         result = add_item(title="Issue Num Item", description="desc", priority="P1")
 
-        assert result["issue_num"] == 99
+        assert result["item_ref"] == "#99"
 
     def test_add_item_returns_item_ref_in_hash_n_format(self, mocker: MockerFixture) -> None:
         """Verify add_item return dict includes item_ref in '#N' string format.
@@ -288,6 +288,97 @@ class TestAddItemCreatesLocalFile:
         result = add_item(title="Local Only No Ref", description="desc", priority="P2")
 
         assert "item_ref" not in result
+
+
+class TestAddItemBeadsBackend:
+    """add_item dispatches to create_beads_issue_for_item for string-ID backends."""
+
+    def test_add_item_beads_backend_stores_nanoid_as_issue_ref(self, mocker: MockerFixture) -> None:
+        """Verify add_item stores the beads nanoid as item_ref when backend is beads.
+
+        Tests: _try_create_backend_issue_ref beads dispatch path.
+        How: Patch get_config to return a BeadsBackend whose create_beads_issue_for_item
+             returns a nanoid; verify the written item's issue field holds the nanoid.
+        Why: This is the root cause of the reported bug — without this path, beads items
+             are created with no issue reference and cannot be found via bd show.
+        """
+        from unittest.mock import MagicMock
+
+        from backlog_core.backend_protocol import BacklogConfig, reset_config, set_config
+        from backlog_core.backends.bd_runner import BdRunner
+        from backlog_core.backends.beads_backend import BeadsBackend
+
+        mock_runner = MagicMock(spec=BdRunner)
+        mock_runner.is_available.return_value = True
+        beads_backend = BeadsBackend(runner=mock_runner)
+        mocker.patch.object(beads_backend, "create_beads_issue_for_item", return_value="bd-a3f8")
+        set_config(BacklogConfig(backend=beads_backend))
+
+        try:
+            result = add_item(title="Beads Backend Feature", description="desc", priority="P2")
+        finally:
+            reset_config()
+
+        assert result.get("item_ref") == "bd-a3f8"
+
+    def test_add_item_beads_backend_item_file_contains_nanoid_in_issue_field(self, mocker: MockerFixture) -> None:
+        """Verify the YAML item file has the beads nanoid in its issue field after add_item.
+
+        Tests: item file persistence of beads nanoid.
+        How: Run add_item with beads backend mock; read the written file; verify issue field.
+        Why: The item file's issue field is the selector used by backlog_view and artifact_register
+             — if it contains an empty string, all downstream operations fail.
+        """
+        from unittest.mock import MagicMock
+
+        from backlog_core.backend_protocol import BacklogConfig, reset_config, set_config
+        from backlog_core.backends.bd_runner import BdRunner
+        from backlog_core.backends.beads_backend import BeadsBackend
+        from backlog_core.yaml_io import load_item
+
+        mock_runner = MagicMock(spec=BdRunner)
+        mock_runner.is_available.return_value = True
+        beads_backend = BeadsBackend(runner=mock_runner)
+        mocker.patch.object(beads_backend, "create_beads_issue_for_item", return_value="bd-x9y2")
+        set_config(BacklogConfig(backend=beads_backend))
+
+        try:
+            result = add_item(title="Beads Issue Field Test", description="desc", priority="P1")
+        finally:
+            reset_config()
+
+        filepath = Path(str(result["file_path"]))
+        assert filepath.exists()
+        item = load_item(filepath)
+        assert item.issue == "bd-x9y2"
+
+    def test_add_item_beads_backend_local_only_when_creation_fails(self, mocker: MockerFixture) -> None:
+        """Verify add_item creates a local-only item when beads creation returns None.
+
+        Tests: graceful fallback when bd create fails.
+        How: create_beads_issue_for_item returns None; verify item_ref is absent from result.
+        Why: Graceful degradation — a user can still create a local item even when bd is
+             temporarily unavailable.
+        """
+        from unittest.mock import MagicMock
+
+        from backlog_core.backend_protocol import BacklogConfig, reset_config, set_config
+        from backlog_core.backends.bd_runner import BdRunner
+        from backlog_core.backends.beads_backend import BeadsBackend
+
+        mock_runner = MagicMock(spec=BdRunner)
+        mock_runner.is_available.return_value = False
+        beads_backend = BeadsBackend(runner=mock_runner)
+        mocker.patch.object(beads_backend, "create_beads_issue_for_item", return_value=None)
+        set_config(BacklogConfig(backend=beads_backend))
+
+        try:
+            result = add_item(title="Beads Unavailable Item", description="desc", priority="P3")
+        finally:
+            reset_config()
+
+        assert "item_ref" not in result
+        assert "file_path" in result
 
 
 class TestAddItemDuplicateDetection:

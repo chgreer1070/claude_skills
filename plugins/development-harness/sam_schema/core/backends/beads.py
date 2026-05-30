@@ -46,6 +46,7 @@ from backlog_core.backends.beads_models import (
     parse_issue,
     parse_issue_list,
     parse_ready_list,
+    parse_show_issue,
 )
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
@@ -615,7 +616,7 @@ class BeadsTaskProvider:
             PlanNotFoundError: When plan_id has no registered epic in the index.
         """
         epic_id = self._epic_id_for_plan(plan_id)
-        epic = parse_issue(self._runner.run_json(["show", epic_id]))
+        epic = parse_show_issue(self._runner.run_json(["show", epic_id]))
 
         task_index = self._task_index(plan_id)
         task_data_list: list[TaskData] = []
@@ -634,7 +635,7 @@ class BeadsTaskProvider:
             for task_id, meta in task_index.items():
                 bd_id = meta["bd_id"]
                 try:
-                    issue = parse_issue(self._runner.run_json(["show", bd_id]))
+                    issue = parse_show_issue(self._runner.run_json(["show", bd_id]))
                     td = _issue_to_task_data(issue, task_id, plan_id)
                     if meta.get("is_bookend"):
                         td["is_bookend"] = meta["is_bookend"]
@@ -643,8 +644,8 @@ class BeadsTaskProvider:
                     task_data_list.append(td)
                 except BdNotInstalledError:
                     raise
-                except BdInvocationError:
-                    continue  # individual issue inaccessible; skip rather than fail whole plan
+                except (BdInvocationError, ValueError):
+                    continue  # individual issue inaccessible or deleted; skip rather than fail whole plan
             return _build_plan_data(plan_id, epic, task_data_list)
 
         # Happy path: join batch result against task index for task_id mapping
@@ -706,8 +707,8 @@ class BeadsTaskProvider:
                 continue
 
             try:
-                epic = parse_issue(self._runner.run_json(["show", epic_id]))
-            except BdInvocationError:
+                epic = parse_show_issue(self._runner.run_json(["show", epic_id]))
+            except (BdInvocationError, ValueError):
                 continue
 
             feature = epic.title
@@ -782,7 +783,7 @@ class BeadsTaskProvider:
             TaskNotFoundError: When task_id is not in the plan task index.
         """
         bd_id, is_bookend, bookend_type = self._bd_id_for_task(plan_id, task_id)
-        issue = parse_issue(self._runner.run_json(["show", bd_id]))
+        issue = parse_show_issue(self._runner.run_json(["show", bd_id]))
         td = _issue_to_task_data(issue, task_id, plan_id)
         if is_bookend:
             td["is_bookend"] = is_bookend
@@ -905,7 +906,7 @@ class BeadsTaskProvider:
             TaskNotFoundError: When task_id is not in the plan task index.
         """
         bd_id, _is_bookend, _bookend_type = self._bd_id_for_task(plan_id, task_id)
-        issue = parse_issue(self._runner.run_json(["show", bd_id]))
+        issue = parse_show_issue(self._runner.run_json(["show", bd_id]))
         existing = issue.notes or ""
         heading = f"## {section_name}"
         if heading in existing:
@@ -995,11 +996,11 @@ class BeadsTaskProvider:
                 continue
             bd_id = meta["bd_id"]
             try:
-                issue = parse_issue(self._runner.run_json(["show", bd_id]))
+                issue = parse_show_issue(self._runner.run_json(["show", bd_id]))
                 td = _issue_to_task_data(issue, task_id, plan_id)
                 status_by_task_id[task_id] = td["status"]
                 task_data_by_id[task_id] = td
-            except BdInvocationError:
+            except (BdInvocationError, ValueError):
                 continue
 
         # Attempt bd ready --parent for native ready list
@@ -1113,7 +1114,7 @@ class BeadsTaskProvider:
         ref_suffix = uuid.uuid4().hex[:8]
         content_ref = f"bd://{plan_id}/{owner_id}/{stage}/{doc_type}/{ref_suffix}"
 
-        issue = parse_issue(self._runner.run_json(["show", bd_id]))
+        issue = parse_show_issue(self._runner.run_json(["show", bd_id]))
         existing_notes = issue.notes or ""
         doc_block = (
             f"\n<!-- doc:{content_ref} -->\n"
@@ -1196,7 +1197,7 @@ class BeadsTaskProvider:
         except (PlanNotFoundError, TaskNotFoundError) as exc:
             raise DocumentNotFoundError(content_ref) from exc
 
-        issue = parse_issue(self._runner.run_json(["show", bd_id]))
+        issue = parse_show_issue(self._runner.run_json(["show", bd_id]))
         doc_content = self._extract_doc_from_notes(issue.notes or "", content_ref)
 
         doc_data: DocumentData = {

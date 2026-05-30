@@ -232,6 +232,27 @@ class _FakeBdRunner(BdRunner):
         return issue
 
 
+class _ListShowBdRunner(_FakeBdRunner):
+    """``_FakeBdRunner`` variant that wraps ``bd show`` output in a single-element list.
+
+    The real ``bd`` CLI returns ``[{...}]`` from ``bd show <id> --json``.
+    The base ``_FakeBdRunner`` returns a bare dict, which bypasses the
+    list-unwrapping path in :func:`parse_show_issue`.  This subclass
+    overrides :meth:`run_json` for ``show`` commands to reproduce the actual
+    ``bd`` CLI shape and validate that :func:`parse_show_issue` is used
+    consistently throughout :class:`~sam_schema.core.backends.beads.BeadsTaskProvider`.
+    """
+
+    def run_json(self, argv: Sequence[str]) -> JsonValue:
+        """Wrap ``show`` output in ``[{...}]``; delegate all other commands."""
+        args = list(argv)
+        result = super().run_json(argv)
+        if args and args[0] == "show":
+            # bd show returns a single-element list in the real CLI
+            return [result]
+        return result
+
+
 class _ListParentBdRunner(_FakeBdRunner):
     """``_FakeBdRunner`` variant that also handles ``bd list --parent <id>``.
 
@@ -268,6 +289,16 @@ class _ListParentBdRunner(_FakeBdRunner):
 def fake_runner() -> _FakeBdRunner:
     """Return a fresh _FakeBdRunner instance per test."""
     return _FakeBdRunner()
+
+
+@pytest.fixture
+def list_show_runner() -> _ListShowBdRunner:
+    """Return a fresh _ListShowBdRunner that wraps bd show output in ``[{...}]``.
+
+    Reproduces the real ``bd`` CLI JSON shape for ``bd show <id>`` so that
+    tests can verify :func:`parse_show_issue` is used at every call site.
+    """
+    return _ListShowBdRunner()
 
 
 def _seed_plan(runner: _FakeBdRunner, plan_id: str = "Ptest0001") -> str:

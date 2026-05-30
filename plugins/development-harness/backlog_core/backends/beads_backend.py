@@ -29,8 +29,14 @@ from typing import TYPE_CHECKING, Any, Literal
 from pydantic import ValidationError
 
 from backlog_core import github_sync, rendering as _rendering
-from backlog_core.backends.bd_runner import BdInvocationError, BdNotInstalledError, BdRunner
-from backlog_core.backends.beads_models import BeadsStatus, parse_issue_list, parse_show_issue
+from backlog_core.backends.bd_runner import BdInvocationError, BdJsonDecodeError, BdNotInstalledError, BdRunner
+from backlog_core.backends.beads_models import (
+    BeadsIssueType,
+    BeadsStatus,
+    parse_issue,
+    parse_issue_list,
+    parse_show_issue,
+)
 from backlog_core.models import (
     BackendAvailability,
     BackendStatus,
@@ -57,6 +63,56 @@ if TYPE_CHECKING:
 __all__ = ["BeadsBackend"]
 
 _log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Type and priority mapping helpers
+# ---------------------------------------------------------------------------
+
+#: Mapping from backlog item_type (case-insensitive) to bd issue type string.
+_ITEM_TYPE_TO_BEADS: dict[str, str] = {
+    "feature": BeadsIssueType.FEATURE,
+    "bug": BeadsIssueType.BUG,
+    "task": BeadsIssueType.TASK,
+    "epic": BeadsIssueType.EPIC,
+    "chore": BeadsIssueType.CHORE,
+    "decision": BeadsIssueType.DECISION,
+    "spike": BeadsIssueType.SPIKE,
+    "story": BeadsIssueType.STORY,
+    "milestone": BeadsIssueType.MILESTONE,
+}
+
+
+def _beads_type_for_item_type(item_type: str) -> str:
+    """Return the bd issue type string for a backlog item_type.
+
+    Falls back to ``"task"`` for unrecognised types.
+
+    Args:
+        item_type: BacklogItem item_type string (e.g. ``"Feature"``, ``"Bug"``).
+
+    Returns:
+        Beads issue type string safe to pass to ``bd create --type``.
+    """
+    return _ITEM_TYPE_TO_BEADS.get(item_type.lower(), BeadsIssueType.TASK)
+
+
+def _beads_priority_for_item_priority(priority: str) -> str:
+    """Return the bd priority digit string for a backlog priority.
+
+    Accepts ``"P0"``-``"P4"`` and bare ``"0"``-``"4"`` (case-insensitive).
+    Falls back to ``"2"`` for unrecognised values.
+
+    Args:
+        priority: BacklogItem priority string (e.g. ``"P2"``, ``"high"``).
+
+    Returns:
+        Single-digit priority string safe to pass to ``bd create --priority``.
+    """
+    normalised = priority.upper().lstrip("P")
+    if normalised in {"0", "1", "2", "3", "4"}:
+        return normalised
+    return "2"
+
 
 _ADR_001_NOTE = (
     "BeadsBackend does not implement GitHub-specific operations. See ADR-001 in the project architecture documentation."
@@ -210,6 +266,47 @@ class BeadsBackend:
     ) -> int | None:
         """Raise NotImplementedError — beads does not use PyGithub Repository."""
         raise NotImplementedError(_ADR_001_NOTE)
+
+    def create_beads_issue_for_item(self, item: BacklogItem, output: Output | None = None) -> str | None:
+        """Create a beads issue via ``bd create`` and return the nanoid.
+
+        Translates the BacklogItem fields to ``bd create`` flags and calls the
+        ``bd`` CLI with ``--json`` to capture the created issue ID.  Returns the
+        nanoid string (e.g. ``"bd-a3f8"``) on success, or ``None`` when ``bd``
+        is unavailable or creation fails.
+
+        Args:
+            item: BacklogItem containing title, item_type, and priority.
+            output: Optional Output collector for warning messages.
+
+        Returns:
+            Beads nanoid string (e.g. ``"bd-a3f8"``) on success, or ``None``
+            when ``bd`` is unavailable or creation fails.
+        """
+        from backlog_core.models import Output  # noqa: PLC0415
+
+        out = output or Output()
+        bd_type = _beads_type_for_item_type(item.item_type or "task")
+        bd_priority = _beads_priority_for_item_priority(item.priority or "P2")
+        argv: list[str] = ["create", item.title, "--type", bd_type, "--priority", bd_priority]
+        if item.description:
+            argv.extend(["--description", item.description])
+        try:
+            raw = self._runner.run_json(argv)
+            parsed = parse_issue(raw)
+        except (BdNotInstalledError, BdInvocationError, BdJsonDecodeError) as exc:
+            _log.debug("create_beads_issue_for_item: bd invocation failed: %s", exc)
+            out.warn(f"  WARNING: bd create failed: {exc}")
+            return None
+        except ValidationError as exc:
+            _log.debug("create_beads_issue_for_item: bd create output validation failed: %s", exc)
+            out.warn(f"  WARNING: bd create output did not match expected schema: {exc}")
+            return None
+        else:
+            if not parsed.id:
+                out.warn("  WARNING: bd create returned an empty issue ID")
+                return None
+            return parsed.id
 
     def close_github_issue(
         self,

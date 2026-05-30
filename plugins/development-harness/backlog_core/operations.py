@@ -1724,6 +1724,42 @@ def _try_create_github_issue(item_data: BacklogItem, repo: str, out: Output) -> 
         return None
 
 
+def _try_create_backend_issue_ref(item_data: BacklogItem, repo: str, out: Output) -> str:
+    """Create a backend issue and return the issue ref string, or empty string on failure.
+
+    Dispatches to the appropriate backend-native creation path:
+
+    - String-ID backends (beads): calls ``create_beads_issue_for_item`` on the
+      backend, returns the nanoid (e.g. ``"bd-a3f8"``).
+    - Integer-ID backends (GitHub, sqlite, memory): calls
+      ``_try_create_github_issue``, formats the returned number as ``"#N"``.
+
+    The return value is always a ``str``: non-empty on success, empty string
+    when the backend is unavailable or creation fails.
+
+    Args:
+        item_data: Populated BacklogItem (file_path may be empty at this stage).
+        repo: Repository slug (owner/name) — used by integer-ID backends.
+        out: Output collector for warnings.
+
+    Returns:
+        Issue ref string (e.g. ``"#42"`` or ``"bd-a3f8"``), or ``""`` on failure.
+    """
+    backend = get_config().backend
+    if backend.issue_id_type == "string":
+        from backlog_core.backends.beads_backend import BeadsBackend  # noqa: PLC0415
+
+        if isinstance(backend, BeadsBackend):
+            nanoid = backend.create_beads_issue_for_item(item_data, output=out)
+            return nanoid or ""
+        # Unknown string-ID backend — log and fall through to local-only.
+        out.warn("  WARNING: String-ID backend does not support create_beads_issue_for_item — creating local-only item")
+        return ""
+    # Integer-ID backend path (GitHub, sqlite, memory).
+    issue_num = _try_create_github_issue(item_data, repo, out)
+    return f"#{issue_num}" if issue_num else ""
+
+
 def _build_item_body(research_first: str, files: str, suggested_location: str) -> str:
     """Build the markdown body appended below the frontmatter.
 
@@ -1778,10 +1814,17 @@ def add_item(
     repo: str = "",
     output: Output | None = None,
 ) -> dict[str, str | int | bool | list[str]]:
-    """Add item to backlog. Creates per-item file and a GitHub issue.
+    """Add item to backlog. Creates per-item file and a backend issue.
+
+    Dispatches issue creation to the active backend:
+
+    - Integer-ID backends (GitHub, sqlite, memory): creates an issue and
+      stores the ref as ``"#N"``.
+    - String-ID backends (beads): calls ``bd create`` and stores the returned
+      nanoid (e.g. ``"bd-a3f8"``).
 
     Returns:
-        Dict with title, priority, filepath, and optionally issue_num.
+        Dict with title, priority, filepath, and optionally item_ref.
     """
     out = output or Output()
 
@@ -1791,9 +1834,9 @@ def add_item(
     slug = title_to_slug(title)
     filepath = _resolve_filepath(priority, slug)
 
-    # GH-first: try to create GitHub Issue BEFORE writing local file
-    issue_num: int | None = None
-    issue_ref = ""
+    # Backend-first: try to create a backend issue BEFORE writing local file.
+    # _try_create_backend_issue_ref returns the issue ref string ready to store,
+    # or an empty string when the backend is unavailable or creation fails.
     item_data = BacklogItem(
         title=title,
         description=description,
@@ -1805,8 +1848,7 @@ def add_item(
         files=files,
         suggested_location=suggested_location,
     )
-    issue_num = _try_create_github_issue(item_data, repo, out)
-    issue_ref = f"#{issue_num}" if issue_num else ""
+    issue_ref = _try_create_backend_issue_ref(item_data, repo, out)
 
     # Build BacklogItem and write as YAML (single write)
     item_to_write = BacklogItem(
@@ -1822,20 +1864,19 @@ def add_item(
         files=files,
         suggested_location=suggested_location,
     )
-    if issue_num:
+    if issue_ref:
         item_to_write.metadata.last_synced = now_iso()
     item_to_write.file_path = str(filepath)
     save_item(item_to_write)
 
     out.info(f"Backlog item created.\n  Title: {title}\n  Priority: {priority}\n  File: {filepath.name}")
-    if issue_num:
-        out.info(f"  Issue: #{issue_num}")
+    if issue_ref:
+        out.info(f"  Issue: {issue_ref}")
     out.info(f"Next steps: /groom-backlog-item {title}  /work-backlog-item {title}")
 
     result: dict[str, str | int | bool | list[str]] = {"title": title, "priority": priority, "file_path": str(filepath)}
-    if issue_num:
-        result["issue_num"] = issue_num
-        result["item_ref"] = f"#{issue_num}"
+    if issue_ref:
+        result["item_ref"] = issue_ref
     return {**result, **out.to_dict()}
 
 

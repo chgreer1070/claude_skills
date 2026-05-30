@@ -14,7 +14,7 @@ from sam_schema.core.action_models import TaskDefinition
 from sam_schema.core.backends.beads import BeadsTaskProvider
 from sam_schema.core.exceptions import DocumentNotFoundError, PlanNotFoundError, TaskNotFoundError, TaskValidationError
 
-from .conftest import _FakeBdRunner, _ListParentBdRunner, make_task_record
+from .conftest import _FakeBdRunner, _ListParentBdRunner, _ListShowBdRunner, make_task_record
 
 if TYPE_CHECKING:
     from sam_schema.core.task_backend_types import DocumentHandle
@@ -137,6 +137,78 @@ class TestReadPlan:
         assert plan["plan_id"] == plan_id
         assert plan["feature"] == "test-plan"
         assert len(plan["tasks"]) == 2
+
+
+# ---------------------------------------------------------------------------
+# bd show list-wrapping — parse_show_issue call sites
+# ---------------------------------------------------------------------------
+
+
+class TestBdShowListWrapping:
+    """Verify all bd show call sites handle the real ``[{...}]`` JSON shape.
+
+    The real ``bd`` CLI wraps ``bd show <id> --json`` output in a single-element
+    list ``[{...}]``.  :func:`~backlog_core.backends.beads_models.parse_show_issue`
+    unwraps this transparently.  These tests use :class:`_ListShowBdRunner` to
+    reproduce the actual CLI shape and assert that each provider method returns
+    correct results rather than crashing with a ``ValidationError``.
+    """
+
+    def test_list_plans_handles_list_wrapped_show(self, list_show_runner: _ListShowBdRunner) -> None:
+        """list_plans must succeed when bd show returns [{...}] for the epic."""
+        runner = list_show_runner
+        plan_id = "Plistshow01"
+        epic_id = runner._new_id()
+        runner._issues[epic_id] = runner._make_issue(epic_id, "my-feature", issue_type="epic", description="goal")
+        runner._memory[f"dh.plan-index.{plan_id}"] = epic_id
+        make_task_record(runner, plan_id, "T01", parent_id=epic_id)
+
+        provider = BeadsTaskProvider(runner=runner)
+        summaries = provider.list_plans()
+
+        assert len(summaries) == 1
+        assert summaries[0]["plan_id"] == plan_id
+        assert summaries[0]["feature"] == "my-feature"
+
+    def test_read_plan_handles_list_wrapped_show(self, list_show_runner: _ListShowBdRunner) -> None:
+        """read_plan must succeed when bd show returns [{...}] for the epic."""
+        runner = list_show_runner
+        provider = BeadsTaskProvider(runner=runner)
+        tasks = [_task_def("T01", "First task")]
+        created = provider.create_plan("lw-plan", "goal", tasks)
+        plan_id = created["plan_id"]
+
+        plan = provider.read_plan(plan_id)
+
+        assert plan["plan_id"] == plan_id
+        assert plan["feature"] == "lw-plan"
+
+    def test_read_task_handles_list_wrapped_show(self, list_show_runner: _ListShowBdRunner) -> None:
+        """read_task must succeed when bd show returns [{...}]."""
+        runner = list_show_runner
+        provider = BeadsTaskProvider(runner=runner)
+        created = provider.create_plan("lw-task-plan", "goal", [_task_def("T01", "Single task")])
+        plan_id = created["plan_id"]
+
+        task_data = provider.read_task(plan_id, "T01")
+
+        assert task_data["id"] == "T01"
+        assert task_data["title"] == "Single task"
+
+    def test_issue_type_field_accepted_via_alias(self, list_show_runner: _ListShowBdRunner) -> None:
+        """BeadsIssueRaw must accept 'issue_type' as an alias for 'type'.
+
+        Reproduces the ValidationError reported when TASKBACKEND=beads:
+        bd list --json returns dicts with 'issue_type' (not 'type') which
+        previously caused a ValidationError before AliasChoices was added.
+        """
+        from backlog_core.backends.beads_models import parse_issue
+
+        raw_with_issue_type = {"id": "bd-a1b2", "title": "Test", "status": "open", "issue_type": "task", "priority": 2}
+
+        # Must not raise ValidationError
+        issue = parse_issue(raw_with_issue_type)
+        assert issue.type.value == "task"
 
 
 # ---------------------------------------------------------------------------

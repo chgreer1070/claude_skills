@@ -14,6 +14,9 @@ DN-1: Integration-branch methods raise ``NotImplementedError`` (not
 DN-2: ``sync_issues_graphql`` raises ``NotImplementedError`` (not returning
     IssueNode-shaped dicts as task spec #9 stated).
 
+DN-4: ``create_issue_for_item`` raises ``NotImplementedError`` (ADR-001);
+    the beads-native creation method is ``create_beads_issue_for_item``.
+
 DN-3: ``create_task_issue`` always raises ``NotImplementedError`` regardless
     of ``parent_issue_number`` type — the implementation has no branching on
     type; task spec #11 implied two distinct code paths.
@@ -43,6 +46,7 @@ _FIXTURES = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "bea
 
 _BD_SHOW_FIXTURE: dict = json.loads((_FIXTURES / "bd_show_issue.json").read_text())
 _BD_LIST_FIXTURE: list = json.loads((_FIXTURES / "bd_list_epic_children.json").read_text())
+_BD_CREATE_TASK_FIXTURE: dict = json.loads((_FIXTURES / "bd_create_task_success.json").read_text())
 
 
 def _make_runner(*, available: bool = True) -> MagicMock:
@@ -747,3 +751,180 @@ def test_issue_to_local_fields_maps_node_to_local_fields() -> None:
     assert "bug" in local.labels
     assert local.milestone == "v1.0"
     assert "alice" in local.assignees
+
+
+# ---------------------------------------------------------------------------
+# create_beads_issue_for_item — beads-native item creation (DN-4)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_create_beads_issue_for_item_returns_nanoid_from_bd_create() -> None:
+    """create_beads_issue_for_item calls bd create and returns the nanoid on success.
+
+    Why: backlog_add must store a beads ID so downstream operations
+         (backlog_view, backlog_update, artifact_register) can find the item
+         via bd show <nanoid>.
+    """
+    runner = _make_runner()
+    runner.run_json.return_value = _BD_CREATE_TASK_FIXTURE
+    backend = BeadsBackend(runner=runner)
+    item = BacklogItem(
+        title="Write bd_runner tests",
+        description="desc",
+        metadata=BacklogItemMetadata(source="test", added="2026-01-01", priority="P2", item_type="Task", status="open"),
+    )
+
+    nanoid = backend.create_beads_issue_for_item(item)
+
+    assert nanoid == "bd-task1"
+    call_args = runner.run_json.call_args[0][0]
+    assert call_args[0] == "create"
+    assert "Write bd_runner tests" in call_args
+    assert "--type" in call_args
+    assert "--priority" in call_args
+
+
+@pytest.mark.unit
+def test_create_beads_issue_for_item_passes_description_when_present() -> None:
+    """create_beads_issue_for_item passes --description when item.description is non-empty.
+
+    Why: Beads issues with no description lose context — the description must
+         be forwarded to preserve backlog item richness in the beads database.
+    """
+    runner = _make_runner()
+    runner.run_json.return_value = _BD_CREATE_TASK_FIXTURE
+    backend = BeadsBackend(runner=runner)
+    item = BacklogItem(
+        title="Test Item",
+        description="Detailed description here",
+        metadata=BacklogItemMetadata(source="test", added="2026-01-01", priority="P2", item_type="Task", status="open"),
+    )
+
+    backend.create_beads_issue_for_item(item)
+
+    call_args = runner.run_json.call_args[0][0]
+    assert "--description" in call_args
+    assert "Detailed description here" in call_args
+
+
+@pytest.mark.unit
+def test_create_beads_issue_for_item_omits_description_when_empty() -> None:
+    """create_beads_issue_for_item omits --description when description is empty.
+
+    Why: Passing ``--description ""`` to bd create would store an empty string,
+         which is different from no description.  Omitting the flag lets beads
+         default to its own empty-description behaviour.
+    """
+    runner = _make_runner()
+    runner.run_json.return_value = _BD_CREATE_TASK_FIXTURE
+    backend = BeadsBackend(runner=runner)
+    item = BacklogItem(
+        title="No Desc Item",
+        description="",
+        metadata=BacklogItemMetadata(source="test", added="2026-01-01", priority="P2", item_type="Task", status="open"),
+    )
+
+    backend.create_beads_issue_for_item(item)
+
+    call_args = runner.run_json.call_args[0][0]
+    assert "--description" not in call_args
+
+
+@pytest.mark.unit
+def test_create_beads_issue_for_item_returns_none_on_bd_invocation_error() -> None:
+    """create_beads_issue_for_item returns None when bd create fails.
+
+    Why: add_item must fall through to local-only creation when bd is unavailable
+         or returns a non-zero exit code — raising would break the create workflow.
+    """
+    from backlog_core.backends.bd_runner import BdInvocationError
+
+    runner = _make_runner()
+    runner.run_json.side_effect = BdInvocationError(
+        "bd create exited 1", argv=["create", "Test"], returncode=1, stdout="", stderr="error"
+    )
+    backend = BeadsBackend(runner=runner)
+    item = _make_item(issue="", title="Test Item")
+
+    result = backend.create_beads_issue_for_item(item)
+
+    assert result is None
+
+
+@pytest.mark.unit
+def test_create_beads_issue_for_item_returns_none_on_bd_not_installed() -> None:
+    """create_beads_issue_for_item returns None when bd is not installed.
+
+    Why: Same fallback contract as BdInvocationError — unavailability must
+         produce None, not an exception.
+    """
+    from backlog_core.backends.bd_runner import BdNotInstalledError
+
+    runner = _make_runner()
+    runner.run_json.side_effect = BdNotInstalledError("bd not found")
+    backend = BeadsBackend(runner=runner)
+    item = _make_item(issue="", title="Test Item")
+
+    result = backend.create_beads_issue_for_item(item)
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _beads_type_for_item_type and _beads_priority_for_item_priority helpers
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("item_type", "expected"),
+    [
+        pytest.param("Feature", "feature", id="feature_capitalised"),
+        pytest.param("feature", "feature", id="feature_lowercase"),
+        pytest.param("Bug", "bug", id="bug"),
+        pytest.param("Task", "task", id="task"),
+        pytest.param("Epic", "epic", id="epic"),
+        pytest.param("Chore", "chore", id="chore"),
+        pytest.param("Decision", "decision", id="decision"),
+        pytest.param("Spike", "spike", id="spike"),
+        pytest.param("Story", "story", id="story"),
+        pytest.param("Unknown", "task", id="unknown_falls_back_to_task"),
+        pytest.param("", "task", id="empty_falls_back_to_task"),
+    ],
+)
+def test_beads_type_for_item_type_maps_correctly(item_type: str, expected: str) -> None:
+    """_beads_type_for_item_type returns the correct beads type string.
+
+    Why: Wrong type mapping causes bd to reject the create command or tag the
+         issue incorrectly — test covers all mapped types and the fallback.
+    """
+    from backlog_core.backends.beads_backend import _beads_type_for_item_type
+
+    assert _beads_type_for_item_type(item_type) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("priority", "expected"),
+    [
+        pytest.param("P0", "0", id="P0"),
+        pytest.param("P1", "1", id="P1"),
+        pytest.param("P2", "2", id="P2"),
+        pytest.param("P3", "3", id="P3"),
+        pytest.param("P4", "4", id="P4"),
+        pytest.param("p2", "2", id="lowercase_p2"),
+        pytest.param("2", "2", id="bare_digit"),
+        pytest.param("high", "2", id="unknown_falls_back_to_2"),
+        pytest.param("", "2", id="empty_falls_back_to_2"),
+    ],
+)
+def test_beads_priority_for_item_priority_maps_correctly(priority: str, expected: str) -> None:
+    """_beads_priority_for_item_priority returns the correct digit string.
+
+    Why: bd create --priority expects a digit string "0"-"4"; wrong value is
+         silently accepted with a potentially wrong priority.
+    """
+    from backlog_core.backends.beads_backend import _beads_priority_for_item_priority
+
+    assert _beads_priority_for_item_priority(priority) == expected

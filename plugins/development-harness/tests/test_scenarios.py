@@ -59,7 +59,7 @@ class TestCreateBacklogItem:
         assert result["title"] == "Test Create Item"
         assert result["priority"] == "P1"
         assert isinstance(result["file_path"], str)
-        assert result["issue_num"] == 42
+        assert result["item_ref"] == "#42"
         assert isinstance(result["messages"], list)
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)
@@ -768,7 +768,7 @@ class TestLifecycles:
             },
         )
         assert create_result["title"] == "Lifecycle Close Item"
-        assert create_result["issue_num"] == 70
+        assert create_result["item_ref"] == "#70"
 
         # Step 2: Groom item
         mock_github["sync_groomed_to_github_issue"].return_value = True
@@ -812,7 +812,7 @@ class TestLifecycles:
                 "gate_token": _SESSION_GATE_TOKEN,
             },
         )
-        assert create_result["issue_num"] == 71
+        assert create_result["item_ref"] == "#71"
         assert create_result["file_path"]  # non-empty path string
         # Verify file exists: list files in backlog_dir matching the item slug
         item_files = list(backlog_dir.glob("*resolve*"))

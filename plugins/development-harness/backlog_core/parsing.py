@@ -453,13 +453,18 @@ def parse_backlog() -> list[BacklogItem]:
 
 
 def find_item(items: list[BacklogItem], selector: str) -> BacklogItem | None:
-    """Find item by title substring, #N, bare number, or GitHub issue URL.
+    """Find item by issue ref, title substring, #N, bare number, or GitHub issue URL.
 
     Supports:
       - ``https://github.com/owner/repo/issues/123`` — extract issue number
       - ``#123`` — match by issue number
       - ``123`` — match by issue number (bare number)
+      - ``<string-id>`` — exact match against ``item.issue`` (e.g. beads nanoid ``"bd-a3f8"``)
       - ``title substring`` — case-insensitive title match
+
+    The string-ID path fires when the selector is not a URL, ``#N``, or bare
+    integer.  It compares the selector directly against ``item.issue``, allowing
+    string-ID backends (beads, Linear) to resolve items by their native ID.
 
     Returns:
         Matching BacklogItem or None.
@@ -472,6 +477,10 @@ def find_item(items: list[BacklogItem], selector: str) -> BacklogItem | None:
             if str(parse_issue_number(issue_ref)) == issue_num:
                 return it
         return None
+    # String-ID exact match — covers beads nanoids and other non-integer issue refs.
+    for it in items:
+        if it.issue and it.issue == selector:
+            return it
     # Title substring match (case-insensitive)
     selector_lower = selector.lower()
     matches = [it for it in items if selector_lower in it.title.lower()]
