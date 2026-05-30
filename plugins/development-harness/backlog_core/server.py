@@ -68,13 +68,6 @@ _VIEW_TOKEN_BUDGET = 4_000
 _GROOMED_SECTION_TYPE = "groomed"
 _enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
 
-# Heuristic threshold for the body-length pre-check in backlog_view.
-# If result.body alone exceeds this many characters the full JSON response is
-# almost certainly over _VIEW_TOKEN_BUDGET (cl100k_base averages ~4 chars/token,
-# so _VIEW_TOKEN_BUDGET tokens ≈ 16 000 chars; body is only part of the payload).
-# The precise token count is still computed for borderline cases.
-_VIEW_BODY_CHARS_THRESHOLD = _VIEW_TOKEN_BUDGET * 4
-
 
 def _token_count(serialised: str) -> int:
     """Count cl100k_base tokens in an already-serialized JSON string.
@@ -86,6 +79,90 @@ def _token_count(serialised: str) -> int:
         Token count as an integer.
     """
     return len(_enc.encode(serialised))
+
+
+def _view_payload_token_count(full_response: dict[str, object]) -> int:
+    """Token-count the delivered ``backlog_view`` payload without double-counting.
+
+    The full-content view USUALLY returns the section content TWICE: once in
+    ``full_response["body"]`` (the rendered body) and again inside each
+    ``full_response["sections"][name]["entries"][i]["content"]`` entry.  Counting
+    the serialised payload verbatim therefore measures the section content roughly
+    twice, so a body whose own token count sits comfortably under
+    ``_VIEW_TOKEN_BUDGET`` can trip the over-budget directory purely from this
+    metadata duplication (issue #2495 finding #4).
+
+    De-duplication is therefore conditional on the duplication actually existing.
+    The per-entry ``content`` is redundant for sizing ONLY when ``body`` carries
+    that text once — i.e. when ``body`` is non-empty.  On the structured-key drift
+    path (``_filter_view_sections`` matched the structured ``sections`` key but no
+    rendered ``## ``/``### `` body header, so it CLEARED ``body``), the per-entry
+    ``content`` under ``sections`` is the SOLE delivered copy of the content.
+    Blanking it then would under-count the real delivered payload and let a
+    response that genuinely exceeds ``_VIEW_TOKEN_BUDGET`` slip through the gate
+    inline (issue #2495, Codex P2 — the over-budget measurement under-counts when
+    body was cleared).
+
+    This helper therefore blanks the per-entry ``content`` for the measurement
+    copy ONLY when ``body`` is non-empty (the body carries that text once, so the
+    section copy is redundant).  When ``body`` is empty/cleared, the section
+    content is the only delivered copy and is measured in full.  Equivalently: the
+    measurement always reflects the ACTUAL serialised delivered payload — content
+    the caller receives once is counted once, never subtracted away.  ``body`` is
+    always measured in full, so a body that genuinely exceeds the budget on its
+    own still gates.
+
+    The returned payload itself is never mutated — only the measurement copy is.
+
+    Args:
+        full_response: The serialised ``ViewItemResult`` dict about to be returned.
+
+    Returns:
+        Token count of the de-duplicated measurement copy.
+    """
+    raw_sections = full_response.get("sections")
+    if not isinstance(raw_sections, dict) or not raw_sections:
+        # No structured sections dict to de-duplicate against — measure verbatim.
+        return _token_count(_json.dumps(full_response))
+    body = full_response.get("body")
+    if not (isinstance(body, str) and body):
+        # ``body`` is empty/cleared (e.g. the structured-key drift path): the
+        # per-entry ``content`` under ``sections`` is the SOLE delivered copy, so
+        # it must be counted in full.  Measure the payload verbatim.
+        return _token_count(_json.dumps(full_response))
+    # ``body`` is non-empty and carries the content once; blank the redundant
+    # per-entry ``content`` so it is not double-counted against the budget.
+    measured = dict(full_response)
+    measured["sections"] = {name: _section_without_entry_content(sec) for name, sec in raw_sections.items()}
+    return _token_count(_json.dumps(measured))
+
+
+def _section_without_entry_content(section: object) -> object:
+    """Return a copy of *section* with each entry's ``content`` blanked.
+
+    Used by :func:`_view_payload_token_count` so the over-budget gate does not
+    count section content that the body already carries.  Non-entry-block section
+    shapes (e.g. groomed ``{"type": "groomed", ...}``) are returned unchanged —
+    they carry no duplicated body content to subtract.
+
+    Args:
+        section: A single ``sections`` dict value (entry-block or groomed shape).
+
+    Returns:
+        A shallow copy with blanked entry ``content`` for entry-block sections, or
+        the original object for shapes without an ``entries`` list.
+    """
+    if not isinstance(section, dict):
+        return section
+    # ``isinstance`` narrows ``object`` to ``dict[Never, Never]`` under ty; rebuild a
+    # concrete ``dict[str, object]`` so the ``entries`` access has a real value type.
+    section_map: dict[str, object] = {str(k): v for k, v in section.items()}
+    raw_entries = section_map.get("entries")
+    if not isinstance(raw_entries, list):
+        return section
+    trimmed: dict[str, object] = dict(section_map)
+    trimmed["entries"] = [{**entry, "content": ""} if isinstance(entry, dict) else entry for entry in raw_entries]
+    return trimmed
 
 
 # Fields searched by default when no field-specific prefix is given.
@@ -1084,24 +1161,130 @@ def _apply_item_depth(item: dict[str, object], depth: int) -> dict[str, object]:
 _VIEW_ALWAYS_INCLUDE: frozenset[str] = frozenset({"number", "title", "status", "type", "priority"})
 
 
-def _filter_view_sections(response: dict[str, object], sections: list[str]) -> dict[str, object]:
+def _metadata_entry_name(entry: object) -> str:
+    """Extract the ``name`` field from a serialised ``SectionMeta`` entry.
+
+    Boundary accessor over a ``model_dump`` result: ``response["sections_metadata"]``
+    is typed ``object`` after JSON-style serialisation, so each entry is validated
+    here and its ``name`` returned as a ``str``.  Returns ``""`` for any entry that
+    is not a dict or lacks a string ``name`` (such entries simply never match a
+    requested name).
+
+    Args:
+        entry: A single ``sections_metadata`` list element of unknown shape.
+
+    Returns:
+        The entry's ``name`` as a string, or ``""`` when absent or non-string.
+    """
+    if not isinstance(entry, dict):
+        return ""
+    return next((value for key, value in entry.items() if key == "name" and isinstance(value, str)), "")
+
+
+def _filter_view_sections(
+    response: dict[str, object], sections: list[str], result: _models.ViewItemResult
+) -> dict[str, object]:
     """Filter the backlog_view response to only the requested sections.
 
     Identity fields (number, title, status, type, priority) are always included.
-    The ``sections`` dict in the response is filtered to the named keys only.
-    All other top-level keys are preserved.
+    The ``sections`` dict in the response is filtered to the named keys only,
+    matched case-insensitively (case-folded, exact-name not substring) so a
+    ``sections=['rt-ica']`` request keeps an ``RT-ICA`` structured key — consistent
+    with the body and ``sections_metadata`` arms (Codex P2, #2495).  All other
+    top-level keys are preserved.
+
+    In compact mode (``include_content=False``) the response carries no body and
+    an empty ``sections`` dict; the inventory lives in ``sections_metadata``.  The
+    requested names are matched and filtered against that inventory too, so a
+    VALID name is not reported as a miss merely because the body and ``sections``
+    dict are absent (issue #2495 finding #4).
+
+    The plural ``sections=[...]`` path also signals a no-match (issue #2495, m1):
+    when none of the requested names resolve to a structured section key, a
+    compact ``sections_metadata`` entry, OR a raw-body ``## ``/``### `` header,
+    ``section_filter_miss`` is set to ``True`` on BOTH the response dict and
+    *result* so the caller can distinguish "the names were wrong" from "the item
+    is too big" — mirroring how the singular ``section=`` path signals a miss.
+    Setting it on *result* keeps the signal present when the payload is over
+    budget and the response is rebuilt from *result* via
+    :func:`_build_over_budget_view`.  Following
+    ``.claude/rules/silent-failure-prevention.md``, the branch on the requested
+    names has an explicit no-match fallback rather than returning the body
+    unchanged with no signal.
+
+    When the structured ``sections`` dict matches but no body header does (case or
+    format drift between YAML keys and rendered headers), the un-narrowed body is
+    cleared so the matched narrowing fits the view budget instead of being
+    replaced by the over-budget directory (issue #2495 finding #5).
 
     Args:
-        response: Full serialised ViewItemResult dict.
+        response: Full serialised ViewItemResult dict (mutated in place).
         sections: List of section name strings to include.
+        result: The typed ViewItemResult backing *response*; its
+            ``section_filter_miss`` flag is set on a no-match so the over-budget
+            directory path also surfaces the signal.
 
     Returns:
         Filtered response dict (same object, mutated in place).
     """
-    requested: frozenset[str] = frozenset(sections)
+    # Case-folded set of requested names — shared by the structured-dict, body, and
+    # metadata arms so all three match section names case-insensitively (the plural
+    # ``sections=[...]`` contract is exact-name, case-insensitive — Codex P2, #2495).
+    requested_folded: frozenset[str] = frozenset(s.casefold() for s in sections)
     raw_sections = response.get("sections")
+    dict_matched = False
     if isinstance(raw_sections, dict):
-        response["sections"] = {k: v for k, v in raw_sections.items() if k in requested}
+        # Case-INSENSITIVE membership: a ``sections=['rt-ica']`` request must keep an
+        # ``RT-ICA`` structured key, consistent with ``narrow_body_to_named_sections``
+        # (body arm) and the ``sections_metadata`` arm.  A case-sensitive ``k in
+        # requested`` test silently dropped the metadata while the body arm matched,
+        # desyncing ``sections`` from ``body`` with no ``section_filter_miss`` signal
+        # (Codex P2, #2495).  Exact-name (not substring) semantics are preserved.
+        kept = {k: v for k, v in raw_sections.items() if isinstance(k, str) and k.casefold() in requested_folded}
+        response["sections"] = kept
+        dict_matched = bool(kept)
+    # Compact view (include_content=False) carries no body and an empty ``sections``
+    # dict; its inventory lives in ``sections_metadata`` instead.  Match and filter
+    # that inventory by name so VALID section names are NOT reported as a miss in
+    # compact mode (issue #2495 finding #4).  Names are compared case-insensitively
+    # (case-folded) to mirror the body-header and structured-dict contract.
+    raw_metadata = response.get("sections_metadata")
+    metadata_matched = False
+    if isinstance(raw_metadata, list):
+        kept_meta = [entry for entry in raw_metadata if _metadata_entry_name(entry).casefold() in requested_folded]
+        response["sections_metadata"] = kept_meta
+        metadata_matched = bool(kept_meta)
+    # Keep the raw body self-consistent with the section filter so a sections=[...]
+    # request returns the requested slice rather than overflowing the view budget
+    # on the un-narrowed body (issue #2495 defect a).
+    raw_body = response.get("body")
+    body_matched = False
+    if isinstance(raw_body, str) and raw_body:
+        narrowed, body_matched = operations.narrow_body_to_named_sections(raw_body, sections)
+        if body_matched:
+            response["body"] = narrowed
+        elif dict_matched:
+            # The structured ``sections`` dict matched the requested names but no
+            # raw-body ``## ``/``### `` header did (case/format drift between the
+            # YAML section keys and the rendered body headers).  Retaining the
+            # un-narrowed full body would overflow the view budget and the
+            # over-budget gate would replace the explicitly requested narrowing
+            # with the section directory (issue #2495 finding #5).  The matched
+            # content is already carried by ``response["sections"]``; clear the
+            # body so the delivered payload stays consistent with the matched
+            # sections and fits the budget.
+            response["body"] = ""
+        else:
+            response["body"] = narrowed
+    # No-match fallback (m1): when the caller requested names but none resolved to
+    # a structured section, a compact-inventory entry, or a body header, surface
+    # section_filter_miss so the caller learns the names were invalid even when an
+    # over-budget directory is returned.  Set on both the response dict and
+    # *result* so the over-budget rebuild via _build_over_budget_view carries the
+    # signal too.
+    if sections and not dict_matched and not metadata_matched and not body_matched:
+        response["section_filter_miss"] = True
+        result.section_filter_miss = True
     return response
 
 
@@ -1849,25 +2032,51 @@ async def backlog_view(
         )
         full_response = result.model_dump()
         if not summary:
+            # Normalise an empty ``sections=[]`` to "no section filter" (equivalent
+            # to None) so the falsy-vs-None handling is consistent everywhere
+            # (issue #2495 finding #6): an empty list must not empty the sections
+            # dict, must not count as a narrowing request, and must not report a
+            # miss.  ``sections=[]`` therefore behaves identically to
+            # ``sections=None``.
+            sections_filter = sections or None
             # Primitive 3: filter to named sections when requested.
-            if sections is not None:
-                full_response = _filter_view_sections(full_response, sections)
+            if sections_filter is not None:
+                full_response = _filter_view_sections(full_response, sections_filter, result)
             # Auto-compact: when the response exceeds the token budget return a compact
             # section-directory form so the caller can request only what it needs.
-            # This check runs unconditionally for all summary=False calls — the caller's
-            # sections= or section= filter does NOT bypass enforcement.  The contract is:
-            # agents must never receive a response that overflows their context; the tool
-            # is the correct enforcement point.
-            # Heuristic pre-check: if body alone exceeds the chars threshold the full
-            # response is almost certainly over budget — skip serialisation.  The precise
-            # token count is still computed for borderline cases where the body is small
-            # but other fields push the total over the limit.
-            body_chars = len(result.body)
-            if body_chars > _VIEW_BODY_CHARS_THRESHOLD:
-                serialised = _json.dumps(full_response)
-                return _build_over_budget_view(result, len(serialised), selector)
+            #
+            # The gate measures the NARROWED payload (issue #2495 defect a).  When the
+            # caller requested narrowing (section / sections / offset / limit),
+            # view_item and _filter_view_sections have already narrowed both
+            # full_response["body"] and full_response["sections"], so full_response IS
+            # the narrowed slice.  The directory fallback therefore fires only when the
+            # measured payload is still over budget — i.e. an unbounded default call, or
+            # a narrowed slice that itself remains too large.  An explicitly requested
+            # slice/page is never silently replaced by metadata-only ("No Invented
+            # Limits"); it is delivered whenever it fits the budget.
+            #
+            # Serialisation is unconditional: the precise token count of the whole
+            # (possibly narrowed) payload is the single authoritative budget measure.
+            # A prior body-chars heuristic (``len(body) > ~16 000`` forcing the
+            # over-budget directory) was removed (issue #2495 finding #7).  That
+            # heuristic was an over-eager approximation: char count is NOT a reliable
+            # proxy for token count.  A large-but-COMPRESSIBLE body (e.g. a long run of
+            # one repeated character: 16 500 chars but only ~2 100 tokens) is well under
+            # _VIEW_TOKEN_BUDGET, yet the char heuristic would have wrongly suppressed it
+            # into the directory.  The token count below is authoritative and may now
+            # correctly deliver such a large-but-compressible body inline (No Invented
+            # Limits) — while still gating bodies whose token count genuinely exceeds the
+            # budget, including incompressible prose that the old heuristic also caught.
+            # Measure the de-duplicated delivered payload (issue #2495 finding #4):
+            # the per-entry ``content`` in the ``sections`` dict duplicates the body
+            # text the caller already receives once via ``body``, so counting it
+            # again wrongly inflates the measured size and can trip the directory for
+            # a body that is comfortably under budget on its own.  ``body`` is still
+            # measured in full, so a genuinely-too-large body (or narrowed slice)
+            # still gates.  ``_full_chars`` in the directory hint reports the real
+            # serialised char length of the full payload the caller would receive.
             serialised = _json.dumps(full_response)
-            if _token_count(serialised) > _VIEW_TOKEN_BUDGET:
+            if _view_payload_token_count(full_response) > _VIEW_TOKEN_BUDGET:
                 return _build_over_budget_view(result, len(serialised), selector)
             return full_response
         return _build_compact_manifest(result, full_response, selector)

@@ -1,28 +1,24 @@
 # Python Development Rules
 
-## uv Workspace — All Python Sub-Projects Must Be Workspace Members
+## Plugin Python — PEP 723 Scripts, No uv Workspace
 
-Every Python sub-project in this repo (any directory with its own `pyproject.toml`) MUST be
-declared as a member of the root uv workspace.
+**This repo has NO uv workspace.** Do not add `[tool.uv.workspace]` entries; plugin sub-projects are not workspace members. Plugin MCP servers are PEP 723 self-resolving scripts, not installed projects.
 
-**Why**: Independent sub-projects produce their own `uv.lock` files. Separate lock files mean
-separate dependency trees, separate Dependabot alerts, and inconsistent resolution of shared
-packages like `fastmcp`, `cryptography`, and `pydantic`.
+- **Runtime source of truth** is the script's inline `# /// script … dependencies = [...] # ///` block — `uv` resolves it at launch, with no `pyproject.toml`, `uv.lock`, or workspace lookup. See the PEP 723 shebang and block in [`run_backlog_server.py`](./../../plugins/development-harness/scripts/run_backlog_server.py), launched via the `uv run --script ${CLAUDE_PLUGIN_ROOT}/scripts/…` command in [`plugin.json`](./../../plugins/development-harness/.claude-plugin/plugin.json). `${CLAUDE_PLUGIN_ROOT}` resolves in the installed plugin cache, not the source tree.
+- **Plugins ship zipped, outside this repo** — no source-tree `uv.lock` is consulted at runtime.
+- **Root dev-dependencies mirror the script blocks**, solely so `ty`, `ruff`, and the IDE/LSP (which don't read PEP 723) can resolve imports while editing here. Tooling convenience only — not the runtime or distribution path. See `[dependency-groups] dev` in [`pyproject.toml`](./../../pyproject.toml).
 
-**Rule**: When adding any new Python sub-project (new `pyproject.toml`), immediately add it to
-the `[tool.uv.workspace] members` list in the root `pyproject.toml`.
+### Adding a new plugin MCP server
 
-```toml
-[tool.uv.workspace]
-members = [
-    "plugins/development-harness",
-    "plugins/scientific-method/mcp/experiment-registry",
-    # add new sub-projects here
-]
+1. Declare dependencies in the script's PEP 723 frontmatter (runtime source of truth).
+2. Mirror them into the root `[dependency-groups] dev` so `ty`, `ruff`, and the IDE resolve them.
+
+Do not create a per-plugin `pyproject.toml` sub-project or a per-plugin `uv.lock`.
+
+### Invariant
+
+```bash
+git ls-files | grep uv.lock
 ```
 
-After adding a member, run `uv lock` from the repo root to regenerate the single root `uv.lock`
-and delete the sub-project's standalone `uv.lock` if one exists.
-
-**Check**: `git ls-files | grep uv.lock` should return only `uv.lock` (the root lock file).
-Any additional `uv.lock` entry is a policy violation.
+Must return only the root `uv.lock`. A per-plugin `uv.lock` is never read — the runtime self-resolves via PEP 723 and the linters use the root dev group — so it would only drift from the real dependency set.

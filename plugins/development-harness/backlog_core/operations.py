@@ -2476,15 +2476,96 @@ def _render_section_index(item: BacklogItem) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _resolve_section_indices(candidates: list[str], section: str) -> list[int]:
+    """Resolve a *section* filter expression to ordered candidate indices.
+
+    Shared by the YAML structured-sections path (:func:`_filter_sections`) and
+    the raw-GitHub-body path (:func:`_apply_body_section_filter`) so both honour
+    the identical set of section forms advertised by the ``backlog_view`` tool.
+
+    The *section* parameter supports four forms, evaluated in this order:
+
+    - ``"2"`` -- single numeric index (zero-based, negatives Python-style).
+    - ``"0,2,4"`` -- comma-separated numeric indices.
+    - ``"/regex/"`` -- regex pattern delimited by ``/`` (case-insensitive),
+      matched with :func:`re.Pattern.search` against each candidate string.
+    - Any other string -- case-insensitive substring match against each
+      candidate string.
+
+    Args:
+        candidates: Ordered list of section-name strings to match against
+            (display titles for YAML items, raw header text for bodies).
+        section: Filter expression.
+
+    Addressability fallback (issue #2495, M1): the numeric/comma/regex forms are
+    tried first, but when the chosen form resolves to an *empty* set of in-range
+    indices, this function falls back to case-insensitive substring matching
+    before reporting no match.  This keeps a candidate literally named like an
+    index (``"2"``) or like a regex (``"/foo/"``) reachable -- otherwise the
+    leading numeric/regex interpretation would silently consume the expression,
+    miss, and make that candidate permanently unaddressable (a No-Invented-Limits
+    addressability loss).  Only when BOTH the index/regex interpretation AND the
+    substring interpretation resolve nothing is the result empty.
+
+    Returns:
+        Ordered, de-duplicated list of matching indices into *candidates*.  An
+        empty list means no candidate matched under *either* the index/regex
+        interpretation or the substring fallback; callers decide whether an
+        empty result is a filter miss.
+    """
+    if not candidates:
+        return []
+
+    stripped = section.strip()
+    if not stripped:
+        return []
+
+    def _substring_indices() -> list[int]:
+        lower_filter = stripped.lower()
+        return [i for i, name in enumerate(candidates) if lower_filter in name.lower()]
+
+    # --- comma-separated or single numeric index ---
+    index_parts = [p.strip() for p in stripped.split(",")]
+    numeric_parts = [p for p in index_parts if p]
+    if numeric_parts and all(p.lstrip("-").isdigit() for p in numeric_parts):
+        n = len(candidates)
+        # Normalise negative indices (Python-style: -1 = last); drop out-of-range.
+        resolved = {(int(p) % n) for p in numeric_parts if -n <= int(p) < n}
+        # Fallback: an out-of-range / unresolved index expression may instead be
+        # the literal name of a candidate (e.g. a header named "## 2").  Try the
+        # substring interpretation before declaring a miss (M1, #2495).
+        return sorted(resolved) if resolved else _substring_indices()
+
+    # --- /regex/ pattern ---
+    if stripped.startswith("/") and stripped.endswith("/") and len(stripped) > 1:
+        try:
+            compiled = re.compile(stripped[1:-1], re.IGNORECASE)
+        except re.error:
+            # A malformed pattern (e.g. ``/[/``) reaches this path for raw GitHub
+            # bodies, where the delimited expression is untrusted caller input.
+            # ``re.error`` is the only exception ``re.compile`` is documented to
+            # raise for an invalid pattern; catch it narrowly and degrade
+            # gracefully instead of crashing ``backlog_view`` (#2495).  Treat the
+            # delimited text as a literal substring so a candidate literally named
+            # like the expression stays reachable; ``_substring_indices`` returns
+            # ``[]`` when nothing matches, which the caller reports as a
+            # section_filter_miss.
+            return _substring_indices()
+        regex_matches = [i for i, name in enumerate(candidates) if compiled.search(name)]
+        # Fallback: a candidate literally named like the delimited expression
+        # ("/foo/") stays reachable when the regex interpretation matches nothing.
+        return regex_matches or _substring_indices()
+
+    # --- substring match ---
+    return _substring_indices()
+
+
 def _filter_sections(item: BacklogItem, section: str) -> dict[str, Section | GroomedData]:
     """Return a filtered subset of *item.sections* matching *section*.
 
-    The *section* parameter supports four forms:
-
-    - ``"2"`` -- single numeric index (zero-based).
-    - ``"0,2,4"`` -- comma-separated numeric indices.
-    - ``"/regex/"`` -- regex pattern delimited by ``/``.
-    - Any other string -- case-insensitive substring match against display title.
+    Delegates form detection to :func:`_resolve_section_indices`, matching the
+    same numeric / comma / regex / substring forms as the raw-body filter path.
+    Regex and substring forms match against each section's *display title*.
 
     Args:
         item: BacklogItem whose sections to filter.
@@ -2497,35 +2578,9 @@ def _filter_sections(item: BacklogItem, section: str) -> dict[str, Section | Gro
     if not item.sections:
         return {}
 
-    keys = list(item.sections.keys())
-
-    # --- comma-separated or single numeric index ---
-    stripped = section.strip()
-    index_parts = [p.strip() for p in stripped.split(",")]
-    if all(p.lstrip("-").isdigit() for p in index_parts if p):
-        n = len(keys)
-        indices = {int(p) for p in index_parts if p}
-        # Normalise negative indices (Python-style: -1 = last)
-        resolved = {(i % n) for i in indices if -n <= i < n}
-        return {keys[i]: item.sections[keys[i]] for i in sorted(resolved)}
-
-    # --- /regex/ pattern ---
-    if stripped.startswith("/") and stripped.endswith("/") and len(stripped) > 1:
-        pattern = stripped[1:-1]
-        compiled = re.compile(pattern, re.IGNORECASE)
-        return {
-            k: sec
-            for k, sec in item.sections.items()
-            if compiled.search(_section_display_title(k, sec.date if isinstance(sec, GroomedData) else ""))
-        }
-
-    # --- substring match ---
-    lower_filter = stripped.lower()
-    return {
-        k: sec
-        for k, sec in item.sections.items()
-        if lower_filter in _section_display_title(k, sec.date if isinstance(sec, GroomedData) else "").lower()
-    }
+    items = list(item.sections.items())
+    candidates = [_section_display_title(k, sec.date if isinstance(sec, GroomedData) else "") for k, sec in items]
+    return {items[i][0]: items[i][1] for i in _resolve_section_indices(candidates, section)}
 
 
 def render_sections_as_body(item: BacklogItem, section: str | None = None) -> str:
@@ -2690,12 +2745,95 @@ def _build_sections_compact(body: str) -> list[dict[str, str | int]]:
     return result
 
 
+def _entry_owning_headers(body: str) -> list[str | None]:
+    """Map each entry block in *body* to the ``## ``/``### `` header that owns it.
+
+    Returns one element per :data:`ENTRY_RE` match in document order; the value is
+    the full source header LINE (e.g. ``## Log`` or ``### Detail``) of the nearest
+    preceding section header, or ``None`` when an entry precedes the first header
+    (a headerless preamble entry).  The full line (not just the name) is kept so the
+    paged body reproduces the original header level.
+
+    The result aligns positionally with :func:`parse_entries` (which iterates the
+    same ``ENTRY_RE`` matches in the same order), so the i-th owning header
+    describes the i-th parsed entry.  Used by :func:`_paginate_body_result` to
+    re-attach the owning header to each paged entry, keeping the paginated body
+    self-describing so the section-metadata rebuild stays in sync with the page
+    (#2495 finding #5).
+
+    Args:
+        body: Full (unpaginated) body text containing entry blocks.
+
+    Returns:
+        List of owning header lines (or ``None``) aligned with the entry order
+        produced by :func:`parse_entries`.
+    """
+    entry_spans = [(m.start(), m.end()) for m in ENTRY_RE.finditer(body)]
+    # A ``## ``/``### `` line INSIDE an entry block's content is part of that
+    # entry's text, not a real section boundary — exclude it so a later entry is
+    # not mis-attributed to a header embedded in a prior entry (#2495 C4).
+    headers = [
+        hdr
+        for hdr in _SECTION_BOUNDARY_RE.finditer(body)
+        if not any(start <= hdr.start() < end for start, end in entry_spans)
+    ]
+    owners: list[str | None] = []
+    for entry_start, _entry_end in entry_spans:
+        owner: str | None = None
+        for hdr in headers:
+            if hdr.start() <= entry_start:
+                # Reproduce the source header line verbatim (its ``## ``/``### `` marker
+                # and text) so a paged subsection keeps the level it had.
+                owner = hdr.group(0).strip()
+            else:
+                break
+        owners.append(owner)
+    return owners
+
+
+def _render_paged_entry_body(entries: list[Entry], owners: list[str | None]) -> str:
+    """Render *entries* grouped under their owning ``## ``/``### `` headers.
+
+    Consecutive entries sharing an owning header are emitted once under that
+    header, so the paginated body keeps the section structure that
+    :func:`_render_entry_raw` alone discards.  Entries with a ``None`` owner
+    (headerless preamble) are emitted without a header line.
+
+    Args:
+        entries: The paged (sliced) entries to render, in document order.
+        owners: Owning header lines aligned positionally with *entries*.
+
+    Returns:
+        The rendered body with section headers re-attached to their entries.
+    """
+    blocks: list[str] = []
+    last_owner: str | None = None
+    first = True
+    for entry, owner in zip(entries, owners, strict=True):
+        if first or owner != last_owner:
+            if owner is not None:
+                # ``owner`` is the full source header line (e.g. ``## Log`` or
+                # ``### Detail``), reproduced verbatim to preserve the header level.
+                blocks.append(owner)
+            last_owner = owner
+            first = False
+        blocks.append(_render_entry_raw(entry))
+    return "\n\n".join(blocks)
+
+
 def _paginate_body_result(result: ViewItemResult, body: str, offset: int, limit: int) -> None:
     """Apply offset/limit pagination to the ``body`` field of *result* in-place.
 
     Paginates by entry blocks when the body contains timestamped entry blocks
     (``<div><sub>…</sub>…</div>``). Falls back to line-based pagination for
     plain-text bodies that contain no entry blocks.
+
+    For the entry-block path the owning ``## ``/``### `` header of each paged
+    entry is re-attached to the rendered page (#2495 finding #5).  Without it the
+    rendered page is a bare run of ``<div><sub>…</sub></div>`` blocks with no
+    header, so the downstream ``_build_sections_metadata`` rebuild parses a
+    headerless page and produces ``{}`` — desyncing the section metadata from a
+    body that does in fact belong to a named section.
 
     Args:
         result: Mutable ViewItemResult whose ``body`` field will be replaced.
@@ -2705,14 +2843,22 @@ def _paginate_body_result(result: ViewItemResult, body: str, offset: int, limit:
     """
     has_entry_blocks = bool(ENTRY_RE.search(body))
     if has_entry_blocks:
-        # Entry-block aware pagination
+        # Entry-block aware pagination.  Owners are captured from the ORIGINAL body
+        # (before the slice) so each paged entry can be rendered under the header it
+        # belongs to, keeping the page self-describing for the metadata rebuild.
         entries = parse_entries(body, show="all")
+        owners = _entry_owning_headers(body)
         total = len(entries)
-        sliced = entries[offset:] if offset > 0 else entries
-        if limit > 0:
-            sliced = sliced[:limit]
-        result.body = "\n\n".join(_render_entry_raw(e) for e in sliced)
-        remaining = total - offset - len(sliced)
+        start = max(0, offset)
+        end = start + limit if limit > 0 else len(entries)
+        sliced = entries[start:end]
+        sliced_owners = owners[start:end]
+        result.body = _render_paged_entry_body(sliced, sliced_owners)
+        # Use the clamped ``start`` (not raw ``offset``) so a negative offset
+        # — which clamps to 0 and returns every entry — does not report a bogus
+        # remaining count. Offset past the end yields an empty body with no
+        # truncation flag (intended contract; see test_paginate_body.py).
+        remaining = total - start - len(sliced)
         if remaining > 0:
             result.body_truncated = True
             result.body_remaining_entries = remaining
@@ -2721,12 +2867,13 @@ def _paginate_body_result(result: ViewItemResult, body: str, offset: int, limit:
         # Fallback: line-based pagination for plain-text bodies with no entry blocks
         lines = body.splitlines()
         total = len(lines)
-        if offset > 0:
-            lines = lines[offset:]
+        start = max(0, offset)
+        if start > 0:
+            lines = lines[start:]
         if limit > 0:
             lines = lines[:limit]
         result.body = "\n".join(lines)
-        remaining = total - offset - len(lines)
+        remaining = total - start - len(lines)
         if remaining > 0:
             result.body_truncated = True
             result.body_remaining_lines = remaining
@@ -2809,32 +2956,110 @@ def _populate_yaml_item_compact(result: ViewItemResult, item: BacklogItem) -> No
 _SECTION_BOUNDARY_RE = re.compile(r"^#{2,3} (.+?)$", re.MULTILINE)
 
 
-def _apply_body_section_filter(result: ViewItemResult, body: str, section: str) -> str:
-    """Narrow *body* and *result.body* to the requested section.
+def _slice_body_by_header_indices(body: str, headers: list[re.Match[str]], indices: list[int]) -> str:
+    """Concatenate the *body* slices for the given *header* *indices* in order.
 
-    Scans *body* for the first ``## `` or ``### `` header whose name matches
-    *section* (case-insensitive) and slices the body to that section only.
-    If no matching header is found, *body* and *result.body* are left unchanged.
+    The single shared body-slicing implementation (issue #2495, findings #8/#10):
+    both the singular ``section=`` resolver (:func:`_apply_body_section_filter`)
+    and the plural ``sections=[...]`` resolver (:func:`narrow_body_to_named_sections`)
+    delegate the header-find -> index -> slice-join mechanics here.  Only the
+    *matching contract* (how an index list is derived from a filter expression)
+    differs between the two callers; the slicing geometry is identical and lives
+    once.
+
+    Each slice runs from its header's start to the next header's start (or end of
+    *body* for the final header), so the header line and its body travel together.
+
+    Args:
+        body: Full issue body text.
+        headers: Ordered ``## ``/``### `` header matches from
+            :data:`_SECTION_BOUNDARY_RE` over *body*.
+        indices: Indices into *headers* to keep, already in document order.
+
+    Returns:
+        The concatenated slices for *indices* (empty string when *indices* is
+        empty).
+    """
+    return "".join(
+        body[headers[i].start() : (headers[i + 1].start() if i + 1 < len(headers) else len(body))] for i in indices
+    )
+
+
+def _apply_body_section_filter(result: ViewItemResult, body: str, section: str) -> str:
+    """Narrow *body* and *result.body* to the requested section(s).
+
+    Resolves *section* against the ordered list of ``## ``/``### `` headers using
+    :func:`_resolve_section_indices`, so the same numeric index (``"4"``),
+    comma-separated indices (``"0,2"``), regex (``"/impact.*/"``), and
+    substring/name forms advertised by the ``backlog_view`` tool all work on raw
+    GitHub bodies — not only the name form.  The matched header slices are
+    concatenated in document order via the shared
+    :func:`_slice_body_by_header_indices`.  When no form resolves to a header,
+    ``result.section_filter_miss`` is set and the body is left unchanged.
+
+    Matching contract: the *singular* ``section=`` form (substring / numeric index
+    / comma list / regex) — distinct from the plural ``sections=[...]`` exact
+    case-insensitive contract in :func:`narrow_body_to_named_sections`.  Both
+    contracts are documented on the ``backlog_view`` tool and preserved as-is;
+    only the slicing mechanics are shared (#2495 findings #8/#10).
 
     Args:
         result: ViewItemResult to update in-place.
         body: Full issue body text.
-        section: Section name to filter to.
+        section: Section filter expression (index, comma list, regex, or name).
 
     Returns:
         The (possibly narrowed) body slice.
     """
     headers = list(_SECTION_BOUNDARY_RE.finditer(body))
-    for i, hdr in enumerate(headers):
-        if hdr.group(1).strip().lower() == section.lower():
-            start = hdr.start()
-            end = headers[i + 1].start() if i + 1 < len(headers) else len(body)
-            body = body[start:end]
-            break
+    names = [hdr.group(1).strip() for hdr in headers]
+    matched = _resolve_section_indices(names, section)
+    if matched:
+        body = _slice_body_by_header_indices(body, headers, matched)
     else:
         result.section_filter_miss = True
     result.body = body
     return body
+
+
+def narrow_body_to_named_sections(body: str, names: list[str]) -> tuple[str, bool]:
+    """Return the slices of *body* whose ``## ``/``### `` headers match *names*.
+
+    Used to keep the ``body`` field self-consistent with a ``sections=[...]``
+    filter: only the slices for the requested section names (exact,
+    case-insensitive — matching the ``sections=`` parameter contract) are kept,
+    in document order.
+
+    Reports whether any header matched (issue #2495, m1).  Returning the match
+    flag alongside the (possibly unchanged) body lets the caller distinguish
+    "names were wrong" from "item too big" instead of silently returning the
+    full body — see ``.claude/rules/silent-failure-prevention.md`` (a transform
+    must report what it changed).
+
+    Args:
+        body: Full issue body text.
+        names: Exact section names to keep (case-insensitive).
+
+    Returns:
+        A ``(narrowed_body, matched)`` tuple.  ``matched`` is ``True`` when at
+        least one ``## ``/``### `` header matched a requested name (and the body
+        is the concatenated matching slices in document order); ``False`` when
+        no header matched, in which case *body* is returned unchanged so the
+        caller can surface the no-match signal without losing content.
+    """
+    # Case-fold with ``.casefold()`` (not ``.lower()``) so the plural
+    # ``sections=[...]`` body arm uses the one Unicode-correct case-fold rule shared
+    # with the structured-dict arm (``_filter_view_sections``) and the metadata arm
+    # (#2495 minor).  No behaviour change for ASCII names.
+    wanted = {n.casefold() for n in names}
+    headers = list(_SECTION_BOUNDARY_RE.finditer(body))
+    matched = [i for i, hdr in enumerate(headers) if hdr.group(1).strip().casefold() in wanted]
+    if not matched:
+        return body, False
+    # Exact case-insensitive name matching above is the plural ``sections=[...]``
+    # contract; only the slice-join mechanics are shared with the singular
+    # ``section=`` path (#2495 findings #8/#10).
+    return _slice_body_by_header_indices(body, headers, matched), True
 
 
 def _assemble_view_compact(
@@ -2908,24 +3133,100 @@ def _assemble_view_content(
     loading the full body.
     """
     body = result.body
+    paginate = offset > 0 or limit > 0
 
     if include_content:
+        # Display-only ``## Sections`` index for the ``section is None`` path.  It is
+        # built from the full body but prepended to the body only AFTER pagination
+        # (below).  It must never enter ``_paginate_body_result``: line-based
+        # pagination would otherwise spend the page budget on the index lines and
+        # displace the real content, and the metadata rebuild would then report a
+        # spurious ``Sections`` key with no real section content (#2495 M1 —
+        # regression introduced in d7abdee).
+        #
+        # The index is built ONLY for the NON-paged ``section is None`` path (#2495
+        # Codex P2).  On a paged request (``offset``/``limit``) the index describes
+        # the WHOLE un-paginated item — its size is unbounded and grows with the
+        # heading count, so for an item with many headings the index alone can exceed
+        # ``_VIEW_TOKEN_BUDGET``.  Prepending it to the budgeted page body would then
+        # trip the over-budget gate (server.py) and replace the explicitly-requested
+        # page with the compact directory — violating the contract that an
+        # explicitly-narrowed request is delivered.  A paged caller asked for the
+        # page, not the whole-item index; the page content plus the page-scoped
+        # ``result.sections`` metadata are what is delivered, so the index is omitted
+        # for paged responses (it remains available via the unbounded ``section is
+        # None`` call and via ``summary=True``).
+        pending_index = ""
         if body:
-            result.sections = _build_sections_metadata(body, show, since, section=section)
             if section is not None:
-                # Narrow the body to the requested section only.
+                # Resolve the section form once: narrow the body to the matched
+                # section slices (numeric, comma, regex, substring, name -- not
+                # just the exact-name form ``_build_sections_metadata`` recognises;
+                # #2495 defect c).  On a genuine miss ``_apply_body_section_filter``
+                # sets ``section_filter_miss`` and leaves the body unchanged.
                 body = _apply_body_section_filter(result, body, section)
-            else:
-                # Prepend section index so agents see it regardless of body source.
-                # Prefer live body data over local YAML cache for cache coherence.
-                index = _build_sections_index_from_body(body)
-                if index:
-                    result.body = index + "\n" + body
+                if result.section_filter_miss:
+                    # A miss must yield an EMPTY body and EMPTY sections, not the
+                    # full unchanged body (#2495 defects #2/#3).  Returning the full
+                    # body here would leak the whole item and (because it is still
+                    # large) trip the over-budget gate, defeating the narrowing the
+                    # caller asked for.  Empty body + empty sections is the single
+                    # consistent "nothing matched" signal alongside
+                    # ``section_filter_miss``; skip pagination and the metadata
+                    # rebuild below entirely.
+                    result.body = ""
+                    result.sections = {}
+                    return
+                # Derive section metadata from the SAME narrowed body so the two
+                # stay in sync for every resolved form.  Skip when pagination will
+                # run: the pagination branch rebuilds the metadata from the
+                # paginated slice, so building it here too would compute and discard
+                # it (#2495 finding #9 — build the body-derived metadata at most
+                # once, from the final body).
+                if not paginate:
+                    result.sections = _build_sections_metadata(body, show, since, section=None)
+            # Build the section index from the FULL body so agents see it
+            # regardless of body source, but DEFER prepending it until after
+            # pagination (#2495 M1) so the index never consumes the page budget.
+            # Prefer live body data over local YAML cache for cache coherence.
+            # The index is display-only; metadata is built from ``body`` (without
+            # it) so no spurious ``Sections`` key is produced.  Both the metadata
+            # build and the index build are skipped under pagination: pagination
+            # rebuilds the metadata from the paginated slice, and the whole-item
+            # index is omitted from paged responses entirely (#2495 Codex P2 — an
+            # unbounded index must not displace the explicitly-requested page via
+            # the over-budget gate).
+            elif not paginate:
+                result.sections = _build_sections_metadata(body, show, since, section=None)
+                pending_index = _build_sections_index_from_body(body)
         elif item and item.sections:
+            # YAML fallback: ``_populate_yaml_item_content`` builds the richer
+            # structured-section metadata via ``_build_sections_from_yaml_item``
+            # (preserving struck counts and unknown-section shapes).  Do NOT
+            # overwrite it with a body re-parse -- that loses information the YAML
+            # path carries.  When pagination runs the metadata is re-bounded to the
+            # paginated slice below (mirroring the pre-#2495 behaviour).
             _populate_yaml_item_content(result, item, section)
-            body = result.body
-        if body and (offset > 0 or limit > 0):
-            _paginate_body_result(result, body, offset, limit)
+        # Pagination (when requested) re-bounds the body and its section metadata
+        # to the paginated slice so a paged request cannot overflow the view budget
+        # via an un-paged sections dump (#2495 defect a).  This is the single
+        # metadata build for the paginated case (finding #9): the per-path builds
+        # above are skipped when ``paginate`` is True.  Pagination runs on the RAW
+        # body (no synthetic index prefix): the ``section is None`` index is
+        # prepended afterwards so it never displaces real content and
+        # ``result.sections`` reflects the real sections of the returned page
+        # (#2495 M1).
+        if paginate and result.body:
+            _paginate_body_result(result, result.body, offset, limit)
+            result.sections = _build_sections_metadata(result.body, show, since, section=None)
+        # Prepend the deferred display-only ``## Sections`` index to the final,
+        # post-pagination body in the NON-paged ``section is None`` path (#2495 M1).
+        # ``pending_index`` is built only on that path (it is ``""`` whenever
+        # ``paginate`` is True — #2495 Codex P2), so this prepend is a no-op for
+        # paged responses: a paged caller receives the page without the unbounded
+        # whole-item index that would otherwise trip the over-budget gate.
+        if pending_index and result.body:
+            result.body = pending_index + "\n" + result.body
     else:
         _assemble_view_compact(result, item, body, section=section)
 
@@ -2980,6 +3281,10 @@ def view_item(
         only the matched section(s).
     """
     out = output or Output()
+    # Normalize blank/whitespace-only section filters to None so they behave as
+    # an omitted filter (full content), not a no-match. strip() preserves real
+    # values like "0". (PR #2496 Codex finding.)
+    section = (section or "").strip() or None
     item = find_item(parse_backlog(), selector)
     issue_num = parse_issue_selector(selector)
 
