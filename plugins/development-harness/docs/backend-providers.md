@@ -128,6 +128,55 @@ All protocol methods are synchronous. The MCP layer wraps calls in `asyncio.to_t
 | `InMemoryBackend` | `memory` | In-memory test double. No persistence. Use in tests and CI where GitHub is unavailable. |
 | `BeadsBackend` | `beads` | Routes to `bd` CLI via lazy subprocess wrapper (`backlog_core/backends/bd_runner.py`). Auto-detected when `.beads/dh-backend` marker file exists at project root (explicit opt-in required). `bd` binary is NOT probed at server startup — validated on first `run_json()` call. Failure raises `BdNotInstalledError`; no silent fallback to `github`. |
 
+### Capability Properties
+
+Two class-level properties on the `BacklogBackend` Protocol allow `operations.py` to branch on
+backend capabilities without `isinstance` checks. Concrete backends assign these as class
+attributes.
+
+**`supports_batch_status_fetch: bool`**
+
+`True` when `batch_fetch_statuses()` is fully implemented and can return
+`dict[int, IssueStatus]` keyed by integer issue numbers. `False` for backends whose issue IDs
+are not integers — those backends raise `NotImplementedError` from `batch_fetch_statuses`.
+
+Consumed in `list_items()` (`operations.py`): when `True`, live status is fetched in a single
+batch call; when `False`, the local YAML status field is authoritative and the batch call is
+skipped entirely.
+
+**`issue_id_type: Literal["integer", "string"]`**
+
+`"integer"` for backends that use GitHub-style numeric issue IDs. `"string"` for backends that
+use opaque string IDs (e.g. beads nanoids). Controls whether integer-keyed operations are
+meaningful and determines how `item.issue` is interpreted.
+
+Consumed in `_apply_issue_status_labels()` (`operations.py`): string-ID backends write status
+directly to the local YAML cache file via `update_item_metadata` to prevent a silent no-op,
+while integer-ID backends apply status labels via the backend call only (BUG-3 fix — see
+comment at `operations.py` line 3311).
+
+**Why these properties exist**
+
+Branching on capabilities instead of concrete backend types means future string-ID backends
+(e.g. Linear, GitLab) inherit the correct `operations.py` behaviour automatically — neither
+`list_items()` nor `_apply_issue_status_labels()` needs to be modified when a new backend is
+added. A new backend author needs only to set the two properties correctly.
+
+**Capability comparison across all backends**
+
+| Backend | `supports_batch_status_fetch` | `issue_id_type` |
+|---------|-------------------------------|-----------------|
+| `github` | `True` | `"integer"` |
+| `sqlite` | `True` | `"integer"` |
+| `memory` | `True` | `"integer"` |
+| `beads` | `False` | `"string"` |
+
+SOURCE: `backlog_core/backend_protocol.py` — Protocol property declarations with docstrings;
+`backlog_core/backends/github_backend.py`, `sqlite_backend.py`, `memory_backend.py`,
+`beads_backend.py` — per-backend class attribute assignments;
+`backlog_core/operations.py` lines 2326–2333 (`list_items`) and 3311–3322
+(`_apply_issue_status_labels`) — consumption sites.
+
 ### Configuration
 
 Backend selection uses this resolution order:
