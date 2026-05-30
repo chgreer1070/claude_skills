@@ -7,7 +7,7 @@ gh_client, github_sync, or github_branches.  No business logic lives here.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from backlog_core import gh_client, github_branches, github_sync, rendering as _rendering
 
@@ -40,7 +40,17 @@ class GitHubBackend:
 
     Each method is a 1-3 line delegation.  The constructor accepts an optional
     default repo string that is used when callers pass an empty ``repo`` argument.
+
+    Capability flags:
+
+    - ``supports_batch_status_fetch = True`` — GitHub Issues use integer IDs;
+      :meth:`batch_fetch_statuses` is fully implemented.
+    - ``issue_id_type = "integer"`` — GitHub Issues are identified by integer
+      issue numbers.
     """
+
+    supports_batch_status_fetch: bool = True
+    issue_id_type: Literal["integer", "string"] = "integer"
 
     def __init__(self, repo: str = "") -> None:
         """Initialise with an optional default repo string.

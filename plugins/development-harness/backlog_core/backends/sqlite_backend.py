@@ -30,7 +30,7 @@ import json
 import sqlite3
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -123,10 +123,19 @@ class SQLiteBackend:
     synchronous and has no network dependencies.  Branch operations are not
     supported and raise ``RuntimeError``.
 
+    Capability flags:
+
+    - ``supports_batch_status_fetch = True`` — SQLite items use integer IDs;
+      :meth:`batch_fetch_statuses` is fully implemented.
+    - ``issue_id_type = "integer"`` — items are keyed by integer issue number.
+
     Args:
         db_path: Path to the SQLite database file, or ``:memory:`` for an
             ephemeral in-process database.  Defaults to ``:memory:``.
     """
+
+    supports_batch_status_fetch: bool = True
+    issue_id_type: Literal["integer", "string"] = "integer"
 
     def __init__(self, db_path: str = ":memory:") -> None:
         """Initialise the SQLite database and create tables if absent.

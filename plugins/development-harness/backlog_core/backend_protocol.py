@@ -179,7 +179,29 @@ class BacklogBackend(Protocol):
       unknown_key_to_heading, section_heading, render_groomed_section, section_display_title
     - **Branches**: create_integration_branch, get_integration_branch_status,
       merge_integration_branch, delete_integration_branch, list_integration_branches
+
+    Capability flags (read by ``operations.py`` to avoid ``isinstance`` checks):
+
+    - ``supports_batch_status_fetch`` — ``True`` when :meth:`batch_fetch_statuses`
+      is implemented.  ``False`` for backends whose issue IDs are not integers
+      (e.g. beads, Linear) and therefore cannot return ``dict[int, IssueStatus]``.
+    - ``issue_id_type`` — ``"integer"`` for GitHub-style numeric IDs;
+      ``"string"`` for backends using opaque string IDs (e.g. beads nanoids,
+      Linear issue slugs).  Controls whether integer-keyed operations are
+      meaningful and whether items can be addressed by title when the
+      ``issue`` field is absent.
     """
+
+    #: ``True`` when :meth:`batch_fetch_statuses` is implemented and can return
+    #: ``dict[int, IssueStatus]`` for the items.  Backends with non-integer issue
+    #: IDs (beads, Linear) raise :exc:`NotImplementedError` in that method and
+    #: must set this to ``False``.
+    supports_batch_status_fetch: bool
+
+    #: ``"integer"`` for GitHub-style numeric issue IDs; ``"string"`` for
+    #: backends that use opaque string IDs (e.g. beads nanoids, Linear slugs).
+    #: Concrete backends assign the appropriate string literal directly.
+    issue_id_type: Literal["integer", "string"]
 
     # ------------------------------------------------------------------
     # Repository access

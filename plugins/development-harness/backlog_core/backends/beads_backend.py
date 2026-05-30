@@ -24,7 +24,7 @@ meaningful integer representation.  Affected methods raise
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import ValidationError
 
@@ -77,6 +77,16 @@ _ADR_002_BATCH_NOTE = (
 class BeadsBackend:
     """Routes backlog operations to the ``bd`` CLI subprocess.
 
+    Capability flags:
+
+    - ``supports_batch_status_fetch = False`` — beads issue IDs are strings;
+      :meth:`batch_fetch_statuses` raises :exc:`NotImplementedError` (ADR-002).
+      Callers must check this flag before invoking the method.
+    - ``issue_id_type = "string"`` — beads issues are identified by string
+      nanoids (e.g. ``"bd-a3f8"``).  When ``item.issue`` is absent, the item
+      title is used as the selector.  The list command skips live batch-status
+      fetch and relies on the local YAML cache instead.
+
     Parameters
     ----------
     runner:
@@ -85,6 +95,9 @@ class BeadsBackend:
         is constructed.  The default runner is filesystem-free at construction
         time; the ``bd`` binary is resolved lazily on the first call.
     """
+
+    supports_batch_status_fetch: bool = False
+    issue_id_type: Literal["integer", "string"] = "string"
 
     def __init__(self, runner: BdRunner | None = None) -> None:
         """Store the runner; do not touch the filesystem or spawn processes."""

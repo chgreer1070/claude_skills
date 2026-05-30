@@ -27,7 +27,6 @@ from . import models as _models
 from .artifact_provider import create_artifact_provider
 from .artifact_registry import ArtifactRegistry
 from .backend_protocol import IssueCommentNode, IssueNode, MilestoneFullNode, get_config
-from .backends.beads_backend import BeadsBackend as _BeadsBackend
 from .entry_blocks import ENTRY_RE, _render_entry_raw, generate_diff, parse_entries, strike_entry as strike_entry_block
 from .models import (
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
@@ -2321,15 +2320,17 @@ def list_items(
     # are included based on include_closed.
     open_items = [it for it in items if not it.skip and it.section]
     open_items = _filter_closed_items(open_items, include_closed)
-    # BeadsBackend.batch_fetch_statuses raises NotImplementedError (ADR-002):
-    # beads issue IDs are strings and cannot be keyed by int.  For beads, the
-    # local YAML status field is authoritative — skip the batch fetch entirely
-    # and pass an empty map.  _item_derived_status and _build_list_entry both
-    # fall back to item.status when the map is empty.
-    if isinstance(get_config().backend, _BeadsBackend):
-        status_map: dict[int, IssueStatus] = {}
-    else:
+    # Skip the batch fetch for backends that do not support it (e.g. beads,
+    # Linear).  Those backends raise NotImplementedError from
+    # batch_fetch_statuses because their issue IDs are strings with no integer
+    # representation (BacklogBackend.supports_batch_status_fetch == False).
+    # The local YAML status field is authoritative for such backends — pass an
+    # empty map.  _item_derived_status and _build_list_entry both fall back to
+    # item.status when the map is empty.
+    if get_config().backend.supports_batch_status_fetch:
         status_map = batch_fetch_statuses(open_items, repo)
+    else:
+        status_map: dict[int, IssueStatus] = {}
     open_items = _filter_open_items(open_items, section, title, status, status_map, type_=type_, topic=topic)
     result_items = [_build_list_entry(it, status_map) for it in open_items]
     return {"items": result_items, "count": len(result_items), **out.to_dict()}
@@ -3304,20 +3305,21 @@ def _apply_issue_status_labels(
 ) -> None:
     """Apply status changes for the item.
 
-    For items with a numeric GitHub issue reference, applies GitHub status
-    labels via the backend (in-progress, verified).
+    For items with a numeric integer issue reference, applies status labels via
+    the backend (in-progress, verified).
 
-    For items with no integer issue reference — including beads items whose
-    ``item.issue`` field is empty (beads has no GitHub issue creation path)
-    or holds a non-numeric beads nanoid — writes the status directly to the
-    local YAML cache file via :func:`update_item_metadata`.  This prevents the
-    status change from becoming a silent no-op for beads backends (BUG-3).
+    For backends whose ``issue_id_type`` is ``"string"`` — where ``item.issue``
+    may be empty or hold an opaque string ID (e.g. a beads nanoid) — writes the
+    status directly to the local YAML cache file via :func:`update_item_metadata`.
+    This prevents the status change from becoming a silent no-op on such backends
+    (BUG-3).  The ``apply_status_in_progress`` backend call is still issued when
+    ``item.issue`` is a string ID so the backend can claim the item (e.g.
+    ``bd update --claim``).  When ``item.issue`` is empty the backend is
+    responsible for resolving the item by title.
 
-    The ``apply_status_in_progress`` backend call is still issued when
-    ``item.issue`` is a non-integer beads nanoid (e.g. ``"bd-a3f8"``) so that
-    ``bd update --claim`` is called on the beads issue.  When ``item.issue`` is
-    empty the title is used as the beads selector by
-    :meth:`~BeadsBackend.apply_status_in_progress`.
+    This function checks ``BacklogBackend.issue_id_type`` rather than the
+    concrete backend type, so future string-ID backends (e.g. Linear) inherit
+    the correct behaviour automatically.
 
     Args:
         item: Resolved BacklogItem.
@@ -3328,17 +3330,18 @@ def _apply_issue_status_labels(
         output: Output aggregator for info/warning messages.
     """
     has_integer_issue = parse_issue_number(item.issue) is not None
-    is_beads = isinstance(get_config().backend, _BeadsBackend)
+    is_string_id_backend = get_config().backend.issue_id_type == "string"
 
-    if not item.issue and not is_beads:
-        # No issue on a non-beads backend — nothing to do.
+    if not item.issue and not is_string_id_backend:
+        # No issue on an integer-ID backend — nothing to do.
         return
 
     if status == "in-progress":
-        if is_beads:
-            # Backend call: bd update <id-or-title> --claim
+        if is_string_id_backend:
+            # Backend call: claim the item (e.g. bd update <id-or-title> --claim).
             apply_status_in_progress(item, repo, output=output)
-            # Local YAML update: write status so list_items reflects the change.
+            # Local YAML update: list_items skips live batch-status fetch for
+            # string-ID backends, so write status locally to keep the view current.
             if item.file_path:
                 update_item_metadata(Path(item.file_path), {"metadata": {"status": "in-progress"}}, output=output)
         elif has_integer_issue:
@@ -3347,7 +3350,8 @@ def _apply_issue_status_labels(
 
     if verified:
         if not has_integer_issue:
-            # verified label requires a GitHub integer issue — no-op for beads.
+            # verified label requires a numeric issue ID — no-op for backends
+            # that use string IDs or for items with no issue reference.
             result["verified"] = True
             return
         try:

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -82,7 +82,16 @@ class InMemoryBackend:
     All state lives in plain Python dicts and lists.  Every method is
     synchronous and has no side effects outside this instance.  No imports
     from gh_client, github_sync, or github_branches.
+
+    Capability flags:
+
+    - ``supports_batch_status_fetch = True`` — in-memory issues use integer IDs;
+      :meth:`batch_fetch_statuses` is fully implemented.
+    - ``issue_id_type = "integer"`` — issues are keyed by integer number.
     """
+
+    supports_batch_status_fetch: bool = True
+    issue_id_type: Literal["integer", "string"] = "integer"
 
     def __init__(self) -> None:
         """Initialise empty in-memory storage for all backend state."""
